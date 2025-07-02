@@ -1,8 +1,7 @@
 // App.jsx
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Settings, Plus, Trash2, LayoutGrid, AlertCircle, TrendingUp, Award, Clock, Database, Calendar, Download, BarChart3, Activity, Info } from 'lucide-react';
+import { RefreshCw, Settings, Trash2, LayoutGrid, AlertCircle, TrendingUp, Award, Clock, Database, Calendar, Download, BarChart3, Activity, Info } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import fundRegistry from './services/fundRegistry';
 import FundAdmin from './components/Admin/FundAdmin';
 import {
   recommendedFunds as defaultRecommendedFunds,
@@ -379,27 +378,6 @@ const App = () => {
     }
   };
 
-  const updateFund = (i, field, value) => {
-    const updated = [...recommendedFunds];
-    updated[i][field] = value;
-    setRecommendedFunds(updated);
-  };
-
-  const addFund = () => {
-    setRecommendedFunds([...recommendedFunds, { symbol: '', name: '', assetClass: '' }]);
-  };
-
-  const removeFund = (i) => {
-    const updated = [...recommendedFunds];
-    updated.splice(i, 1);
-    setRecommendedFunds(updated);
-  };
-
-  const updateBenchmark = (className, field, value) => {
-    const updated = { ...assetClassBenchmarks };
-    updated[className] = { ...updated[className], [field]: value };
-    setAssetClassBenchmarks(updated);
-  };
 
   // Get review candidates
   const reviewCandidates = identifyReviewCandidates(scoredFundData);
@@ -1695,192 +1673,8 @@ const App = () => {
         </div>
       )}
 
-      {/* Admin Tab - unchanged from original */}
-      {activeTab === 'admin' && (
-        <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>Admin Panel</h2>
-          
-          <div style={{ marginBottom: '2rem' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-              Recommended Fund List
-            </h3>
-            <button 
-              onClick={addFund} 
-              style={{ 
-                marginBottom: '0.5rem',
-                padding: '0.5rem 1rem',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '0.375rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              <Plus size={14} /> Add Fund
-            </button>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                  <th style={{ padding: '0.5rem', textAlign: 'left' }}>Symbol</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'left' }}>Name</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'left' }}>Asset Class</th>
-                  <th style={{ padding: '0.5rem', width: '50px' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {recommendedFunds.map((f, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                    <td style={{ padding: '0.5rem' }}>
-                      <input 
-                        value={f.symbol} 
-                        onChange={e => updateFund(i, 'symbol', e.target.value)}
-                        style={{ 
-                          width: '100%', 
-                          padding: '0.25rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '0.25rem'
-                        }}
-                      />
-                    </td>
-                    <td style={{ padding: '0.5rem' }}>
-                      <input 
-                        value={f.name} 
-                        onChange={e => updateFund(i, 'name', e.target.value)}
-                        style={{ 
-                          width: '100%', 
-                          padding: '0.25rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '0.25rem'
-                        }}
-                      />
-                    </td>
-                    <td style={{ padding: '0.5rem' }}>
-                      <input 
-                        value={f.assetClass} 
-                        onChange={e => updateFund(i, 'assetClass', e.target.value)}
-                        style={{ 
-                          width: '100%', 
-                          padding: '0.25rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '0.25rem'
-                        }}
-                      />
-                    </td>
-                    <td style={{ padding: '0.5rem' }}>
-                      <button 
-                        onClick={() => removeFund(i)}
-                        style={{
-                          padding: '0.25rem',
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.25rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-              Asset Class Benchmarks
-            </h3>
-            <button 
-              onClick={() => {
-                const newClass = prompt('Enter new Asset Class name');
-                if (!newClass || assetClassBenchmarks[newClass]) return;
-                setAssetClassBenchmarks({
-                  ...assetClassBenchmarks,
-                  [newClass]: { ticker: '', name: '' }
-                });
-              }} 
-              style={{ 
-                marginBottom: '0.5rem',
-                padding: '0.5rem 1rem',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '0.375rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              <Plus size={14} /> Add Asset Class
-            </button>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                  <th style={{ padding: '0.5rem', textAlign: 'left' }}>Asset Class</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'left' }}>ETF Ticker</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'left' }}>Benchmark Name</th>
-                  <th style={{ padding: '0.5rem', width: '50px' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(assetClassBenchmarks).map(([className, info], i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                    <td style={{ padding: '0.5rem', fontWeight: '500' }}>{className}</td>
-                    <td style={{ padding: '0.5rem' }}>
-                      <input 
-                        value={info.ticker} 
-                        onChange={e => updateBenchmark(className, 'ticker', e.target.value)}
-                        style={{ 
-                          width: '100%', 
-                          padding: '0.25rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '0.25rem'
-                        }}
-                      />
-                    </td>
-                    <td style={{ padding: '0.5rem' }}>
-                      <input 
-                        value={info.name} 
-                        onChange={e => updateBenchmark(className, 'name', e.target.value)}
-                        style={{ 
-                          width: '100%', 
-                          padding: '0.25rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '0.25rem'
-                        }}
-                      />
-                    </td>
-                    <td style={{ padding: '0.5rem' }}>
-                      <button 
-                        onClick={() => {
-                          const copy = { ...assetClassBenchmarks };
-                          delete copy[className];
-                          setAssetClassBenchmarks(copy);
-                        }}
-                        style={{
-                          padding: '0.25rem',
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.25rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {/* Admin Tab */}
+      {activeTab === 'admin' && <FundAdmin />}
 
       {/* Help Modal */}
       {showHelp && (
