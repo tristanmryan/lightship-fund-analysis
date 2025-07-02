@@ -800,6 +800,8 @@ const App = () => {
                       <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>1Y Return</th>
                       <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>5Y</th>
                       <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Sharpe</th>
+                      <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Std Dev (3Y)</th>
+                      <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Std Dev (5Y)</th>
                       <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Expense</th>
                       <th style={{ textAlign: 'center', padding: '0.75rem', fontWeight: '600' }}>Type</th>
                     </tr>
@@ -840,6 +842,12 @@ const App = () => {
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                             {fund['Sharpe Ratio'] != null ? fund['Sharpe Ratio'].toFixed(2) : 'N/A'}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                            {fund['StdDev3Y'] != null ? fund['StdDev3Y'].toFixed(2) : 'N/A'}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                            {fund['StdDev5Y'] != null ? fund['StdDev5Y'].toFixed(2) : 'N/A'}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                             {fund['Net Expense Ratio'] != null ? `${fund['Net Expense Ratio'].toFixed(2)}%` : 'N/A'}
@@ -1033,7 +1041,8 @@ const App = () => {
                     <th style={{ padding: '0.75rem', textAlign: 'right' }}>3Y</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right' }}>5Y</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right' }}>Sharpe</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Std Dev 3Y</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Std Dev (3Y)</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Std Dev (5Y)</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right' }}>Expense</th>
                   </tr>
                 </thead>
@@ -1079,6 +1088,9 @@ const App = () => {
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                         {benchmarkData[selectedClass]['StdDev3Y']?.toFixed(2) ?? 'N/A'}%
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        {benchmarkData[selectedClass]['StdDev5Y']?.toFixed(2) ?? 'N/A'}%
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                         {benchmarkData[selectedClass]['Net Expense Ratio']?.toFixed(2) ?? 'N/A'}%
@@ -1135,6 +1147,9 @@ const App = () => {
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                           {fund['StdDev3Y']?.toFixed(2) ?? 'N/A'}%
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                          {fund['StdDev5Y']?.toFixed(2) ?? 'N/A'}%
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                           {fund['Net Expense Ratio']?.toFixed(2) ?? 'N/A'}%
