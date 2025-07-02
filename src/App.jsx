@@ -16,6 +16,7 @@ import {
   METRICS_CONFIG 
 } from './services/scoring';
 import dataStore from './services/dataStore';
+import fundRegistry from './services/fundRegistry';
 import PerformanceHeatmap from './components/Dashboard/PerformanceHeatmap';
 import TopBottomPerformers from './components/Dashboard/TopBottomPerformers';
 import AssetClassOverview from './components/Dashboard/AssetClassOverview';
@@ -109,18 +110,24 @@ const App = () => {
   // Help modal state
   const [showHelp, setShowHelp] = useState(false);
 
-  // Initialize configuration
+  // Initialize fund registry and load data
   useEffect(() => {
-    const initializeConfig = async () => {
-      const { savedFunds, savedBenchmarks } = await getStoredConfig();
-      const initializedFunds = savedFunds || defaultRecommendedFunds;
-      const initializedBenchmarks = savedBenchmarks || defaultBenchmarks;
-      setRecommendedFunds(initializedFunds);
-      setAssetClassBenchmarks(initializedBenchmarks);
-      await saveStoredConfig(initializedFunds, initializedBenchmarks);
+    const initializeRegistry = async () => {
+      await fundRegistry.initialize(defaultRecommendedFunds, defaultBenchmarks);
+      const [funds, benchmarkMap] = await Promise.all([
+        fundRegistry.getActiveFunds(),
+        fundRegistry.getBenchmarksByTicker()
+      ]);
+
+      setRecommendedFunds(funds);
+      const mapped = {};
+      Object.values(benchmarkMap).forEach(b => {
+        mapped[b.assetClass] = { ticker: b.ticker, name: b.name };
+      });
+      setAssetClassBenchmarks(mapped);
     };
-    
-    initializeConfig();
+
+    initializeRegistry();
   }, []);
 
   // Keyboard shortcuts
@@ -157,12 +164,7 @@ const App = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [scoredFundData, classSummaries, currentSnapshotDate, uploadedFileName]);
 
-  // Save configuration when changed
-  useEffect(() => {
-    if (recommendedFunds.length > 0 || Object.keys(assetClassBenchmarks).length > 0) {
-      saveStoredConfig(recommendedFunds, assetClassBenchmarks);
-    }
-  }, [recommendedFunds, assetClassBenchmarks]);
+
 
   // Load snapshots when history tab is selected
   useEffect(() => {
