@@ -6,7 +6,8 @@
  */
 
 const DB_NAME = 'LightshipFundAnalysis';
-const DB_VERSION = 3; // Incremented for new stores
+// DB version 3 adds fund registry-related stores
+const DB_VERSION = 3;
 
 // Object store names
 const STORES = {
@@ -50,6 +51,8 @@ async function openDB() {
 
     request.onupgradeneeded = (event) => {
       const database = event.target.result;
+
+      // Existing stores for version 1
       
       // Create snapshots store
       if (!database.objectStoreNames.contains(STORES.SNAPSHOTS)) {
@@ -80,38 +83,41 @@ async function openDB() {
         auditStore.createIndex('action', 'action', { unique: false });
       }
 
-      // Create fund registry store
-      if (!database.objectStoreNames.contains(STORES.FUND_REGISTRY)) {
-        database.createObjectStore(STORES.FUND_REGISTRY, { keyPath: 'symbol' });
-      }
+      // Stores introduced in version 3
+      if (event.oldVersion <= 1) {
+        // Create fund registry store
+        if (!database.objectStoreNames.contains(STORES.FUND_REGISTRY)) {
+          database.createObjectStore(STORES.FUND_REGISTRY, { keyPath: 'symbol' });
+        }
 
-      // Create fund history store
-      if (!database.objectStoreNames.contains(STORES.FUND_HISTORY)) {
-        const historyStore = database.createObjectStore(STORES.FUND_HISTORY, {
-          keyPath: 'id',
-          autoIncrement: true
-        });
-        historyStore.createIndex('symbol', 'symbol', { unique: false });
-        historyStore.createIndex('timestamp', 'timestamp', { unique: false });
-      }
+        // Create fund history store
+        if (!database.objectStoreNames.contains(STORES.FUND_HISTORY)) {
+          const historyStore = database.createObjectStore(STORES.FUND_HISTORY, {
+            keyPath: 'id',
+            autoIncrement: true
+          });
+          historyStore.createIndex('symbol', 'symbol', { unique: false });
+          historyStore.createIndex('timestamp', 'timestamp', { unique: false });
+        }
 
-      // Create fund versions store
-      if (!database.objectStoreNames.contains(STORES.FUND_VERSIONS)) {
-        const versionStore = database.createObjectStore(STORES.FUND_VERSIONS, {
-          keyPath: 'id',
-          autoIncrement: true
-        });
-        versionStore.createIndex('timestamp', 'timestamp', { unique: false });
-      }
+        // Create fund versions store
+        if (!database.objectStoreNames.contains(STORES.FUND_VERSIONS)) {
+          const versionStore = database.createObjectStore(STORES.FUND_VERSIONS, {
+            keyPath: 'id',
+            autoIncrement: true
+          });
+          versionStore.createIndex('timestamp', 'timestamp', { unique: false });
+        }
 
-      // Create benchmark history store
-      if (!database.objectStoreNames.contains(STORES.BENCHMARK_HISTORY)) {
-        const benchmarkStore = database.createObjectStore(STORES.BENCHMARK_HISTORY, {
-          keyPath: 'id',
-          autoIncrement: true
-        });
-        benchmarkStore.createIndex('assetClass', 'assetClass', { unique: false });
-        benchmarkStore.createIndex('timestamp', 'timestamp', { unique: false });
+        // Create benchmark history store
+        if (!database.objectStoreNames.contains(STORES.BENCHMARK_HISTORY)) {
+          const benchmarkStore = database.createObjectStore(STORES.BENCHMARK_HISTORY, {
+            keyPath: 'id',
+            autoIncrement: true
+          });
+          benchmarkStore.createIndex('assetClass', 'assetClass', { unique: false });
+          benchmarkStore.createIndex('timestamp', 'timestamp', { unique: false });
+        }
       }
     };
   });
