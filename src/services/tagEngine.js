@@ -58,7 +58,7 @@ export const DEFAULT_TAG_RULES = [
       description: 'Standard deviation above asset class average by 20%',
       condition: (fund, context) => {
         const avgStdDev = context.assetClassAverages[fund['Asset Class']]?.avgStdDev;
-        return avgStdDev && fund['Standard Deviation'] > avgStdDev * 1.2;
+        return avgStdDev && (fund['StdDev3Y'] ?? fund['Standard Deviation']) > avgStdDev * 1.2;
       },
       color: '#ef4444',
       icon: '📊',
@@ -94,9 +94,9 @@ export const DEFAULT_TAG_RULES = [
       condition: (fund, context) => {
         // This would need historical data to calculate
         // For now, use a proxy: good score with low std dev
-        return fund.scores?.final >= 60 && 
-               fund['Standard Deviation'] != null &&
-               fund['Standard Deviation'] < 10;
+        return fund.scores?.final >= 60 &&
+               (fund['StdDev3Y'] ?? fund['Standard Deviation']) != null &&
+               (fund['StdDev3Y'] ?? fund['Standard Deviation']) < 10;
       },
       color: '#6366f1',
       icon: '🎯',
@@ -221,7 +221,7 @@ export const DEFAULT_TAG_RULES = [
         .filter(e => e != null);
       
       const stdDevs = classFunds
-        .map(f => f['Standard Deviation'])
+        .map(f => f['StdDev3Y'] ?? f['Standard Deviation'])
         .filter(s => s != null);
       
       const sharpes = classFunds

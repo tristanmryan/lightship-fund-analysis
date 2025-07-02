@@ -221,8 +221,17 @@ const App = () => {
             // Performance metrics
             if (header.includes('YTD')) columnMap['YTD'] = index;
             if (header.includes('1 Year') || header.includes('1 Yr')) columnMap['1 Year'] = index;
-            if (header.includes('3 Year') || header.includes('3 Yr')) columnMap['3 Year'] = index;
-            if (header.includes('5 Year') || header.includes('5 Yr')) columnMap['5 Year'] = index;
+            if ((header.includes('3 Year') || header.includes('3 Yr')) && header.toLowerCase().includes('deviation')) {
+              columnMap['StdDev3Y'] = index;
+            } else if (header.includes('3 Year') || header.includes('3 Yr')) {
+              columnMap['3 Year'] = index;
+            }
+
+            if ((header.includes('5 Year') || header.includes('5 Yr')) && header.toLowerCase().includes('deviation')) {
+              columnMap['StdDev5Y'] = index;
+            } else if (header.includes('5 Year') || header.includes('5 Yr')) {
+              columnMap['5 Year'] = index;
+            }
             if (header.includes('10 Year') || header.includes('10 Yr')) columnMap['10 Year'] = index;
             
             // Risk metrics
@@ -250,6 +259,10 @@ const App = () => {
             }
             fund[key] = isNaN(val) ? val : parseFloat(val);
           });
+          if (fund['Standard Deviation'] != null) {
+            if (fund['StdDev3Y'] == null) fund['StdDev3Y'] = fund['Standard Deviation'];
+            if (fund['StdDev5Y'] == null) fund['StdDev5Y'] = fund['Standard Deviation'];
+          }
           return fund;
         }).filter(f => f.Symbol && f.Symbol !== ''); // Filter out empty rows
 
@@ -1010,7 +1023,7 @@ const App = () => {
                     <th style={{ padding: '0.75rem', textAlign: 'right' }}>1Y</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right' }}>3Y</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right' }}>Sharpe</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Std Dev</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Std Dev 3Y</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right' }}>Expense</th>
                   </tr>
                 </thead>
@@ -1049,7 +1062,7 @@ const App = () => {
                         {benchmarkData[selectedClass]['Sharpe Ratio']?.toFixed(2) ?? 'N/A'}
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['Standard Deviation']?.toFixed(2) ?? 'N/A'}%
+                        {benchmarkData[selectedClass]['StdDev3Y']?.toFixed(2) ?? 'N/A'}%
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                         {benchmarkData[selectedClass]['Net Expense Ratio']?.toFixed(2) ?? 'N/A'}%
@@ -1099,7 +1112,7 @@ const App = () => {
                           {fund['Sharpe Ratio']?.toFixed(2) ?? 'N/A'}
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['Standard Deviation']?.toFixed(2) ?? 'N/A'}%
+                          {fund['StdDev3Y']?.toFixed(2) ?? 'N/A'}%
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                           {fund['Net Expense Ratio']?.toFixed(2) ?? 'N/A'}%

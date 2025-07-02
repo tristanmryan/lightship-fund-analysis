@@ -62,7 +62,8 @@ export function exportToExcel(data) {
     '5 Year %',
     '10 Year %',
     'Sharpe Ratio',
-    'Std Dev',
+    'Std Dev 3Y',
+    'Std Dev 5Y',
     'Expense Ratio %',
     'Manager Tenure',
     'Is Recommended',
@@ -82,7 +83,8 @@ export function exportToExcel(data) {
     fund['5 Year'] || '',
     fund['10 Year'] || '',
     fund['Sharpe Ratio'] || '',
-    fund['Standard Deviation'] || '',
+    fund['StdDev3Y'] || '',
+    fund['StdDev5Y'] || '',
     fund['Net Expense Ratio'] || '',
     fund['Manager Tenure'] || '',
     fund.isRecommended ? 'Yes' : 'No',
@@ -105,7 +107,8 @@ export function exportToExcel(data) {
     { wch: 8 },  // 5Y
     { wch: 8 },  // 10Y
     { wch: 12 }, // Sharpe
-    { wch: 10 }, // Std Dev
+    { wch: 10 }, // Std Dev 3Y
+    { wch: 10 }, // Std Dev 5Y
     { wch: 12 }, // Expense
     { wch: 12 }, // Tenure
     { wch: 12 }, // Recommended
