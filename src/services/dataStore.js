@@ -6,15 +6,20 @@
  */
 
 const DB_NAME = 'LightshipFundAnalysis';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Incremented for new stores
 
 // Object store names
 const STORES = {
-  SNAPSHOTS: 'snapshots',
-  CONFIG: 'config',
-  PREFERENCES: 'preferences',
-  AUDIT_LOG: 'auditLog'
-};
+    SNAPSHOTS: 'snapshots',
+    CONFIG: 'config',
+    PREFERENCES: 'preferences',
+    AUDIT_LOG: 'auditLog',
+    // New stores for fund management
+    FUND_REGISTRY: 'fundRegistry',
+    FUND_HISTORY: 'fundHistory',
+    FUND_VERSIONS: 'fundVersions',
+    BENCHMARK_HISTORY: 'benchmarkHistory'
+  };
 
 // Initialize database connection
 let db = null;

@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, Settings, Plus, Trash2, LayoutGrid, AlertCircle, TrendingUp, Award, Clock, Database, Calendar, Download, BarChart3, Activity, Info } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { getStoredConfig, saveStoredConfig } from './data/storage';
+import fundRegistry from './services/fundRegistry';
+import FundAdmin from './components/Admin/FundAdmin';
 import {
   recommendedFunds as defaultRecommendedFunds,
   assetClassBenchmarks as defaultBenchmarks

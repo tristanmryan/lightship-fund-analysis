@@ -7,7 +7,7 @@ import { getScoreColor } from '../../services/scoring';
  * Performance Heatmap Component
  * Displays fund scores in a visual grid organized by asset class
  */
-const PerformanceHeatmap = ({ funds, assetClassBenchmarks }) => {
+const PerformanceHeatmap = ({ funds }) => {
   const [selectedMetric, setSelectedMetric] = useState('score');
   const [hoveredFund, setHoveredFund] = useState(null);
 
