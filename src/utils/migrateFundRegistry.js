@@ -22,7 +22,16 @@ export async function migrateFundRegistry() {
     }
 
     // Initialize registry with default data
-    await fundRegistry.initialize(recommendedFunds, assetClassBenchmarks);
+    try {
+      await fundRegistry.initialize(recommendedFunds, assetClassBenchmarks);
+    } catch (dbError) {
+      console.error('Error initializing registry:', dbError);
+      return {
+        status: 'error',
+        message: dbError.message,
+        error: dbError
+      };
+    }
     
     // Get updated statistics
     const newStats = await fundRegistry.getStatistics();
