@@ -70,7 +70,7 @@ export function calculateCorrelation(x, y) {
    * @returns {number} Similarity score (0 to 1)
    */
   function calculateMetricSimilarity(fund1, fund2) {
-    const metrics = ['1 Year', '3 Year', '5 Year', 'Sharpe Ratio', 'Standard Deviation'];
+    const metrics = ['1 Year', '3 Year', '5 Year', 'Sharpe Ratio', 'StdDev3Y'];
     let validMetrics = 0;
     let totalDifference = 0;
     
@@ -101,7 +101,7 @@ export function calculateCorrelation(x, y) {
       const returnMetric = fund['3 Year'] || fund['1 Year'] || 0;
       
       // Use standard deviation as risk metric
-      const riskMetric = fund['Standard Deviation'] || 0;
+      const riskMetric = fund['StdDev3Y'] ?? fund['Standard Deviation'] || 0;
       
       // Calculate risk-adjusted return (similar to Sharpe but simplified)
       const riskAdjustedReturn = riskMetric > 0 ? returnMetric / riskMetric : 0;
@@ -171,7 +171,7 @@ export function calculateCorrelation(x, y) {
     funds.forEach(fund => {
       const weight = weights[fund.Symbol] || defaultWeight;
       const fundReturn = fund['3 Year'] || fund['1 Year'] || 0;
-      const fundRisk = fund['Standard Deviation'] || 0;
+      const fundRisk = fund['StdDev3Y'] ?? fund['Standard Deviation'] || 0;
       
       portfolioReturn += fundReturn * weight;
       portfolioRisk += fundRisk * weight; // Simplified - doesn't account for correlation
@@ -366,7 +366,7 @@ export function calculateCorrelation(x, y) {
     // Calculate means and standard deviations
     const metrics = {
       performance: funds.map(f => f['1 Year']).filter(v => v != null),
-      risk: funds.map(f => f['Standard Deviation']).filter(v => v != null),
+      risk: funds.map(f => f['StdDev3Y'] ?? f['Standard Deviation']).filter(v => v != null),
       expense: funds.map(f => f['Net Expense Ratio']).filter(v => v != null),
       score: funds.map(f => f.scores?.final).filter(v => v != null)
     };
@@ -386,7 +386,7 @@ export function calculateCorrelation(x, y) {
             value = fund['1 Year'];
             break;
           case 'risk':
-            value = fund['Standard Deviation'];
+            value = fund['StdDev3Y'] ?? fund['Standard Deviation'];
             break;
           case 'expense':
             value = fund['Net Expense Ratio'];
