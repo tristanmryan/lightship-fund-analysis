@@ -553,7 +553,8 @@ export async function exportAllData() {
     funds,
     benchmarks,
     fundHistory,
-    fundVersions
+    fundVersions,
+    benchmarkHistory
   ] = await Promise.all([
     getAllSnapshots(),
     getAllConfig(),
@@ -562,9 +563,10 @@ export async function exportAllData() {
     getAllFunds(false),
     getAllBenchmarks(),
     getFundHistory(null, 1000),
-    getFundVersions(100)
+    getFundVersions(100),
+    getBenchmarkHistory(null, 1000)
   ]);
-  
+
   return {
     version: DB_VERSION,
     exportDate: new Date().toISOString(),
@@ -575,7 +577,8 @@ export async function exportAllData() {
     funds,
     benchmarks,
     fundHistory,
-    fundVersions
+    fundVersions,
+    benchmarkHistory
   };
 }
 
@@ -636,6 +639,20 @@ export async function importData(data) {
     }
   }
 
+  // Import benchmark history
+  if (data.benchmarkHistory) {
+    const db = await openDB();
+    const tx = db.transaction([STORES.BENCHMARK_HISTORY], 'readwrite');
+    const store = tx.objectStore(STORES.BENCHMARK_HISTORY);
+    for (const entry of data.benchmarkHistory) {
+      await new Promise((resolve, reject) => {
+        const req = store.put(entry);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+  }
+
   // Import versions
   if (data.fundVersions) {
     const db = await openDB();
@@ -654,7 +671,10 @@ export async function importData(data) {
     snapshotsCount: data.snapshots?.length || 0,
     configCount: data.config?.length || 0,
     funds: data.funds?.length || 0,
-    benchmarks: data.benchmarks?.length || 0
+    benchmarks: data.benchmarks?.length || 0,
+    fundHistory: data.fundHistory?.length || 0,
+    fundVersions: data.fundVersions?.length || 0,
+    benchmarkHistory: data.benchmarkHistory?.length || 0
   });
 }
 
@@ -890,6 +910,56 @@ export async function saveBenchmark(obj) {
 }
 
 /**
+ * Add entry to benchmark history
+ * @param {Object} entry - History entry
+ */
+export async function addBenchmarkHistoryEntry(entry) {
+  const database = await openDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORES.BENCHMARK_HISTORY], 'readwrite');
+    const store = tx.objectStore(STORES.BENCHMARK_HISTORY);
+    const data = { ...entry, timestamp: entry.timestamp || new Date().toISOString() };
+    const request = store.add(data);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+/**
+ * Get benchmark history
+ * @param {string|null} assetClass - Asset class filter
+ * @param {number} limit - Max entries
+ * @returns {Promise<Array>} History entries
+ */
+export async function getBenchmarkHistory(assetClass = null, limit = 100) {
+  const database = await openDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction([STORES.BENCHMARK_HISTORY], 'readonly');
+    const store = tx.objectStore(STORES.BENCHMARK_HISTORY);
+    const index = assetClass ? store.index('assetClass') : store.index('timestamp');
+    const key = assetClass ? IDBKeyRange.only(assetClass) : null;
+    const request = index.openCursor(key, 'prev');
+
+    const results = [];
+
+    request.onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (cursor && results.length < limit) {
+        results.push(cursor.value);
+        cursor.continue();
+      } else {
+        resolve(results);
+      }
+    };
+
+    request.onerror = () => reject(request.error);
+  });
+}
+
+/**
  * Get all benchmarks
  * @returns {Promise<Array>} Benchmark list
  */
@@ -1046,6 +1116,8 @@ export default {
   getFundHistory,
   saveBenchmark,
   getAllBenchmarks,
+  addBenchmarkHistoryEntry,
+  getBenchmarkHistory,
   createFundVersion,
   getFundVersions,
   restoreFundVersion
