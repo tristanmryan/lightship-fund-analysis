@@ -20,39 +20,44 @@ class FundRegistry {
    */
   async initialize(defaultFunds = [], defaultBenchmarks = {}) {
     const existingFunds = await dataStore.getAllFunds();
-    
+
     if (existingFunds.length === 0 && defaultFunds.length > 0) {
       console.log('Initializing fund registry with default data...');
-      
-      // Import default funds
-      for (const fund of defaultFunds) {
-        await dataStore.saveFund({
-          symbol: fund.symbol,
-          name: fund.name,
-          assetClass: fund.assetClass,
-          status: 'active',
-          addedReason: 'Initial import from config',
-          addedBy: 'system',
-          tags: ['imported', 'default']
-        });
+
+      try {
+        // Import default funds
+        for (const fund of defaultFunds) {
+          await dataStore.saveFund({
+            symbol: fund.symbol,
+            name: fund.name,
+            assetClass: fund.assetClass,
+            status: 'active',
+            addedReason: 'Initial import from config',
+            addedBy: 'system',
+            tags: ['imported', 'default']
+          });
+        }
+
+        // Import default benchmarks
+        for (const [assetClass, benchmark] of Object.entries(defaultBenchmarks)) {
+          await dataStore.saveBenchmark({
+            assetClass,
+            ticker: benchmark.ticker,
+            name: benchmark.name
+          });
+        }
+
+        // Create initial version
+        await dataStore.createFundVersion(
+          'Initial fund registry setup',
+          'system'
+        );
+
+        console.log(`Imported ${defaultFunds.length} funds and ${Object.keys(defaultBenchmarks).length} benchmarks`);
+      } catch (error) {
+        console.error('Failed to initialize fund registry:', error);
+        throw error;
       }
-
-      // Import default benchmarks
-      for (const [assetClass, benchmark] of Object.entries(defaultBenchmarks)) {
-        await dataStore.saveBenchmark({
-          assetClass,
-          ticker: benchmark.ticker,
-          name: benchmark.name
-        });
-      }
-
-      // Create initial version
-      await dataStore.createFundVersion(
-        'Initial fund registry setup',
-        'system'
-      );
-
-      console.log(`Imported ${defaultFunds.length} funds and ${Object.keys(defaultBenchmarks).length} benchmarks`);
     }
   }
 
