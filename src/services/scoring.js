@@ -3,6 +3,21 @@
 /**
  * Core Scoring Engine for Lightship Fund Analysis
  * Implements weighted Z-score ranking system within asset classes
+ * 
+ * SCORING METHODOLOGY:
+ * 1. Each fund is compared to peers within its asset class (including benchmarks)
+ * 2. Z-scores are calculated for each metric (how many SDs from the mean)
+ * 3. Z-scores are weighted according to importance and summed
+ * 4. The sum is transformed to a T-score scale (mean 50, SD 10)
+ * 5. Scores typically range from 40-60, with exceptional funds reaching 60+
+ * 
+ * SCORE INTERPRETATION:
+ * - 60+: Exceptional performance (rare, top ~5%)
+ * - 55-60: Very good performance
+ * - 50-55: Above average
+ * - 45-50: Below average
+ * - 40-45: Poor performance
+ * - Below 40: Very poor (rare, bottom ~5%)
  */
 
 // Metric weights configuration - these match your Word document
@@ -78,21 +93,36 @@ const METRIC_WEIGHTS = {
   }
   
   /**
-   * Transform raw Z-score sum to 0-100 scale
+   * Transform raw Z-score sum to 0-100 scale using T-score methodology
    * @param {number} rawScore - Sum of weighted Z-scores
    * @param {Array<number>} allRawScores - All raw scores in the asset class
-   * @returns {number} Score scaled to 0-100
+   * @returns {number} Score scaled to 0-100 with mean of 50
    */
   function scaleScore(rawScore, allRawScores) {
-    // Calculate percentile-based scaling
-    // This ensures 50 represents the median of the peer group
-    const sortedScores = [...allRawScores].sort((a, b) => a - b);
-    const position = sortedScores.findIndex(s => s >= rawScore);
-    const percentile = position === -1 ? 100 : (position / sortedScores.length) * 100;
+    // Calculate mean and standard deviation of raw scores
+    const mean = allRawScores.reduce((sum, score) => sum + score, 0) / allRawScores.length;
+    const variance = allRawScores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / allRawScores.length;
+    const stdDev = Math.sqrt(variance);
     
-    // Map percentile to 0-100 scale with some smoothing
-    // This gives us better distribution than linear scaling
-    return Math.round(percentile);
+    // If no variation (all funds identical), return 50
+    if (stdDev === 0) return 50;
+    
+    // Calculate Z-score of this raw score within the distribution
+    const zScore = (rawScore - mean) / stdDev;
+    
+    // Convert to T-score (mean 50, SD 10)
+    // This gives us a nice distribution where:
+    // - 50 is average
+    // - Each SD moves the score by 10 points
+    // - Most scores fall between 40-60
+    let tScore = 50 + (zScore * 10);
+    
+    // Apply reasonable bounds
+    // Scores rarely go below 30 or above 70 in practice
+    // Anything above 60 is exceptional, below 40 is concerning
+    tScore = Math.max(20, Math.min(80, tScore));
+    
+    return Math.round(tScore);
   }
   
   /**
@@ -274,6 +304,11 @@ const METRIC_WEIGHTS = {
     const scoredFunds = [];
     
     Object.entries(fundsByClass).forEach(([assetClass, classFunds]) => {
+      // Log asset class composition for debugging
+      const benchmarkCount = classFunds.filter(f => f.isBenchmark).length;
+      const recommendedCount = classFunds.filter(f => f.isRecommended).length;
+      console.log(`Scoring ${assetClass}: ${classFunds.length} funds (${benchmarkCount} benchmarks, ${recommendedCount} recommended)`);
+      
       // Skip if only one fund in class (can't calculate meaningful statistics)
       if (classFunds.length < 2) {
         classFunds.forEach(fund => {
@@ -331,7 +366,8 @@ const METRIC_WEIGHTS = {
             percentile,
             breakdown: fund.scoreData.breakdown,
             metricsUsed: fund.scoreData.metricsUsed,
-            totalPossibleMetrics: fund.scoreData.totalPossibleMetrics
+            totalPossibleMetrics: fund.scoreData.totalPossibleMetrics,
+            assetClassSize: classFunds.length // Add for transparency
           }
         });
       });
@@ -364,9 +400,9 @@ const METRIC_WEIGHTS = {
       ),
       benchmarkScore: benchmarkFund?.scores?.final,
       distribution: {
-        excellent: scores.filter(s => s >= 70).length,       // 70-100
-        good: scores.filter(s => s >= 50 && s < 70).length, // 50-70
-        poor: scores.filter(s => s < 50).length             // 0-50
+        excellent: scores.filter(s => s >= 60).length,       // 60+ Exceptional
+        good: scores.filter(s => s >= 50 && s < 60).length, // 50-60 Above Average
+        poor: scores.filter(s => s < 50).length             // Below 50 Below Average
       }
     };
   }
@@ -385,9 +421,9 @@ const METRIC_WEIGHTS = {
       // Skip if no scores calculated
       if (!fund.scores) return;
       
-      // Check various conditions
-      if (fund.scores.final < 40) {
-        reasons.push('Low overall score (<40)');
+      // Check various conditions - adjusted for new scoring scale
+      if (fund.scores.final < 45) {
+        reasons.push('Below average score (<45)');
       }
       
       if (fund.scores.percentile < 25) {
@@ -408,8 +444,14 @@ const METRIC_WEIGHTS = {
         reasons.push('High downside capture (>110%)');
       }
       
+      // Flag recommended funds that are below average
       if (fund.isRecommended && fund.scores.final < 50) {
-        reasons.push('Recommended fund below average');
+        reasons.push('Recommended fund performing below average');
+      }
+      
+      // Flag if significantly underperforming benchmark
+      if (fund.benchmarkScore && fund.scores.final < fund.benchmarkScore - 5) {
+        reasons.push('Underperforming benchmark by 5+ points');
       }
       
       if (reasons.length > 0) {
@@ -429,9 +471,12 @@ const METRIC_WEIGHTS = {
    * @returns {string} Color hex code
    */
   export function getScoreColor(score) {
-    if (score >= 70) return '#16a34a'; // Green
-    if (score >= 50) return '#eab308'; // Yellow
-    return '#dc2626'; // Red
+    if (score >= 60) return '#16a34a'; // Green - Exceptional
+    if (score >= 55) return '#22c55e'; // Light Green - Very Good
+    if (score >= 50) return '#eab308'; // Yellow - Above Average
+    if (score >= 45) return '#f59e0b'; // Orange - Below Average
+    if (score >= 40) return '#ef4444'; // Light Red - Poor
+    return '#dc2626'; // Dark Red - Very Poor
   }
   
   /**
@@ -440,9 +485,12 @@ const METRIC_WEIGHTS = {
    * @returns {string} Performance label
    */
   export function getScoreLabel(score) {
-    if (score >= 70) return 'Excellent';
-    if (score >= 50) return 'Good';
-    return 'Poor';
+    if (score >= 60) return 'Exceptional';
+    if (score >= 55) return 'Very Good';
+    if (score >= 50) return 'Above Average';
+    if (score >= 45) return 'Below Average';
+    if (score >= 40) return 'Poor';
+    return 'Very Poor';
   }
   
   // Export all metric information for UI use
