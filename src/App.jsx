@@ -41,24 +41,23 @@ import {
 const ScoreBadge = ({ score, size = 'normal' }) => {
   const color = getScoreColor(score);
   const label = getScoreLabel(score);
-
+  
   const sizeClasses = {
     small: 'text-xs px-1.5 py-0.5',
     normal: 'text-sm px-2 py-1',
     large: 'text-base px-3 py-1.5'
   };
-
+  
   return (
-    <span
-      className={`inline-flex items-center rounded-full font-semibold ${sizeClasses[size]}`}
-      style={{
-        backgroundColor: `${color}30`,
+    <span 
+      className={`inline-flex items-center rounded-full font-medium ${sizeClasses[size]}`}
+      style={{ 
+        backgroundColor: `${color}20`,
         color: color,
-        border: `1px solid ${color}`
+        border: `1px solid ${color}50`
       }}
-      title={label}
     >
-      {score}
+      {score} - {label}
     </span>
   );
 };
