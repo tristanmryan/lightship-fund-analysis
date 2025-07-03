@@ -244,7 +244,9 @@ const App = () => {
             if (header.includes('Down Capture')) columnMap['Down Capture Ratio'] = index;
             
             // Other metrics
-            if (header.includes('Expense') && header.includes('Net')) columnMap['Net Expense Ratio'] = index;
+            if (header.includes('Expense') && (header.includes('Net') || header.includes('Ratio'))) {
+              columnMap['Net Expense Ratio'] = index;
+            }
             if (header.includes('Manager Tenure')) columnMap['Manager Tenure'] = index;
           }
         });
