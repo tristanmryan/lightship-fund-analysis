@@ -101,7 +101,7 @@ export function calculateCorrelation(x, y) {
       const returnMetric = fund['3 Year'] || fund['1 Year'] || 0;
       
       // Use standard deviation as risk metric
-      const riskMetric = fund['StdDev3Y'] ?? fund['Standard Deviation'] || 0;
+      const riskMetric = (fund['StdDev3Y'] ?? fund['Standard Deviation']) || 0;
       
       // Calculate risk-adjusted return (similar to Sharpe but simplified)
       const riskAdjustedReturn = riskMetric > 0 ? returnMetric / riskMetric : 0;
@@ -171,7 +171,7 @@ export function calculateCorrelation(x, y) {
     funds.forEach(fund => {
       const weight = weights[fund.Symbol] || defaultWeight;
       const fundReturn = fund['3 Year'] || fund['1 Year'] || 0;
-      const fundRisk = fund['StdDev3Y'] ?? fund['Standard Deviation'] || 0;
+      const fundRisk = (fund['StdDev3Y'] ?? fund['Standard Deviation']) || 0;
       
       portfolioReturn += fundReturn * weight;
       portfolioRisk += fundRisk * weight; // Simplified - doesn't account for correlation
