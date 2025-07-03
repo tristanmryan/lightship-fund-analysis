@@ -834,25 +834,25 @@ const App = () => {
                             )}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            {fund['YTD'] != null ? `${fund['YTD'].toFixed(2)}%` : 'N/A'}
+                            {fund['YTD'] != null ? `${fund['YTD'].toFixed(2)}%` : '-'}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            {fund['1 Year'] != null ? `${fund['1 Year'].toFixed(2)}%` : 'N/A'}
+                            {fund['1 Year'] != null ? `${fund['1 Year'].toFixed(2)}%` : '-'}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            {fund['5 Year'] != null ? `${fund['5 Year'].toFixed(2)}%` : 'N/A'}
+                            {fund['5 Year'] != null ? `${fund['5 Year'].toFixed(2)}%` : '-'}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            {fund['Sharpe Ratio'] != null ? fund['Sharpe Ratio'].toFixed(2) : 'N/A'}
+                            {fund['Sharpe Ratio'] != null ? fund['Sharpe Ratio'].toFixed(2) : '-'}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            {fund['StdDev3Y'] != null ? fund['StdDev3Y'].toFixed(2) : 'N/A'}
+                            {fund['StdDev3Y'] != null ? fund['StdDev3Y'].toFixed(2) : '-'}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            {fund['StdDev5Y'] != null ? fund['StdDev5Y'].toFixed(2) : 'N/A'}
+                            {fund['StdDev5Y'] != null ? fund['StdDev5Y'].toFixed(2) : '-'}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            {fund['Net Expense Ratio'] != null ? `${fund['Net Expense Ratio'].toFixed(2)}%` : 'N/A'}
+                            {fund['Net Expense Ratio'] != null ? `${fund['Net Expense Ratio'].toFixed(2)}%` : '-'}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                             {fund.isBenchmark && (
@@ -1011,7 +1011,7 @@ const App = () => {
                     <div>
                       <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>Benchmark Score</div>
                       <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
-                        {classSummaries[selectedClass].benchmarkScore || 'N/A'}
+                        {classSummaries[selectedClass].benchmarkScore || '-'}
                       </div>
                     </div>
                     <div>
@@ -1074,28 +1074,28 @@ const App = () => {
                         ) : '-'}
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['YTD']?.toFixed(2) ?? 'N/A'}%
+                        {benchmarkData[selectedClass]['YTD']?.toFixed(2) ?? '-'}%
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['1 Year']?.toFixed(2) ?? 'N/A'}%
+                        {benchmarkData[selectedClass]['1 Year']?.toFixed(2) ?? '-'}%
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['3 Year']?.toFixed(2) ?? 'N/A'}%
+                        {benchmarkData[selectedClass]['3 Year']?.toFixed(2) ?? '-'}%
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['5 Year']?.toFixed(2) ?? 'N/A'}%
+                        {benchmarkData[selectedClass]['5 Year']?.toFixed(2) ?? '-'}%
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['Sharpe Ratio']?.toFixed(2) ?? 'N/A'}
+                        {benchmarkData[selectedClass]['Sharpe Ratio']?.toFixed(2) ?? '-'}
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['StdDev3Y']?.toFixed(2) ?? 'N/A'}%
+                        {benchmarkData[selectedClass]['StdDev3Y']?.toFixed(2) ?? '-'}%
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['StdDev5Y']?.toFixed(2) ?? 'N/A'}%
+                        {benchmarkData[selectedClass]['StdDev5Y']?.toFixed(2) ?? '-'}%
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['Net Expense Ratio']?.toFixed(2) ?? 'N/A'}%
+                        {benchmarkData[selectedClass]['Net Expense Ratio']?.toFixed(2) ?? '-'}%
                       </td>
                     </tr>
                   )}
@@ -1133,28 +1133,28 @@ const App = () => {
                           ) : '-'}
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['YTD']?.toFixed(2) ?? 'N/A'}%
+                          {fund['YTD']?.toFixed(2) ?? '-'}%
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['1 Year']?.toFixed(2) ?? 'N/A'}%
+                          {fund['1 Year']?.toFixed(2) ?? '-'}%
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['3 Year']?.toFixed(2) ?? 'N/A'}%
+                          {fund['3 Year']?.toFixed(2) ?? '-'}%
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['5 Year']?.toFixed(2) ?? 'N/A'}%
+                          {fund['5 Year']?.toFixed(2) ?? '-'}%
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['Sharpe Ratio']?.toFixed(2) ?? 'N/A'}
+                          {fund['Sharpe Ratio']?.toFixed(2) ?? '-'}
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['StdDev3Y']?.toFixed(2) ?? 'N/A'}%
+                          {fund['StdDev3Y']?.toFixed(2) ?? '-'}%
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['StdDev5Y']?.toFixed(2) ?? 'N/A'}%
+                          {fund['StdDev5Y']?.toFixed(2) ?? '-'}%
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['Net Expense Ratio']?.toFixed(2) ?? 'N/A'}%
+                          {fund['Net Expense Ratio']?.toFixed(2) ?? '-'}%
                         </td>
                       </tr>
                     ))}
@@ -1251,15 +1251,15 @@ const App = () => {
                           }}>
                             <div>
                               <span style={{ color: '#6b7280' }}>1Y Return:</span>{' '}
-                              <strong>{fund['1 Year']?.toFixed(2) ?? 'N/A'}%</strong>
+                              <strong>{fund['1 Year']?.toFixed(2) ?? '-'}%</strong>
                             </div>
                             <div>
                               <span style={{ color: '#6b7280' }}>Sharpe:</span>{' '}
-                              <strong>{fund['Sharpe Ratio']?.toFixed(2) ?? 'N/A'}</strong>
+                              <strong>{fund['Sharpe Ratio']?.toFixed(2) ?? '-'}</strong>
                             </div>
                             <div>
                               <span style={{ color: '#6b7280' }}>Expense:</span>{' '}
-                              <strong>{fund['Net Expense Ratio']?.toFixed(2) ?? 'N/A'}%</strong>
+                              <strong>{fund['Net Expense Ratio']?.toFixed(2) ?? '-'}%</strong>
                             </div>
                           </div>
                         </div>

@@ -383,7 +383,7 @@ const RiskReturnScatter = ({ funds }) => {
             <div>Return: {hoveredFund.riskReturnMetrics.return.toFixed(2)}%</div>
             <div>Risk: {hoveredFund.riskReturnMetrics.risk.toFixed(2)}%</div>
             <div>Sharpe: {hoveredFund.riskReturnMetrics.sharpeRatio.toFixed(2)}</div>
-            <div>Score: {hoveredFund.scores?.final || 'N/A'}</div>
+            <div>Score: {hoveredFund.scores?.final || '-'}</div>
           </div>
         </div>
       )}

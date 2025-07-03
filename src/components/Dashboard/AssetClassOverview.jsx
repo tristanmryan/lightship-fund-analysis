@@ -366,21 +366,21 @@ const AssetClassOverview = ({ funds, classSummaries, benchmarkData }) => {
                     <div>
                       <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Average Sharpe Ratio</div>
                       <div style={{ fontWeight: '600' }}>
-                        {stats.avgSharpe != null ? stats.avgSharpe.toFixed(2) : 'N/A'}
+                        {stats.avgSharpe != null ? stats.avgSharpe.toFixed(2) : '-'}
                       </div>
                     </div>
                     
                     <div>
                       <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Average Expense Ratio</div>
                       <div style={{ fontWeight: '600' }}>
-                        {stats.avgExpense != null ? `${stats.avgExpense.toFixed(2)}%` : 'N/A'}
+                        {stats.avgExpense != null ? `${stats.avgExpense.toFixed(2)}%` : '-'}
                       </div>
                     </div>
                     
                     <div>
                       <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>3-Year Return</div>
                       <div style={{ fontWeight: '600' }}>
-                        {stats.avgReturn3Y != null ? `${stats.avgReturn3Y.toFixed(1)}%` : 'N/A'}
+                        {stats.avgReturn3Y != null ? `${stats.avgReturn3Y.toFixed(1)}%` : '-'}
                       </div>
                     </div>
                     
