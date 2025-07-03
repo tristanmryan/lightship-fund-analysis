@@ -223,7 +223,8 @@ const App = () => {
             if (headerLower.includes('product name') || headerLower === 'name') {
               columnMap['Fund Name'] = index;
             }
-            if (headerLower === 'asset class' || headerLower.includes('asset class')) {
+            // Only map strictly when the header exactly matches "Asset Class"
+            if (headerLower === 'asset class') {
               columnMap['Asset Class'] = index;
             }
             
