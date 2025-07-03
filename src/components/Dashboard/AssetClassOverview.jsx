@@ -118,6 +118,17 @@ const AssetClassOverview = ({ funds, classSummaries, benchmarkData }) => {
     };
   }, [funds, classStats]);
 
+  // Determine best and worst performing asset classes by average score
+  const bestWorstClasses = useMemo(() => {
+    const entries = Object.entries(classStats);
+    if (entries.length === 0) return { best: null, worst: null };
+    const sorted = [...entries].sort((a, b) => (b[1].avgScore || 0) - (a[1].avgScore || 0));
+    return {
+      best: sorted[0],
+      worst: sorted[sorted.length - 1]
+    };
+  }, [classStats]);
+
   return (
     <div style={{ marginBottom: '2rem' }}>
       <div style={{ 
@@ -211,6 +222,52 @@ const AssetClassOverview = ({ funds, classSummaries, benchmarkData }) => {
           </div>
         </div>
       </div>
+
+      {/* Best and Worst Asset Classes */}
+      {bestWorstClasses.best && bestWorstClasses.worst && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '1rem',
+          marginBottom: '1rem'
+        }}>
+          <div style={{
+            padding: '0.75rem',
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '0.5rem',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '0.75rem', color: '#16a34a', marginBottom: '0.25rem' }}>
+              Best Performing Class
+            </div>
+            <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
+              {bestWorstClasses.best[0]}
+            </div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: getScoreColor(bestWorstClasses.best[1].avgScore) }}>
+              {bestWorstClasses.best[1].avgScore.toFixed(0)}
+            </div>
+          </div>
+
+          <div style={{
+            padding: '0.75rem',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '0.5rem',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '0.75rem', color: '#dc2626', marginBottom: '0.25rem' }}>
+              Worst Performing Class
+            </div>
+            <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
+              {bestWorstClasses.worst[0]}
+            </div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: getScoreColor(bestWorstClasses.worst[1].avgScore) }}>
+              {bestWorstClasses.worst[1].avgScore.toFixed(0)}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Asset Class Cards */}
       <div style={{ display: 'grid', gap: '0.75rem' }}>
