@@ -233,27 +233,31 @@ const App = () => {
             }
             
             // Year returns - check for "return" to distinguish from std dev
-            if ((headerLower === '1 year' || headerLower === '1 yr' || 
-                (headerLower.includes('1 year') && headerLower.includes('return'))) && 
-                !headerLower.includes('deviation') && !headerLower.includes('std')) {
+            if ((headerLower === '1 year' || headerLower === '1 yr' ||
+                (headerLower.includes('1 year') && headerLower.includes('return'))) &&
+                !headerLower.includes('deviation') && !headerLower.includes('std') &&
+                !headerLower.includes('rank')) {
               columnMap['1 Year'] = index;
             }
-            
-            if ((headerLower === '3 year' || headerLower === '3 yr' || 
-                (headerLower.includes('3 year') && headerLower.includes('return'))) && 
-                !headerLower.includes('deviation') && !headerLower.includes('std')) {
+
+            if ((headerLower === '3 year' || headerLower === '3 yr' ||
+                (headerLower.includes('3 year') && headerLower.includes('return'))) &&
+                !headerLower.includes('deviation') && !headerLower.includes('std') &&
+                !headerLower.includes('rank')) {
               columnMap['3 Year'] = index;
             }
-            
-            if ((headerLower === '5 year' || headerLower === '5 yr' || 
-                (headerLower.includes('5 year') && headerLower.includes('return'))) && 
-                !headerLower.includes('deviation') && !headerLower.includes('std')) {
+
+            if ((headerLower === '5 year' || headerLower === '5 yr' ||
+                (headerLower.includes('5 year') && headerLower.includes('return'))) &&
+                !headerLower.includes('deviation') && !headerLower.includes('std') &&
+                !headerLower.includes('rank')) {
               columnMap['5 Year'] = index;
             }
-            
-            if ((headerLower === '10 year' || headerLower === '10 yr' || 
-                (headerLower.includes('10 year') && headerLower.includes('return'))) && 
-                !headerLower.includes('deviation') && !headerLower.includes('std')) {
+
+            if ((headerLower === '10 year' || headerLower === '10 yr' ||
+                (headerLower.includes('10 year') && headerLower.includes('return'))) &&
+                !headerLower.includes('deviation') && !headerLower.includes('std') &&
+                !headerLower.includes('rank')) {
               columnMap['10 Year'] = index;
             }
             
