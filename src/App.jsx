@@ -244,7 +244,9 @@ const App = () => {
             if (header.includes('Down Capture')) columnMap['Down Capture Ratio'] = index;
             
             // Other metrics
-            if (header.includes('Expense') && header.includes('Net')) columnMap['Net Expense Ratio'] = index;
+            if (header.includes('Expense') && (header.includes('Net') || header.includes('Ratio'))) {
+              columnMap['Net Expense Ratio'] = index;
+            }
             if (header.includes('Manager Tenure')) columnMap['Manager Tenure'] = index;
           }
         });
@@ -796,8 +798,12 @@ const App = () => {
                       <th style={{ textAlign: 'left', padding: '0.75rem', fontWeight: '600' }}>Fund Name</th>
                       <th style={{ textAlign: 'left', padding: '0.75rem', fontWeight: '600' }}>Asset Class</th>
                       <th style={{ textAlign: 'center', padding: '0.75rem', fontWeight: '600' }}>Score</th>
+                      <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>YTD</th>
                       <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>1Y Return</th>
+                      <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>5Y</th>
                       <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Sharpe</th>
+                      <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Std Dev (3Y)</th>
+                      <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Std Dev (5Y)</th>
                       <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Expense</th>
                       <th style={{ textAlign: 'center', padding: '0.75rem', fontWeight: '600' }}>Type</th>
                     </tr>
@@ -828,10 +834,22 @@ const App = () => {
                             )}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                            {fund['YTD'] != null ? `${fund['YTD'].toFixed(2)}%` : 'N/A'}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                             {fund['1 Year'] != null ? `${fund['1 Year'].toFixed(2)}%` : 'N/A'}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                            {fund['5 Year'] != null ? `${fund['5 Year'].toFixed(2)}%` : 'N/A'}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                             {fund['Sharpe Ratio'] != null ? fund['Sharpe Ratio'].toFixed(2) : 'N/A'}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                            {fund['StdDev3Y'] != null ? fund['StdDev3Y'].toFixed(2) : 'N/A'}
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                            {fund['StdDev5Y'] != null ? fund['StdDev5Y'].toFixed(2) : 'N/A'}
                           </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                             {fund['Net Expense Ratio'] != null ? `${fund['Net Expense Ratio'].toFixed(2)}%` : 'N/A'}
@@ -1020,10 +1038,13 @@ const App = () => {
                     <th style={{ padding: '0.75rem', textAlign: 'left' }}>Symbol</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left' }}>Name</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center' }}>Score</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>YTD</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right' }}>1Y</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right' }}>3Y</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>5Y</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right' }}>Sharpe</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Std Dev 3Y</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Std Dev (3Y)</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Std Dev (5Y)</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right' }}>Expense</th>
                   </tr>
                 </thead>
@@ -1053,16 +1074,25 @@ const App = () => {
                         ) : '-'}
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        {benchmarkData[selectedClass]['YTD']?.toFixed(2) ?? 'N/A'}%
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                         {benchmarkData[selectedClass]['1 Year']?.toFixed(2) ?? 'N/A'}%
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                         {benchmarkData[selectedClass]['3 Year']?.toFixed(2) ?? 'N/A'}%
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        {benchmarkData[selectedClass]['5 Year']?.toFixed(2) ?? 'N/A'}%
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                         {benchmarkData[selectedClass]['Sharpe Ratio']?.toFixed(2) ?? 'N/A'}
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                         {benchmarkData[selectedClass]['StdDev3Y']?.toFixed(2) ?? 'N/A'}%
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        {benchmarkData[selectedClass]['StdDev5Y']?.toFixed(2) ?? 'N/A'}%
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                         {benchmarkData[selectedClass]['Net Expense Ratio']?.toFixed(2) ?? 'N/A'}%
@@ -1103,16 +1133,25 @@ const App = () => {
                           ) : '-'}
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                          {fund['YTD']?.toFixed(2) ?? 'N/A'}%
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                           {fund['1 Year']?.toFixed(2) ?? 'N/A'}%
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                           {fund['3 Year']?.toFixed(2) ?? 'N/A'}%
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                          {fund['5 Year']?.toFixed(2) ?? 'N/A'}%
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                           {fund['Sharpe Ratio']?.toFixed(2) ?? 'N/A'}
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                           {fund['StdDev3Y']?.toFixed(2) ?? 'N/A'}%
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                          {fund['StdDev5Y']?.toFixed(2) ?? 'N/A'}%
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                           {fund['Net Expense Ratio']?.toFixed(2) ?? 'N/A'}%
