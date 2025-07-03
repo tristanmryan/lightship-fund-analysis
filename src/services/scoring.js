@@ -217,7 +217,10 @@ const METRIC_WEIGHTS = {
       const value = fund.metrics?.[metric];
       const stats = statistics[metric];
       
-      if (value != null && stats && stats.stdDev > 0 && stats.count > 2) {
+      // Allow scoring when at least a benchmark and one fund are present
+      // (two values). Previously required >2 which skipped small asset
+      // classes entirely.
+      if (value != null && stats && stats.stdDev > 0 && stats.count >= 2) {
         const zScore = calculateZScore(value, stats.mean, stats.stdDev);
         const weightedZScore = zScore * weight;
         
