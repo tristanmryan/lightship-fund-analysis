@@ -25,7 +25,7 @@ This is a React-based internal web application for wealth management teams to an
 
 ### File Processing
 - Use XLSX.js for Excel parsing
-- Always handle missing data gracefully (use `|| 'N/A'` or `?? 'N/A'`)
+- Always handle missing data gracefully (use `'-' 'N/A'` or `?? 'N/A'`)
 - Parse percentage strings by removing '%' and ',' before converting to numbers
 - Find header row dynamically, don't assume fixed positions
 
@@ -90,7 +90,7 @@ const acb = {};
 - Left-align text data
 - Use consistent padding (0.25rem for cells)
 - Highlight benchmark rows with background color
-- Show "N/A" for missing data, never empty cells
+- Show "-" for missing data, never empty cells
 
 ### Tabs & Navigation
 - Maintain three main tabs: Fund View, Class View, Admin
