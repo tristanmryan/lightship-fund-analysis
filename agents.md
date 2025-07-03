@@ -1,7 +1,27 @@
 # AGENTS.md - Lightship Fund Analysis App
 
 ## Project Overview
-This is a React-based internal web application for wealth management teams to analyze fund performance monthly. The app processes Raymond James performance data, calculates custom ranking scores, and provides peer group comparisons for investment committee decisions.
+Advanced React-based fund analysis platform for wealth management teams. Features comprehensive scoring algorithms, historical tracking, automated tagging, and investment committee reporting tools.
+
+## Current Architecture
+- **Frontend**: React 18+ with functional components and hooks
+- **Data Storage**: IndexedDB for historical snapshots and fund registry
+- **Scoring Engine**: Sophisticated Z-score based ranking within peer groups
+- **Analytics**: Risk-return analysis, correlation matrices, performance attribution
+- **Export**: Excel, CSV, and HTML report generation
+
+## Development Philosophy
+- **Accuracy First**: This impacts real investment decisions - calculations must be precise
+- **Progressive Enhancement**: Start simple, add complexity as needed
+- **User-Centric**: Optimize for the monthly workflow of fund analysts
+- **Maintainable**: Clear code is better than clever code
+
+## Key Features to Understand
+1. **Scoring System**: Custom weighted Z-score model (see scoring.js)
+2. **Fund Registry**: Centralized fund and benchmark management
+3. **Historical Tracking**: Monthly snapshots with comparison capabilities
+4. **Tag Engine**: Automated fund classification based on performance
+5. **Analytics Suite**: Advanced visualizations and portfolio analysis
 
 ## Core Business Logic
 - **Ranking Score**: Uses weighted Z-scores (0-100 scale) to rank funds within asset classes
@@ -9,51 +29,31 @@ This is a React-based internal web application for wealth management teams to an
 - **Benchmarking**: Each asset class has a designated ETF benchmark for comparison
 - **Monthly Workflow**: Upload FundPerformance.xlsx → Analyze → Make investment decisions
 
-## Code Style & Architecture
+## Code Guidelines
 
-### Component Organization
-- Favor existing components over creating new ones
-- Before creating a new component, check if existing components can satisfy requirements through props
-- Keep components focused on single responsibilities
-- Use functional components with hooks (no class components)
+### When Adding Features
+- Check if similar functionality exists in the codebase
+- Consider the impact on existing features
+- Maintain consistency with established patterns
+- Test with real Raymond James data
 
-### Data Handling
-- **Fund Data**: Always clean symbols using the `clean()` function for consistency
-- **Asset Class Matching**: Use the `recommendedFunds` array to assign asset classes to uploaded data
-- **Benchmarks**: Store in `assetClassBenchmarks` object, match by ticker to fund data
-- **State Management**: Use React hooks, avoid external state libraries unless absolutely necessary
+### Component Development
+- Create new components when they improve clarity or reusability
+- Use composition over inheritance
+- Keep components focused but not overly granular
+- Consider performance implications for large datasets
 
-### File Processing
-- Use XLSX.js for Excel parsing
-- Always handle missing data gracefully (use `'-' 'N/A'` or `?? 'N/A'`)
-- Parse percentage strings by removing '%' and ',' before converting to numbers
-- Find header row dynamically, don't assume fixed positions
+### State Management
+- Use React hooks for component state
+- Consider context or external state management for complex shared state
+- Leverage IndexedDB for persistence
+- Cache expensive calculations with useMemo
 
-### Mathematical Calculations
-- **Z-Score Formula**: `(value - mean) / standardDeviation`
-- **Scoring Weights**: Follow the exact weights defined in the scoring model document
-- **Missing Data**: Handle undefined/null values in calculations
-- **Peer Groups**: Calculate statistics within asset class only, not across all funds
-
-## Naming Conventions
-
-### Variables & Functions
-```javascript
-// Good - descriptive names
-const fundPerformanceData = [];
-const calculateZScore = (value, mean, stdDev) => {};
-const assetClassBenchmarks = {};
-
-// Bad - abbreviations
-const fpd = [];
-const calcZ = () => {};
-const acb = {};
-```
-
-### Asset Classes
-- Use exact strings from the config file
-- Maintain consistency with Raymond James categorization
-- Examples: "Large Cap Growth", "Intermediate Muni", "Real Estate"
+### Data Processing
+- Always handle missing/null data gracefully
+- Use the established clean() function for symbol matching
+- Validate data types before calculations
+- Provide meaningful error messages
 
 ## Data Structure Standards
 
@@ -66,163 +66,139 @@ const acb = {};
   "YTD": 12.5,                  // Numbers, not strings
   "1 Year": 15.3,
   "3 Year": 8.2,
+  "5 Year": 10.1,
+  "10 Year": 8.5,
   "Sharpe Ratio": 1.2,
-  "Standard Deviation": 10.5,
+  "StdDev3Y": 10.5,
+  "StdDev5Y": 11.2,
   "Net Expense Ratio": 0.65,
-  "Manager Tenure": 5
+  "Manager Tenure": 5,
+  scores: {                     // Added by scoring engine
+    final: 68,
+    percentile: 85,
+    breakdown: {...}
+  }
 }
-```
-
-### Benchmark Object Structure
-```javascript
-{
+Benchmark Object Structure
+javascript{
   "Large Cap Growth": {
     ticker: "IWF",
     name: "Russell 1000 Growth"
   }
 }
-```
+UI/UX Guidelines
+Tables
 
-## UI/UX Guidelines
+Right-align numerical data
+Left-align text data
+Use consistent padding (0.75rem standard)
+Highlight benchmark rows and recommended funds
+Show "-" for missing data, never empty cells
 
-### Tables
-- Right-align numerical data
-- Left-align text data
-- Use consistent padding (0.25rem for cells)
-- Highlight benchmark rows with background color
-- Show "-" for missing data, never empty cells
+Navigation
 
-### Tabs & Navigation
-- Maintain three main tabs: Fund View, Class View, Admin
-- Use Lucide React icons consistently
-- Keep active tab state in component
+Main tabs: Dashboard, Fund Scores, Class View, Analysis, Analytics, History, Admin
+Use Lucide React icons consistently
+Maintain active tab state
+Show notification badges for items needing attention
 
-### Data Loading
-- Show loading indicators during file processing
-- Display row counts after successful load
-- Handle errors gracefully with user-friendly messages
+Data Loading
 
-## Performance Considerations
+Show loading indicators during file processing
+Display success messages with fund counts
+Handle errors gracefully with actionable messages
+Preserve data across tab switches
 
-### Data Processing
-- Process large datasets efficiently with array methods
-- Avoid nested loops where possible
-- Cache calculated values when reused
-- Use `useMemo` for expensive calculations
-
-### File Handling
-- Stream large Excel files rather than loading entirely into memory
-- Validate data structure before processing
-- Provide progress feedback for long operations
-
-## Testing Guidelines
-
-### Data Validation
-- Always test with sample Raymond James files
-- Verify asset class matching works correctly
-- Test edge cases: missing data, malformed files, empty cells
-- Validate scoring calculations with known inputs
-
-### User Scenarios
-- Test monthly workflow: upload → view → analyze → admin changes
-- Verify benchmark comparisons are accurate
-- Test admin panel: add/edit/delete funds and benchmarks
-
-## Security & Data Handling
-
-### Sensitive Data
-- Fund performance data is confidential - no external API calls with this data
-- Use localStorage only for configuration, not performance data
-- Clear sensitive data on page refresh if needed
-
-### File Uploads
-- Validate file extensions (.xlsx, .xls, .csv)
-- Handle malicious or corrupted files gracefully
-- Limit file size if necessary
-
-## Common Patterns
-
-### Asset Class Filtering
-```javascript
-// Good - reusable pattern
+Common Patterns
+Asset Class Filtering
+javascript// Good - reusable pattern
 const getFundsByAssetClass = (funds, assetClass) => 
   funds.filter(f => f['Asset Class'] === assetClass);
-
-// Use throughout the app for consistency
-```
-
-### Symbol Cleaning
-```javascript
-// Good - centralized utility
+Symbol Cleaning
+javascript// Good - centralized utility
 const clean = (s) => s?.toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
 
 // Apply to all symbol comparisons
-```
-
-### Safe Number Parsing
-```javascript
-// Good - handles strings and numbers
+Safe Number Parsing
+javascript// Good - handles strings and numbers
 const parseMetric = (value) => {
   if (typeof value === 'string') {
     value = value.replace('%', '').replace(',', '');
   }
   return isNaN(value) ? null : parseFloat(value);
 };
-```
+Current Tech Stack
 
-## Development Workflow
+React 18+
+XLSX.js for Excel parsing
+IndexedDB via custom dataStore service
+Lucide React icons
+Custom styling (no UI framework currently)
 
-### Before Making Changes
-1. Review existing components and utilities
-2. Check if similar functionality already exists
-3. Understand the business context and monthly workflow
-4. Test with real Raymond James data when possible
+Areas Open for Enhancement
 
-### Adding New Features
-1. Follow the established patterns above
-2. Update both data structures and UI consistently
-3. Consider impact on scoring calculations
-4. Test across all three main tabs
+Consider TypeScript migration for better type safety
+Evaluate charting libraries for enhanced visualizations
+Explore server-side storage for team collaboration
+Consider PWA capabilities for offline use
+Investigate performance optimizations for large datasets (200+ funds)
+Add real-time collaboration features
+Implement automated report scheduling
 
-### Debugging
-- Use browser dev tools to inspect fund data structure
-- Console.log intermediate calculations for scoring
-- Verify asset class assignments are correct
-- Check benchmark matching by ticker
+Testing Priorities
 
-## Future Considerations
+Scoring calculations accuracy
+Asset class matching logic
+Historical data integrity
+Export functionality
+Admin panel operations
+Tag engine rules
+Analytics calculations
 
-### Potential Enhancements
-- Historical data tracking (monthly snapshots)
-- Advanced filtering and sorting
-- Export capabilities for investment committee reports
-- Performance trend analysis
-- Risk-adjusted return visualizations
+Performance Considerations
 
-### Technical Debt to Address
-- Consider migrating to TypeScript for better type safety
-- Add proper error boundaries
-- Implement data validation schemas
-- Consider database integration for historical data
+Use virtualization for large fund lists
+Debounce search and filter operations
+Lazy load analytics components
+Cache expensive calculations
+Consider web workers for heavy computations
 
-## Dependencies
+Security & Data Handling
 
-### Current Stack
-- React 18+ with hooks
-- XLSX.js for Excel parsing
-- Lucide React for icons
-- No external UI libraries (custom styles)
+Fund performance data is confidential
+No external API calls with fund data
+Use IndexedDB for persistence, not localStorage for sensitive data
+Validate all file uploads
+Sanitize user inputs in admin panel
 
-### Approved Libraries
-- lodash (for data manipulation if needed)
-- date-fns (for date handling if needed)
-- recharts (for future visualization features)
+Development Workflow
+Before Making Changes
 
-### Avoid
-- Heavy UI frameworks (Material-UI, Ant Design) - keep it lightweight
-- External state management (Redux, Zustand) - React state is sufficient
-- Complex charting libraries until needed
+Understand the business context
+Review existing implementations
+Consider performance implications
+Plan for edge cases
 
----
+When Building Features
 
-**Remember**: This app directly impacts investment decisions affecting millions of dollars. Accuracy and reliability are paramount. Always double-check calculations and test thoroughly.
+Start with the simplest working version
+Add complexity incrementally
+Write clear, self-documenting code
+Test with real data when possible
+
+Code Quality
+
+Prefer clarity over cleverness
+Comment complex calculations
+Use meaningful variable names
+Keep functions focused and testable
+
+Remember
+This tool directly impacts investment decisions affecting millions of dollars. When in doubt:
+
+Prioritize accuracy over features
+Test edge cases thoroughly
+Maintain data integrity
+Keep the user workflow smooth
+Double-check all calculations
+Preserve audit trails
