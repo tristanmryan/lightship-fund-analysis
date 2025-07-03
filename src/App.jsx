@@ -293,7 +293,12 @@ const App = () => {
             }
             
             // Other metrics
-            if (headerLower.includes('expense') && (headerLower.includes('net') || headerLower.includes('ratio'))) {
+            // Expense ratio headers come in many forms: "Expense Ratio", "Exp Ratio (Net)" etc.
+            if (
+              (headerLower.includes('expense') || headerLower.includes('exp')) &&
+              headerLower.includes('ratio') &&
+              !headerLower.includes('gross')
+            ) {
               columnMap['Net Expense Ratio'] = index;
             }
             if (headerLower.includes('manager tenure')) {
