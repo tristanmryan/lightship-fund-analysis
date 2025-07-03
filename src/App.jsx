@@ -825,19 +825,19 @@ const App = () => {
                 </div>
               </div>
               
-              <AssetClassOverview 
+              <TopBottomPerformers
+                funds={scoredFundData}
+              />
+
+              <AssetClassOverview
                 funds={scoredFundData}
                 classSummaries={classSummaries}
                 benchmarkData={benchmarkData}
               />
-              
-              <PerformanceHeatmap 
+
+              <PerformanceHeatmap
                 funds={scoredFundData}
                 assetClassBenchmarks={assetClassBenchmarks}
-              />
-              
-              <TopBottomPerformers 
-                funds={scoredFundData}
               />
             </>
           ) : (
