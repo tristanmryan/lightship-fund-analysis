@@ -364,7 +364,8 @@ export function generateHTMLReport(data) {
       padding: 4px 12px;
       border-radius: 999px;
       font-weight: 600;
-      font-size: 0.9em;
+      font-size: 0.95em;
+      border: 1px solid currentColor;
     }
     .score-excellent { background: #d1fae5; color: #065f46; }
     .score-good { background: #fef3c7; color: #78350f; }
@@ -442,7 +443,7 @@ export function generateHTMLReport(data) {
             <small style="color: #666">${fund['Asset Class']}</small>
           </td>
           <td>
-            <span class="score-badge ${getScoreClass(fund.scores?.final || 0)}">
+            <span class="score-badge ${getScoreClass(fund.scores?.final || 0)}" title="${getScoreLabel(fund.scores?.final || 0)}">
               ${fund.scores?.final || 'N/A'}
             </span>
           </td>
@@ -515,7 +516,7 @@ export function generateHTMLReport(data) {
             <small>${fund['Fund Name']}</small>
           </td>
           <td>
-            <span class="score-badge ${getScoreClass(fund.scores?.final || 0)}">
+            <span class="score-badge ${getScoreClass(fund.scores?.final || 0)}" title="${getScoreLabel(fund.scores?.final || 0)}">
               ${fund.scores?.final || 'N/A'}
             </span>
           </td>
