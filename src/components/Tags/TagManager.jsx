@@ -132,7 +132,7 @@ const TagManager = ({ funds, benchmarkData, onFilterChange }) => {
               {fund.Symbol} - {fund['Fund Name']}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>
-              {fund['Asset Class']} | Score: {fund.scores?.final || 'N/A'}
+              {fund['Asset Class']} | Score: {fund.scores?.final || '-'}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap' }}>
               {tags.map((tag, i) => (
