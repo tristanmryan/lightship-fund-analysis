@@ -1,6 +1,6 @@
 // src/components/Dashboard/PerformanceHeatmap.jsx
 import React, { useState, useMemo } from 'react';
-import { TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { getScoreColor } from '../../services/scoring';
 
 /**
@@ -157,18 +157,23 @@ const PerformanceHeatmap = ({ funds }) => {
         </div>
       </div>
 
-      <div style={{ 
+      <div style={{
         overflowX: 'auto',
         border: '1px solid #e5e7eb',
         borderRadius: '0.5rem'
       }}>
-        {Object.entries(fundsByClass).map(([assetClass, classFunds]) => (
-          <div key={assetClass} style={{ borderBottom: '1px solid #e5e7eb' }}>
-            <div style={{ 
-              padding: '0.75rem',
-              backgroundColor: '#f9fafb',
-              fontWeight: '600',
-              fontSize: '0.875rem',
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '1rem'
+        }}>
+          {Object.entries(fundsByClass).map(([assetClass, classFunds]) => (
+            <div key={assetClass} style={{ borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{
+                padding: '0.75rem',
+                backgroundColor: '#f9fafb',
+                fontWeight: '600',
+                fontSize: '0.875rem',
               position: 'sticky',
               left: 0
             }}>
@@ -244,9 +249,10 @@ const PerformanceHeatmap = ({ funds }) => {
                   </div>
                 );
               })}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Hover tooltip */}
