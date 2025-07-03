@@ -209,64 +209,141 @@ const App = () => {
         const headers = jsonData[headerRowIndex];
         const dataRows = jsonData.slice(headerRowIndex + 1);
 
-        // Create comprehensive column mapping
+        // FIXED: More precise column mapping with exact matching where possible
         const columnMap = {};
         headers.forEach((header, index) => {
           if (typeof header === 'string') {
-            // Basic fields
-            if (header.includes('Symbol')) columnMap['Symbol'] = index;
-            if (header.includes('Product Name')) columnMap['Fund Name'] = index;
-            if (header.includes('Asset Class')) columnMap['Asset Class'] = index;
+            const headerLower = header.toLowerCase().trim();
+            const headerClean = header.trim();
             
-            // Performance metrics
-            if (header.includes('YTD')) columnMap['YTD'] = index;
-            if (header.includes('1 Year') || header.includes('1 Yr')) columnMap['1 Year'] = index;
-            if ((header.includes('3 Year') || header.includes('3 Yr')) && header.toLowerCase().includes('deviation')) {
-              columnMap['StdDev3Y'] = index;
-            } else if (header.includes('3 Year') || header.includes('3 Yr')) {
+            // Basic fields - use exact matching where possible
+            if (headerLower.includes('symbol') || headerLower.includes('cusip')) {
+              columnMap['Symbol'] = index;
+            }
+            if (headerLower.includes('product name') || headerLower === 'name') {
+              columnMap['Fund Name'] = index;
+            }
+            if (headerLower === 'asset class' || headerLower.includes('asset class')) {
+              columnMap['Asset Class'] = index;
+            }
+            
+            // Performance metrics - be more specific
+            if (headerLower === 'ytd' || (headerLower.includes('ytd') && !headerLower.includes('rank'))) {
+              columnMap['YTD'] = index;
+            }
+            
+            // Year returns - check for "return" to distinguish from std dev
+            if ((headerLower === '1 year' || headerLower === '1 yr' || 
+                (headerLower.includes('1 year') && headerLower.includes('return'))) && 
+                !headerLower.includes('deviation') && !headerLower.includes('std')) {
+              columnMap['1 Year'] = index;
+            }
+            
+            if ((headerLower === '3 year' || headerLower === '3 yr' || 
+                (headerLower.includes('3 year') && headerLower.includes('return'))) && 
+                !headerLower.includes('deviation') && !headerLower.includes('std')) {
               columnMap['3 Year'] = index;
             }
-
-            if ((header.includes('5 Year') || header.includes('5 Yr')) && header.toLowerCase().includes('deviation')) {
-              columnMap['StdDev5Y'] = index;
-            } else if (header.includes('5 Year') || header.includes('5 Yr')) {
+            
+            if ((headerLower === '5 year' || headerLower === '5 yr' || 
+                (headerLower.includes('5 year') && headerLower.includes('return'))) && 
+                !headerLower.includes('deviation') && !headerLower.includes('std')) {
               columnMap['5 Year'] = index;
             }
-            if (header.includes('10 Year') || header.includes('10 Yr')) columnMap['10 Year'] = index;
             
-            // Risk metrics
-            if (header.includes('Alpha')) columnMap['Alpha'] = index;
-            if (header.includes('Sharpe')) columnMap['Sharpe Ratio'] = index;
-            if (header.includes('Standard Deviation') || header.includes('Std Dev')) {
+            if ((headerLower === '10 year' || headerLower === '10 yr' || 
+                (headerLower.includes('10 year') && headerLower.includes('return'))) && 
+                !headerLower.includes('deviation') && !headerLower.includes('std')) {
+              columnMap['10 Year'] = index;
+            }
+            
+            // Standard Deviation - handle various formats
+            if (headerLower.includes('3 year') && (headerLower.includes('standard deviation') || headerLower.includes('std dev'))) {
+              columnMap['StdDev3Y'] = index;
+            } else if (headerLower.includes('3 yr') && (headerLower.includes('standard deviation') || headerLower.includes('std dev'))) {
+              columnMap['StdDev3Y'] = index;
+            }
+            
+            if (headerLower.includes('5 year') && (headerLower.includes('standard deviation') || headerLower.includes('std dev'))) {
+              columnMap['StdDev5Y'] = index;
+            } else if (headerLower.includes('5 yr') && (headerLower.includes('standard deviation') || headerLower.includes('std dev'))) {
+              columnMap['StdDev5Y'] = index;
+            }
+            
+            // If just "Standard Deviation" without year specification
+            if ((headerLower === 'standard deviation' || headerLower === 'std dev') && 
+                !headerLower.includes('year') && !headerLower.includes('yr')) {
               columnMap['Standard Deviation'] = index;
             }
-            if (header.includes('Up Capture')) columnMap['Up Capture Ratio'] = index;
-            if (header.includes('Down Capture')) columnMap['Down Capture Ratio'] = index;
+            
+            // Risk metrics
+            if (headerLower.includes('alpha') && !headerLower.includes('beta')) {
+              columnMap['Alpha'] = index;
+            }
+            if (headerLower.includes('sharpe') && headerLower.includes('ratio')) {
+              columnMap['Sharpe Ratio'] = index;
+            }
+            
+            // Capture ratios
+            if (headerLower.includes('up capture') || headerLower.includes('upside capture')) {
+              columnMap['Up Capture Ratio'] = index;
+            }
+            if (headerLower.includes('down capture') || headerLower.includes('downside capture')) {
+              columnMap['Down Capture Ratio'] = index;
+            }
             
             // Other metrics
-            if (header.includes('Expense') && (header.includes('Net') || header.includes('Ratio'))) {
+            if (headerLower.includes('expense') && (headerLower.includes('net') || headerLower.includes('ratio'))) {
               columnMap['Net Expense Ratio'] = index;
             }
-            if (header.includes('Manager Tenure')) columnMap['Manager Tenure'] = index;
+            if (headerLower.includes('manager tenure')) {
+              columnMap['Manager Tenure'] = index;
+            }
           }
         });
+
+        // Log column mappings for debugging
+        console.log('Column mappings:', columnMap);
+        console.log('Headers found:', headers);
 
         // Parse the data rows
         const parsed = dataRows.map(row => {
           const fund = {};
           Object.entries(columnMap).forEach(([key, idx]) => {
             let val = row[idx];
-            if (typeof val === 'string') {
-              val = val.replace('%', '').replace(',', '');
+            
+            // Handle various data formats
+            if (val === undefined || val === null || val === '') {
+              fund[key] = null;
+            } else if (typeof val === 'string') {
+              // Remove % signs, commas, and extra spaces
+              val = val.replace(/[%,]/g, '').trim();
+              
+              // Check for special values
+              if (val === 'N/A' || val === 'NA' || val === '-' || val === '--') {
+                fund[key] = null;
+              } else {
+                // Try to parse as number
+                const parsed = parseFloat(val);
+                fund[key] = isNaN(parsed) ? val : parsed;
+              }
+            } else if (typeof val === 'number') {
+              fund[key] = val;
+            } else {
+              fund[key] = val;
             }
-            fund[key] = isNaN(val) ? val : parseFloat(val);
           });
+          
+          // FIXED: Ensure we have StdDev3Y and StdDev5Y if only general Standard Deviation exists
           if (fund['Standard Deviation'] != null) {
             if (fund['StdDev3Y'] == null) fund['StdDev3Y'] = fund['Standard Deviation'];
             if (fund['StdDev5Y'] == null) fund['StdDev5Y'] = fund['Standard Deviation'];
           }
+          
           return fund;
         }).filter(f => f.Symbol && f.Symbol !== ''); // Filter out empty rows
+
+        console.log('Sample parsed fund:', parsed[0]); // Debug first fund
 
         // Clean function for symbol matching
         const clean = (s) => s?.toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
@@ -779,112 +856,112 @@ const App = () => {
       )}
 
       {/* Fund Scores Tab */}
-      {activeTab === 'funds' && (
-        <div>
-          {scoredFundData.length > 0 ? (
-            <div>
-              <div style={{ marginBottom: '1rem' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>All Funds with Scores</h2>
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-                  Scores calculated using weighted Z-score methodology within each asset class
-                </p>
-              </div>
-              
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                      <th style={{ textAlign: 'left', padding: '0.75rem', fontWeight: '600' }}>Symbol</th>
-                      <th style={{ textAlign: 'left', padding: '0.75rem', fontWeight: '600' }}>Fund Name</th>
-                      <th style={{ textAlign: 'left', padding: '0.75rem', fontWeight: '600' }}>Asset Class</th>
-                      <th style={{ textAlign: 'center', padding: '0.75rem', fontWeight: '600' }}>Score</th>
-                      <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>YTD</th>
-                      <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>1Y Return</th>
-                      <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>5Y</th>
-                      <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Sharpe</th>
-                      <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Std Dev (3Y)</th>
-                      <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Std Dev (5Y)</th>
-                      <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Expense</th>
-                      <th style={{ textAlign: 'center', padding: '0.75rem', fontWeight: '600' }}>Type</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {scoredFundData
-                      .sort((a, b) => (b.scores?.final || 0) - (a.scores?.final || 0))
-                      .map((fund, i) => (
-                        <tr 
-                          key={i} 
-                          style={{ 
-                            borderBottom: '1px solid #f3f4f6',
-                            backgroundColor: fund.isRecommended ? '#eff6ff' : 'white',
-                            cursor: 'pointer'
-                          }}
-                          onClick={() => setSelectedFundForDetails(fund)}
-                        >
-                          <td style={{ padding: '0.75rem', fontWeight: fund.isBenchmark ? 'bold' : 'normal' }}>
-                            {fund.Symbol}
-                          </td>
-                          <td style={{ padding: '0.75rem' }}>{fund['Fund Name']}</td>
-                          <td style={{ padding: '0.75rem' }}>{fund['Asset Class']}</td>
-                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            {fund.scores ? (
-                              <ScoreBadge score={fund.scores.final} />
-                            ) : (
-                              <span style={{ color: '#9ca3af' }}>-</span>
-                            )}
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            {fund['YTD'] != null ? `${fund['YTD'].toFixed(2)}%` : '-'}
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            {fund['1 Year'] != null ? `${fund['1 Year'].toFixed(2)}%` : '-'}
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            {fund['5 Year'] != null ? `${fund['5 Year'].toFixed(2)}%` : '-'}
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            {fund['Sharpe Ratio'] != null ? fund['Sharpe Ratio'].toFixed(2) : '-'}
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            {fund['StdDev3Y'] != null ? fund['StdDev3Y'].toFixed(2) : '-'}
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            {fund['StdDev5Y'] != null ? fund['StdDev5Y'].toFixed(2) : '-'}
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            {fund['Net Expense Ratio'] != null ? `${fund['Net Expense Ratio'].toFixed(2)}%` : '-'}
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            {fund.isBenchmark && (
-                              <span style={{ 
-                                backgroundColor: '#fbbf24', 
-                                color: '#78350f',
-                                padding: '0.125rem 0.5rem',
-                                borderRadius: '0.25rem',
-                                fontSize: '0.75rem',
-                                fontWeight: '500'
-                              }}>
-                                Benchmark
-                              </span>
-                            )}
-                            {fund.isRecommended && !fund.isBenchmark && (
-                              <span style={{ 
-                                backgroundColor: '#34d399', 
-                                color: '#064e3b',
-                                padding: '0.125rem 0.5rem',
-                                borderRadius: '0.25rem',
-                                fontSize: '0.75rem',
-                                fontWeight: '500'
-                              }}>
-                                Recommended
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
+{activeTab === 'funds' && (
+  <div>
+    {scoredFundData.length > 0 ? (
+      <div>
+        <div style={{ marginBottom: '1rem' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>All Funds with Scores</h2>
+          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+            Scores calculated using weighted Z-score methodology within each asset class
+          </p>
+        </div>
+        
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                <th style={{ textAlign: 'left', padding: '0.75rem', fontWeight: '600' }}>Symbol</th>
+                <th style={{ textAlign: 'left', padding: '0.75rem', fontWeight: '600' }}>Fund Name</th>
+                <th style={{ textAlign: 'left', padding: '0.75rem', fontWeight: '600' }}>Asset Class</th>
+                <th style={{ textAlign: 'center', padding: '0.75rem', fontWeight: '600' }}>Score</th>
+                <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>YTD</th>
+                <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>1Y Return</th>
+                <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>3Y Return</th>
+                <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>5Y Return</th>
+                <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Sharpe</th>
+                <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Std Dev (3Y)</th>
+                <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Expense</th>
+                <th style={{ textAlign: 'center', padding: '0.75rem', fontWeight: '600' }}>Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {scoredFundData
+                .sort((a, b) => (b.scores?.final || 0) - (a.scores?.final || 0))
+                .map((fund, i) => (
+                  <tr 
+                    key={i} 
+                    style={{ 
+                      borderBottom: '1px solid #f3f4f6',
+                      backgroundColor: fund.isRecommended ? '#eff6ff' : 'white',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => setSelectedFundForDetails(fund)}
+                  >
+                    <td style={{ padding: '0.75rem', fontWeight: fund.isBenchmark ? 'bold' : 'normal' }}>
+                      {fund.Symbol}
+                    </td>
+                    <td style={{ padding: '0.75rem' }}>{fund['Fund Name']}</td>
+                    <td style={{ padding: '0.75rem' }}>{fund['Asset Class']}</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                      {fund.scores ? (
+                        <ScoreBadge score={fund.scores.final} />
+                      ) : (
+                        <span style={{ color: '#9ca3af' }}>-</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                      {fund['YTD'] != null ? `${fund['YTD'].toFixed(2)}%` : '-'}
+                    </td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                      {fund['1 Year'] != null ? `${fund['1 Year'].toFixed(2)}%` : '-'}
+                    </td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                      {fund['3 Year'] != null ? `${fund['3 Year'].toFixed(2)}%` : '-'}
+                    </td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                      {fund['5 Year'] != null ? `${fund['5 Year'].toFixed(2)}%` : '-'}
+                    </td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                      {fund['Sharpe Ratio'] != null ? fund['Sharpe Ratio'].toFixed(2) : '-'}
+                    </td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                      {fund['StdDev3Y'] != null ? `${fund['StdDev3Y'].toFixed(2)}%` : '-'}
+                    </td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                      {fund['Net Expense Ratio'] != null ? `${fund['Net Expense Ratio'].toFixed(2)}%` : '-'}
+                    </td>
+                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                      {fund.isBenchmark && (
+                        <span style={{ 
+                          backgroundColor: '#fbbf24', 
+                          color: '#78350f',
+                          padding: '0.125rem 0.5rem',
+                          borderRadius: '0.25rem',
+                          fontSize: '0.75rem',
+                          fontWeight: '500'
+                        }}>
+                          Benchmark
+                        </span>
+                      )}
+                      {fund.isRecommended && !fund.isBenchmark && (
+                        <span style={{ 
+                          backgroundColor: '#34d399', 
+                          color: '#064e3b',
+                          padding: '0.125rem 0.5rem',
+                          borderRadius: '0.25rem',
+                          fontSize: '0.75rem',
+                          fontWeight: '500'
+                        }}>
+                          Recommended
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
 
               {/* Fund Details Modal */}
               {selectedFundForDetails && (
@@ -1476,8 +1553,8 @@ const App = () => {
               borderRadius: '0.5rem',
               color: '#6b7280' 
             }}>
-              <Activity size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-              <p>Upload fund performance data to see analytics</p>
+              <TrendingUp size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+              <p>Upload a fund performance file to see scores</p>
             </div>
           )}
         </div>
