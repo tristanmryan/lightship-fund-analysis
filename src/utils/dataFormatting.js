@@ -1,4 +1,5 @@
 // src/utils/dataFormatting.js
+import { getScoreLabel } from '../services/scoring';
 
 /**
  * Utility functions for consistent data formatting and display
@@ -176,14 +177,7 @@ export function formatPercent(value, decimals = 2) {
    * @param {Array} funds - Array of funds
    * @returns {Array} Sorted array of unique asset classes
    */
-  export function getUniqueAssetClasses(funds) {
-    const classes = new Set(funds.map(f => f['Asset Class'] || 'Unknown'));
-    return Array.from(classes).sort();
-  }
-  
-  // Helper function to get score label (if not imported from scoring service)
-  function getScoreLabel(score) {
-    if (score >= 70) return 'Excellent';
-    if (score >= 50) return 'Good';
-    return 'Poor';
-  }
+export function getUniqueAssetClasses(funds) {
+  const classes = new Set(funds.map(f => f['Asset Class'] || 'Unknown'));
+  return Array.from(classes).sort();
+}
