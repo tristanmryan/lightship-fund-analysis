@@ -24,6 +24,7 @@ import FundTimeline from './components/Trends/FundTimeline';
 import TagManager from './components/Tags/TagManager';
 import CorrelationMatrix from './components/Analytics/CorrelationMatrix';
 import RiskReturnScatter from './components/Analytics/RiskReturnScatter';
+import FundDetailsModal from './components/FundDetailsModal';
 import { 
   exportToExcel, 
   generateHTMLReport, 
@@ -38,7 +39,7 @@ import {
 } from './services/analytics';
 
 // Score badge component for visual display
-const ScoreBadge = ({ score, size = 'normal' }) => {
+export const ScoreBadge = ({ score, size = 'normal' }) => {
   const color = getScoreColor(score);
   const label = getScoreLabel(score);
 
@@ -68,7 +69,7 @@ const ScoreBadge = ({ score, size = 'normal' }) => {
 };
 
 // Metric breakdown tooltip component
-const MetricBreakdown = ({ breakdown }) => {
+export const MetricBreakdown = ({ breakdown }) => {
   if (!breakdown || Object.keys(breakdown).length === 0) return null;
   
   return (
@@ -980,60 +981,10 @@ const App = () => {
 
               {/* Fund Details Modal */}
               {selectedFundForDetails && (
-                <div style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 1000
-                }} onClick={() => setSelectedFundForDetails(null)}>
-                  <div style={{
-                    backgroundColor: 'white',
-                    padding: '2rem',
-                    borderRadius: '0.5rem',
-                    maxWidth: '600px',
-                    maxHeight: '80vh',
-                    overflow: 'auto'
-                  }} onClick={e => e.stopPropagation()}>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-                      {selectedFundForDetails['Fund Name']}
-                    </h3>
-                    <div style={{ marginBottom: '1rem' }}>
-                      <strong>Symbol:</strong> {selectedFundForDetails.Symbol} | 
-                      <strong> Asset Class:</strong> {selectedFundForDetails['Asset Class']}
-                    </div>
-                    {selectedFundForDetails.scores && (
-                      <>
-                        <div style={{ marginBottom: '1rem' }}>
-                          <strong>Overall Score: </strong>
-                          <ScoreBadge score={selectedFundForDetails.scores.final} size="large" />
-                          <span style={{ marginLeft: '1rem', color: '#6b7280' }}>
-                            (Percentile: {selectedFundForDetails.scores.percentile}%)
-                          </span>
-                        </div>
-                        <MetricBreakdown breakdown={selectedFundForDetails.scores.breakdown} />
-                      </>
-                    )}
-                    <button 
-                      onClick={() => setSelectedFundForDetails(null)}
-                      style={{
-                        marginTop: '1rem',
-                        padding: '0.5rem 1rem',
-                        backgroundColor: '#e5e7eb',
-                        border: 'none',
-                        borderRadius: '0.25rem',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
+                <FundDetailsModal
+                  fund={selectedFundForDetails}
+                  onClose={() => setSelectedFundForDetails(null)}
+                />
               )}
             </div>
           ) : (
@@ -1964,3 +1915,5 @@ const App = () => {
 };
 
 export default App;
+
+export { ScoreBadge, MetricBreakdown };
