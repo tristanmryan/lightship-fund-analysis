@@ -1,7 +1,7 @@
 // src/components/Dashboard/AssetClassOverview.jsx
 import React, { useState, useMemo } from 'react';
 import { BarChart3, TrendingUp, TrendingDown, Activity, DollarSign } from 'lucide-react';
-import { getScoreColor } from '../../services/scoring';
+import { getScoreColor, generateClassSummary } from '../../services/scoring';
 
 /**
  * Asset Class Overview Component
@@ -10,24 +10,25 @@ import { getScoreColor } from '../../services/scoring';
 const AssetClassOverview = ({ funds, classSummaries, benchmarkData }) => {
   const [sortBy, setSortBy] = useState('avgScore');
   const [expandedClass, setExpandedClass] = useState(null);
+  const [groupBy, setGroupBy] = useState('Asset Class');
 
   // Calculate enhanced statistics for each asset class
   const classStats = useMemo(() => {
     const stats = {};
-    
-    // Group funds by asset class
+
+    const keyProp = groupBy === 'assetGroup' ? 'assetGroup' : 'Asset Class';
     const fundsByClass = {};
     funds.forEach(fund => {
-      const assetClass = fund['Asset Class'] || 'Unknown';
-      if (!fundsByClass[assetClass]) {
-        fundsByClass[assetClass] = [];
+      const key = fund[keyProp] || 'Unknown';
+      if (!fundsByClass[key]) {
+        fundsByClass[key] = [];
       }
-      fundsByClass[assetClass].push(fund);
+      fundsByClass[key].push(fund);
     });
 
     // Calculate stats for each class
-    Object.entries(fundsByClass).forEach(([assetClass, classFunds]) => {
-      const benchmark = benchmarkData[assetClass];
+    Object.entries(fundsByClass).forEach(([group, classFunds]) => {
+      const benchmark = groupBy === 'Asset Class' ? benchmarkData[group] : null;
       const recommendedFunds = classFunds.filter(f => f.isRecommended && !f.isBenchmark);
       const nonRecommendedFunds = classFunds.filter(f => !f.isRecommended && !f.isBenchmark);
       
@@ -44,7 +45,11 @@ const AssetClassOverview = ({ funds, classSummaries, benchmarkData }) => {
         ? recScores.reduce((a, b) => a + b, 0) / recScores.length 
         : null;
       
-      stats[assetClass] = {
+      const distribution = groupBy === 'Asset Class'
+        ? classSummaries[group]?.distribution
+        : generateClassSummary(classFunds).distribution;
+
+      stats[group] = {
         totalFunds: classFunds.length,
         recommendedCount: recommendedFunds.length,
         avgScore: scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0,
@@ -64,12 +69,12 @@ const AssetClassOverview = ({ funds, classSummaries, benchmarkData }) => {
           (fund.scores?.final || 0) < (worst.scores?.final || 0) ? fund : worst, 
           classFunds[0]
         ),
-        distribution: classSummaries[assetClass]?.distribution || { excellent: 0, good: 0, poor: 0 }
+        distribution: distribution || { excellent: 0, good: 0, poor: 0 }
       };
     });
 
     return stats;
-  }, [funds, classSummaries, benchmarkData]);
+  }, [funds, classSummaries, benchmarkData, groupBy]);
 
   // Sort asset classes based on selected criteria
   const sortedClasses = useMemo(() => {
@@ -140,7 +145,7 @@ const AssetClassOverview = ({ funds, classSummaries, benchmarkData }) => {
         <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
           Asset Class Overview
         </h3>
-        
+
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
@@ -156,6 +161,21 @@ const AssetClassOverview = ({ funds, classSummaries, benchmarkData }) => {
           <option value="return1Y">1-Year Return</option>
           <option value="sharpe">Sharpe Ratio</option>
           <option value="alpha">Score vs Benchmark</option>
+        </select>
+
+        <select
+          value={groupBy}
+          onChange={(e) => setGroupBy(e.target.value)}
+          style={{
+            padding: '0.375rem 0.5rem',
+            border: '1px solid #d1d5db',
+            borderRadius: '0.375rem',
+            fontSize: '0.875rem',
+            marginLeft: '0.5rem'
+          }}
+        >
+          <option value="Asset Class">By Asset Class</option>
+          <option value="assetGroup">By Asset Group</option>
         </select>
       </div>
 
