@@ -489,4 +489,4 @@ const METRIC_WEIGHTS = {
     labels: METRIC_LABELS
   };
 
-  export { SCORE_BANDS };
+ 
