@@ -13,7 +13,8 @@ import {
   identifyReviewCandidates,
   getScoreColor,
   getScoreLabel,
-  METRICS_CONFIG 
+  METRICS_CONFIG,
+  METRIC_ORDER
 } from './services/scoring';
 import dataStore from './services/dataStore';
 import fundRegistry from './services/fundRegistry';
@@ -71,24 +72,27 @@ export const ScoreBadge = ({ score, size = 'normal' }) => {
 // Metric breakdown tooltip component
 export const MetricBreakdown = ({ breakdown }) => {
   if (!breakdown || Object.keys(breakdown).length === 0) return null;
-  
+
   return (
-    <div className="metric-breakdown" style={{ 
-      fontSize: '0.75rem', 
+    <div className="metric-breakdown" style={{
+      fontSize: '0.75rem',
       marginTop: '0.5rem',
       padding: '0.5rem',
       backgroundColor: '#f3f4f6',
       borderRadius: '0.25rem'
     }}>
       <div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>Score Breakdown:</div>
-      {Object.entries(breakdown).map(([metric, data]) => (
-        <div key={metric} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.125rem' }}>
-          <span>{METRICS_CONFIG.labels[metric]}:</span>
-          <span style={{ color: data.weightedZScore >= 0 ? '#16a34a' : '#dc2626' }}>
-            {data.weightedZScore >= 0 ? '+' : ''}{data.weightedZScore.toFixed(3)}
-          </span>
-        </div>
-      ))}
+      {METRIC_ORDER.filter(m => breakdown[m]).map(metric => {
+        const data = breakdown[metric];
+        return (
+          <div key={metric} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.125rem' }}>
+            <span>{METRICS_CONFIG.labels[metric]}:</span>
+            <span style={{ color: data.weightedZScore >= 0 ? '#16a34a' : '#dc2626' }}>
+              {data.weightedZScore >= 0 ? '+' : ''}{data.weightedZScore.toFixed(3)}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 };

@@ -53,6 +53,23 @@ const METRIC_WEIGHTS = {
     expenseRatio: 'Expense Ratio',
     managerTenure: 'Manager Tenure'
   };
+
+  // Order of metrics for UI display
+  export const METRIC_ORDER = [
+    'ytd',
+    'oneYear',
+    'threeYear',
+    'fiveYear',
+    'tenYear',
+    'sharpeRatio3Y',
+    'stdDev3Y',
+    'stdDev5Y',
+    'upCapture3Y',
+    'downCapture3Y',
+    'alpha5Y',
+    'expenseRatio',
+    'managerTenure'
+  ];
   
   /**
    * Calculate Z-score for a value within a distribution
