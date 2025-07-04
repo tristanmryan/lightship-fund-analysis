@@ -1921,5 +1921,3 @@ const App = () => {
 };
 
 export default App;
-
-export { ScoreBadge, MetricBreakdown };
