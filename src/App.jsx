@@ -38,6 +38,7 @@ import {
   identifyOutliers,
   performAttribution
 } from './services/analytics';
+import assetClassGroups from './data/assetClassGroups';
 
 // Score badge component for visual display
 export const ScoreBadge = ({ score, size = 'normal' }) => {
@@ -398,9 +399,13 @@ const App = () => {
             ...f,
             Symbol: f.Symbol, // Keep original symbol for display
             cleanSymbol: parsedSymbol, // Add clean version for matching
-            'Asset Class': recommendedMatch ? recommendedMatch.assetClass : 
-                          benchmarkForClass ? benchmarkForClass : 
+            'Asset Class': recommendedMatch ? recommendedMatch.assetClass :
+                          benchmarkForClass ? benchmarkForClass :
                           'Unknown',
+            assetGroup: assetClassGroups[
+              recommendedMatch ? recommendedMatch.assetClass :
+              benchmarkForClass ? benchmarkForClass : 'Unknown'
+            ] || 'Other',
             isRecommended: !!recommendedMatch,
             isBenchmark: isBenchmark,
             benchmarkForClass: benchmarkForClass
@@ -474,7 +479,11 @@ const App = () => {
 
   const loadSnapshot = async (snapshot) => {
     setSelectedSnapshot(snapshot);
-    setScoredFundData(snapshot.funds);
+    const fundsWithGroup = snapshot.funds.map(f => ({
+      ...f,
+      assetGroup: f.assetGroup || assetClassGroups[f['Asset Class']] || 'Other'
+    }));
+    setScoredFundData(fundsWithGroup);
     setClassSummaries(snapshot.classSummaries || {});
     setCurrentSnapshotDate(new Date(snapshot.date).toLocaleDateString());
     setUploadedFileName(snapshot.metadata?.fileName || 'Historical snapshot');

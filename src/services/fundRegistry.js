@@ -1,6 +1,7 @@
 // src/services/fundRegistry.js
 
 import dataStore from './dataStore';
+import assetClassGroups from '../data/assetClassGroups';
 
 /**
  * Fund Registry Service
@@ -74,12 +75,18 @@ class FundRegistry {
 
     // Fetch from database
     const funds = await dataStore.getAllFunds(true); // activeOnly = true
-    
+
+    // Map asset groups
+    const mapped = funds.map(f => ({
+      ...f,
+      assetGroup: assetClassGroups[f.assetClass] || 'Other'
+    }));
+
     // Update cache
-    this.cache = funds;
+    this.cache = mapped;
     this.cacheTimestamp = Date.now();
-    
-    return funds;
+
+    return mapped;
   }
 
   /**

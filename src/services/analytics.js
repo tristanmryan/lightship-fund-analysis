@@ -276,13 +276,13 @@ export function calculateCorrelation(x, y) {
    * @param {Array<Object>} funds - Fund data
    * @returns {Object} Diversification metrics
    */
-  export function calculateDiversification(funds) {
-    // Asset class concentration
-    const assetClassCounts = {};
-    funds.forEach(fund => {
-      const ac = fund['Asset Class'] || 'Unknown';
-      assetClassCounts[ac] = (assetClassCounts[ac] || 0) + 1;
-    });
+export function calculateDiversification(funds, groupBy = 'Asset Class') {
+  // Asset class or group concentration
+  const assetClassCounts = {};
+  funds.forEach(fund => {
+    const ac = fund[groupBy] || 'Unknown';
+    assetClassCounts[ac] = (assetClassCounts[ac] || 0) + 1;
+  });
     
     // Calculate Herfindahl Index (concentration measure)
     const totalFunds = funds.length;
