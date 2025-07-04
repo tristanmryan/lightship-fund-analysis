@@ -1,7 +1,7 @@
 // src/components/FundDetailsModal.jsx
 import React from 'react';
 import { formatPercent, formatNumber, getMetricDisplayName } from '../utils/dataFormatting';
-import { ScoreBadge, MetricBreakdown } from '../App';
+import { ScoreBadge } from '../App';
 
 const FundDetailsModal = ({ fund, onClose }) => {
   if (!fund) return null;
@@ -57,16 +57,13 @@ const FundDetailsModal = ({ fund, onClose }) => {
           <strong> Asset Class:</strong> {fund['Asset Class']}
         </div>
         {fund.scores && (
-          <>
-            <div style={{ marginBottom: '1rem' }}>
-              <strong>Overall Score: </strong>
-              <ScoreBadge score={fund.scores.final} size="large" />
-              <span style={{ marginLeft: '1rem', color: '#6b7280' }}>
-                (Percentile: {fund.scores.percentile}%)
-              </span>
-            </div>
-            <MetricBreakdown breakdown={fund.scores.breakdown} />
-          </>
+          <div style={{ marginBottom: '1rem' }}>
+            <strong>Overall Score: </strong>
+            <ScoreBadge score={fund.scores.final} size="large" />
+            <span style={{ marginLeft: '1rem', color: '#6b7280' }}>
+              (Percentile: {fund.scores.percentile}%)
+            </span>
+          </div>
         )}
         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
           <tbody>
