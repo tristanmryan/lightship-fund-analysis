@@ -1,5 +1,5 @@
 // App.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { RefreshCw, Settings, Trash2, LayoutGrid, AlertCircle, TrendingUp, Award, Clock, Database, Calendar, Download, BarChart3, Activity, Info } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import FundAdmin from './components/Admin/FundAdmin';
@@ -116,6 +116,15 @@ const App = () => {
 
   const [recommendedFunds, setRecommendedFunds] = useState([]);
   const [assetClassBenchmarks, setAssetClassBenchmarks] = useState({});
+
+  // List of available asset classes from benchmarks and loaded funds
+  const assetClasses = useMemo(() => {
+    const classes = new Set(Object.keys(assetClassBenchmarks));
+    scoredFundData.forEach(f => {
+      if (f['Asset Class']) classes.add(f['Asset Class']);
+    });
+    return Array.from(classes).sort();
+  }, [assetClassBenchmarks, scoredFundData]);
 
   // Help modal state
   const [showHelp, setShowHelp] = useState(false);
@@ -1027,7 +1036,7 @@ const App = () => {
             }}
           >
             <option value="">-- Choose an asset class --</option>
-            {Object.keys(assetClassBenchmarks).sort().map(ac => (
+            {assetClasses.map(ac => (
               <option key={ac} value={ac}>{ac}</option>
             ))}
           </select>
