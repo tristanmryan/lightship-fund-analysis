@@ -5,36 +5,36 @@
  * Implements weighted Z-score ranking system within asset classes
  * 
  * SCORING METHODOLOGY:
- * 1. Each fund is compared to peers within its asset class (including benchmarks)
- * 2. Z-scores are calculated for each metric (how many SDs from the mean)
- * 3. Z-scores are weighted according to importance and summed
- * 4. The sum is transformed to a T-score scale (mean 50, SD 10)
- * 5. Scores typically range from 40-60, with exceptional funds reaching 60+
+ * 1. Each fund is compared to peers within its asset class (benchmarks are scored but
+ *    excluded from peer statistics)
+ * 2. Metrics are standardized to Z-scores using the peer mean and standard deviation
+ * 3. Weighted Z-scores are summed to produce a raw score
+ * 4. The raw score is scaled using `50 + 10 * rawScore` and clamped to the 0-100 range
+ * 5. Scores around 50 are average; strong funds may approach 80-90 in extreme cases
  * 
  * SCORE INTERPRETATION:
- * - 60+: Exceptional performance (rare, top ~5%)
- * - 55-60: Very good performance
- * - 50-55: Above average
- * - 45-50: Below average
- * - 40-45: Poor performance
- * - Below 40: Very poor (rare, bottom ~5%)
- */
+ * - 60+: Strong performance
+ * - 55-59: Healthy
+ * - 45-54: Neutral
+ * - 40-44: Caution
+ * - Below 40: Weak
+*/
 
-// Metric weights configuration - these match your Word document
+// Metric weights configuration (same as companion app)
 const METRIC_WEIGHTS = {
-    ytd: 0.025,           // 2.5%
-    oneYear: 0.05,        // 5%
-    threeYear: 0.10,      // 10%
-    fiveYear: 0.20,       // 20%
-    tenYear: 0.10,        // 10%
-    sharpeRatio3Y: 0.15,  // 15%
-    stdDev3Y: -0.10,      // -10% (negative weight penalizes volatility)
-    stdDev5Y: -0.15,      // -15%
-    upCapture3Y: 0.075,   // 7.5%
-    downCapture3Y: -0.10, // -10% (negative weight penalizes downside capture)
-    alpha5Y: 0.05,        // 5%
-    expenseRatio: -0.025, // -2.5%
-    managerTenure: 0.025  // 2.5%
+    ytd: 0.025,
+    oneYear: 0.05,
+    threeYear: 0.10,
+    fiveYear: 0.15,
+    tenYear: 0.10,
+    sharpeRatio3Y: 0.10,
+    stdDev3Y: -0.075,
+    stdDev5Y: -0.125,
+    upCapture3Y: 0.075,
+    downCapture3Y: -0.10,
+    alpha5Y: 0.05,
+    expenseRatio: -0.025,
+    managerTenure: 0.025
   };
   
   // Metric display names for reporting
@@ -93,36 +93,16 @@ const METRIC_WEIGHTS = {
   }
   
   /**
-   * Transform raw Z-score sum to 0-100 scale using T-score methodology
+   * Transform raw weighted Z-score sum to the final 0-100 range used in the UI.
+   * The scaling mirrors the approach used in the companion application.
    * @param {number} rawScore - Sum of weighted Z-scores
-   * @param {Array<number>} allRawScores - All raw scores in the asset class
-   * @returns {number} Score scaled to 0-100 with mean of 50
+   * @returns {number} Scaled score between 0 and 100
    */
-  function scaleScore(rawScore, allRawScores) {
-    // Calculate mean and standard deviation of raw scores
-    const mean = allRawScores.reduce((sum, score) => sum + score, 0) / allRawScores.length;
-    const variance = allRawScores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / allRawScores.length;
-    const stdDev = Math.sqrt(variance);
-    
-    // If no variation (all funds identical), return 50
-    if (stdDev === 0) return 50;
-    
-    // Calculate Z-score of this raw score within the distribution
-    const zScore = (rawScore - mean) / stdDev;
-    
-    // Convert to T-score (mean 50, SD 10)
-    // This gives us a nice distribution where:
-    // - 50 is average
-    // - Each SD moves the score by 10 points
-    // - Most scores fall between 40-60
-    let tScore = 50 + (zScore * 10);
-    
-    // Apply reasonable bounds
-    // Scores rarely go below 30 or above 70 in practice
-    // Anything above 60 is exceptional, below 40 is concerning
-    tScore = Math.max(20, Math.min(80, tScore));
-    
-    return Math.round(tScore);
+  function scaleScore(rawScore) {
+    let scaled = 50 + 10 * rawScore;
+    if (scaled < 0) return 0;
+    if (scaled > 100) return 100;
+    return Math.round(scaled * 10) / 10;
   }
   
   /**
@@ -342,8 +322,9 @@ const METRIC_WEIGHTS = {
         metrics: extractMetrics(fund)
       }));
       
-      // Calculate statistics for the asset class
-      const statistics = calculateMetricStatistics(fundsWithMetrics);
+      // Calculate statistics for the asset class using peer funds only
+      const peerFunds = fundsWithMetrics.filter(f => !f.isBenchmark);
+      const statistics = calculateMetricStatistics(peerFunds);
       
       // Calculate raw scores for all funds
       const fundsWithRawScores = fundsWithMetrics.map(fund => {
@@ -356,10 +337,10 @@ const METRIC_WEIGHTS = {
       
       // Get all raw scores for scaling
       const rawScores = fundsWithRawScores.map(f => f.scoreData.raw);
-      
+
       // Scale scores to 0-100 and calculate final percentiles
       fundsWithRawScores.forEach((fund, index) => {
-        const finalScore = scaleScore(fund.scoreData.raw, rawScores);
+        const finalScore = scaleScore(fund.scoreData.raw);
         
         // Calculate percentile within asset class
         const betterThanCount = rawScores.filter(s => s < fund.scoreData.raw).length;
@@ -407,9 +388,11 @@ const METRIC_WEIGHTS = {
       ),
       benchmarkScore: benchmarkFund?.scores?.final,
       distribution: {
-        excellent: scores.filter(s => s >= 60).length,       // 60+ Exceptional
-        good: scores.filter(s => s >= 50 && s < 60).length, // 50-60 Above Average
-        poor: scores.filter(s => s < 50).length             // Below 50 Below Average
+        strong: scores.filter(s => s >= 60).length,
+        healthy: scores.filter(s => s >= 55 && s < 60).length,
+        neutral: scores.filter(s => s >= 45 && s < 55).length,
+        caution: scores.filter(s => s >= 40 && s < 45).length,
+        weak: scores.filter(s => s < 40).length
       }
     };
   }
@@ -477,13 +460,17 @@ const METRIC_WEIGHTS = {
    * @param {number} score - Score value (0-100)
    * @returns {string} Color hex code
    */
+  export const SCORE_BANDS = [
+    { min: 60, label: 'Strong',  color: '#16a34a' },
+    { min: 55, label: 'Healthy', color: '#22c55e' },
+    { min: 45, label: 'Neutral', color: '#6b7280' },
+    { min: 40, label: 'Caution', color: '#eab308' },
+    { min: 0,  label: 'Weak',    color: '#dc2626' }
+  ];
+
   export function getScoreColor(score) {
-    if (score >= 60) return '#16a34a'; // Green - Exceptional
-    if (score >= 55) return '#22c55e'; // Light Green - Very Good
-    if (score >= 50) return '#eab308'; // Yellow - Above Average
-    if (score >= 45) return '#f59e0b'; // Orange - Below Average
-    if (score >= 40) return '#ef4444'; // Light Red - Poor
-    return '#dc2626'; // Dark Red - Very Poor
+    const band = SCORE_BANDS.find(b => score >= b.min);
+    return band ? band.color : '#000';
   }
   
   /**
@@ -492,12 +479,8 @@ const METRIC_WEIGHTS = {
    * @returns {string} Performance label
    */
   export function getScoreLabel(score) {
-    if (score >= 60) return 'Exceptional';
-    if (score >= 55) return 'Very Good';
-    if (score >= 50) return 'Above Average';
-    if (score >= 45) return 'Below Average';
-    if (score >= 40) return 'Poor';
-    return 'Very Poor';
+    const band = SCORE_BANDS.find(b => score >= b.min);
+    return band ? band.label : '';
   }
   
   // Export all metric information for UI use
@@ -505,3 +488,5 @@ const METRIC_WEIGHTS = {
     weights: METRIC_WEIGHTS,
     labels: METRIC_LABELS
   };
+
+  export { SCORE_BANDS };
