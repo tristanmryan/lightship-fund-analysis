@@ -323,8 +323,10 @@ const App = () => {
         });
 
         // Log column mappings for debugging
-        console.log('Column mappings:', columnMap);
-        console.log('Headers found:', headers);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Column mappings:', columnMap);
+          console.log('Headers found:', headers);
+        }
 
         // Parse the data rows
         const parsed = dataRows.map(row => {
