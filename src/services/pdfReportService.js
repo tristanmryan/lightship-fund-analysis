@@ -234,6 +234,7 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
     startY: startY + 10,
     head: [TABLE_COLUMNS.map(col => col.header)],
     body: tableData.map(row => TABLE_COLUMNS.map(col => row[col.dataKey] || '')),
+    columns: TABLE_COLUMNS,
     headStyles: {
       fillColor: REPORT_CONFIG.colors.headerBg,
       textColor: REPORT_CONFIG.colors.headerText,
