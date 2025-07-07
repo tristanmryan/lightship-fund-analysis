@@ -1,4 +1,6 @@
 // src/services/scoring.js
+import { getConfig, saveConfig } from './dataStore';
+import { CONFIG_KEYS } from '../data/storage';
 
 /**
  * Core Scoring Engine for Lightship Fund Analysis
@@ -20,8 +22,8 @@
  * - Below 40: Weak
 */
 
-// Metric weights configuration (same as companion app)
-const METRIC_WEIGHTS = {
+// Default metric weights configuration (same as companion app)
+export const DEFAULT_WEIGHTS = {
     ytd: 0.025,
     oneYear: 0.05,
     threeYear: 0.10,
@@ -36,6 +38,9 @@ const METRIC_WEIGHTS = {
     expenseRatio: -0.025,
     managerTenure: 0.025
   };
+
+// Mutable weights used during scoring
+let METRIC_WEIGHTS = { ...DEFAULT_WEIGHTS };
   
   // Metric display names for reporting
   const METRIC_LABELS = {
@@ -55,7 +60,7 @@ const METRIC_WEIGHTS = {
   };
 
   // Order of metrics for UI display
-  export const METRIC_ORDER = [
+export const METRIC_ORDER = [
     'ytd',
     'oneYear',
     'threeYear',
@@ -68,8 +73,36 @@ const METRIC_WEIGHTS = {
     'downCapture3Y',
     'alpha5Y',
     'expenseRatio',
-    'managerTenure'
-  ];
+  'managerTenure'
+];
+
+// Load stored weights and set METRIC_WEIGHTS
+export async function loadMetricWeights() {
+  try {
+    const stored = await getConfig(CONFIG_KEYS.SCORING_WEIGHTS);
+    if (stored && typeof stored === 'object') {
+      METRIC_WEIGHTS = { ...DEFAULT_WEIGHTS, ...stored };
+    }
+  } catch (err) {
+    console.error('Failed to load metric weights', err);
+    METRIC_WEIGHTS = { ...DEFAULT_WEIGHTS };
+  }
+}
+
+// Get current metric weights
+export function getMetricWeights() {
+  return { ...METRIC_WEIGHTS };
+}
+
+// Persist and update metric weights
+export async function setMetricWeights(weights) {
+  METRIC_WEIGHTS = { ...METRIC_WEIGHTS, ...weights };
+  try {
+    await saveConfig(CONFIG_KEYS.SCORING_WEIGHTS, METRIC_WEIGHTS);
+  } catch (err) {
+    console.error('Failed to save metric weights', err);
+  }
+}
   
   /**
    * Calculate Z-score for a value within a distribution
@@ -501,9 +534,11 @@ const METRIC_WEIGHTS = {
   }
   
   // Export all metric information for UI use
-  export const METRICS_CONFIG = {
-    weights: METRIC_WEIGHTS,
-    labels: METRIC_LABELS
-  };
+export const METRICS_CONFIG = {
+  get weights() {
+    return METRIC_WEIGHTS;
+  },
+  labels: METRIC_LABELS
+};
 
  

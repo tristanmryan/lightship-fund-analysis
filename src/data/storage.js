@@ -2,9 +2,10 @@
 import { saveConfig, getConfig } from '../services/dataStore';
 
 // Keys for configuration storage
-const CONFIG_KEYS = {
+export const CONFIG_KEYS = {
   RECOMMENDED_FUNDS: 'recommendedFunds',
-  ASSET_CLASS_BENCHMARKS: 'assetClassBenchmarks'
+  ASSET_CLASS_BENCHMARKS: 'assetClassBenchmarks',
+  SCORING_WEIGHTS: 'scoringWeights'
 };
 
 /**
