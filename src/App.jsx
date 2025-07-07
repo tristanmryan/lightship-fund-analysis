@@ -14,7 +14,8 @@ import {
   getScoreColor,
   getScoreLabel,
   METRICS_CONFIG,
-  METRIC_ORDER
+  METRIC_ORDER,
+  loadMetricWeights
 } from './services/scoring';
 import dataStore from './services/dataStore';
 import fundRegistry from './services/fundRegistry';
@@ -133,6 +134,7 @@ const App = () => {
   // Initialize fund registry and load data
   useEffect(() => {
     const initializeRegistry = async () => {
+      await loadMetricWeights();
       await fundRegistry.initialize(defaultRecommendedFunds, defaultBenchmarks);
       const [funds, benchmarkMap] = await Promise.all([
         fundRegistry.getActiveFunds(),

@@ -7,6 +7,13 @@ import {
 } from 'lucide-react';
 import fundRegistry from '../../services/fundRegistry';
 import { migrateFundRegistry, isMigrationNeeded } from '../../utils/migrateFundRegistry';
+import {
+  METRIC_ORDER,
+  METRICS_CONFIG,
+  getMetricWeights,
+  setMetricWeights,
+  DEFAULT_WEIGHTS
+} from '../../services/scoring';
 
 const FundAdmin = () => {
   // State management
@@ -36,6 +43,9 @@ const FundAdmin = () => {
     reason: '',
     tags: []
   });
+
+  // Scoring weights state
+  const [weights, setWeights] = useState(getMetricWeights());
 
   // Load data on mount
   useEffect(() => {
@@ -266,7 +276,7 @@ const FundAdmin = () => {
         marginBottom: '1.5rem',
         borderBottom: '2px solid #e5e7eb'
       }}>
-        {['funds', 'benchmarks', 'history', 'versions'].map(tab => (
+        {['funds', 'benchmarks', 'scoring', 'history', 'versions'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -597,6 +607,71 @@ const FundAdmin = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Scoring Tab */}
+      {activeTab === 'scoring' && (
+        <div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '1rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                <th style={{ padding: '0.75rem', textAlign: 'left' }}>Metric</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left' }}>Weight</th>
+              </tr>
+            </thead>
+            <tbody>
+              {METRIC_ORDER.map(metric => (
+                <tr key={metric} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  <td style={{ padding: '0.75rem' }}>{METRICS_CONFIG.labels[metric]}</td>
+                  <td style={{ padding: '0.75rem' }}>
+                    <input
+                      type="number"
+                      step="0.001"
+                      value={weights[metric]}
+                      onChange={(e) => setWeights({ ...weights, [metric]: parseFloat(e.target.value) })}
+                      style={{
+                        padding: '0.25rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.25rem',
+                        width: '6rem'
+                      }}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={async () => {
+                await setMetricWeights(weights);
+                alert('Weights saved');
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.375rem',
+                cursor: 'pointer'
+              }}
+            >
+              Save
+            </button>
+            <button
+              onClick={() => setWeights({ ...DEFAULT_WEIGHTS })}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#e5e7eb',
+                border: 'none',
+                borderRadius: '0.375rem',
+                cursor: 'pointer'
+              }}
+            >
+              Reset
+            </button>
+          </div>
         </div>
       )}
 

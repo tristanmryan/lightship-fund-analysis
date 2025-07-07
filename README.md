@@ -68,3 +68,7 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## Admin Options
+
+The **Admin** page allows management of fund lists and benchmark mappings. It also provides controls for adjusting the scoring weights used by the ranking engine. Navigate to the **scoring** tab inside the Admin page to view all metrics and their current weightings. Enter new numeric weights, click **Save** to persist them, or **Reset** to return to the defaults.
