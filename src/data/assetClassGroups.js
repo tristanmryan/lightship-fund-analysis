@@ -1,51 +1,85 @@
-export const assetClassGroups = {
-  // Allocation strategies
-  'Asset Allocation': 'Allocation',
-  'Multi-Asset Income': 'Allocation',
-  'Tactical': 'Allocation',
+// src/data/assetClassGroups.js
 
-  // Domestic equity
-  'Large Cap Blend': 'Domestic Equity',
-  'Large Cap Growth': 'Domestic Equity',
-  'Large Cap Value': 'Domestic Equity',
-  'Mid-Cap Blend': 'Domestic Equity',
-  'Mid-Cap Growth': 'Domestic Equity',
-  'Mid-Cap Value': 'Domestic Equity',
-  'Small Cap Core': 'Domestic Equity',
-  'Small Cap Growth': 'Domestic Equity',
-  'Small Cap Value': 'Domestic Equity',
-  'Sector Funds': 'Domestic Equity',
+/**
+ * Asset Class Groups Configuration
+ * Defines the order and grouping of asset classes for reports
+ * Matches the structure from your Excel performance report
+ */
 
-  // International equity
-  'Emerging Markets': 'International Equity',
-  'International Stock (Large Cap)': 'International Equity',
-  'International Stock (Small/Mid Cap)': 'International Equity',
+const assetClassGroups = [
+  {
+    name: 'U.S. Equity',
+    classes: [
+      'Large Cap Growth',
+      'Large Cap Blend',
+      'Large Cap Value',
+      'Mid-Cap Growth',
+      'Mid-Cap Blend',
+      'Mid-Cap Value',
+      'Small Cap Growth',
+      'Small Cap Core',
+      'Small Cap Value'
+    ]
+  },
+  {
+    name: 'International Equity',
+    classes: [
+      'International Stock (Large Cap)',
+      'International Stock (Small/Mid Cap)',
+      'Emerging Markets'
+    ]
+  },
+  {
+    name: 'Fixed Income',
+    classes: [
+      'Money Market',
+      'Short Term Muni',
+      'Intermediate Muni',
+      'High Yield Muni',
+      'Mass Muni Bonds',
+      'Short Term Bonds',
+      'Intermediate Term Bonds',
+      'High Yield Bonds',
+      'Foreign Bonds',
+      'Multi Sector Bonds',
+      'Non-Traditional Bonds',
+      'Convertible Bonds'
+    ]
+  },
+  {
+    name: 'Alternative Investments',
+    classes: [
+      'Multi-Asset Income',
+      'Preferred Stock',
+      'Long/Short',
+      'Real Estate',
+      'Hedged/Enhanced',
+      'Tactical',
+      'Asset Allocation'
+    ]
+  },
+  {
+    name: 'Sector Funds',
+    classes: [
+      'Sector Funds'
+    ]
+  }
+];
 
-  // Fixed income
-  'Convertible Bonds': 'Fixed Income',
-  'High Yield Bonds': 'Fixed Income',
-  'Intermediate Term Bonds': 'Fixed Income',
-  'Multi Sector Bonds': 'Fixed Income',
-  'Non-Traditional Bonds': 'Fixed Income',
-  'Preferred Stock': 'Fixed Income',
-  'Short Term Bonds': 'Fixed Income',
-  'Money Market': 'Fixed Income',
-
-  // Municipal bonds
-  'High Yield Muni': 'Municipal Bonds',
-  'Intermediate Muni': 'Municipal Bonds',
-  'Mass Muni Bonds': 'Municipal Bonds',
-  'Short Term Muni': 'Municipal Bonds',
-
-  // International fixed income
-  'Foreign Bonds': 'International Fixed Income',
-
-  // Alternatives
-  'Hedged/Enhanced': 'Alternatives',
-  'Long/Short': 'Alternatives',
-  'Real Estate': 'Alternatives',
-
-  // Catch-all
-};
-
+// Export for use in report generation
 export default assetClassGroups;
+
+// Helper function to get all asset classes in order
+export function getAllAssetClasses() {
+  return assetClassGroups.reduce((all, group) => {
+    return [...all, ...group.classes];
+  }, []);
+}
+
+// Helper function to get group name for an asset class
+export function getGroupForAssetClass(assetClass) {
+  const group = assetClassGroups.find(g => 
+    g.classes.includes(assetClass)
+  );
+  return group ? group.name : 'Other';
+}

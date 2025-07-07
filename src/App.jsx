@@ -27,6 +27,7 @@ import TagManager from './components/Tags/TagManager';
 import CorrelationMatrix from './components/Analytics/CorrelationMatrix';
 import RiskReturnScatter from './components/Analytics/RiskReturnScatter';
 import FundDetailsModal from './components/FundDetailsModal';
+import MonthlyReportButton from './components/Reports/MonthlyReportButton';
 import { 
   exportToExcel, 
   generateHTMLReport, 
@@ -837,6 +838,20 @@ const App = () => {
                     <TrendingUp size={16} />
                     View Report
                   </button>
+
+                  <MonthlyReportButton 
+                    fundData={scoredFundData}
+                    benchmarkData={benchmarkData}
+                    metadata={{
+                      date: currentSnapshotDate || new Date().toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric'
+                      }),
+                      fileName: uploadedFileName
+                    }}
+                    assetClassBenchmarks={assetClassBenchmarks}
+                  />
                   
                   <button
                     onClick={() => {
