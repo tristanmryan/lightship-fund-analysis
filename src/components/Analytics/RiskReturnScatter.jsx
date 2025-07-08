@@ -377,7 +377,7 @@ const RiskReturnScatter = ({ funds }) => {
           maxWidth: '300px'
         }}>
           <div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>
-            {hoveredFund.Symbol} - {hoveredFund['Fund Name']}
+            {hoveredFund.Symbol} - {hoveredFund.displayName}
           </div>
           <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
             <div>Return: {hoveredFund.riskReturnMetrics.return.toFixed(2)}%</div>

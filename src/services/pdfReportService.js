@@ -334,7 +334,7 @@ function formatRank(value) {
 function prepareRowData(fund) {
   return {
     ticker: fund.Symbol || fund['Symbol/CUSIP'] || '',
-    name: fund['Fund Name'] || fund['Product Name'] || '',
+    name: fund.displayName || fund['Fund Name'] || fund['Product Name'] || '',
     rating: getStarRating(fund['Morningstar Star Rating'] || fund['Rating'] || fund['Star Rating']),
     ytd: formatPercent(fund['YTD'] || fund['Total Return - YTD (%)']),
     ytdRank: formatRank(fund['YTD Rank'] || fund['Category Rank (%) Total Return – YTD'] || fund['YTD Cat Rank']),

@@ -331,7 +331,7 @@ export function calculateDiversification(funds, groupBy = 'Asset Class') {
     };
     
     funds.forEach(fund => {
-      const name = fund['Fund Name']?.toLowerCase() || '';
+      const name = (fund.displayName || fund['Fund Name'])?.toLowerCase() || '';
       const assetClass = fund['Asset Class']?.toLowerCase() || '';
       
       if (name.includes('international') || name.includes('foreign') || 

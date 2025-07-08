@@ -167,7 +167,7 @@ export function analyzeTrend(values) {
         if (!fundPerformance[fund.Symbol]) {
           fundPerformance[fund.Symbol] = {
             symbol: fund.Symbol,
-            name: fund['Fund Name'],
+            name: fund.displayName || fund['Fund Name'],
             values: []
           };
         }

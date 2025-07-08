@@ -191,7 +191,7 @@ const TopBottomPerformers = ({ funds }) => {
             )}
           </div>
           <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.125rem' }}>
-            {fund['Fund Name']}
+            {fund.displayName}
           </div>
           <div style={{ fontSize: '0.6875rem', color: '#9ca3af', marginTop: '0.125rem' }}>
             {fund['Asset Class']}

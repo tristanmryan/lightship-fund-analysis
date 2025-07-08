@@ -79,7 +79,7 @@ export function formatPercent(value, decimals = 2) {
    * @param {string} metric - The metric field name
    * @returns {string} Display-friendly name
    */
-  export function getMetricDisplayName(metric) {
+export function getMetricDisplayName(metric) {
     const displayNames = {
       'YTD': 'YTD',
       '1 Year': '1Y Return',
@@ -98,19 +98,29 @@ export function formatPercent(value, decimals = 2) {
     };
     
     return displayNames[metric] || metric;
-  }
-  
-  /**
-   * Format a fund row for display in tables
-   * @param {Object} fund - The fund object
-   * @returns {Object} Formatted fund data
-   */
-  export function formatFundForDisplay(fund) {
-    if (!fund) return {};
-    
-    return {
-      symbol: fund.Symbol || '-',
-      name: fund['Fund Name'] || '-',
+}
+
+/**
+ * Get the preferred display name for a fund
+ * @param {Object} fund - Fund object
+ * @returns {string} Display name
+ */
+export function getFundDisplayName(fund) {
+  if (!fund) return '';
+  return fund.displayName || fund.name || fund['Fund Name'] || '';
+}
+
+/**
+ * Format a fund row for display in tables
+ * @param {Object} fund - The fund object
+ * @returns {Object} Formatted fund data
+ */
+export function formatFundForDisplay(fund) {
+  if (!fund) return {};
+
+  return {
+    symbol: fund.Symbol || '-',
+    name: getFundDisplayName(fund) || '-',
       assetClass: fund['Asset Class'] || 'Unknown',
       score: fund.scores?.final || null,
       scoreLabel: fund.scores?.final ? `${fund.scores.final} - ${getScoreLabel(fund.scores.final)}` : '-',
