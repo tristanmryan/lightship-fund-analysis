@@ -131,6 +131,19 @@ class FundRegistry {
   }
 
   /**
+   * Get all benchmarks mapped by asset class
+   * @returns {Promise<Object>} Map of assetClass -> { ticker, name }
+   */
+  async getBenchmarksByAssetClass() {
+    const benchmarks = await dataStore.getAllBenchmarks();
+    const map = {};
+    benchmarks.forEach(b => {
+      map[b.assetClass] = { ticker: b.ticker, name: b.name };
+    });
+    return map;
+  }
+
+  /**
    * Add a new fund with validation
    * @param {Object} fundData - Fund information
    * @param {string} reason - Reason for adding
