@@ -46,21 +46,21 @@ const REPORT_CONFIG = {
 // Column definitions matching your Excel format exactly
 const TABLE_COLUMNS = [
   { header: 'Ticker', dataKey: 'ticker', width: 40 },
-  { header: 'Fund Name', dataKey: 'name', width: 155 },
+  { header: 'Fund Name', dataKey: 'name', width: 135 },
   { header: 'Rating', dataKey: 'rating', width: 40 },
-  { header: 'YTD Return', dataKey: 'ytd', width: 48 },
-  { header: 'YTD Rank', dataKey: 'ytdRank', width: 40 },
-  { header: '1Y Return', dataKey: 'oneYear', width: 48 },
-  { header: '1Y Rank', dataKey: 'oneYearRank', width: 40 },
-  { header: '3Y Return', dataKey: 'threeYear', width: 48 },
-  { header: '3Y Rank', dataKey: 'threeYearRank', width: 40 },
-  { header: '5Y Return', dataKey: 'fiveYear', width: 48 },
-  { header: '5Y Rank', dataKey: 'fiveYearRank', width: 40 },
-  { header: 'Yield', dataKey: 'yield', width: 35 },
-  { header: '3Y Std Dev', dataKey: 'stdDev', width: 42 },
-  { header: 'Expense Ratio', dataKey: 'expense', width: 45 },
-  { header: 'Manager Tenure', dataKey: 'tenure', width: 48 },
-  { header: 'Score', dataKey: 'score', width: 35 }
+  { header: 'YTD Return', dataKey: 'ytd', width: 44 },
+  { header: 'YTD Rank', dataKey: 'ytdRank', width: 36 },
+  { header: '1Y Return', dataKey: 'oneYear', width: 44 },
+  { header: '1Y Rank', dataKey: 'oneYearRank', width: 36 },
+  { header: '3Y Return', dataKey: 'threeYear', width: 44 },
+  { header: '3Y Rank', dataKey: 'threeYearRank', width: 36 },
+  { header: '5Y Return', dataKey: 'fiveYear', width: 44 },
+  { header: '5Y Rank', dataKey: 'fiveYearRank', width: 36 },
+  { header: 'Yield', dataKey: 'yield', width: 34 },
+  { header: '3Y Std Dev', dataKey: 'stdDev', width: 40 },
+  { header: 'Expense Ratio', dataKey: 'expense', width: 40 },
+  { header: 'Manager Tenure', dataKey: 'tenure', width: 45 },
+  { header: 'Score', dataKey: 'score', width: 33 }
 ];
 
 // Benchmark name mappings (matching your Excel)
