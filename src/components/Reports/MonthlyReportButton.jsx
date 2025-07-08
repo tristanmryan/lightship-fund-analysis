@@ -19,9 +19,8 @@ const MonthlyReportButton = ({
       const benchmarkData = prepareBenchmarkData(fundData, assetClassBenchmarks);
       
       // Filter out benchmarks from the main fund list for the report
-      const cleanTicker = (s) => s?.toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
-      const benchmarkTickers = new Set(Object.values(assetClassBenchmarks).map(b => cleanTicker(b.ticker)));
-      const nonBenchmarkFunds = fundData.filter(f => !benchmarkTickers.has(cleanTicker(f.cleanSymbol || f.Symbol || f['Symbol/CUSIP'])));
+      const benchmarkTickers = new Set(Object.values(assetClassBenchmarks).map(b => b.ticker));
+      const nonBenchmarkFunds = fundData.filter(f => !benchmarkTickers.has(f.Symbol));
       
       // Prepare report data
       const reportData = {
@@ -69,7 +68,7 @@ const MonthlyReportButton = ({
 
       // Find the benchmark fund in the data using cleaned tickers
       const benchmarkFund = allFunds.find(f => {
-        const symbol = f.cleanSymbol || f.Symbol || f['Symbol/CUSIP'];
+        const symbol = f.Symbol || f['Symbol/CUSIP'];
         return clean(symbol) === target;
       });
 
