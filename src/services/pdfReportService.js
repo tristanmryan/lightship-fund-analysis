@@ -258,7 +258,7 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
   doc.autoTable({
     startY: startY + 15,
     head: [TABLE_COLUMNS.map(col => col.header)],
-    body: tableData.map(row => TABLE_COLUMNS.map(col => row[col.dataKey] || '')),
+    body: tableData,
     columns: TABLE_COLUMNS,
     headStyles: {
       fillColor: REPORT_CONFIG.colors.headerBg,
@@ -329,6 +329,18 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
           );
         }
       }
+
+      // Draw star ratings
+      if (
+        data.section === 'body' &&
+        data.column.dataKey === 'rating' &&
+        data.row.raw && data.row.raw.ratingValue
+      ) {
+        const rating = parseInt(data.row.raw.ratingValue);
+        if (!isNaN(rating) && rating > 0) {
+          drawRatingStars(doc, rating, data.cell);
+        }
+      }
     },
     margin: { 
       left: REPORT_CONFIG.margins.left, 
@@ -356,7 +368,10 @@ function prepareRowData(fund) {
   return {
     ticker: fund.Symbol || fund['Symbol/CUSIP'] || '',
     name: fund.displayName || fund['Fund Name'] || fund['Product Name'] || '',
-    rating: getStarRating(fund['Morningstar Star Rating'] || fund['Rating'] || fund['Star Rating']),
+    rating: '',
+    ratingValue: getStarRating(
+      fund['Morningstar Star Rating'] || fund['Rating'] || fund['Star Rating']
+    ),
     ytd: formatPercent(fund['YTD'] || fund['Total Return - YTD (%)']),
     ytdRank: formatRank(fund['YTD Rank'] || fund['Category Rank (%) Total Return – YTD'] || fund['YTD Cat Rank']),
     oneYear: formatPercent(fund['1 Year'] || fund['Total Return - 1 Year (%)']),
@@ -416,26 +431,38 @@ function getColumnStyles() {
  * Get star rating display
  */
 function getStarRating(rating) {
-  if (!rating) return '';
-  
-  // Handle different rating formats
-  let stars = 0;
-  if (typeof rating === 'number') {
-    stars = Math.round(rating);
-  } else if (typeof rating === 'string') {
-    // Try to parse number from string
-    const parsed = parseInt(rating);
-    if (!isNaN(parsed)) {
-      stars = parsed;
-    } else if (rating.includes('★') || rating.includes('☆')) {
-      // Already formatted
-      return rating;
-    }
+  if (rating == null || rating === '') return null;
+
+  let stars = typeof rating === 'number' ? rating : parseInt(rating);
+  if (isNaN(stars)) return null;
+
+  if (stars < 1 || stars > 5) return null;
+
+  return stars;
+}
+
+function drawRatingStars(doc, rating, cell) {
+  const size = Math.min(cell.height * 0.7, cell.width / 5);
+  const startX = cell.x + (cell.width - size * 5) / 2;
+  const centerY = cell.y + cell.height / 2;
+
+  for (let i = 0; i < 5; i++) {
+    const filled = i < rating;
+    const cx = startX + size * i + size / 2;
+    drawStar(doc, cx, centerY, size / 2, filled);
   }
-  
-  if (stars < 1 || stars > 5) return '';
-  
-  return '★'.repeat(stars) + '☆'.repeat(5 - stars);
+}
+
+function drawStar(doc, cx, cy, r, filled) {
+  const inner = r * 0.5;
+  const pts = [];
+  for (let i = 0; i < 10; i++) {
+    const radius = i % 2 === 0 ? r : inner;
+    const angle = -Math.PI / 2 + i * Math.PI / 5;
+    pts.push([cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)]);
+  }
+  const lines = pts.slice(1).map((p, idx) => [p[0] - pts[idx][0], p[1] - pts[idx][1]]);
+  doc.lines(lines, pts[0][0], pts[0][1], [1, 1], filled ? 'FD' : 'S', true);
 }
 
 /**
