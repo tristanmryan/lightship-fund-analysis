@@ -266,6 +266,9 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
     head: [TABLE_COLUMNS.map(col => col.header)],
     body: tableData,
     columns: TABLE_COLUMNS,
+    styles: {
+      font: 'DejaVuSans'
+    },
     headStyles: {
       fillColor: REPORT_CONFIG.colors.headerBg,
       textColor: REPORT_CONFIG.colors.headerText,
@@ -377,6 +380,11 @@ function prepareRowData(fund) {
     rating: getStarRating(
       fund['Morningstar Star Rating'] || fund['Rating'] || fund['Star Rating']
     ),
+    ratingValue:
+      parseInt(
+        fund['Morningstar Star Rating'] || fund['Rating'] || fund['Star Rating'],
+        10
+      ) || 0,
     ytd: formatPercent(fund['YTD'] || fund['Total Return - YTD (%)']),
     ytdRank: formatRank(fund['YTD Rank'] || fund['Category Rank (%) Total Return – YTD'] || fund['YTD Cat Rank']),
     oneYear: formatPercent(fund['1 Year'] || fund['Total Return - 1 Year (%)']),
@@ -449,6 +457,7 @@ function getStarRating(rating) {
  */
 function drawRatingStars(doc, rating, cell) {
   const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+  doc.setFont('DejaVuSans');
   doc.setFontSize(REPORT_CONFIG.fontSize.body);
   doc.text(stars, cell.x + cell.width / 2, cell.y + cell.height / 2 + 1, {
     align: 'center',
