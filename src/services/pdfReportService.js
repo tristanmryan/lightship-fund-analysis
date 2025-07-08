@@ -228,10 +228,8 @@ function groupAndFilterFunds(funds, benchmarks) {
 function addAssetClassTable(doc, assetClass, funds, benchmark) {
   let startY = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 20 : REPORT_CONFIG.margins.top;
 
-  // Prepare table data first to estimate height
   const tableData = funds.map(fund => prepareRowData(fund));
 
-  // Add benchmark row if exists
   if (benchmark && benchmark.ticker) {
     const benchmarkRow = prepareBenchmarkRow(benchmark);
     tableData.push(benchmarkRow);
@@ -278,6 +276,14 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
     },
     columnStyles: getColumnStyles(),
     pageBreak: 'avoid',
+    willDrawPage: function(data) {
+      if (data.pageNumber === 1) {
+        doc.setFontSize(REPORT_CONFIG.fontSize.heading);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(0, 0, 0);
+        doc.text(assetClass, REPORT_CONFIG.margins.left, data.cursor.y - 15);
+      }
+    },
     didParseCell: function(data) {
       // Highlight benchmark row
       if (benchmark && data.row.index === tableData.length - 1) {
