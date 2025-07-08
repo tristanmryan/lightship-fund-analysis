@@ -374,8 +374,7 @@ function prepareRowData(fund) {
   return {
     ticker: fund.Symbol || fund['Symbol/CUSIP'] || '',
     name: fund.displayName || fund['Fund Name'] || fund['Product Name'] || '',
-    rating: '',
-    ratingValue: getStarRating(
+    rating: getStarRating(
       fund['Morningstar Star Rating'] || fund['Rating'] || fund['Star Rating']
     ),
     ytd: formatPercent(fund['YTD'] || fund['Total Return - YTD (%)']),
@@ -437,38 +436,12 @@ function getColumnStyles() {
  * Get star rating display
  */
 function getStarRating(rating) {
-  if (rating == null || rating === '') return null;
+  if (rating == null || rating === '') return '';
 
-  let stars = typeof rating === 'number' ? rating : parseInt(rating);
-  if (isNaN(stars)) return null;
+  let stars = typeof rating === 'number' ? rating : parseInt(rating, 10);
+  if (isNaN(stars) || stars < 1 || stars > 5) return '';
 
-  if (stars < 1 || stars > 5) return null;
-
-  return stars;
-}
-
-function drawRatingStars(doc, rating, cell) {
-  const size = Math.min(cell.height * 0.7, cell.width / 5);
-  const startX = cell.x + (cell.width - size * 5) / 2;
-  const centerY = cell.y + cell.height / 2;
-
-  for (let i = 0; i < 5; i++) {
-    const filled = i < rating;
-    const cx = startX + size * i + size / 2;
-    drawStar(doc, cx, centerY, size / 2, filled);
-  }
-}
-
-function drawStar(doc, cx, cy, r, filled) {
-  const inner = r * 0.5;
-  const pts = [];
-  for (let i = 0; i < 10; i++) {
-    const radius = i % 2 === 0 ? r : inner;
-    const angle = -Math.PI / 2 + i * Math.PI / 5;
-    pts.push([cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)]);
-  }
-  const lines = pts.slice(1).map((p, idx) => [p[0] - pts[idx][0], p[1] - pts[idx][1]]);
-  doc.lines(lines, pts[0][0], pts[0][1], [1, 1], filled ? 'FD' : 'S', true);
+  return '★'.repeat(stars) + '☆'.repeat(5 - stars);
 }
 
 /**
