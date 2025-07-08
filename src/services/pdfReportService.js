@@ -1,6 +1,7 @@
 // src/services/pdfReportService.js
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import assetClassGroups from '../data/assetClassGroups';
 
 /**
  * PDF Report Generation Service
@@ -21,83 +22,82 @@ const REPORT_CONFIG = {
   colors: {
     headerBg: [30, 58, 138], // Blue header (RGB)
     headerText: [255, 255, 255], // White text
-    benchmarkBg: [251, 191, 36], // Yellow benchmark row
+    benchmarkBg: [255, 220, 100], // Yellow benchmark row - adjusted to match your Excel
     benchmarkText: [0, 0, 0], // Black text
     alternateRow: [249, 250, 251], // Light gray
-    // Performance colors (matching your Excel)
-    performance: {
-      excellent: '#22c55e', // Green
-      good: '#84cc16',
-      average: '#facc15', // Yellow
-      belowAverage: '#fb923c', // Orange
-      poor: '#ef4444' // Red
+    // Performance colors for rank cells
+    rankColors: {
+      excellent: [34, 197, 94], // Green - top 20%
+      good: [132, 204, 22], // Light green - 20-40%
+      average: [250, 204, 21], // Yellow - 40-60%
+      belowAverage: [251, 146, 60], // Orange - 60-80%
+      poor: [239, 68, 68] // Red - bottom 20%
     }
   },
   fontSize: {
-    title: 16,
-    heading: 12,
-    body: 9,
+    title: 20,
+    subtitle: 16,
+    heading: 10,
+    body: 7.5,
     footer: 8
   }
 };
 
-// Column definitions for fund tables
+// Column definitions matching your Excel format exactly
 const TABLE_COLUMNS = [
-  { header: 'Ticker', dataKey: 'Symbol', width: 50 },
-  { header: 'Fund Name', dataKey: 'Fund Name', width: 200 },
-  { header: 'Rating', dataKey: 'starRating', width: 45 },
-  { header: 'YTD Return', dataKey: 'YTD', width: 55 },
-  { header: 'YTD Rank', dataKey: 'YTD Rank', width: 45 },
-  { header: '1Y Return', dataKey: '1 Year', width: 55 },
-  { header: '1Y Rank', dataKey: '1Y Rank', width: 45 },
-  { header: '3Y Return', dataKey: '3 Year', width: 55 },
-  { header: '3Y Rank', dataKey: '3Y Rank', width: 45 },
-  { header: '5Y Return', dataKey: '5 Year', width: 55 },
-  { header: '5Y Rank', dataKey: '5Y Rank', width: 45 },
-  { header: 'Yield', dataKey: 'Yield', width: 40 },
-  { header: '3Y Std Dev', dataKey: 'StdDev3Y', width: 50 },
-  { header: 'Expense Ratio', dataKey: 'Net Expense Ratio', width: 55 },
-  { header: 'Manager Tenure', dataKey: 'Manager Tenure', width: 60 },
-  { header: 'Score', dataKey: 'scores.final', width: 45 }
+  { header: 'Ticker', dataKey: 'ticker', width: 40 },
+  { header: 'Fund Name', dataKey: 'name', width: 155 },
+  { header: 'Rating', dataKey: 'rating', width: 40 },
+  { header: 'YTD Return', dataKey: 'ytd', width: 48 },
+  { header: 'YTD Rank', dataKey: 'ytdRank', width: 40 },
+  { header: '1Y Return', dataKey: 'oneYear', width: 48 },
+  { header: '1Y Rank', dataKey: 'oneYearRank', width: 40 },
+  { header: '3Y Return', dataKey: 'threeYear', width: 48 },
+  { header: '3Y Rank', dataKey: 'threeYearRank', width: 40 },
+  { header: '5Y Return', dataKey: 'fiveYear', width: 48 },
+  { header: '5Y Rank', dataKey: 'fiveYearRank', width: 40 },
+  { header: 'Yield', dataKey: 'yield', width: 35 },
+  { header: '3Y Std Dev', dataKey: 'stdDev', width: 42 },
+  { header: 'Expense Ratio', dataKey: 'expense', width: 45 },
+  { header: 'Manager Tenure', dataKey: 'tenure', width: 48 },
+  { header: 'Score', dataKey: 'score', width: 35 }
 ];
 
-// Benchmark name mappings
+// Benchmark name mappings (matching your Excel)
 const BENCHMARK_NAMES = {
-  'AOM': 'Morningstar Moderate Target Risk Index',
-  'CWB': 'Bloomberg Convertible Index',
-  'ACWX': 'MSCI All Country World ex U.S.',
-  'BNDW': 'Vanguard Total World Bond Index',
-  'QAI': 'IQ Hedge Multi-Strat Index',
-  'HYD': 'VanEck High Yield Muni Index',
-  'ITM': 'VanEck Intermediate Muni Index',
-  'SUB': 'iShares Short-Term Muni Index',
-  'SCZ': 'MSCI EAFE Small-Cap Index',
-  'EFA': 'MSCI EAFE Index',
-  'AGG': 'U.S. Aggregate Bond Index',
+  'IWF': 'Russell 1000 Growth',
   'IWB': 'Russell 1000',
   'IWD': 'Russell 1000 Value',
-  'IWF': 'Russell 1000 Growth',
+  'IWP': 'Russell Midcap Growth Index',
   'IWR': 'Russell Midcap Index',
   'IWS': 'Russell Midcap Value Index',
-  'IWP': 'Russell Midcap Growth Index',
+  'IWO': 'Russell 2000 Growth',
   'VTWO': 'Russell 2000',
   'IWN': 'Russell 2000 Value',
-  'IWO': 'Russell 2000 Growth',
-  'IWM': 'iShares TR Russell 2000 ETF',
+  'EFA': 'MSCI EAFE Index',
+  'SCZ': 'MSCI EAFE Small-Cap Index',
+  'ACWX': 'MSCI All Country World ex U.S.',
   'BIL': 'Bloomberg 1-3 Month T-Bill Index',
+  'SUB': 'iShares Short-Term Muni Index',
+  'ITM': 'VanEck Intermediate Muni Index',
+  'HYD': 'VanEck High Yield Muni Index',
   'BSV': 'Vanguard Short-Term Bond Index',
+  'AGG': 'U.S. Aggregate Bond Index',
+  'BNDW': 'Vanguard Total World Bond Index',
+  'CWB': 'Bloomberg Convertible Index',
+  'AOM': 'Morningstar Moderate Target Risk Index',
   'PGX': 'Invesco Preferred Index',
+  'QAI': 'IQ Hedge Multi-Strat Index',
   'RWO': 'Dow Jones Global Real Estate Index',
+  'AOR': 'iShares Core Growth Allocation ETF',
   'SPY': 'S&P 500 Index'
 };
 
 /**
- * Generate monthly performance report PDF
- * @param {Object} data - Report data including funds, benchmarks, metadata
- * @returns {jsPDF} PDF document
+ * Main export function - Generate monthly performance report PDF
  */
 export function generateMonthlyReport(data) {
-  const { funds, benchmarks, assetClassGroups, metadata } = data;
+  const { funds, benchmarks, metadata } = data;
   
   // Create new PDF document
   const doc = new jsPDF({
@@ -109,34 +109,33 @@ export function generateMonthlyReport(data) {
   // Add cover page
   addCoverPage(doc, metadata);
   
-  // Group funds by asset class
-  const fundsByClass = groupFundsByAssetClass(funds);
+  // Group funds by asset class and filter out benchmarks from main list
+  const fundsByClass = groupAndFilterFunds(funds, benchmarks);
   
-  // Process each asset class group
-  let pageNumber = 2;
+  // Add each asset class section
+  let currentPage = 2;
   assetClassGroups.forEach((group, groupIndex) => {
-    if (groupIndex > 0) {
-      doc.addPage();
-      pageNumber++;
-    }
-    
     group.classes.forEach((assetClass, classIndex) => {
-      if (classIndex > 0) {
-        // Check if we need a new page
-        const currentY = doc.lastAutoTable?.finalY || REPORT_CONFIG.margins.top;
-        if (currentY > 400) {
-          doc.addPage();
-          pageNumber++;
-        }
+      const classFunds = fundsByClass[assetClass] || [];
+      const benchmark = benchmarks[assetClass];
+      
+      // Skip empty asset classes
+      if (classFunds.length === 0 && !benchmark) return;
+      
+      // Check if we need a new page
+      const currentY = doc.lastAutoTable?.finalY || REPORT_CONFIG.margins.top;
+      if (currentY > 420 || (groupIndex > 0 && classIndex === 0)) {
+        doc.addPage();
+        currentPage++;
       }
       
       // Add asset class table
-      addAssetClassTable(doc, assetClass, fundsByClass[assetClass] || [], benchmarks[assetClass]);
+      addAssetClassTable(doc, assetClass, classFunds, benchmark);
     });
   });
   
   // Add page numbers
-  addPageNumbers(doc);
+  addPageNumbers(doc, currentPage);
   
   return doc;
 }
@@ -150,11 +149,13 @@ function addCoverPage(doc, metadata) {
   
   // Title
   doc.setFontSize(24);
+  doc.setFont(undefined, 'bold');
   doc.setTextColor(30, 58, 138); // Blue color
-  doc.text('Lightship Wealth Strategies', pageWidth / 2, 100, { align: 'center' });
+  doc.text('Lightship Wealth Strategies', pageWidth / 2, 120, { align: 'center' });
   
   doc.setFontSize(20);
-  doc.text('Recommended List Performance', pageWidth / 2, 130, { align: 'center' });
+  doc.setFont(undefined, 'normal');
+  doc.text('Recommended List Performance', pageWidth / 2, 150, { align: 'center' });
   
   // Date
   doc.setFontSize(14);
@@ -164,23 +165,65 @@ function addCoverPage(doc, metadata) {
     day: 'numeric', 
     year: 'numeric'
   });
-  doc.text(`As of ${reportDate}`, pageWidth / 2, 160, { align: 'center' });
+  doc.text(`As of ${reportDate}`, pageWidth / 2, 180, { align: 'center' });
   
   // Summary box
   doc.setDrawColor(200);
   doc.setFillColor(250, 250, 250);
-  doc.roundedRect(pageWidth / 2 - 150, 200, 300, 120, 5, 5, 'FD');
+  doc.roundedRect(pageWidth / 2 - 150, 220, 300, 140, 5, 5, 'FD');
   
   // Summary content
   doc.setFontSize(12);
-  doc.setTextColor(50, 50, 50); // Dark gray color
-  const summaryY = 230;
-  const lineHeight = 20;
+  doc.setTextColor(50, 50, 50);
+  const summaryY = 250;
+  const lineHeight = 25;
   
   doc.text(`Total Funds Analyzed: ${metadata.totalFunds || 0}`, pageWidth / 2, summaryY, { align: 'center' });
   doc.text(`Recommended Funds: ${metadata.recommendedFunds || 0}`, pageWidth / 2, summaryY + lineHeight, { align: 'center' });
   doc.text(`Asset Classes: ${metadata.assetClassCount || 0}`, pageWidth / 2, summaryY + lineHeight * 2, { align: 'center' });
   doc.text(`Average Score: ${metadata.averageScore || 'N/A'}`, pageWidth / 2, summaryY + lineHeight * 3, { align: 'center' });
+  
+  // Footer
+  doc.setFontSize(10);
+  doc.setTextColor(150, 150, 150);
+  doc.text('This report is for internal use only', pageWidth / 2, pageHeight - 40, { align: 'center' });
+}
+
+/**
+ * Group funds by asset class and filter out benchmarks
+ */
+function groupAndFilterFunds(funds, benchmarks) {
+  const grouped = {};
+  
+  // Get all benchmark tickers for filtering
+  const benchmarkTickers = new Set();
+  Object.values(benchmarks).forEach(b => {
+    if (b.ticker) benchmarkTickers.add(b.ticker);
+  });
+  
+  funds.forEach(fund => {
+    // Skip if this is a benchmark fund
+    if (benchmarkTickers.has(fund.Symbol)) return;
+    
+    const assetClass = fund['Asset Class'];
+    if (!assetClass) return;
+    
+    if (!grouped[assetClass]) {
+      grouped[assetClass] = [];
+    }
+    grouped[assetClass].push(fund);
+  });
+  
+  // Sort funds within each class by score (descending)
+  Object.keys(grouped).forEach(assetClass => {
+    grouped[assetClass].sort((a, b) => {
+      const scoreA = a.scores?.final || 0;
+      const scoreB = b.scores?.final || 0;
+      return scoreB - scoreA;
+    });
+  });
+  
+  return grouped;
 }
 
 /**
@@ -191,47 +234,22 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
   
   // Asset class header
   doc.setFontSize(REPORT_CONFIG.fontSize.heading);
-  doc.setTextColor(0, 0, 0); // Black text
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(0, 0, 0);
   doc.text(assetClass, REPORT_CONFIG.margins.left, startY);
   
   // Prepare table data
-  const tableData = funds.map(fund => {
-    const row = {};
-    TABLE_COLUMNS.forEach(col => {
-      if (col.dataKey === 'starRating') {
-        row[col.dataKey] = getStarRating(fund['Morningstar Star Rating']);
-      } else if (col.dataKey === 'scores.final') {
-        row[col.dataKey] = fund.scores?.final || '';
-      } else if (col.dataKey.includes('Rank')) {
-        row[col.dataKey] = fund[col.dataKey] || '';
-      } else if (typeof fund[col.dataKey] === 'number') {
-        row[col.dataKey] = formatNumber(fund[col.dataKey], col.dataKey);
-      } else {
-        row[col.dataKey] = fund[col.dataKey] || '';
-      }
-    });
-    return row;
-  });
+  const tableData = funds.map(fund => prepareRowData(fund));
   
   // Add benchmark row if exists
-  if (benchmark) {
-    const benchmarkRow = {
-      Symbol: benchmark.ticker,
-      'Fund Name': BENCHMARK_NAMES[benchmark.ticker] || benchmark.name,
-      // Only include performance metrics for benchmark
-      'YTD': formatNumber(benchmark.YTD, 'YTD'),
-      '1 Year': formatNumber(benchmark['1 Year'], '1 Year'),
-      '3 Year': formatNumber(benchmark['3 Year'], '3 Year'),
-      '5 Year': formatNumber(benchmark['5 Year'], '5 Year'),
-      'Yield': formatNumber(benchmark.Yield, 'Yield'),
-      'StdDev3Y': formatNumber(benchmark.StdDev3Y, 'StdDev3Y')
-    };
+  if (benchmark && benchmark.ticker) {
+    const benchmarkRow = prepareBenchmarkRow(benchmark);
     tableData.push(benchmarkRow);
   }
   
   // Generate table
   doc.autoTable({
-    startY: startY + 10,
+    startY: startY + 15,
     head: [TABLE_COLUMNS.map(col => col.header)],
     body: tableData.map(row => TABLE_COLUMNS.map(col => row[col.dataKey] || '')),
     columns: TABLE_COLUMNS,
@@ -239,11 +257,12 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
       fillColor: REPORT_CONFIG.colors.headerBg,
       textColor: REPORT_CONFIG.colors.headerText,
       fontSize: REPORT_CONFIG.fontSize.body,
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      halign: 'center'
     },
     bodyStyles: {
       fontSize: REPORT_CONFIG.fontSize.body,
-      cellPadding: 3
+      cellPadding: 2
     },
     alternateRowStyles: {
       fillColor: REPORT_CONFIG.colors.alternateRow
@@ -256,12 +275,32 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
         data.cell.styles.textColor = REPORT_CONFIG.colors.benchmarkText;
         data.cell.styles.fontStyle = 'bold';
       }
-      
-      // Color code performance cells
-      if (data.column.dataKey && data.column.dataKey.includes('Rank')) {
-        const rank = parseInt(data.cell.text);
-        if (!isNaN(rank)) {
-          data.cell.styles.textColor = getPerformanceColor(rank);
+    },
+    didDrawCell: function(data) {
+      // Custom rendering for rank cells with color coding
+      if (data.column.dataKey && data.column.dataKey.includes('Rank') && data.row.index < tableData.length - 1) {
+        const rankValue = parseInt(data.cell.text);
+        if (!isNaN(rankValue)) {
+          // Clear the default text
+          doc.setFillColor(...getRankColor(rankValue));
+          const padding = 2;
+          doc.rect(
+            data.cell.x + padding,
+            data.cell.y + padding,
+            data.cell.width - (padding * 2),
+            data.cell.height - (padding * 2),
+            'F'
+          );
+          
+          // Redraw the text in contrasting color
+          doc.setTextColor(rankValue > 60 ? 255 : 0, rankValue > 60 ? 255 : 0, rankValue > 60 ? 255 : 0);
+          doc.setFontSize(REPORT_CONFIG.fontSize.body);
+          doc.text(
+            data.cell.text,
+            data.cell.x + data.cell.width / 2,
+            data.cell.y + data.cell.height / 2 + 1,
+            { align: 'center', baseline: 'middle' }
+          );
         }
       }
     },
@@ -273,6 +312,66 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
 }
 
 /**
+ * Format rank values (removes decimals)
+ */
+function formatRank(value) {
+  if (value == null || value === '') return '';
+  
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return '';
+  
+  return Math.round(num).toString();
+}
+
+/**
+ * Prepare row data for a fund
+ */
+function prepareRowData(fund) {
+  return {
+    ticker: fund.Symbol || fund['Symbol/CUSIP'] || '',
+    name: fund['Fund Name'] || fund['Product Name'] || '',
+    rating: getStarRating(fund['Morningstar Star Rating'] || fund['Rating'] || fund['Star Rating']),
+    ytd: formatPercent(fund['YTD'] || fund['Total Return - YTD (%)']),
+    ytdRank: formatRank(fund['YTD Rank'] || fund['Category Rank (%) Total Return – YTD'] || fund['YTD Cat Rank']),
+    oneYear: formatPercent(fund['1 Year'] || fund['Total Return - 1 Year (%)']),
+    oneYearRank: formatRank(fund['1Y Rank'] || fund['Category Rank (%) Total Return – 1Y'] || fund['1Y Cat Rank']),
+    threeYear: formatPercent(fund['3 Year'] || fund['Annualized Total Return - 3 Year (%)']),
+    threeYearRank: formatRank(fund['3Y Rank'] || fund['Category Rank (%) Ann. Total Return – 3Y'] || fund['3Y Cat Rank']),
+    fiveYear: formatPercent(fund['5 Year'] || fund['Annualized Total Return - 5 Year (%)']),
+    fiveYearRank: formatRank(fund['5Y Rank'] || fund['Category Rank (%) Ann. Total Return – 5Y'] || fund['5Y Cat Rank']),
+    yield: formatPercent(fund['Yield'] || fund['SEC Yield'] || fund['SEC Yield (%)']),
+    stdDev: formatNumber(fund['StdDev3Y'] || fund['Standard Deviation - 3 Year'] || fund['Standard Deviation'] || fund['3Y Std Dev']),
+    expense: formatPercent(fund['Net Expense Ratio'] || fund['Net Exp Ratio (%)'] || fund['Expense Ratio']),
+    tenure: formatNumber(fund['Manager Tenure'] || fund['Longest Manager Tenure (Years)']),
+    score: formatScore(fund.scores?.final)
+  };
+}
+
+/**
+ * Prepare benchmark row data
+ */
+function prepareBenchmarkRow(benchmark) {
+  return {
+    ticker: '',  // Empty ticker for benchmark
+    name: BENCHMARK_NAMES[benchmark.ticker] || benchmark.name || benchmark.ticker,
+    rating: '',  // No rating for benchmark
+    ytd: formatPercent(benchmark['YTD'] || benchmark['Total Return - YTD (%)']),
+    ytdRank: '', // No rank for benchmark
+    oneYear: formatPercent(benchmark['1 Year'] || benchmark['Total Return - 1 Year (%)']),
+    oneYearRank: '',
+    threeYear: formatPercent(benchmark['3 Year'] || benchmark['Annualized Total Return - 3 Year (%)']),
+    threeYearRank: '',
+    fiveYear: formatPercent(benchmark['5 Year'] || benchmark['Annualized Total Return - 5 Year (%)']),
+    fiveYearRank: '',
+    yield: formatPercent(benchmark['Yield'] || benchmark['SEC Yield'] || benchmark['SEC Yield (%)']),
+    stdDev: formatNumber(benchmark['StdDev3Y'] || benchmark['Standard Deviation - 3 Year'] || benchmark['Standard Deviation'] || benchmark['3Y Std Dev']),
+    expense: '', // No expense ratio for benchmark
+    tenure: '',  // No manager tenure for benchmark
+    score: ''    // No score for benchmark
+  };
+}
+
+/**
  * Get column styles for table
  */
 function getColumnStyles() {
@@ -280,7 +379,8 @@ function getColumnStyles() {
   TABLE_COLUMNS.forEach((col, index) => {
     styles[index] = { 
       cellWidth: col.width,
-      halign: col.dataKey === 'Fund Name' ? 'left' : 'center'
+      halign: ['name'].includes(col.dataKey) ? 'left' : 'center',
+      valign: 'middle'
     };
   });
   return styles;
@@ -291,83 +391,98 @@ function getColumnStyles() {
  */
 function getStarRating(rating) {
   if (!rating) return '';
-  const stars = parseInt(rating);
-  if (isNaN(stars)) return '';
+  
+  // Handle different rating formats
+  let stars = 0;
+  if (typeof rating === 'number') {
+    stars = Math.round(rating);
+  } else if (typeof rating === 'string') {
+    // Try to parse number from string
+    const parsed = parseInt(rating);
+    if (!isNaN(parsed)) {
+      stars = parsed;
+    } else if (rating.includes('★') || rating.includes('☆')) {
+      // Already formatted
+      return rating;
+    }
+  }
+  
+  if (stars < 1 || stars > 5) return '';
+  
   return '★'.repeat(stars) + '☆'.repeat(5 - stars);
 }
 
 /**
- * Format number for display
+ * Format percentage values
  */
-function formatNumber(value, metric) {
+function formatPercent(value) {
   if (value == null || value === '') return '';
   
-  // Percentage fields
-  if (['YTD', '1 Year', '3 Year', '5 Year', '10 Year', 'Yield', 'Net Expense Ratio'].includes(metric)) {
+  // Handle string percentages
+  if (typeof value === 'string') {
+    // If already has %, just return it
+    if (value.includes('%')) return value;
+    // Try to parse
+    const parsed = parseFloat(value);
+    if (!isNaN(parsed)) {
+      return `${parsed.toFixed(2)}%`;
+    }
+    return value;
+  }
+  
+  // Handle numeric values
+  if (typeof value === 'number') {
     return `${value.toFixed(2)}%`;
   }
   
-  // Standard deviation and other decimals
-  if (['StdDev3Y', 'StdDev5Y', 'Sharpe Ratio', 'Manager Tenure'].includes(metric)) {
-    return value.toFixed(2);
-  }
-  
-  // Score
-  if (metric === 'scores.final') {
-    return value.toFixed(1);
-  }
-  
-  return value.toString();
+  return '';
 }
 
 /**
- * Get performance color based on rank
+ * Format numeric values
  */
-function getPerformanceColor(rank) {
-  if (rank <= 20) return [34, 197, 94]; // Green
-  if (rank <= 40) return [132, 204, 22]; // Light green
-  if (rank <= 60) return [250, 204, 21]; // Yellow
-  if (rank <= 80) return [251, 146, 60]; // Orange
-  return [239, 68, 68]; // Red
+function formatNumber(value, decimals = 1) {
+  if (value == null || value === '') return '';
+  
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return '';
+  
+  return num.toFixed(decimals);
 }
 
 /**
- * Group funds by asset class
+ * Format score values
  */
-function groupFundsByAssetClass(funds) {
-  const grouped = {};
-  funds.forEach(fund => {
-    const assetClass = fund['Asset Class'];
-    if (!grouped[assetClass]) {
-      grouped[assetClass] = [];
-    }
-    grouped[assetClass].push(fund);
-  });
-  
-  // Sort funds within each class by score
-  Object.keys(grouped).forEach(assetClass => {
-    grouped[assetClass].sort((a, b) => (b.scores?.final || 0) - (a.scores?.final || 0));
-  });
-  
-  return grouped;
+function formatScore(score) {
+  if (score == null) return '';
+  return Math.round(score).toString();
+}
+
+/**
+ * Get color for rank cell based on percentile
+ */
+function getRankColor(rank) {
+  if (rank <= 20) return REPORT_CONFIG.colors.rankColors.excellent;
+  if (rank <= 40) return REPORT_CONFIG.colors.rankColors.good;
+  if (rank <= 60) return REPORT_CONFIG.colors.rankColors.average;
+  if (rank <= 80) return REPORT_CONFIG.colors.rankColors.belowAverage;
+  return REPORT_CONFIG.colors.rankColors.poor;
 }
 
 /**
  * Add page numbers to all pages
  */
-function addPageNumbers(doc) {
-  const pageCount = doc.internal.getNumberOfPages();
-  
-  for (let i = 1; i <= pageCount; i++) {
+function addPageNumbers(doc, totalPages) {
+  for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFontSize(REPORT_CONFIG.fontSize.footer);
-    doc.setTextColor(150, 150, 150); // Light gray
+    doc.setTextColor(150, 150, 150);
     
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     
     doc.text(
-      `Page ${i} of ${pageCount}`, 
+      `Page ${i} of ${totalPages}`, 
       pageWidth / 2, 
       pageHeight - 20, 
       { align: 'center' }
@@ -375,9 +490,5 @@ function addPageNumbers(doc) {
   }
 }
 
-// Export functions
-export default {
-  generateMonthlyReport,
-  REPORT_CONFIG,
-  BENCHMARK_NAMES
-};
+// Export the main function as default and named export
+export default { generateMonthlyReport };

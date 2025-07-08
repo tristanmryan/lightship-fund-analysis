@@ -232,114 +232,126 @@ const App = () => {
         const headers = jsonData[headerRowIndex];
         const dataRows = jsonData.slice(headerRowIndex + 1);
 
-        // FIXED: More precise column mapping with exact matching where possible
-        const columnMap = {};
-        headers.forEach((header, index) => {
-          if (typeof header === 'string') {
-            const headerLower = header.toLowerCase().trim();
-            const headerClean = header.trim();
-            
-            // Basic fields - use exact matching where possible
-            if (headerLower.includes('symbol') || headerLower.includes('cusip')) {
-              columnMap['Symbol'] = index;
-            }
-            if (headerLower.includes('product name') || headerLower === 'name') {
-              columnMap['Fund Name'] = index;
-            }
-            // Only map strictly when the header exactly matches "Asset Class"
-            if (headerLower === 'asset class') {
-              columnMap['Asset Class'] = index;
-            }
-            
-            // Performance metrics - be more specific
-            if (headerLower === 'ytd' || (headerLower.includes('ytd') && !headerLower.includes('rank'))) {
-              columnMap['YTD'] = index;
-            }
-            
-            // Year returns - check for "return" to distinguish from std dev
-            if ((headerLower === '1 year' || headerLower === '1 yr' ||
-                (headerLower.includes('1 year') && headerLower.includes('return'))) &&
-                !headerLower.includes('deviation') && !headerLower.includes('std') &&
-                !headerLower.includes('rank')) {
-              columnMap['1 Year'] = index;
-            }
-
-            if ((headerLower === '3 year' || headerLower === '3 yr' ||
-                (headerLower.includes('3 year') && headerLower.includes('return'))) &&
-                !headerLower.includes('deviation') && !headerLower.includes('std') &&
-                !headerLower.includes('rank')) {
-              columnMap['3 Year'] = index;
-            }
-
-            if ((headerLower === '5 year' || headerLower === '5 yr' ||
-                (headerLower.includes('5 year') && headerLower.includes('return'))) &&
-                !headerLower.includes('deviation') && !headerLower.includes('std') &&
-                !headerLower.includes('rank')) {
-              columnMap['5 Year'] = index;
-            }
-
-            if ((headerLower === '10 year' || headerLower === '10 yr' ||
-                (headerLower.includes('10 year') && headerLower.includes('return'))) &&
-                !headerLower.includes('deviation') && !headerLower.includes('std') &&
-                !headerLower.includes('rank')) {
-              columnMap['10 Year'] = index;
-            }
-            
-            // Standard Deviation - handle various formats
-            if (headerLower.includes('3 year') && (headerLower.includes('standard deviation') || headerLower.includes('std dev'))) {
-              columnMap['StdDev3Y'] = index;
-            } else if (headerLower.includes('3 yr') && (headerLower.includes('standard deviation') || headerLower.includes('std dev'))) {
-              columnMap['StdDev3Y'] = index;
-            }
-            
-            if (headerLower.includes('5 year') && (headerLower.includes('standard deviation') || headerLower.includes('std dev'))) {
-              columnMap['StdDev5Y'] = index;
-            } else if (headerLower.includes('5 yr') && (headerLower.includes('standard deviation') || headerLower.includes('std dev'))) {
-              columnMap['StdDev5Y'] = index;
-            }
-            
-            // If just "Standard Deviation" without year specification
-            if ((headerLower === 'standard deviation' || headerLower === 'std dev') && 
-                !headerLower.includes('year') && !headerLower.includes('yr')) {
-              columnMap['Standard Deviation'] = index;
-            }
-            
-            // Risk metrics
-            if (headerLower.includes('alpha') && !headerLower.includes('beta')) {
-              columnMap['Alpha'] = index;
-            }
-            if (headerLower.includes('sharpe') && headerLower.includes('ratio')) {
-              columnMap['Sharpe Ratio'] = index;
-            }
-            
-            // Capture ratios
-            if (headerLower.includes('up capture') || headerLower.includes('upside capture')) {
-              columnMap['Up Capture Ratio'] = index;
-            }
-            if (headerLower.includes('down capture') || headerLower.includes('downside capture')) {
-              columnMap['Down Capture Ratio'] = index;
-            }
-            
-            // Other metrics
-            // Expense ratio headers come in many forms: "Expense Ratio", "Exp Ratio (Net)" etc.
-            if (
-              (headerLower.includes('expense') || headerLower.includes('exp')) &&
-              headerLower.includes('ratio') &&
-              !headerLower.includes('gross')
-            ) {
-              columnMap['Net Expense Ratio'] = index;
-            }
-            if (headerLower.includes('manager tenure')) {
-              columnMap['Manager Tenure'] = index;
-            }
-          }
-        });
-
-        // Log column mappings for debugging
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Column mappings:', columnMap);
-          console.log('Headers found:', headers);
-        }
+                // Enhanced column mapping to handle your specific CSV format
+                const columnMap = {};
+                headers.forEach((header, index) => {
+                  if (typeof header === 'string') {
+                    const headerLower = header.toLowerCase().trim();
+                    const headerClean = header.trim();
+                    
+                    // Basic fields - use exact matching where possible
+                    if (headerLower.includes('symbol') || headerLower.includes('cusip')) {
+                      columnMap['Symbol'] = index;
+                    }
+                    if (headerLower.includes('product name') || headerLower === 'name') {
+                      columnMap['Fund Name'] = index;
+                    }
+                    
+                    // Morningstar Star Rating
+                    if (headerLower.includes('morningstar star rating')) {
+                      columnMap['Morningstar Star Rating'] = index;
+                    }
+                    
+                    // YTD fields
+                    if (headerClean === 'Total Return - YTD (%)') {
+                      columnMap['YTD'] = index;
+                    }
+                    if (headerClean === 'Category Rank (%) Total Return – YTD' || 
+                        headerClean === 'Category Rank (%) Total Return - YTD') {
+                      columnMap['YTD Rank'] = index;
+                    }
+                    
+                    // 1 Year fields
+                    if (headerClean === 'Total Return - 1 Year (%)') {
+                      columnMap['1 Year'] = index;
+                    }
+                    if (headerClean === 'Category Rank (%) Total Return – 1Y' || 
+                        headerClean === 'Category Rank (%) Total Return - 1Y') {
+                      columnMap['1Y Rank'] = index;
+                    }
+                    
+                    // 3 Year fields
+                    if (headerClean === 'Annualized Total Return - 3 Year (%)') {
+                      columnMap['3 Year'] = index;
+                    }
+                    if (headerClean === 'Category Rank (%) Ann. Total Return – 3Y' || 
+                        headerClean === 'Category Rank (%) Ann. Total Return - 3Y') {
+                      columnMap['3Y Rank'] = index;
+                    }
+                    
+                    // 5 Year fields
+                    if (headerClean === 'Annualized Total Return - 5 Year (%)') {
+                      columnMap['5 Year'] = index;
+                    }
+                    if (headerClean === 'Category Rank (%) Ann. Total Return – 5Y' || 
+                        headerClean === 'Category Rank (%) Ann. Total Return - 5Y') {
+                      columnMap['5Y Rank'] = index;
+                    }
+                    
+                    // 10 Year fields
+                    if (headerClean === 'Annualized Total Return - 10 Year (%)') {
+                      columnMap['10 Year'] = index;
+                    }
+                    if (headerClean === 'Category Rank (%) Ann. Total Return – 10Y' || 
+                        headerClean === 'Category Rank (%) Ann. Total Return - 10Y') {
+                      columnMap['10Y Rank'] = index;
+                    }
+                    
+                    // Risk and performance metrics
+                    if (headerClean === 'Alpha (Asset Class) - 5 Year') {
+                      columnMap['Alpha'] = index;
+                    }
+                    if (headerClean === 'Sharpe Ratio - 3 Year') {
+                      columnMap['Sharpe Ratio'] = index;
+                    }
+                    if (headerClean === 'Standard Deviation - 3 Year') {
+                      columnMap['StdDev3Y'] = index;
+                    }
+                    if (headerClean === 'Standard Deviation - 5 Year') {
+                      columnMap['StdDev5Y'] = index;
+                    }
+                    
+                    // Capture ratios
+                    if (headerClean === 'Up Capture Ratio (Morningstar Standard) - 3 Year') {
+                      columnMap['Up Capture Ratio'] = index;
+                    }
+                    if (headerClean === 'Down Capture Ratio (Morningstar Standard) - 3 Year') {
+                      columnMap['Down Capture Ratio'] = index;
+                    }
+                    
+                    // Other fields
+                    if (headerClean === 'SEC Yield (%)') {
+                      columnMap['Yield'] = index;
+                    }
+                    if (headerClean === 'Net Exp Ratio (%)') {
+                      columnMap['Net Expense Ratio'] = index;
+                    }
+                    if (headerClean === 'Longest Manager Tenure (Years)') {
+                      columnMap['Manager Tenure'] = index;
+                    }
+                    
+                    // Fallback mappings for alternative formats
+                    if (!columnMap['YTD'] && headerLower.includes('ytd') && headerLower.includes('return') && !headerLower.includes('rank')) {
+                      columnMap['YTD'] = index;
+                    }
+                    if (!columnMap['1 Year'] && headerLower.includes('1 year') && headerLower.includes('return') && !headerLower.includes('rank')) {
+                      columnMap['1 Year'] = index;
+                    }
+                    if (!columnMap['3 Year'] && headerLower.includes('3 year') && headerLower.includes('return') && !headerLower.includes('rank')) {
+                      columnMap['3 Year'] = index;
+                    }
+                    if (!columnMap['5 Year'] && headerLower.includes('5 year') && headerLower.includes('return') && !headerLower.includes('rank')) {
+                      columnMap['5 Year'] = index;
+                    }
+                    if (!columnMap['10 Year'] && headerLower.includes('10 year') && headerLower.includes('return') && !headerLower.includes('rank')) {
+                      columnMap['10 Year'] = index;
+                    }
+                  }
+                });
+        
+                // Log column mappings for debugging
+                console.log('Column mappings:', columnMap);
+                console.log('Headers found:', headers);
 
         // Parse the data rows
         const parsed = dataRows.map(row => {
