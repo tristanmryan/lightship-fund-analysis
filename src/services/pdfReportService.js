@@ -109,34 +109,29 @@ export function generateMonthlyReport(data) {
 
   // Add cover page
   addCoverPage(doc, metadata);
-  
+
+  // Start a new page for report tables
+  doc.addPage();
+
   // Group funds by asset class and filter out benchmarks from main list
   const fundsByClass = groupAndFilterFunds(funds, benchmarks);
-  
+
   // Add each asset class section
-  let currentPage = 2;
-  assetClassGroups.forEach((group, groupIndex) => {
-    group.classes.forEach((assetClass, classIndex) => {
+  assetClassGroups.forEach(group => {
+    group.classes.forEach(assetClass => {
       const classFunds = fundsByClass[assetClass] || [];
       const benchmark = benchmarks[assetClass];
-      
+
       // Skip empty asset classes
       if (classFunds.length === 0 && !benchmark) return;
-      
-      // Check if we need a new page
-      const currentY = doc.lastAutoTable?.finalY || REPORT_CONFIG.margins.top;
-      if (currentY > 420 || (groupIndex > 0 && classIndex === 0)) {
-        doc.addPage();
-        currentPage++;
-      }
-      
+
       // Add asset class table
       addAssetClassTable(doc, assetClass, classFunds, benchmark);
     });
   });
-  
+
   // Add page numbers
-  addPageNumbers(doc, currentPage);
+  addPageNumbers(doc, doc.getNumberOfPages());
   
   return doc;
 }
@@ -231,18 +226,10 @@ function groupAndFilterFunds(funds, benchmarks) {
  * Add asset class table to PDF
  */
 function addAssetClassTable(doc, assetClass, funds, benchmark) {
-  const startY = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 20 : REPORT_CONFIG.margins.top;
-  
-  // Asset class header
-  doc.setFontSize(REPORT_CONFIG.fontSize.heading);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text(assetClass, REPORT_CONFIG.margins.left, startY);
-  
-  // Prepare table data
+  let startY = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 20 : REPORT_CONFIG.margins.top;
+
   const tableData = funds.map(fund => prepareRowData(fund));
-  
-  // Add benchmark row if exists
+
   if (benchmark && benchmark.ticker) {
     const benchmarkRow = prepareBenchmarkRow(benchmark);
     tableData.push(benchmarkRow);
@@ -269,6 +256,15 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
       fillColor: REPORT_CONFIG.colors.alternateRow
     },
     columnStyles: getColumnStyles(),
+    pageBreak: 'avoid',
+    willDrawPage: function(data) {
+      if (data.pageNumber === 1) {
+        doc.setFontSize(REPORT_CONFIG.fontSize.heading);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(0, 0, 0);
+        doc.text(assetClass, REPORT_CONFIG.margins.left, data.cursor.y - 15);
+      }
+    },
     didParseCell: function(data) {
       // Highlight benchmark row
       if (benchmark && data.row.index === tableData.length - 1) {
