@@ -149,15 +149,11 @@ const App = () => {
       await fundRegistry.initialize(defaultRecommendedFunds, defaultBenchmarks);
       const [funds, benchmarkMap] = await Promise.all([
         fundRegistry.getActiveFunds(),
-        fundRegistry.getBenchmarksByTicker()
+        fundRegistry.getBenchmarksByAssetClass()
       ]);
 
       setRecommendedFunds(funds);
-      const mapped = {};
-      Object.values(benchmarkMap).forEach(b => {
-        mapped[b.assetClass] = { ticker: b.ticker, name: b.name };
-      });
-      setAssetClassBenchmarks(mapped);
+      setAssetClassBenchmarks(benchmarkMap);
     };
 
     initializeRegistry();
