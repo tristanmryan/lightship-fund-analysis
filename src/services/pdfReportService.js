@@ -279,7 +279,13 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
     },
     didDrawCell: function(data) {
       // Custom rendering for rank cells with color coding
-      if (data.column.dataKey && data.column.dataKey.includes('Rank') && data.row.index < tableData.length - 1) {
+      // Apply only to body cells so header cells remain unstyled
+      if (
+        data.section === 'body' &&
+        data.column.dataKey &&
+        data.column.dataKey.includes('Rank') &&
+        data.row.index < tableData.length - 1
+      ) {
         const rankValue = parseInt(data.cell.text);
         if (!isNaN(rankValue)) {
           // Clear the default text
