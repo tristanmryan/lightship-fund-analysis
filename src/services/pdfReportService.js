@@ -192,14 +192,16 @@ function groupAndFilterFunds(funds, benchmarks) {
   const grouped = {};
   
   // Get all benchmark tickers for filtering
+  const clean = (s) => s?.toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
   const benchmarkTickers = new Set();
   Object.values(benchmarks).forEach(b => {
-    if (b.ticker) benchmarkTickers.add(b.ticker);
+    if (b.ticker) benchmarkTickers.add(clean(b.ticker));
   });
   
   funds.forEach(fund => {
     // Skip if this is a benchmark fund
-    if (benchmarkTickers.has(fund.Symbol)) return;
+    const symbol = fund.cleanSymbol || fund.Symbol || fund['Symbol/CUSIP'];
+    if (benchmarkTickers.has(clean(symbol))) return;
     
     const assetClass = fund['Asset Class'];
     if (!assetClass) return;
