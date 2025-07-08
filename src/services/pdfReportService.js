@@ -416,29 +416,25 @@ function getColumnStyles() {
  * Get star rating display
  */
 function getStarRating(rating) {
-  if (rating == null || rating === '') return '';
-
+  if (!rating) return '';
+  
   // Handle different rating formats
   let stars = 0;
   if (typeof rating === 'number') {
     stars = Math.round(rating);
   } else if (typeof rating === 'string') {
-    // Try to parse a number from the string (handles "4", "4.0", etc.)
-    const parsed = parseFloat(rating);
+    // Try to parse number from string
+    const parsed = parseInt(rating);
     if (!isNaN(parsed)) {
-      stars = Math.round(parsed);
+      stars = parsed;
     } else if (rating.includes('★') || rating.includes('☆')) {
-      // Already formatted with star characters
+      // Already formatted
       return rating;
-    } else {
-      const match = rating.match(/\d/);
-      if (match) stars = parseInt(match[0]);
     }
   }
-
-  if (stars < 0) stars = 0;
-  if (stars > 5) stars = 5;
-
+  
+  if (stars < 1 || stars > 5) return '';
+  
   return '★'.repeat(stars) + '☆'.repeat(5 - stars);
 }
 
