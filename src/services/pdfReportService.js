@@ -226,22 +226,35 @@ function groupAndFilterFunds(funds, benchmarks) {
  * Add asset class table to PDF
  */
 function addAssetClassTable(doc, assetClass, funds, benchmark) {
-  const startY = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 20 : REPORT_CONFIG.margins.top;
-  
-  // Asset class header
-  doc.setFontSize(REPORT_CONFIG.fontSize.heading);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text(assetClass, REPORT_CONFIG.margins.left, startY);
-  
-  // Prepare table data
+  let startY = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 20 : REPORT_CONFIG.margins.top;
+
+  // Prepare table data first to estimate height
   const tableData = funds.map(fund => prepareRowData(fund));
-  
+
   // Add benchmark row if exists
   if (benchmark && benchmark.ticker) {
     const benchmarkRow = prepareBenchmarkRow(benchmark);
     tableData.push(benchmarkRow);
   }
+
+  // Estimate table height to keep heading with table
+  const rowHeight = REPORT_CONFIG.fontSize.body + 6; // approximate
+  const estimatedHeight = 15 + (tableData.length + 1) * rowHeight;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const available = pageHeight - REPORT_CONFIG.margins.bottom - startY;
+
+  // If table fits on a fresh page but not here, move to new page
+  const fullPageSpace = pageHeight - REPORT_CONFIG.margins.top - REPORT_CONFIG.margins.bottom;
+  if (estimatedHeight <= fullPageSpace && estimatedHeight > available) {
+    doc.addPage();
+    startY = REPORT_CONFIG.margins.top;
+  }
+
+  // Asset class header
+  doc.setFontSize(REPORT_CONFIG.fontSize.heading);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text(assetClass, REPORT_CONFIG.margins.left, startY);
   
   // Generate table
   doc.autoTable({
