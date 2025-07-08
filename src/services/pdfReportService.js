@@ -258,7 +258,7 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
   doc.autoTable({
     startY: startY + 15,
     head: [TABLE_COLUMNS.map(col => col.header)],
-    body: tableData.map(row => TABLE_COLUMNS.map(col => row[col.dataKey] || '')),
+    body: tableData,
     columns: TABLE_COLUMNS,
     headStyles: {
       fillColor: REPORT_CONFIG.colors.headerBg,
@@ -356,7 +356,9 @@ function prepareRowData(fund) {
   return {
     ticker: fund.Symbol || fund['Symbol/CUSIP'] || '',
     name: fund.displayName || fund['Fund Name'] || fund['Product Name'] || '',
-    rating: getStarRating(fund['Morningstar Star Rating'] || fund['Rating'] || fund['Star Rating']),
+    rating: getStarRating(
+      fund['Morningstar Star Rating'] || fund['Rating'] || fund['Star Rating']
+    ),
     ytd: formatPercent(fund['YTD'] || fund['Total Return - YTD (%)']),
     ytdRank: formatRank(fund['YTD Rank'] || fund['Category Rank (%) Total Return – YTD'] || fund['YTD Cat Rank']),
     oneYear: formatPercent(fund['1 Year'] || fund['Total Return - 1 Year (%)']),
@@ -416,25 +418,11 @@ function getColumnStyles() {
  * Get star rating display
  */
 function getStarRating(rating) {
-  if (!rating) return '';
-  
-  // Handle different rating formats
-  let stars = 0;
-  if (typeof rating === 'number') {
-    stars = Math.round(rating);
-  } else if (typeof rating === 'string') {
-    // Try to parse number from string
-    const parsed = parseInt(rating);
-    if (!isNaN(parsed)) {
-      stars = parsed;
-    } else if (rating.includes('★') || rating.includes('☆')) {
-      // Already formatted
-      return rating;
-    }
-  }
-  
-  if (stars < 1 || stars > 5) return '';
-  
+  if (rating == null || rating === '') return '';
+
+  let stars = typeof rating === 'number' ? rating : parseInt(rating, 10);
+  if (isNaN(stars) || stars < 1 || stars > 5) return '';
+
   return '★'.repeat(stars) + '☆'.repeat(5 - stars);
 }
 
