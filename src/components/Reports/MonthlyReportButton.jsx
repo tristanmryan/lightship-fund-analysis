@@ -68,7 +68,7 @@ const MonthlyReportButton = ({
 
       // Find the benchmark fund in the data using cleaned tickers
       const benchmarkFund = allFunds.find(f => {
-        const symbol = f.cleanSymbol || f.Symbol || f['Symbol/CUSIP'];
+        const symbol = f.Symbol || f['Symbol/CUSIP'];
         return clean(symbol) === target;
       });
 
