@@ -2,6 +2,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import assetClassGroups from '../data/assetClassGroups';
+import DejaVuSans from '../assets/DejaVuSans';
 
 /**
  * PDF Report Generation Service
@@ -106,6 +107,11 @@ export function generateMonthlyReport(data) {
     unit: REPORT_CONFIG.unit,
     format: REPORT_CONFIG.format
   });
+
+  // Register font that supports star characters
+  doc.addFileToVFS('DejaVuSans.ttf', DejaVuSans);
+  doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
+  doc.setFont('DejaVuSans');
 
   // Add cover page
   addCoverPage(doc, metadata);
@@ -327,6 +333,18 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
             data.cell.y + data.cell.height / 2 + 1,
             { align: 'center', baseline: 'middle' }
           );
+        }
+      }
+
+      // Draw star ratings
+      if (
+        data.section === 'body' &&
+        data.column.dataKey === 'rating' &&
+        data.row.raw && data.row.raw.ratingValue
+      ) {
+        const rating = parseInt(data.row.raw.ratingValue);
+        if (!isNaN(rating) && rating > 0) {
+          drawRatingStars(doc, rating, data.cell);
         }
       }
     },
