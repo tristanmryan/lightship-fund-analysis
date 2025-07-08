@@ -59,14 +59,11 @@ const MonthlyReportButton = ({
   // Extract benchmark data from the fund list
   const prepareBenchmarkData = (allFunds, benchmarkMappings) => {
     const prepared = {};
-
-    const clean = (s) => s?.toUpperCase().trim();
-
+    
     Object.entries(benchmarkMappings).forEach(([assetClass, benchmarkInfo]) => {
-      // Find the benchmark fund in the data using a cleaned ticker match
-      const ticker = clean(benchmarkInfo.ticker);
-      const benchmarkFund = allFunds.find(f => clean(f.Symbol) === ticker);
-
+      // Find the benchmark fund in the data
+      const benchmarkFund = allFunds.find(f => f.Symbol === benchmarkInfo.ticker);
+      
       if (benchmarkFund) {
         prepared[assetClass] = {
           ticker: benchmarkInfo.ticker,
@@ -75,7 +72,7 @@ const MonthlyReportButton = ({
         };
       }
     });
-
+    
     return prepared;
   };
 
