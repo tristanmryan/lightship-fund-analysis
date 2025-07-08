@@ -2,6 +2,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import assetClassGroups from '../data/assetClassGroups';
+import NotoSansRegular from '../fonts/NotoSansRegular';
 
 /**
  * PDF Report Generation Service
@@ -106,6 +107,11 @@ export function generateMonthlyReport(data) {
     unit: REPORT_CONFIG.unit,
     format: REPORT_CONFIG.format
   });
+
+  // Register and set custom font that supports star characters
+  doc.addFileToVFS('NotoSans-Regular.ttf', NotoSansRegular);
+  doc.addFont('NotoSans-Regular.ttf', 'NotoSans', 'normal');
+  doc.setFont('NotoSans');
 
   // Add cover page
   addCoverPage(doc, metadata);
@@ -416,7 +422,7 @@ function getColumnStyles() {
  * Get star rating display
  */
 function getStarRating(rating) {
-  if (!rating) return '';
+  if (rating == null || rating === '' || rating === 0) return '';
   
   // Handle different rating formats
   let stars = 0;
