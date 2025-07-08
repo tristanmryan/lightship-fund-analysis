@@ -2,7 +2,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import assetClassGroups from '../data/assetClassGroups';
-import DejaVuSans from '../assets/DejaVuSans';
 
 /**
  * PDF Report Generation Service
@@ -107,11 +106,6 @@ export function generateMonthlyReport(data) {
     unit: REPORT_CONFIG.unit,
     format: REPORT_CONFIG.format
   });
-
-  // Register font that supports star characters
-  doc.addFileToVFS('DejaVuSans.ttf', DejaVuSans);
-  doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
-  doc.setFont('DejaVuSans');
 
   // Add cover page
   addCoverPage(doc, metadata);
