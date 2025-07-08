@@ -293,8 +293,12 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
             'F'
           );
           
+          // Determine appropriate text color based on background brightness
+          const bgColor = getRankColor(rankValue);
+          const textColor = getTextColorForBackground(bgColor);
+
           // Redraw the text in contrasting color
-          doc.setTextColor(rankValue > 60 ? 255 : 0, rankValue > 60 ? 255 : 0, rankValue > 60 ? 255 : 0);
+          doc.setTextColor(...textColor);
           doc.setFontSize(REPORT_CONFIG.fontSize.body);
           doc.text(
             data.cell.text,
@@ -468,6 +472,15 @@ function getRankColor(rank) {
   if (rank <= 60) return REPORT_CONFIG.colors.rankColors.average;
   if (rank <= 80) return REPORT_CONFIG.colors.rankColors.belowAverage;
   return REPORT_CONFIG.colors.rankColors.poor;
+}
+
+/**
+ * Determine black vs white text color based on background brightness
+ */
+function getTextColorForBackground(rgb) {
+  const [r, g, b] = rgb;
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 150 ? [0, 0, 0] : [255, 255, 255];
 }
 
 /**
