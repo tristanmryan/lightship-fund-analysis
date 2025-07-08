@@ -129,7 +129,7 @@ const TagManager = ({ funds, benchmarkData, onFilterChange }) => {
         >
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
-              {fund.Symbol} - {fund['Fund Name']}
+              {fund.Symbol} - {fund.displayName}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>
               {fund['Asset Class']} | Score: {fund.scores?.final || '-'}

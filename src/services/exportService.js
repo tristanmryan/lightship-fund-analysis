@@ -73,7 +73,7 @@ export function exportToExcel(data) {
 
   const fundRows = funds.map(fund => [
     fund.Symbol,
-    fund['Fund Name'],
+    fund.displayName || fund['Fund Name'],
     fund['Asset Class'],
     fund.scores?.final || '',
     fund.scores?.percentile || '',
@@ -134,7 +134,7 @@ export function exportToExcel(data) {
 
     const reviewRows = reviewCandidates.map(fund => [
       fund.Symbol,
-      fund['Fund Name'],
+      fund.displayName || fund['Fund Name'],
       fund['Asset Class'],
       fund.scores?.final || '',
       fund.reviewReasons.join('; '),
@@ -231,7 +231,7 @@ export function exportToExcel(data) {
       const b = fund.scores.breakdown;
       return [
         fund.Symbol,
-        fund['Fund Name'],
+        fund.displayName || fund['Fund Name'],
         fund.scores.final,
         b.ytd?.zScore?.toFixed(2) || '',
         b.oneYear?.zScore?.toFixed(2) || '',
@@ -438,7 +438,7 @@ export function generateHTMLReport(data) {
         <tr>
           <td>
             <strong>${fund.Symbol}</strong><br>
-            <small>${fund['Fund Name']}</small><br>
+            <small>${fund.displayName || fund['Fund Name']}</small><br>
             <small style="color: #666">${fund['Asset Class']}</small>
           </td>
           <td>
@@ -512,7 +512,7 @@ export function generateHTMLReport(data) {
           <td>${i + 1}</td>
           <td>
             <strong>${fund.Symbol}</strong><br>
-            <small>${fund['Fund Name']}</small>
+            <small>${fund.displayName || fund['Fund Name']}</small>
           </td>
           <td>
             <span class="score-badge ${getScoreClass(fund.scores?.final || 0)}">
@@ -561,7 +561,7 @@ export function exportToCSV(funds) {
 
   const rows = funds.map(fund => [
     fund.Symbol,
-    `"${fund['Fund Name']}"`,
+    `"${fund.displayName || fund['Fund Name']}"`,
     `"${fund['Asset Class']}"`,
     fund.scores?.final || '',
     fund.scores?.percentile || '',
@@ -618,14 +618,14 @@ TOP PERFORMERS:
 ${funds
   .sort((a, b) => (b.scores?.final || 0) - (a.scores?.final || 0))
   .slice(0, 5)
-  .map((f, i) => `${i + 1}. ${f.Symbol} - ${f['Fund Name']} (Score: ${f.scores?.final || 'N/A'})`)
+  .map((f, i) => `${i + 1}. ${f.Symbol} - ${f.displayName || f['Fund Name']} (Score: ${f.scores?.final || 'N/A'})`)
   .join('\n')}
 
 BOTTOM PERFORMERS:
 ${funds
   .sort((a, b) => (a.scores?.final || 999) - (b.scores?.final || 999))
   .slice(0, 5)
-  .map((f, i) => `${i + 1}. ${f.Symbol} - ${f['Fund Name']} (Score: ${f.scores?.final || 'N/A'})`)
+  .map((f, i) => `${i + 1}. ${f.Symbol} - ${f.displayName || f['Fund Name']} (Score: ${f.scores?.final || 'N/A'})`)
   .join('\n')}
 
 ASSET CLASS SUMMARY:

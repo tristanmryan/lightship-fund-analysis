@@ -120,6 +120,16 @@ const App = () => {
   const [recommendedFunds, setRecommendedFunds] = useState([]);
   const [assetClassBenchmarks, setAssetClassBenchmarks] = useState({});
 
+  // Map of symbol -> cleaned fund name from registry
+  const registryNameMap = useMemo(() => {
+    const clean = (s) => s?.toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
+    const map = {};
+    recommendedFunds.forEach(f => {
+      map[clean(f.symbol)] = f.name;
+    });
+    return map;
+  }, [recommendedFunds]);
+
   // List of available asset classes from benchmarks and loaded funds
   const assetClasses = useMemo(() => {
     const classes = new Set(Object.keys(assetClassBenchmarks));
@@ -399,6 +409,7 @@ const App = () => {
         const withClassAndFlags = parsed.map(f => {
           const parsedSymbol = clean(f.Symbol);
           const recommendedMatch = recommendedFunds.find(r => clean(r.symbol) === parsedSymbol);
+          const displayName = registryNameMap[parsedSymbol] || f['Fund Name'];
           
           // Check if this fund is a benchmark for any asset class
           let isBenchmark = false;
@@ -414,6 +425,7 @@ const App = () => {
             ...f,
             Symbol: f.Symbol, // Keep original symbol for display
             cleanSymbol: parsedSymbol, // Add clean version for matching
+            displayName,
             'Asset Class': recommendedMatch ? recommendedMatch.assetClass :
                           benchmarkForClass ? benchmarkForClass :
                           'Unknown',
@@ -496,7 +508,8 @@ const App = () => {
     setSelectedSnapshot(snapshot);
     const fundsWithGroup = snapshot.funds.map(f => ({
       ...f,
-      assetGroup: f.assetGroup || assetClassGroups[f['Asset Class']] || 'Other'
+      assetGroup: f.assetGroup || assetClassGroups[f['Asset Class']] || 'Other',
+      displayName: registryNameMap[f.cleanSymbol] || f.displayName || f['Fund Name']
     }));
     setScoredFundData(fundsWithGroup);
     setClassSummaries(snapshot.classSummaries || {});
@@ -970,7 +983,7 @@ const App = () => {
                     <td style={{ padding: '0.75rem', fontWeight: fund.isBenchmark ? 'bold' : 'normal' }}>
                       {fund.Symbol}
                     </td>
-                    <td style={{ padding: '0.75rem' }}>{fund['Fund Name']}</td>
+                    <td style={{ padding: '0.75rem' }}>{fund.displayName}</td>
                     <td style={{ padding: '0.75rem' }}>{fund['Asset Class']}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                       {fund.scores ? (
@@ -1162,7 +1175,7 @@ const App = () => {
                         </span>
                       </td>
                       <td style={{ padding: '0.75rem' }}>
-                        {benchmarkData[selectedClass]['Fund Name'] || benchmarkData[selectedClass].name}
+                        {benchmarkData[selectedClass].displayName || benchmarkData[selectedClass]['Fund Name'] || benchmarkData[selectedClass].name}
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                         {benchmarkData[selectedClass].scores ? (
@@ -1222,7 +1235,7 @@ const App = () => {
                             </span>
                           )}
                         </td>
-                        <td style={{ padding: '0.75rem' }}>{fund['Fund Name']}</td>
+                        <td style={{ padding: '0.75rem' }}>{fund.displayName}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                           {fund.scores ? (
                             <ScoreBadge score={fund.scores.final} />
@@ -1311,7 +1324,7 @@ const App = () => {
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
                             <div>
                               <h3 style={{ fontWeight: 'bold', fontSize: '1.125rem' }}>
-                                {fund['Fund Name']}
+                                {fund.displayName}
                               </h3>
                               <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
                                 {fund.Symbol} | {fund['Asset Class']}

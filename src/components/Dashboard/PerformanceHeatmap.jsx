@@ -271,7 +271,7 @@ const PerformanceHeatmap = ({ funds }) => {
           maxWidth: '400px'
         }}>
           <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
-            {hoveredFund['Fund Name']}
+            {hoveredFund.displayName}
           </div>
           <div style={{ 
             display: 'grid', 

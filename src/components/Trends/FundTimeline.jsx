@@ -77,7 +77,7 @@ const FundTimeline = ({ snapshots, currentFunds }) => {
       filteredSnapshots.forEach(snapshot => {
         const fund = snapshot.funds.find(f => f.Symbol === fundSymbol);
         if (fund) {
-          fundData.name = fund['Fund Name'] || fundSymbol;
+          fundData.name = fund.displayName || fund['Fund Name'] || fundSymbol;
           
           let value = null;
           switch (selectedMetric) {

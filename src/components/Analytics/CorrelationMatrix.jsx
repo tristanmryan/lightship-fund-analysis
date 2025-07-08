@@ -190,7 +190,7 @@ const CorrelationMatrix = ({ funds }) => {
                 }}>
                   <div>{fund1.Symbol}</div>
                   <div style={{ fontSize: '0.6875rem', color: '#6b7280' }}>
-                    {fund1['Fund Name']?.substring(0, 20)}...
+                    {fund1.displayName?.substring(0, 20)}...
                   </div>
                 </td>
                 {displayFunds.map((fund2, j) => {

@@ -50,7 +50,7 @@ const FundDetailsModal = ({ fund, onClose }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-          {fund['Fund Name']}
+          {fund.displayName}
         </h3>
         <div style={{ marginBottom: '1rem' }}>
           <strong>Symbol:</strong> {fund.Symbol} |{' '}
