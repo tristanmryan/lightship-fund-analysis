@@ -4,14 +4,12 @@ import { FileText, Loader } from 'lucide-react';
 import { generateMonthlyReport } from '../../services/pdfReportService';
 import assetClassGroups from '../../data/assetClassGroups';
 
-const MonthlyReportButton = ({
-  fundData,
+const MonthlyReportButton = ({ 
+  fundData, 
   metadata,
-  assetClassBenchmarks
+  assetClassBenchmarks 
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
-
-  const clean = (s) => s?.toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
 
   const handleGenerateReport = async () => {
     setIsGenerating(true);
@@ -21,12 +19,8 @@ const MonthlyReportButton = ({
       const benchmarkData = prepareBenchmarkData(fundData, assetClassBenchmarks);
       
       // Filter out benchmarks from the main fund list for the report
-      const benchmarkTickers = new Set(
-        Object.values(assetClassBenchmarks).map(b => clean(b.ticker))
-      );
-      const nonBenchmarkFunds = fundData.filter(
-        f => !benchmarkTickers.has(clean(f.Symbol))
-      );
+      const benchmarkTickers = new Set(Object.values(assetClassBenchmarks).map(b => b.ticker));
+      const nonBenchmarkFunds = fundData.filter(f => !benchmarkTickers.has(f.Symbol));
       
       // Prepare report data
       const reportData = {
@@ -65,12 +59,10 @@ const MonthlyReportButton = ({
   // Extract benchmark data from the fund list
   const prepareBenchmarkData = (allFunds, benchmarkMappings) => {
     const prepared = {};
-
+    
     Object.entries(benchmarkMappings).forEach(([assetClass, benchmarkInfo]) => {
       // Find the benchmark fund in the data
-      const benchmarkFund = allFunds.find(
-        f => clean(f.Symbol) === clean(benchmarkInfo.ticker)
-      );
+      const benchmarkFund = allFunds.find(f => f.Symbol === benchmarkInfo.ticker);
       
       if (benchmarkFund) {
         prepared[assetClass] = {
