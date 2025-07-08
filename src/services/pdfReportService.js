@@ -445,6 +445,18 @@ function getStarRating(rating) {
 }
 
 /**
+ * Draw star rating graphics in a table cell
+ */
+function drawRatingStars(doc, rating, cell) {
+  const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+  doc.setFontSize(REPORT_CONFIG.fontSize.body);
+  doc.text(stars, cell.x + cell.width / 2, cell.y + cell.height / 2 + 1, {
+    align: 'center',
+    baseline: 'middle'
+  });
+}
+
+/**
  * Format percentage values
  */
 function formatPercent(value) {
