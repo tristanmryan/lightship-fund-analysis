@@ -27,11 +27,12 @@ const REPORT_CONFIG = {
     alternateRow: [249, 250, 251], // Light gray
     // Performance colors for rank cells
     rankColors: {
-      excellent: [34, 197, 94], // Green - top 20%
-      good: [132, 204, 22], // Light green - 20-40%
-      average: [250, 204, 21], // Yellow - 40-60%
-      belowAverage: [251, 146, 60], // Orange - 60-80%
-      poor: [239, 68, 68] // Red - bottom 20%
+      // Softer palette for easier viewing
+      excellent: [200, 230, 201], // Pale green - top 20%
+      good: [220, 237, 193], // Light yellow-green - 20-40%
+      average: [255, 243, 205], // Pale yellow - 40-60%
+      belowAverage: [255, 224, 178], // Light orange - 60-80%
+      poor: [255, 205, 210] // Light red - bottom 20%
     }
   },
   fontSize: {
