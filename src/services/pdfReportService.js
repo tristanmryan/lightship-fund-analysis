@@ -241,15 +241,12 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
     tableData.push(benchmarkRow);
   }
 
-  // Estimate table height to keep heading with table
-  const rowHeight = REPORT_CONFIG.fontSize.body + 6; // approximate
-  const estimatedHeight = 15 + (tableData.length + 1) * rowHeight;
+  // Check if we need a new page for header + at least 2 rows
   const pageHeight = doc.internal.pageSize.getHeight();
-  const available = pageHeight - REPORT_CONFIG.margins.bottom - startY;
+  const remainingSpace = pageHeight - REPORT_CONFIG.margins.bottom - startY;
+  const minSpaceNeeded = 80; // Space for header + title + at least 2 rows
 
-  // If table fits on a fresh page but not here, move to new page
-  const fullPageSpace = pageHeight - REPORT_CONFIG.margins.top - REPORT_CONFIG.margins.bottom;
-  if (estimatedHeight <= fullPageSpace && estimatedHeight > available) {
+  if (remainingSpace < minSpaceNeeded) {
     doc.addPage();
     startY = REPORT_CONFIG.margins.top;
   }
@@ -267,7 +264,9 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
     body: tableData,
     columns: TABLE_COLUMNS,
     styles: {
-      font: 'DejaVuSans'
+      font: 'DejaVuSans',
+      fontSize: REPORT_CONFIG.fontSize.body,
+      cellPadding: 2
     },
     headStyles: {
       fillColor: REPORT_CONFIG.colors.headerBg,
@@ -284,13 +283,15 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
       fillColor: REPORT_CONFIG.colors.alternateRow
     },
     columnStyles: getColumnStyles(),
-    pageBreak: 'avoid',
+    // Remove pageBreak: 'avoid' to fix header duplication
+    showHead: 'everyPage', // Show header on every page
     willDrawPage: function(data) {
-      if (data.pageNumber === 1) {
+      // Re-draw the asset class name at the top of continuation pages
+      if (data.pageNumber > 1 && data.pageCount > 1) {
         doc.setFontSize(REPORT_CONFIG.fontSize.heading);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(0, 0, 0);
-        doc.text(assetClass, REPORT_CONFIG.margins.left, data.cursor.y - 15);
+        doc.text(assetClass + ' (continued)', REPORT_CONFIG.margins.left, REPORT_CONFIG.margins.top - 10);
       }
     },
     didParseCell: function(data) {
@@ -300,18 +301,25 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
         data.cell.styles.textColor = REPORT_CONFIG.colors.benchmarkText;
         data.cell.styles.fontStyle = 'bold';
       }
+      
+      // Clear the rating cell text to prevent double rendering
+      if (data.column.dataKey === 'rating' && data.section === 'body') {
+        const rawRating = data.row.raw.ratingValue;
+        if (rawRating && rawRating > 0) {
+          data.cell.text = ''; // Clear text, we'll draw stars instead
+        }
+      }
     },
     didDrawCell: function(data) {
       // Custom rendering for rank cells with color coding
-      // Apply only to body cells so header cells remain unstyled
       if (
         data.section === 'body' &&
         data.column.dataKey &&
         data.column.dataKey.includes('Rank') &&
         data.row.index < tableData.length - 1
       ) {
-        const rankValue = parseInt(data.cell.text);
-        if (!isNaN(rankValue)) {
+        const rankValue = parseInt(data.row.raw[data.column.dataKey]);
+        if (!isNaN(rankValue) && rankValue > 0) {
           // Clear the default text
           doc.setFillColor(...getRankColor(rankValue));
           const padding = 2;
@@ -331,7 +339,7 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
           doc.setTextColor(...textColor);
           doc.setFontSize(REPORT_CONFIG.fontSize.body);
           doc.text(
-            data.cell.text,
+            rankValue.toString(),
             data.cell.x + data.cell.width / 2,
             data.cell.y + data.cell.height / 2 + 1,
             { align: 'center', baseline: 'middle' }
@@ -339,7 +347,7 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
         }
       }
 
-      // Draw star ratings
+      // Draw star ratings (only draw, don't show text)
       if (
         data.section === 'body' &&
         data.column.dataKey === 'rating' &&
@@ -377,14 +385,11 @@ function prepareRowData(fund) {
   return {
     ticker: fund.Symbol || fund['Symbol/CUSIP'] || '',
     name: fund.displayName || fund['Fund Name'] || fund['Product Name'] || '',
-    rating: getStarRating(
-      fund['Morningstar Star Rating'] || fund['Rating'] || fund['Star Rating']
-    ),
-    ratingValue:
-      parseInt(
-        fund['Morningstar Star Rating'] || fund['Rating'] || fund['Star Rating'],
-        10
-      ) || 0,
+    rating: '', // Leave empty - we'll draw stars in didDrawCell
+    ratingValue: parseInt(
+      fund['Morningstar Star Rating'] || fund['Rating'] || fund['Star Rating'],
+      10
+    ) || 0,
     ytd: formatPercent(fund['YTD'] || fund['Total Return - YTD (%)']),
     ytdRank: formatRank(fund['YTD Rank'] || fund['Category Rank (%) Total Return – YTD'] || fund['YTD Cat Rank']),
     oneYear: formatPercent(fund['1 Year'] || fund['Total Return - 1 Year (%)']),
@@ -409,6 +414,7 @@ function prepareBenchmarkRow(benchmark) {
     ticker: '',  // Empty ticker for benchmark
     name: BENCHMARK_NAMES[benchmark.ticker] || benchmark.name || benchmark.ticker,
     rating: '',  // No rating for benchmark
+    ratingValue: 0, // No rating value
     ytd: formatPercent(benchmark['YTD'] || benchmark['Total Return - YTD (%)']),
     ytdRank: '', // No rank for benchmark
     oneYear: formatPercent(benchmark['1 Year'] || benchmark['Total Return - 1 Year (%)']),
@@ -441,28 +447,29 @@ function getColumnStyles() {
 }
 
 /**
- * Get star rating display
- */
-function getStarRating(rating) {
-  if (rating == null || rating === '') return '';
-
-  let stars = typeof rating === 'number' ? rating : parseInt(rating, 10);
-  if (isNaN(stars) || stars < 1 || stars > 5) return '';
-
-  return '★'.repeat(stars) + '☆'.repeat(5 - stars);
-}
-
-/**
  * Draw star rating graphics in a table cell
  */
 function drawRatingStars(doc, rating, cell) {
   const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+  
+  // Save current state
+  const currentFont = doc.getFont();
+  const currentFontSize = doc.getFontSize();
+  
+  // Set font for stars
   doc.setFont('DejaVuSans');
-  doc.setFontSize(REPORT_CONFIG.fontSize.body);
+  doc.setFontSize(REPORT_CONFIG.fontSize.body + 1); // Slightly larger for better visibility
+  doc.setTextColor(0, 0, 0); // Black stars
+  
+  // Draw stars centered in cell
   doc.text(stars, cell.x + cell.width / 2, cell.y + cell.height / 2 + 1, {
     align: 'center',
     baseline: 'middle'
   });
+  
+  // Restore state
+  doc.setFont(currentFont.fontName, currentFont.fontStyle);
+  doc.setFontSize(currentFontSize);
 }
 
 /**
