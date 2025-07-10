@@ -262,8 +262,13 @@ const App = () => {
                     if (headerClean === 'Total Return - YTD (%)') {
                       columnMap['YTD'] = index;
                     }
-                    if (headerClean === 'Category Rank (%) Total Return – YTD' || 
-                        headerClean === 'Category Rank (%) Total Return - YTD') {
+                    if (
+                      headerClean === 'Category Rank (%) Total Return – YTD' ||
+                      headerClean === 'Category Rank (%) Total Return - YTD' ||
+                      (headerLower.includes('category rank') &&
+                        headerLower.includes('total return') &&
+                        headerLower.includes('ytd'))
+                    ) {
                       columnMap['YTD Rank'] = index;
                     }
                     
@@ -271,8 +276,15 @@ const App = () => {
                     if (headerClean === 'Total Return - 1 Year (%)') {
                       columnMap['1 Year'] = index;
                     }
-                    if (headerClean === 'Category Rank (%) Total Return – 1Y' || 
-                        headerClean === 'Category Rank (%) Total Return - 1Y') {
+                    if (
+                      headerClean === 'Category Rank (%) Total Return – 1Y' ||
+                      headerClean === 'Category Rank (%) Total Return - 1Y' ||
+                      (headerLower.includes('category rank') &&
+                        headerLower.includes('total return') &&
+                        (headerLower.includes('1y') || headerLower.includes('1 year')) &&
+                        !headerLower.includes('10y') &&
+                        !headerLower.includes('10 year'))
+                    ) {
                       columnMap['1Y Rank'] = index;
                     }
                     
@@ -280,8 +292,13 @@ const App = () => {
                     if (headerClean === 'Annualized Total Return - 3 Year (%)') {
                       columnMap['3 Year'] = index;
                     }
-                    if (headerClean === 'Category Rank (%) Ann. Total Return – 3Y' || 
-                        headerClean === 'Category Rank (%) Ann. Total Return - 3Y') {
+                    if (
+                      headerClean === 'Category Rank (%) Ann. Total Return – 3Y' ||
+                      headerClean === 'Category Rank (%) Ann. Total Return - 3Y' ||
+                      (headerLower.includes('category rank') &&
+                        headerLower.includes('total return') &&
+                        (headerLower.includes('3y') || headerLower.includes('3 year')))
+                    ) {
                       columnMap['3Y Rank'] = index;
                     }
                     
@@ -289,8 +306,13 @@ const App = () => {
                     if (headerClean === 'Annualized Total Return - 5 Year (%)') {
                       columnMap['5 Year'] = index;
                     }
-                    if (headerClean === 'Category Rank (%) Ann. Total Return – 5Y' || 
-                        headerClean === 'Category Rank (%) Ann. Total Return - 5Y') {
+                    if (
+                      headerClean === 'Category Rank (%) Ann. Total Return – 5Y' ||
+                      headerClean === 'Category Rank (%) Ann. Total Return - 5Y' ||
+                      (headerLower.includes('category rank') &&
+                        headerLower.includes('total return') &&
+                        (headerLower.includes('5y') || headerLower.includes('5 year')))
+                    ) {
                       columnMap['5Y Rank'] = index;
                     }
                     
@@ -298,8 +320,13 @@ const App = () => {
                     if (headerClean === 'Annualized Total Return - 10 Year (%)') {
                       columnMap['10 Year'] = index;
                     }
-                    if (headerClean === 'Category Rank (%) Ann. Total Return – 10Y' || 
-                        headerClean === 'Category Rank (%) Ann. Total Return - 10Y') {
+                    if (
+                      headerClean === 'Category Rank (%) Ann. Total Return – 10Y' ||
+                      headerClean === 'Category Rank (%) Ann. Total Return - 10Y' ||
+                      (headerLower.includes('category rank') &&
+                        headerLower.includes('total return') &&
+                        (headerLower.includes('10y') || headerLower.includes('10 year')))
+                    ) {
                       columnMap['10Y Rank'] = index;
                     }
                     
