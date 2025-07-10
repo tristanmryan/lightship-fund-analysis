@@ -391,13 +391,37 @@ function prepareRowData(fund) {
       10
     ) || 0,
     ytd: formatPercent(fund['YTD'] || fund['Total Return - YTD (%)']),
-    ytdRank: formatRank(fund['YTD Rank'] || fund['Category Rank (%) Total Return – YTD'] || fund['YTD Cat Rank']),
+    ytdRank: formatRank(
+      fund['YTD Rank'] ||
+      fund['Category Rank (%) Total Return – YTD'] ||
+      fund['Category Rank (%) Total Return - YTD'] ||
+      fund['Category Rank (%) Total Return  YTD'] ||
+      fund['YTD Cat Rank']
+    ),
     oneYear: formatPercent(fund['1 Year'] || fund['Total Return - 1 Year (%)']),
-    oneYearRank: formatRank(fund['1Y Rank'] || fund['Category Rank (%) Total Return – 1Y'] || fund['1Y Cat Rank']),
+    oneYearRank: formatRank(
+      fund['1Y Rank'] ||
+      fund['Category Rank (%) Total Return – 1Y'] ||
+      fund['Category Rank (%) Total Return - 1Y'] ||
+      fund['Category Rank (%) Total Return  1Y'] ||
+      fund['1Y Cat Rank']
+    ),
     threeYear: formatPercent(fund['3 Year'] || fund['Annualized Total Return - 3 Year (%)']),
-    threeYearRank: formatRank(fund['3Y Rank'] || fund['Category Rank (%) Ann. Total Return – 3Y'] || fund['3Y Cat Rank']),
+    threeYearRank: formatRank(
+      fund['3Y Rank'] ||
+      fund['Category Rank (%) Ann. Total Return – 3Y'] ||
+      fund['Category Rank (%) Ann. Total Return - 3Y'] ||
+      fund['Category Rank (%) Ann. Total Return  3Y'] ||
+      fund['3Y Cat Rank']
+    ),
     fiveYear: formatPercent(fund['5 Year'] || fund['Annualized Total Return - 5 Year (%)']),
-    fiveYearRank: formatRank(fund['5Y Rank'] || fund['Category Rank (%) Ann. Total Return – 5Y'] || fund['5Y Cat Rank']),
+    fiveYearRank: formatRank(
+      fund['5Y Rank'] ||
+      fund['Category Rank (%) Ann. Total Return – 5Y'] ||
+      fund['Category Rank (%) Ann. Total Return - 5Y'] ||
+      fund['Category Rank (%) Ann. Total Return  5Y'] ||
+      fund['5Y Cat Rank']
+    ),
     yield: formatPercent(fund['Yield'] || fund['SEC Yield'] || fund['SEC Yield (%)']),
     stdDev: formatNumber(fund['StdDev3Y'] || fund['Standard Deviation - 3 Year'] || fund['Standard Deviation'] || fund['3Y Std Dev']),
     expense: formatPercent(fund['Net Expense Ratio'] || fund['Net Exp Ratio (%)'] || fund['Expense Ratio']),
