@@ -48,6 +48,7 @@ import {
   identifyOutliers,
   performAttribution
 } from './services/analytics';
+import { processRawFunds } from './services/fundProcessor';
 import assetClassGroups from './data/assetClassGroups';
 
 // Score badge component for visual display
@@ -440,72 +441,11 @@ const App = () => {
 
         console.log('Sample parsed fund:', parsed[0]); // Debug first fund
 
-        // Clean function for symbol matching
-        const clean = (s) => s?.toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
-
-        // Assign asset classes and identify benchmarks/recommended funds
-        const withClassAndFlags = parsed.map(f => {
-          const parsedSymbol = clean(f.Symbol);
-          const recommendedMatch = recommendedFunds.find(r => clean(r.symbol) === parsedSymbol);
-          const displayName = registryNameMap[parsedSymbol] || f['Fund Name'];
-          
-          // Check if this fund is a benchmark for any asset class
-          let isBenchmark = false;
-          let benchmarkForClass = null;
-          Object.entries(assetClassBenchmarks).forEach(([assetClass, benchmark]) => {
-            if (clean(benchmark.ticker) === parsedSymbol) {
-              isBenchmark = true;
-              benchmarkForClass = assetClass;
-            }
-          });
-          
-          return {
-            ...f,
-            Symbol: f.Symbol, // Keep original symbol for display
-            cleanSymbol: parsedSymbol, // Add clean version for matching
-            displayName,
-            'Asset Class': recommendedMatch ? recommendedMatch.assetClass :
-                          benchmarkForClass ? benchmarkForClass :
-                          'Unknown',
-            assetGroup: assetClassGroups[
-              recommendedMatch ? recommendedMatch.assetClass :
-              benchmarkForClass ? benchmarkForClass : 'Unknown'
-            ] || 'Other',
-            isRecommended: !!recommendedMatch,
-            isBenchmark: isBenchmark,
-            benchmarkForClass: benchmarkForClass
-          };
+        const { scoredFunds, classSummaries, benchmarks } = processRawFunds(parsed, {
+          recommendedFunds,
+          benchmarks: assetClassBenchmarks
         });
 
-        // Calculate scores for all funds
-        console.log('Calculating scores for', withClassAndFlags.length, 'funds...');
-        const scoredFunds = calculateScores(withClassAndFlags);
-        
-        // Generate class summaries
-        const summaries = {};
-        const fundsByClass = {};
-        scoredFunds.forEach(fund => {
-          const assetClass = fund['Asset Class'];
-          if (!fundsByClass[assetClass]) {
-            fundsByClass[assetClass] = [];
-          }
-          fundsByClass[assetClass].push(fund);
-        });
-        
-        Object.entries(fundsByClass).forEach(([assetClass, funds]) => {
-          summaries[assetClass] = generateClassSummary(funds);
-        });
-
-        // Extract benchmark data
-        const benchmarks = {};
-        Object.entries(assetClassBenchmarks).forEach(([assetClass, { ticker, name }]) => {
-          const match = scoredFunds.find(f => f.cleanSymbol === clean(ticker));
-          if (match) {
-            benchmarks[assetClass] = { ...match, name };
-          }
-        });
-
-        // Identify review candidates
         const reviewCandidates = identifyReviewCandidates(scoredFunds);
 
         // Ask user for snapshot date
@@ -517,7 +457,7 @@ const App = () => {
           await saveSnapshot({
             date: new Date(dateStr).toISOString(),
             funds: scoredFunds,
-            classSummaries: summaries,
+            classSummaries,
             reviewCandidates: reviewCandidates,
             fileName: file.name,
             uploadedBy: 'user'
@@ -528,7 +468,7 @@ const App = () => {
 
         setScoredFundData(scoredFunds);
         setBenchmarkData(benchmarks);
-        setClassSummaries(summaries);
+        setClassSummaries(classSummaries);
         
         console.log('Successfully loaded and scored', scoredFunds.length, 'funds');
       } catch (err) {

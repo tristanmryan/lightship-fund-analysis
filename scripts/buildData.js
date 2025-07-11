@@ -3,6 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const Papa = require('papaparse');
 
+(async () => {
+  const { processRawFunds } = await import('../src/services/fundProcessor.js');
+  const { recommendedFunds, assetClassBenchmarks } = await import('../src/data/config.js');
+
 console.log('🚀 Starting data processing...');
 
 // Check if fund-performance folder exists and has CSV files
@@ -83,24 +87,30 @@ for (const file of csvFiles) {
       "Up Capture": fund['Up Capture Ratio (Morningstar Standard) - 3 Year'],
       "Down Capture": fund['Down Capture Ratio (Morningstar Standard) - 3 Year']
     })).filter(fund => fund.Symbol);
-    
-    // Create snapshot
+
+    const { scoredFunds, classSummaries, benchmarks } = processRawFunds(funds, {
+      recommendedFunds,
+      benchmarks: assetClassBenchmarks
+    });
+
     const snapshotId = `snapshot_${dateInfo.year}_${dateInfo.month}`;
     const snapshot = {
       id: snapshotId,
       date: `${dateInfo.year}-${dateInfo.month}-30T00:00:00.000Z`,
-      funds: funds,
+      funds: scoredFunds,
+      classSummaries,
       metadata: {
         uploadDate: `${dateInfo.year}-${dateInfo.month}-30T00:00:00.000Z`,
         uploadedBy: "system",
-        totalFunds: funds.length,
+        totalFunds: scoredFunds.length,
         fileName: file,
         source: "historical_data"
-      }
+      },
+      benchmarks
     };
-    
+
     snapshots[snapshotId] = snapshot;
-    console.log(`  ✅ Processed ${funds.length} funds for ${dateInfo.year}-${dateInfo.month}`);
+    console.log(`  ✅ Processed ${scoredFunds.length} funds for ${dateInfo.year}-${dateInfo.month}`);
     
   } catch (error) {
     console.log(`  ❌ Error processing ${file}:`, error.message);
@@ -150,3 +160,5 @@ console.log(`\n🎉 Processing complete!`);
 console.log(`📊 Generated ${Object.keys(snapshots).length} snapshots`);
 console.log(`📁 Created: src/data/historicalSnapshots.js`);
 console.log(`\nNext step: npm start to test!`);
+
+})();
