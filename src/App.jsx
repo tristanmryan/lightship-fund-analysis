@@ -22,7 +22,7 @@ import {
   compareSnapshots as compareSnapshotsAPI,
   deleteSnapshot
 } from './services/dataStore';
-import { getAllCombinedSnapshots, getCombinedSnapshot, getDataSummary } from './services/enhancedDataStore';
+import { getAllCombinedSnapshots, getDataSummary } from './services/enhancedDataStore';
 import fundRegistry from './services/fundRegistry';
 import PerformanceHeatmap from './components/Dashboard/PerformanceHeatmap';
 import TopBottomPerformers from './components/Dashboard/TopBottomPerformers';
