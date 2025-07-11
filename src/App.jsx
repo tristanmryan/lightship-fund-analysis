@@ -19,10 +19,13 @@ import {
 } from './services/scoring';
 import {
   saveSnapshot,
-  compareSnapshots as compareSnapshotsAPI,
   deleteSnapshot
 } from './services/dataStore';
-import { getAllCombinedSnapshots, getDataSummary } from './services/enhancedDataStore';
+import {
+  getAllCombinedSnapshots,
+  getDataSummary,
+  compareCombinedSnapshots as compareSnapshotsAPI
+} from './services/enhancedDataStore';
 import fundRegistry from './services/fundRegistry';
 import PerformanceHeatmap from './components/Dashboard/PerformanceHeatmap';
 import TopBottomPerformers from './components/Dashboard/TopBottomPerformers';

@@ -166,3 +166,82 @@ import {
     const snapshot = await getCombinedSnapshot(snapshotId);
     return snapshot !== null;
   }
+
+  /**
+   * Compare two snapshots using combined data
+   * @param {string} snapshotId1 - First snapshot ID
+   * @param {string} snapshotId2 - Second snapshot ID
+   * @returns {Promise<Object>} Comparison results
+   */
+  export async function compareCombinedSnapshots(snapshotId1, snapshotId2) {
+    try {
+      const [snapshot1, snapshot2] = await Promise.all([
+        getCombinedSnapshot(snapshotId1),
+        getCombinedSnapshot(snapshotId2)
+      ]);
+
+      if (!snapshot1 || !snapshot2) {
+        throw new Error('One or both snapshots not found');
+      }
+
+      const comparison = {
+        snapshot1: { id: snapshotId1, date: snapshot1.date },
+        snapshot2: { id: snapshotId2, date: snapshot2.date },
+        changes: []
+      };
+
+      const funds1Map = new Map(snapshot1.funds.map(f => [f.Symbol, f]));
+      const funds2Map = new Map(snapshot2.funds.map(f => [f.Symbol, f]));
+
+      funds2Map.forEach((fund2, symbol) => {
+        const fund1 = funds1Map.get(symbol);
+
+        if (fund1 && fund1.scores && fund2.scores) {
+          const scoreDiff = fund2.scores.final - fund1.scores.final;
+
+          if (Math.abs(scoreDiff) > 0) {
+            comparison.changes.push({
+              symbol,
+              fundName: fund2['Fund Name'],
+              assetClass: fund2['Asset Class'],
+              oldScore: fund1.scores.final,
+              newScore: fund2.scores.final,
+              change: scoreDiff,
+              changePercent: ((scoreDiff / fund1.scores.final) * 100).toFixed(1)
+            });
+          }
+        } else if (!fund1) {
+          comparison.changes.push({
+            symbol,
+            fundName: fund2['Fund Name'],
+            assetClass: fund2['Asset Class'],
+            type: 'new',
+            newScore: fund2.scores?.final
+          });
+        }
+      });
+
+      funds1Map.forEach((fund1, symbol) => {
+        if (!funds2Map.has(symbol)) {
+          comparison.changes.push({
+            symbol,
+            fundName: fund1['Fund Name'],
+            assetClass: fund1['Asset Class'],
+            type: 'removed',
+            oldScore: fund1.scores?.final
+          });
+        }
+      });
+
+      comparison.changes.sort((a, b) => {
+        const changeA = Math.abs(a.change || 0);
+        const changeB = Math.abs(b.change || 0);
+        return changeB - changeA;
+      });
+
+      return comparison;
+    } catch (error) {
+      console.error('Error comparing combined snapshots:', error);
+      throw error;
+    }
+  }
