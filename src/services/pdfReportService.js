@@ -108,10 +108,10 @@ export function generateMonthlyReport(data) {
     format: REPORT_CONFIG.format
   });
 
-  // Register font that supports star characters
+  // Register font for star characters and use built-in Helvetica for text
   doc.addFileToVFS('DejaVuSans.ttf', DejaVuSans);
   doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
-  doc.setFont('DejaVuSans');
+  doc.setFont('helvetica');
 
   // Add cover page
   addCoverPage(doc, metadata);
@@ -264,7 +264,7 @@ function addAssetClassTable(doc, assetClass, funds, benchmark) {
     body: tableData,
     columns: TABLE_COLUMNS,
     styles: {
-      font: 'DejaVuSans',
+      font: 'helvetica',
       fontSize: REPORT_CONFIG.fontSize.body,
       cellPadding: 2
     },
