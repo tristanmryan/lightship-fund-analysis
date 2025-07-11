@@ -22,7 +22,7 @@ import {
   compareSnapshots as compareSnapshotsAPI,
   deleteSnapshot
 } from './services/dataStore';
-import { getAllCombinedSnapshots, getCombinedSnapshot } from './services/enhancedDataStore';
+import { getAllCombinedSnapshots, getCombinedSnapshot, getDataSummary } from './services/enhancedDataStore';
 import fundRegistry from './services/fundRegistry';
 import PerformanceHeatmap from './components/Dashboard/PerformanceHeatmap';
 import TopBottomPerformers from './components/Dashboard/TopBottomPerformers';
@@ -210,6 +210,13 @@ const App = () => {
   const loadSnapshots = async () => {
     try {
       const allSnapshots = await getAllCombinedSnapshots();
+      const summary = await getDataSummary();
+      console.log(
+        '📊 Historical data integration active:',
+        summary.combined.total,
+        'total snapshots available',
+        `(${summary.historical.count} historical, ${summary.user.count} user)`
+      );
       setSnapshots(allSnapshots);
     } catch (error) {
       console.error('Error loading snapshots:', error);
