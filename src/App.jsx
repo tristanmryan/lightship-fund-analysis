@@ -17,7 +17,12 @@ import {
   METRIC_ORDER,
   loadMetricWeights
 } from './services/scoring';
-import dataStore from './services/dataStore';
+import {
+  saveSnapshot,
+  compareSnapshots as compareSnapshotsAPI,
+  deleteSnapshot
+} from './services/dataStore';
+import { getAllCombinedSnapshots, getCombinedSnapshot } from './services/enhancedDataStore';
 import fundRegistry from './services/fundRegistry';
 import PerformanceHeatmap from './components/Dashboard/PerformanceHeatmap';
 import TopBottomPerformers from './components/Dashboard/TopBottomPerformers';
@@ -204,7 +209,7 @@ const App = () => {
 
   const loadSnapshots = async () => {
     try {
-      const allSnapshots = await dataStore.getAllSnapshots();
+      const allSnapshots = await getAllCombinedSnapshots();
       setSnapshots(allSnapshots);
     } catch (error) {
       console.error('Error loading snapshots:', error);
@@ -499,7 +504,7 @@ const App = () => {
         
         if (dateStr) {
           // Save snapshot to IndexedDB
-          await dataStore.saveSnapshot({
+          await saveSnapshot({
             date: new Date(dateStr).toISOString(),
             funds: scoredFunds,
             classSummaries: summaries,
@@ -551,11 +556,11 @@ const App = () => {
     setBenchmarkData(benchmarks);
   };
 
-  const compareSnapshots = async () => {
+  const handleCompareSnapshots = async () => {
     if (!selectedSnapshot || !compareSnapshot) return;
-    
+
     try {
-      const comparison = await dataStore.compareSnapshots(selectedSnapshot.id, compareSnapshot.id);
+      const comparison = await compareSnapshotsAPI(selectedSnapshot.id, compareSnapshot.id);
       setSnapshotComparison(comparison);
     } catch (error) {
       console.error('Error comparing snapshots:', error);
@@ -1696,7 +1701,7 @@ const App = () => {
                     </div>
                     {compareSnapshot && (
                       <button
-                        onClick={compareSnapshots}
+                        onClick={handleCompareSnapshots}
                         style={{
                           padding: '0.5rem 1rem',
                           backgroundColor: '#10b981',
@@ -1819,7 +1824,7 @@ const App = () => {
                           onClick={(e) => {
                             e.stopPropagation();
                             if (window.confirm('Delete this snapshot?')) {
-                              dataStore.deleteSnapshot(snapshot.id).then(() => {
+                              deleteSnapshot(snapshot.id).then(() => {
                                 loadSnapshots();
                               });
                             }
