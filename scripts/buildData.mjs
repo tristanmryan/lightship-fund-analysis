@@ -1,7 +1,7 @@
 // scripts/buildData.js
-const fs = require('fs');
-const path = require('path');
-const Papa = require('papaparse');
+import fs from 'fs';
+import path from 'path';
+import Papa from 'papaparse';
 
 (async () => {
   const { processRawFunds } = await import('../src/services/fundProcessor.js');
