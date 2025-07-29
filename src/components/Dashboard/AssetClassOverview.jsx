@@ -1,7 +1,7 @@
 // src/components/Dashboard/AssetClassOverview.jsx
 import React, { useState, useMemo } from 'react';
 import { BarChart3, TrendingUp, TrendingDown, Activity, DollarSign } from 'lucide-react';
-import { getScoreColor, generateClassSummary } from '../../services/scoring';
+import { getScoreColor, generateClassSummary } from '../../services/scoring.js';
 
 /**
  * Asset Class Overview Component
