@@ -1,5 +1,5 @@
 // src/data/storage.js
-import { saveConfig, getConfig } from '../services/dataStore';
+import { saveConfig, getConfig } from '../services/dataStore.js';
 
 // Keys for configuration storage
 export const CONFIG_KEYS = {

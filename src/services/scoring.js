@@ -1,6 +1,6 @@
 // src/services/scoring.js
-import { getConfig, saveConfig } from './dataStore';
-import { CONFIG_KEYS } from '../data/storage';
+import { getConfig, saveConfig } from './dataStore.js';
+import { CONFIG_KEYS } from '../data/storage.js';
 
 /**
  * Core Scoring Engine for Lightship Fund Analysis

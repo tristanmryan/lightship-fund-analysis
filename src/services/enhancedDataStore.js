@@ -4,13 +4,13 @@
 import { 
     getAllHistoricalSnapshots, 
     getHistoricalSnapshot 
-  } from '../data/historicalSnapshots';
+} from '../data/historicalSnapshots.js';
   import { 
     getAllSnapshots as getUserSnapshots, 
     getSnapshot as getUserSnapshot,
     saveSnapshot,
     getSnapshotsByDateRange as getUserSnapshotsByDateRange
-  } from './dataStore';
+} from './dataStore.js';
   
   /**
    * Get all snapshots - combines historical + user data

@@ -1,5 +1,5 @@
-import { calculateScores, generateClassSummary } from './scoring';
-import { getGroupForAssetClass } from '../data/assetClassGroups';
+import { calculateScores, generateClassSummary } from './scoring.js';
+import { getGroupForAssetClass } from '../data/assetClassGroups.js';
 
 export function processRawFunds(rawFunds = [], options = {}) {
   const { recommendedFunds = [], benchmarks = {} } = options;

@@ -1,7 +1,7 @@
 // src/services/fundRegistry.js
 
-import dataStore from './dataStore';
-import assetClassGroups from '../data/assetClassGroups';
+import dataStore from './dataStore.js';
+import assetClassGroups from '../data/assetClassGroups.js';
 
 /**
  * Fund Registry Service

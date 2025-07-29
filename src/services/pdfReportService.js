@@ -1,8 +1,8 @@
 // src/services/pdfReportService.js
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import assetClassGroups from '../data/assetClassGroups';
-import DejaVuSans from '../assets/DejaVuSans';
+import assetClassGroups from '../data/assetClassGroups.js';
+import DejaVuSans from '../assets/DejaVuSans.js';
 
 /**
  * PDF Report Generation Service
