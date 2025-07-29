@@ -1,7 +1,7 @@
 // src/utils/migrateFundRegistry.js
 
-import fundRegistry from '../services/fundRegistry';
-import { recommendedFunds, assetClassBenchmarks } from '../data/config';
+import fundRegistry from '../services/fundRegistry.js';
+import { recommendedFunds, assetClassBenchmarks } from '../data/config.js';
 
 /**
  * Migration utility to import existing config into new fund registry
