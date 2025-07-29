@@ -5,15 +5,15 @@ import {
   Filter, RefreshCw, Save, X, Check, AlertCircle, Clock,
   GitBranch, Archive, Eye, EyeOff
 } from 'lucide-react';
-import fundRegistry from '../../services/fundRegistry';
-import { migrateFundRegistry, isMigrationNeeded } from '../../utils/migrateFundRegistry';
+import fundRegistry from '../../services/fundRegistry.js';
+import { migrateFundRegistry, isMigrationNeeded } from '../../utils/migrateFundRegistry.js';
 import {
   METRIC_ORDER,
   METRICS_CONFIG,
   getMetricWeights,
   setMetricWeights,
   DEFAULT_WEIGHTS
-} from '../../services/scoring';
+} from '../../services/scoring.js';
 
 const FundAdmin = () => {
   // State management

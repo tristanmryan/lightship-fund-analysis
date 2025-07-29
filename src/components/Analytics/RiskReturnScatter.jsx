@@ -5,7 +5,7 @@ import {
   calculateRiskReturnMetrics, 
   findEfficientFrontier,
   calculatePortfolioStatistics 
-} from '../../services/analytics';
+} from '../../services/analytics.js';
 
 /**
  * Risk-Return Scatter Plot Component

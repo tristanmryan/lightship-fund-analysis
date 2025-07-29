@@ -1,8 +1,8 @@
 // src/components/Reports/MonthlyReportButton.jsx
 import React, { useState } from 'react';
 import { FileText, Loader } from 'lucide-react';
-import { generateMonthlyReport } from '../../services/pdfReportService';
-import assetClassGroups from '../../data/assetClassGroups';
+import { generateMonthlyReport } from '../../services/pdfReportService.js';
+import assetClassGroups from '../../data/assetClassGroups.js';
 
 const MonthlyReportButton = ({ 
   fundData, 

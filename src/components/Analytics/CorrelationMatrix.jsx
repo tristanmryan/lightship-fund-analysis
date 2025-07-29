@@ -1,7 +1,7 @@
 // src/components/Analytics/CorrelationMatrix.jsx
 import React, { useState, useMemo } from 'react';
 import { Activity, Info, Filter } from 'lucide-react';
-import { calculateCorrelationMatrix } from '../../services/analytics';
+import { calculateCorrelationMatrix } from '../../services/analytics.js';
 
 /**
  * Correlation Matrix Component
