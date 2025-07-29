@@ -144,5 +144,12 @@ export const assetClassBenchmarks = {
     { symbol: "PRFRX", name: "T. Rowe Price Floating Rate", assetClass: "Non-Traditional Bonds" },
     { symbol: "FIDI", name: "Fidelity International HY Dividend ETF", assetClass: "International Stock (Large Cap)" },
     { symbol: "TIQIX", name: "Touchstone Non-US Equity Fund", assetClass: "International Stock (Large Cap)" },
+    { symbol: "CIHEX", name: "Calamos Hedged Equity I", assetClass: "Hedged/Enhanced" },
+    { symbol: "GOGIX", name: "Goldman Sachs [Full Name Needed]", assetClass: "[TBD]" },
+    { symbol: "JAAIX", name: "John Hancock Alternative Asset Allocation I", assetClass: "Asset Allocation" },
+    { symbol: "LLDYX", name: "[Full Name Needed]", assetClass: "[TBD]" },
+    { symbol: "MINIX", name: "MFS International Value I", assetClass: "International Stock (Large Cap)" },
+    { symbol: "WFMIX", name: "Special Mid Cap Value I", assetClass: "Mid-Cap Value" }
   ];
+  
   
