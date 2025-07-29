@@ -9,7 +9,7 @@ import {
   TAG_CATEGORIES,
   DEFAULT_TAG_RULES,
   TAG_CATEGORY_MAP
-} from '../../services/tagEngine';
+} from '../../services/tagEngine.js';
 
 /**
  * Tag Manager Component

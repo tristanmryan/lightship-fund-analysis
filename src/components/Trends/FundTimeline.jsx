@@ -1,7 +1,7 @@
 // src/components/Trends/FundTimeline.jsx
 import React, { useState, useMemo } from 'react';
 import { TrendingUp, TrendingDown, Calendar, Info, LineChart } from 'lucide-react';
-import { getScoreColor } from '../../services/scoring';
+import { getScoreColor } from '../../services/scoring.js';
 
 /**
  * Fund Timeline Component

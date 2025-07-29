@@ -2,11 +2,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { RefreshCw, Settings, Trash2, LayoutGrid, AlertCircle, TrendingUp, Award, Clock, Database, Calendar, Download, BarChart3, Activity, Info } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import FundAdmin from './components/Admin/FundAdmin';
+import FundAdmin from './components/Admin/FundAdmin.jsx';
 import {
   recommendedFunds as defaultRecommendedFunds,
   assetClassBenchmarks as defaultBenchmarks
-} from './data/config';
+} from './data/config.js';
 import { 
   calculateScores, 
   generateClassSummary, 
@@ -16,40 +16,40 @@ import {
   METRICS_CONFIG,
   METRIC_ORDER,
   loadMetricWeights
-} from './services/scoring';
+} from './services/scoring.js';
 import {
   saveSnapshot,
   deleteSnapshot
-} from './services/dataStore';
+} from './services/dataStore.js';
 import {
   getAllCombinedSnapshots,
   getDataSummary,
   compareCombinedSnapshots as compareSnapshotsAPI
-} from './services/enhancedDataStore';
-import fundRegistry from './services/fundRegistry';
-import PerformanceHeatmap from './components/Dashboard/PerformanceHeatmap';
-import TopBottomPerformers from './components/Dashboard/TopBottomPerformers';
-import AssetClassOverview from './components/Dashboard/AssetClassOverview';
-import FundTimeline from './components/Trends/FundTimeline';
-import TagManager from './components/Tags/TagManager';
-import CorrelationMatrix from './components/Analytics/CorrelationMatrix';
-import RiskReturnScatter from './components/Analytics/RiskReturnScatter';
-import FundDetailsModal from './components/FundDetailsModal';
-import MonthlyReportButton from './components/Reports/MonthlyReportButton';
+} from './services/enhancedDataStore.js';
+import fundRegistry from './services/fundRegistry.js';
+import PerformanceHeatmap from './components/Dashboard/PerformanceHeatmap.jsx';
+import TopBottomPerformers from './components/Dashboard/TopBottomPerformers.jsx';
+import AssetClassOverview from './components/Dashboard/AssetClassOverview.jsx';
+import FundTimeline from './components/Trends/FundTimeline.jsx';
+import TagManager from './components/Tags/TagManager.jsx';
+import CorrelationMatrix from './components/Analytics/CorrelationMatrix.jsx';
+import RiskReturnScatter from './components/Analytics/RiskReturnScatter.jsx';
+import FundDetailsModal from './components/FundDetailsModal.jsx';
+import MonthlyReportButton from './components/Reports/MonthlyReportButton.jsx';
 import { 
   exportToExcel, 
   generateHTMLReport, 
   exportToCSV, 
   generateExecutiveSummary,
   downloadFile 
-} from './services/exportService';
+} from './services/exportService.js';
 import {
   calculateDiversification,
   identifyOutliers,
   performAttribution
-} from './services/analytics';
-import { processRawFunds } from './services/fundProcessor';
-import assetClassGroups from './data/assetClassGroups';
+} from './services/analytics.js';
+import { processRawFunds } from './services/fundProcessor.js';
+import assetClassGroups from './data/assetClassGroups.js';
 
 // Score badge component for visual display
 export const ScoreBadge = ({ score, size = 'normal' }) => {
