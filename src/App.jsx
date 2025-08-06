@@ -1,6 +1,6 @@
 // App.jsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { RefreshCw, Settings, Trash2, LayoutGrid, AlertCircle, TrendingUp, Award, Clock, Database, Calendar, Download, BarChart3, Activity, Info } from 'lucide-react';
+import { RefreshCw, Settings, Trash2, LayoutGrid, AlertCircle, TrendingUp, Award, Clock, Database, Calendar, Download, BarChart3, Activity, Info, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import FundAdmin from './components/Admin/FundAdmin';
 import {
@@ -41,7 +41,8 @@ import {
   generateHTMLReport, 
   exportToCSV, 
   generateExecutiveSummary,
-  downloadFile 
+  downloadFile,
+  generatePDFReport
 } from './services/exportService';
 import {
   calculateDiversification,
@@ -50,6 +51,7 @@ import {
 } from './services/analytics';
 import { processRawFunds } from './services/fundProcessor';
 import assetClassGroups from './data/assetClassGroups';
+import stringSimilarity from 'string-similarity';
 
 // Score badge component for visual display
 export const ScoreBadge = ({ score, size = 'normal' }) => {
@@ -109,6 +111,49 @@ export const MetricBreakdown = ({ breakdown }) => {
   );
 };
 
+const COLUMN_SYNONYMS = {
+  'Symbol': ['symbol', 'cusip', 'ticker', 'fund id'],
+  'Fund Name': ['fund name', 'product name', 'name'],
+  'YTD': ['ytd', 'total return - ytd', 'ytd return'],
+  '1 Year': ['1 year', '1y', 'total return - 1 year', '1 year return'],
+  '3 Year': ['3 year', '3y', 'annualized total return - 3 year', '3 year return'],
+  '5 Year': ['5 year', '5y', 'annualized total return - 5 year', '5 year return'],
+  '10 Year': ['10 year', '10y', 'annualized total return - 10 year', '10 year return'],
+  'Alpha': ['alpha', 'alpha (asset class) - 5 year'],
+  'Sharpe Ratio': ['sharpe', 'sharpe ratio', 'sharpe ratio - 3 year'],
+  'StdDev3Y': ['stddev3y', 'standard deviation - 3 year', 'std dev 3y'],
+  'StdDev5Y': ['stddev5y', 'standard deviation - 5 year', 'std dev 5y'],
+  'Net Expense Ratio': ['net expense ratio', 'net exp ratio', 'expense ratio'],
+  'Manager Tenure': ['manager tenure', 'longest manager tenure (years)'],
+};
+
+const FUZZY_MATCH_THRESHOLD = 0.7;
+
+function fuzzyMapHeaders(headers) {
+  const columnMap = {};
+  const usedIndexes = new Set();
+  Object.entries(COLUMN_SYNONYMS).forEach(([canonical, synonyms]) => {
+    let bestMatch = { rating: 0, index: -1 };
+    headers.forEach((header, idx) => {
+      if (usedIndexes.has(idx)) return;
+      if (!header || typeof header !== 'string') return;
+      const headerNorm = header.toLowerCase().replace(/[^a-z0-9]/g, '');
+      for (const synonym of synonyms) {
+        const synonymNorm = synonym.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const rating = stringSimilarity.compareTwoStrings(headerNorm, synonymNorm);
+        if (rating > bestMatch.rating) {
+          bestMatch = { rating, index: idx };
+        }
+      }
+    });
+    if (bestMatch.rating >= FUZZY_MATCH_THRESHOLD) {
+      columnMap[canonical] = bestMatch.index;
+      usedIndexes.add(bestMatch.index);
+    }
+  });
+  return columnMap;
+}
+
 const App = () => {
   const [scoredFundData, setScoredFundData] = useState([]);
   const [benchmarkData, setBenchmarkData] = useState({});
@@ -133,6 +178,9 @@ const App = () => {
 
   const [recommendedFunds, setRecommendedFunds] = useState([]);
   const [assetClassBenchmarks, setAssetClassBenchmarks] = useState({});
+
+  const [uploadPreview, setUploadPreview] = useState(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // Memoize expensive calculations
   const memoizedAssetClasses = useMemo(() => {
@@ -240,13 +288,10 @@ const App = () => {
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    
     setLoading(true);
     setError(null);
     setUploadedFileName(file.name);
-    
     const reader = new FileReader();
-
     reader.onload = async (e) => {
       try {
         const data = new Uint8Array(e.target.result);
@@ -254,185 +299,25 @@ const App = () => {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-        // Find header row (looking for Symbol/CUSIP)
-        let headerRowIndex = jsonData.findIndex(row => 
-          row.some(cell => typeof cell === 'string' && cell.includes('Symbol'))
-        );
-        
-        if (headerRowIndex === -1) {
-          throw new Error('Could not find header row with Symbol column');
-        }
-
+        // Find header row (first row with at least 2 string cells)
+        let headerRowIndex = jsonData.findIndex(row => row.filter(cell => typeof cell === 'string').length >= 2);
+        if (headerRowIndex === -1) throw new Error('Could not find header row');
         const headers = jsonData[headerRowIndex];
         const dataRows = jsonData.slice(headerRowIndex + 1);
-
-                // Enhanced column mapping to handle your specific CSV format
-                const columnMap = {};
-                headers.forEach((header, index) => {
-                  if (typeof header === 'string') {
-                    const headerLower = header.toLowerCase().trim();
-                    const headerClean = header.trim();
-                    
-                    // Basic fields - use exact matching where possible
-                    if (headerLower.includes('symbol') || headerLower.includes('cusip')) {
-                      columnMap['Symbol'] = index;
-                    }
-                    if (headerLower.includes('product name') || headerLower === 'name') {
-                      columnMap['Fund Name'] = index;
-                    }
-                    
-                    // Morningstar Star Rating
-                    if (headerLower.includes('morningstar star rating')) {
-                      columnMap['Morningstar Star Rating'] = index;
-                    }
-                    
-                    // YTD fields
-                    if (headerClean === 'Total Return - YTD (%)') {
-                      columnMap['YTD'] = index;
-                    }
-                    if (
-                      headerClean === 'Category Rank (%) Total Return – YTD' ||
-                      headerClean === 'Category Rank (%) Total Return - YTD' ||
-                      (headerLower.includes('category rank') &&
-                        headerLower.includes('total return') &&
-                        headerLower.includes('ytd'))
-                    ) {
-                      columnMap['YTD Rank'] = index;
-                    }
-                    
-                    // 1 Year fields
-                    if (headerClean === 'Total Return - 1 Year (%)') {
-                      columnMap['1 Year'] = index;
-                    }
-                    if (
-                      headerClean === 'Category Rank (%) Total Return – 1Y' ||
-                      headerClean === 'Category Rank (%) Total Return - 1Y' ||
-                      (headerLower.includes('category rank') &&
-                        headerLower.includes('total return') &&
-                        (headerLower.includes('1y') || headerLower.includes('1 year')) &&
-                        !headerLower.includes('10y') &&
-                        !headerLower.includes('10 year'))
-                    ) {
-                      columnMap['1Y Rank'] = index;
-                    }
-                    
-                    // 3 Year fields
-                    if (headerClean === 'Annualized Total Return - 3 Year (%)') {
-                      columnMap['3 Year'] = index;
-                    }
-                    if (
-                      headerClean === 'Category Rank (%) Ann. Total Return – 3Y' ||
-                      headerClean === 'Category Rank (%) Ann. Total Return - 3Y' ||
-                      (headerLower.includes('category rank') &&
-                        headerLower.includes('total return') &&
-                        (headerLower.includes('3y') || headerLower.includes('3 year')))
-                    ) {
-                      columnMap['3Y Rank'] = index;
-                    }
-                    
-                    // 5 Year fields
-                    if (headerClean === 'Annualized Total Return - 5 Year (%)') {
-                      columnMap['5 Year'] = index;
-                    }
-                    if (
-                      headerClean === 'Category Rank (%) Ann. Total Return – 5Y' ||
-                      headerClean === 'Category Rank (%) Ann. Total Return - 5Y' ||
-                      (headerLower.includes('category rank') &&
-                        headerLower.includes('total return') &&
-                        (headerLower.includes('5y') || headerLower.includes('5 year')))
-                    ) {
-                      columnMap['5Y Rank'] = index;
-                    }
-                    
-                    // 10 Year fields
-                    if (headerClean === 'Annualized Total Return - 10 Year (%)') {
-                      columnMap['10 Year'] = index;
-                    }
-                    if (
-                      headerClean === 'Category Rank (%) Ann. Total Return – 10Y' ||
-                      headerClean === 'Category Rank (%) Ann. Total Return - 10Y' ||
-                      (headerLower.includes('category rank') &&
-                        headerLower.includes('total return') &&
-                        (headerLower.includes('10y') || headerLower.includes('10 year')))
-                    ) {
-                      columnMap['10Y Rank'] = index;
-                    }
-                    
-                    // Risk and performance metrics
-                    if (headerClean === 'Alpha (Asset Class) - 5 Year') {
-                      columnMap['Alpha'] = index;
-                    }
-                    if (headerClean === 'Sharpe Ratio - 3 Year') {
-                      columnMap['Sharpe Ratio'] = index;
-                    }
-                    if (headerClean === 'Standard Deviation - 3 Year') {
-                      columnMap['StdDev3Y'] = index;
-                    }
-                    if (headerClean === 'Standard Deviation - 5 Year') {
-                      columnMap['StdDev5Y'] = index;
-                    }
-                    
-                    // Capture ratios
-                    if (headerClean === 'Up Capture Ratio (Morningstar Standard) - 3 Year') {
-                      columnMap['Up Capture Ratio'] = index;
-                    }
-                    if (headerClean === 'Down Capture Ratio (Morningstar Standard) - 3 Year') {
-                      columnMap['Down Capture Ratio'] = index;
-                    }
-                    
-                    // Other fields
-                    if (headerClean === 'SEC Yield (%)') {
-                      columnMap['Yield'] = index;
-                    }
-                    if (headerClean === 'Net Exp Ratio (%)') {
-                      columnMap['Net Expense Ratio'] = index;
-                    }
-                    if (headerClean === 'Longest Manager Tenure (Years)') {
-                      columnMap['Manager Tenure'] = index;
-                    }
-                    
-                    // Fallback mappings for alternative formats
-                    if (!columnMap['YTD'] && headerLower.includes('ytd') && headerLower.includes('return') && !headerLower.includes('rank')) {
-                      columnMap['YTD'] = index;
-                    }
-                    if (!columnMap['1 Year'] && headerLower.includes('1 year') && headerLower.includes('return') && !headerLower.includes('rank')) {
-                      columnMap['1 Year'] = index;
-                    }
-                    if (!columnMap['3 Year'] && headerLower.includes('3 year') && headerLower.includes('return') && !headerLower.includes('rank')) {
-                      columnMap['3 Year'] = index;
-                    }
-                    if (!columnMap['5 Year'] && headerLower.includes('5 year') && headerLower.includes('return') && !headerLower.includes('rank')) {
-                      columnMap['5 Year'] = index;
-                    }
-                    if (!columnMap['10 Year'] && headerLower.includes('10 year') && headerLower.includes('return') && !headerLower.includes('rank')) {
-                      columnMap['10 Year'] = index;
-                    }
-                  }
-                });
-        
-                // Log column mappings for debugging
-                console.log('Column mappings:', columnMap);
-                console.log('Headers found:', headers);
-
-        // Parse the data rows
+        // Fuzzy map headers
+        const columnMap = fuzzyMapHeaders(headers);
+        // Parse data rows
         const parsed = dataRows.map(row => {
           const fund = {};
           Object.entries(columnMap).forEach(([key, idx]) => {
             let val = row[idx];
-            
-            // Handle various data formats
             if (val === undefined || val === null || val === '') {
               fund[key] = null;
             } else if (typeof val === 'string') {
-              // Remove % signs, commas, and extra spaces
               val = val.replace(/[%,]/g, '').trim();
-              
-              // Check for special values
               if (val === 'N/A' || val === 'NA' || val === '-' || val === '--') {
                 fund[key] = null;
               } else {
-                // Try to parse as number
                 const parsed = parseFloat(val);
                 fund[key] = isNaN(parsed) ? val : parsed;
               }
@@ -442,64 +327,59 @@ const App = () => {
               fund[key] = val;
             }
           });
-          
-          // FIXED: Ensure we have StdDev3Y and StdDev5Y if only general Standard Deviation exists
-          if (fund['Standard Deviation'] != null) {
-            if (fund['StdDev3Y'] == null) fund['StdDev3Y'] = fund['Standard Deviation'];
-            if (fund['StdDev5Y'] == null) fund['StdDev5Y'] = fund['Standard Deviation'];
-          }
-          
           return fund;
-        }).filter(f => f.Symbol && f.Symbol !== ''); // Filter out empty rows
-
-        console.log('Sample parsed fund:', parsed[0]); // Debug first fund
-
-        const { scoredFunds, classSummaries, benchmarks } = processRawFunds(parsed, {
-          recommendedFunds,
-          benchmarks: assetClassBenchmarks
+        }).filter(f => f.Symbol && f.Symbol !== '');
+        // Show preview modal
+        setUploadPreview({
+          headers,
+          columnMap,
+          parsed,
+          fileName: file.name,
+          unmappedHeaders: headers.filter((h, i) => !Object.values(columnMap).includes(i)),
         });
-
-        const reviewCandidates = identifyReviewCandidates(scoredFunds);
-
-        // Ask user for snapshot date
-        const dateStr = prompt('Enter the date for this snapshot (YYYY-MM-DD):', 
-          new Date().toISOString().split('T')[0]);
-        
-        if (dateStr) {
-          // Save snapshot to IndexedDB
-          await saveSnapshot({
-            date: new Date(dateStr).toISOString(),
-            funds: scoredFunds,
-            classSummaries,
-            reviewCandidates: reviewCandidates,
-            fileName: file.name,
-            uploadedBy: 'user'
-          });
-          
-          setCurrentSnapshotDate(dateStr);
-        }
-
-        setScoredFundData(scoredFunds);
-        setBenchmarkData(benchmarks);
-        setClassSummaries(classSummaries);
-        
-        console.log('Successfully loaded and scored', scoredFunds.length, 'funds');
+        setShowPreviewModal(true);
       } catch (err) {
-        console.error('Error parsing performance file:', err);
         setError('Error parsing file: ' + err.message);
-        alert('Error parsing file: ' + err.message);
       } finally {
         setLoading(false);
       }
     };
-
     reader.onerror = () => {
       setError('Failed to read file');
       setLoading(false);
     };
-
     reader.readAsArrayBuffer(file);
   };
+
+  function handleConfirmImport() {
+    if (!uploadPreview) return;
+    setShowPreviewModal(false);
+    setLoading(true);
+    setTimeout(() => {
+      try {
+        const { parsed } = uploadPreview;
+        const { scoredFunds, classSummaries, benchmarks } = processRawFunds(parsed, {
+          recommendedFunds,
+          benchmarks: assetClassBenchmarks
+        });
+        setScoredFundData(scoredFunds);
+        setBenchmarkData(benchmarks);
+        setClassSummaries(classSummaries);
+        setCurrentSnapshotDate(new Date().toISOString().split('T')[0]);
+        setError(null);
+      } catch (err) {
+        setError('Error processing imported data: ' + err.message);
+      } finally {
+        setLoading(false);
+        setUploadPreview(null);
+      }
+    }, 100);
+  }
+
+  function handleCancelImport() {
+    setShowPreviewModal(false);
+    setUploadPreview(null);
+  }
 
   const loadSnapshot = async (snapshot) => {
     setSelectedSnapshot(snapshot);
@@ -605,1293 +485,281 @@ const App = () => {
   }, [scoredFundData, searchTerm, filterAssetClass, sortBy, sortDirection]);
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <div style={{ marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="app-container">
+      {/* Sidebar */}
+      <aside className="sidebar">
+        <div className="sidebar-logo">Raymond James</div>
+        <nav className="sidebar-nav">
+          <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
+          <button className={activeTab === 'funds' ? 'active' : ''} onClick={() => setActiveTab('funds')}>Fund Scores</button>
+          <button className={activeTab === 'class' ? 'active' : ''} onClick={() => setActiveTab('class')}>Class View</button>
+          <button className={activeTab === 'analysis' ? 'active' : ''} onClick={() => setActiveTab('analysis')}>Analysis</button>
+          <button className={activeTab === 'analytics' ? 'active' : ''} onClick={() => setActiveTab('analytics')}>Analytics</button>
+          <button className={activeTab === 'history' ? 'active' : ''} onClick={() => setActiveTab('history')}>History</button>
+          <button className={activeTab === 'admin' ? 'active' : ''} onClick={() => setActiveTab('admin')}>Admin</button>
+        </nav>
+      </aside>
+      {/* Main Content */}
+      <main className="main-content">
+        {/* Header */}
+        <div className="header">
           <div>
-            <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-              Lightship Fund Analysis
-            </h1>
-            <p style={{ color: '#6b7280' }}>
-              Monthly fund performance analysis with Z-score ranking system
-            </p>
+            <h1 style={{ fontSize: '2rem', fontWeight: 600, color: 'var(--color-primary)' }}>Lightship Fund Analysis</h1>
+            <p style={{ color: 'var(--color-primary-light)' }}>Monthly fund performance analysis with Z-score ranking system</p>
           </div>
           <button
             onClick={() => setShowHelp(true)}
             style={{
               padding: '0.5rem 1rem',
-              backgroundColor: '#e5e7eb',
+              backgroundColor: 'var(--color-primary-light)',
+              color: 'var(--color-white)',
               border: 'none',
               borderRadius: '0.375rem',
               cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '0.875rem'
+              fontWeight: 600
             }}
             title="Help (Ctrl+H)"
           >
-            <Info size={16} />
             Help
           </button>
         </div>
-      </div>
-
-      <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <button 
-          onClick={() => setActiveTab('dashboard')} 
-          style={{ 
-            padding: '0.5rem 1rem',
-            backgroundColor: activeTab === 'dashboard' ? '#3b82f6' : '#e5e7eb',
-            color: activeTab === 'dashboard' ? 'white' : '#374151',
-            border: 'none',
-            borderRadius: '0.375rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}
-        >
-          <BarChart3 size={16} />
-          Dashboard
-        </button>
-        
-        <button 
-          onClick={() => setActiveTab('funds')} 
-          style={{ 
-            padding: '0.5rem 1rem',
-            backgroundColor: activeTab === 'funds' ? '#3b82f6' : '#e5e7eb',
-            color: activeTab === 'funds' ? 'white' : '#374151',
-            border: 'none',
-            borderRadius: '0.375rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}
-        >
-          <Award size={16} />
-          Fund Scores
-        </button>
-        
-        <button 
-          onClick={() => setActiveTab('class')} 
-          style={{ 
-            padding: '0.5rem 1rem',
-            backgroundColor: activeTab === 'class' ? '#3b82f6' : '#e5e7eb',
-            color: activeTab === 'class' ? 'white' : '#374151',
-            border: 'none',
-            borderRadius: '0.375rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}
-        >
-          <LayoutGrid size={16} />
-          Class View
-        </button>
-        
-        <button 
-          onClick={() => setActiveTab('analysis')} 
-          style={{ 
-            padding: '0.5rem 1rem',
-            backgroundColor: activeTab === 'analysis' ? '#3b82f6' : '#e5e7eb',
-            color: activeTab === 'analysis' ? 'white' : '#374151',
-            border: 'none',
-            borderRadius: '0.375rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            position: 'relative'
-          }}
-        >
-          <AlertCircle size={16} />
-          Analysis
-          {reviewCandidates.length > 0 && (
-            <span style={{
-              position: 'absolute',
-              top: '-0.5rem',
-              right: '-0.5rem',
-              backgroundColor: '#dc2626',
-              color: 'white',
-              borderRadius: '9999px',
-              width: '1.25rem',
-              height: '1.25rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '0.75rem',
-              fontWeight: 'bold'
-            }}>
-              {reviewCandidates.length}
-            </span>
-          )}
-        </button>
-        
-        <button 
-          onClick={() => setActiveTab('analytics')} 
-          style={{ 
-            padding: '0.5rem 1rem',
-            backgroundColor: activeTab === 'analytics' ? '#3b82f6' : '#e5e7eb',
-            color: activeTab === 'analytics' ? 'white' : '#374151',
-            border: 'none',
-            borderRadius: '0.375rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}
-        >
-          <Activity size={16} />
-          Analytics
-        </button>
-        
-        <button 
-          onClick={() => setActiveTab('history')} 
-          style={{ 
-            padding: '0.5rem 1rem',
-            backgroundColor: activeTab === 'history' ? '#3b82f6' : '#e5e7eb',
-            color: activeTab === 'history' ? 'white' : '#374151',
-            border: 'none',
-            borderRadius: '0.375rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}
-        >
-          <Clock size={16} />
-          History
-        </button>
-        
-        <button 
-          onClick={() => setActiveTab('admin')}
-          style={{ 
-            padding: '0.5rem 1rem',
-            backgroundColor: activeTab === 'admin' ? '#3b82f6' : '#e5e7eb',
-            color: activeTab === 'admin' ? 'white' : '#374151',
-            border: 'none',
-            borderRadius: '0.375rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}
-        >
-          <Settings size={16} />
-          Admin
-        </button>
-      </div>
-
-      {/* File Upload Section - Show on all tabs except admin and history */}
-      {activeTab !== 'admin' && activeTab !== 'history' && (
-        <div style={{ 
-          marginBottom: '1.5rem', 
-          padding: '1rem', 
-          backgroundColor: '#f3f4f6', 
-          borderRadius: '0.5rem' 
-        }}>
-          <input
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            onChange={handleFileUpload}
-            style={{ marginRight: '1rem' }}
-          />
-          {loading && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', color: '#3b82f6' }}>
-              <RefreshCw size={16} style={{ marginRight: '0.25rem', animation: 'spin 1s linear infinite' }} />
-              Processing and calculating scores...
-            </span>
-          )}
-          {error && (
-            <div style={{ 
-              marginTop: '0.5rem', 
-              padding: '0.5rem', 
-              backgroundColor: '#fef2f2', 
-              border: '1px solid #fecaca', 
-              borderRadius: '0.25rem',
-              color: '#dc2626',
-              fontSize: '0.875rem'
-            }}>
-              ⚠️ {error}
-            </div>
-          )}
-          {scoredFundData.length > 0 && !loading && (
-            <div style={{ marginTop: '0.5rem' }}>
-              <span style={{ color: '#059669' }}>
-                ✓ {scoredFundData.length} funds loaded and scored
-              </span>
-              {currentSnapshotDate && (
-                <span style={{ marginLeft: '1rem', color: '#6b7280' }}>
-                  | Date: {currentSnapshotDate} | File: {uploadedFileName}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Dashboard Tab */}
-      {activeTab === 'dashboard' && (
-        <div>
-          {scoredFundData.length > 0 ? (
-            <>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                marginBottom: '2rem' 
-              }}>
-                <div>
-                  <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                    Fund Performance Dashboard
-                  </h2>
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-                    Visual overview of fund performance across all asset classes
-                  </p>
-                </div>
-                
-                {/* Export Menu */}
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
-                    onClick={() => {
-                      const data = {
-                        funds: scoredFundData,
-                        classSummaries,
-                        reviewCandidates: identifyReviewCandidates(scoredFundData),
-                        metadata: {
-                          date: currentSnapshotDate,
-                          fileName: uploadedFileName
-                        }
-                      };
-                      const blob = exportToExcel(data);
-                      downloadFile(blob, `fund_analysis_${new Date().toISOString().split('T')[0]}.xlsx`);
-                    }}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      backgroundColor: '#16a34a',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '0.375rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      fontSize: '0.875rem'
-                    }}
-                  >
-                    <Download size={16} />
-                    Export Excel
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      const csv = exportToCSV(scoredFundData);
-                      downloadFile(csv, `fund_scores_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
-                    }}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      backgroundColor: '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '0.375rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      fontSize: '0.875rem'
-                    }}
-                  >
-                    <Download size={16} />
-                    Export CSV
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      const data = {
-                        funds: scoredFundData,
-                        classSummaries,
-                        reviewCandidates: identifyReviewCandidates(scoredFundData)
-                      };
-                      const html = generateHTMLReport(data);
-                      const newWindow = window.open('', '_blank');
-                      newWindow.document.write(html);
-                      newWindow.document.close();
-                    }}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      backgroundColor: '#8b5cf6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '0.375rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      fontSize: '0.875rem'
-                    }}
-                  >
-                    <TrendingUp size={16} />
-                    View Report
-                  </button>
-
-                  <MonthlyReportButton 
-                    fundData={scoredFundData}
-                    benchmarkData={benchmarkData}
-                    metadata={{
-                      date: currentSnapshotDate || new Date().toLocaleDateString('en-US', {
-                        month: 'long',
-                        day: 'numeric',
-                        year: 'numeric'
-                      }),
-                      fileName: uploadedFileName
-                    }}
-                    assetClassBenchmarks={assetClassBenchmarks}
-                  />
-                  
-                  <button
-                    onClick={() => {
-                      const data = {
-                        funds: scoredFundData,
-                        classSummaries,
-                        reviewCandidates: identifyReviewCandidates(scoredFundData)
-                      };
-                      const summary = generateExecutiveSummary(data);
-                      downloadFile(summary, `executive_summary_${new Date().toISOString().split('T')[0]}.txt`, 'text/plain');
-                    }}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      backgroundColor: '#f59e0b',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '0.375rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      fontSize: '0.875rem'
-                    }}
-                  >
-                    <AlertCircle size={16} />
-                    Summary
-                  </button>
-                </div>
+        {/* Card-based main content */}
+        <div className="card">
+          {/* --- All previous tab content, upload, etc. goes here --- */}
+          {/* ...existing app content... */}
+          {/* File Upload Section - Show on all tabs except admin and history */}
+          {activeTab !== 'admin' && activeTab !== 'history' && (
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title">Upload Fund Data</h3>
+                <p className="card-subtitle">Upload your fund performance data file (.xlsx, .xls, or .csv)</p>
               </div>
-              
-              <TopBottomPerformers
-                funds={scoredFundData}
-              />
-
-              <AssetClassOverview
-                funds={scoredFundData}
-                classSummaries={classSummaries}
-                benchmarkData={benchmarkData}
-              />
-
-              <PerformanceHeatmap
-                funds={scoredFundData}
-                assetClassBenchmarks={assetClassBenchmarks}
-              />
-            </>
-          ) : (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '3rem', 
-              backgroundColor: '#f9fafb', 
-              borderRadius: '0.5rem',
-              color: '#6b7280' 
-            }}>
-              <BarChart3 size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-              <p>Upload fund performance data to see the dashboard</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Fund Scores Tab */}
-{activeTab === 'funds' && (
-  <div>
-    {scoredFundData.length > 0 ? (
-      <div>
-        <div style={{ marginBottom: '1rem' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>All Funds with Scores</h2>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-            Scores calculated using weighted Z-score methodology within each asset class
-          </p>
-        </div>
-        
-        {/* Search and Filter Controls */}
-        <div style={{ 
-          marginBottom: '1.5rem', 
-          padding: '1rem', 
-          backgroundColor: '#f9fafb', 
-          borderRadius: '0.5rem',
-          display: 'flex',
-          gap: '1rem',
-          flexWrap: 'wrap',
-          alignItems: 'center'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: '500' }}>Search:</label>
-            <input
-              type="text"
-              placeholder="Search by symbol, name, or asset class..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                padding: '0.5rem',
-                border: '1px solid #d1d5db',
-                borderRadius: '0.375rem',
-                fontSize: '0.875rem',
-                minWidth: '200px'
-              }}
-            />
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: '500' }}>Asset Class:</label>
-            <select
-              value={filterAssetClass}
-              onChange={(e) => setFilterAssetClass(e.target.value)}
-              style={{
-                padding: '0.5rem',
-                border: '1px solid #d1d5db',
-                borderRadius: '0.375rem',
-                fontSize: '0.875rem'
-              }}
-            >
-              <option value="all">All Classes</option>
-              {memoizedAssetClasses.map(ac => (
-                <option key={ac} value={ac}>{ac}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: '500' }}>Sort by:</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              style={{
-                padding: '0.5rem',
-                border: '1px solid #d1d5db',
-                borderRadius: '0.375rem',
-                fontSize: '0.875rem'
-              }}
-            >
-              <option value="score">Score</option>
-              <option value="symbol">Symbol</option>
-              <option value="name">Name</option>
-              <option value="ytd">YTD Return</option>
-              <option value="1year">1 Year Return</option>
-              <option value="sharpe">Sharpe Ratio</option>
-              <option value="expense">Expense Ratio</option>
-            </select>
-            <button
-              onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
-              style={{
-                padding: '0.25rem 0.5rem',
-                border: '1px solid #d1d5db',
-                borderRadius: '0.25rem',
-                backgroundColor: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              {sortDirection === 'asc' ? '↑' : '↓'}
-            </button>
-          </div>
-          
-          <div style={{ marginLeft: 'auto', fontSize: '0.875rem', color: '#6b7280' }}>
-            Showing {filteredAndSortedFunds.length} of {scoredFundData.length} funds
-          </div>
-        </div>
-        
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                <th style={{ textAlign: 'left', padding: '0.75rem', fontWeight: '600' }}>Symbol</th>
-                <th style={{ textAlign: 'left', padding: '0.75rem', fontWeight: '600' }}>Fund Name</th>
-                <th style={{ textAlign: 'left', padding: '0.75rem', fontWeight: '600' }}>Asset Class</th>
-                <th style={{ textAlign: 'center', padding: '0.75rem', fontWeight: '600' }}>Score</th>
-                <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>YTD</th>
-                <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>1Y Return</th>
-                <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>3Y Return</th>
-                <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>5Y Return</th>
-                <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Sharpe</th>
-                <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Std Dev (3Y)</th>
-                <th style={{ textAlign: 'right', padding: '0.75rem', fontWeight: '600' }}>Expense</th>
-                <th style={{ textAlign: 'center', padding: '0.75rem', fontWeight: '600' }}>Type</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredAndSortedFunds.map((fund, i) => (
-                <tr 
-                  key={i} 
-                  style={{ 
-                    borderBottom: '1px solid #f3f4f6',
-                    backgroundColor: fund.isRecommended ? '#eff6ff' : 'white',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => setSelectedFundForDetails(fund)}
-                >
-                  <td style={{ padding: '0.75rem', fontWeight: fund.isBenchmark ? 'bold' : 'normal' }}>
-                    {fund.Symbol}
-                  </td>
-                  <td style={{ padding: '0.75rem' }}>{fund.displayName}</td>
-                  <td style={{ padding: '0.75rem' }}>{fund['Asset Class']}</td>
-                  <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                    {fund.scores ? (
-                      <ScoreBadge score={fund.scores.final} />
-                    ) : (
-                      <span style={{ color: '#9ca3af' }}>-</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                    {fund['YTD'] != null ? `${fund['YTD'].toFixed(2)}%` : '-'}
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                    {fund['1 Year'] != null ? `${fund['1 Year'].toFixed(2)}%` : '-'}
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                    {fund['3 Year'] != null ? `${fund['3 Year'].toFixed(2)}%` : '-'}
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                    {fund['5 Year'] != null ? `${fund['5 Year'].toFixed(2)}%` : '-'}
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                    {fund['Sharpe Ratio'] != null ? fund['Sharpe Ratio'].toFixed(2) : '-'}
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                    {fund['StdDev3Y'] != null ? `${fund['StdDev3Y'].toFixed(2)}%` : '-'}
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                    {fund['Net Expense Ratio'] != null ? `${fund['Net Expense Ratio'].toFixed(2)}%` : '-'}
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                    {fund.isBenchmark && (
-                      <span style={{ 
-                        backgroundColor: '#fbbf24', 
-                        color: '#78350f',
-                        padding: '0.125rem 0.5rem',
-                        borderRadius: '0.25rem',
-                        fontSize: '0.75rem',
-                        fontWeight: '500'
-                      }}>
-                        Benchmark
-                      </span>
-                    )}
-                    {fund.isRecommended && !fund.isBenchmark && (
-                      <span style={{ 
-                        backgroundColor: '#34d399', 
-                        color: '#064e3b',
-                        padding: '0.125rem 0.5rem',
-                        borderRadius: '0.25rem',
-                        fontSize: '0.75rem',
-                        fontWeight: '500'
-                      }}>
-                        Recommended
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-              {/* Fund Details Modal */}
-              {selectedFundForDetails && (
-                <FundDetailsModal
-                  fund={selectedFundForDetails}
-                  onClose={() => setSelectedFundForDetails(null)}
+              <div className="input-group">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleFileUpload}
+                  className="input-field"
+                  style={{ marginBottom: 'var(--spacing-sm)' }}
                 />
-              )}
-            </div>
-          ) : (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '3rem', 
-              backgroundColor: '#f9fafb', 
-              borderRadius: '0.5rem',
-              color: '#6b7280' 
-            }}>
-              <TrendingUp size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-              <p>Upload a fund performance file to see scores</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Asset Class View Tab */}
-      {activeTab === 'class' && (
-        <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-            Asset Class Comparison
-          </h2>
-          
-          <select
-            value={selectedClass}
-            onChange={e => setSelectedClass(e.target.value)}
-            style={{ 
-              padding: '0.5rem', 
-              marginBottom: '1rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.375rem',
-              fontSize: '1rem'
-            }}
-          >
-            <option value="">-- Choose an asset class --</option>
-            {memoizedAssetClasses.map(ac => (
-              <option key={ac} value={ac}>{ac}</option>
-            ))}
-          </select>
-          
-          {selectedClass && (
-            <>
-              {classSummaries[selectedClass] && (
-                <div style={{ 
-                  marginBottom: '1.5rem', 
-                  padding: '1rem', 
-                  backgroundColor: '#f3f4f6', 
-                  borderRadius: '0.5rem' 
-                }}>
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                    {selectedClass} Summary
-                  </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
-                    <div>
-                      <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>Fund Count</div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
-                        {classSummaries[selectedClass].fundCount}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>Average Score</div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
-                        {classSummaries[selectedClass].averageScore}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>Benchmark Score</div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
-                        {classSummaries[selectedClass].benchmarkScore || '-'}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>Distribution</div>
-                      <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.875rem' }}>
-                        <span style={{ color: '#16a34a' }}>
-                          {classSummaries[selectedClass].distribution.excellent} excellent
-                        </span>
-                        <span style={{ color: '#eab308' }}>
-                          {classSummaries[selectedClass].distribution.good} good
-                        </span>
-                        <span style={{ color: '#dc2626' }}>
-                          {classSummaries[selectedClass].distribution.poor} poor
-                        </span>
-                      </div>
-                    </div>
+                {loading && (
+                  <div className="loading-spinner">
+                    <RefreshCw size={16} />
+                    Processing and calculating scores...
                   </div>
-                </div>
-              )}
-              
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Symbol</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Name</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center' }}>Score</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>YTD</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>1Y</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>3Y</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>5Y</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Sharpe</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Std Dev (3Y)</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Std Dev (5Y)</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Expense</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {benchmarkData[selectedClass] && (
-                    <tr style={{ backgroundColor: '#fef3c7', fontWeight: '600' }}>
-                      <td style={{ padding: '0.75rem' }}>
-                        {benchmarkData[selectedClass].Symbol}
-                        <span style={{ 
-                          marginLeft: '0.5rem',
-                          backgroundColor: '#fbbf24', 
-                          color: '#78350f',
-                          padding: '0.125rem 0.5rem',
-                          borderRadius: '0.25rem',
-                          fontSize: '0.75rem',
-                          fontWeight: '500'
-                        }}>
-                          Benchmark
-                        </span>
-                      </td>
-                      <td style={{ padding: '0.75rem' }}>
-                        {benchmarkData[selectedClass].displayName || benchmarkData[selectedClass]['Fund Name'] || benchmarkData[selectedClass].name}
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                        {benchmarkData[selectedClass].scores ? (
-                          <ScoreBadge score={benchmarkData[selectedClass].scores.final} />
-                        ) : '-'}
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['YTD']?.toFixed(2) ?? '-'}%
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['1 Year']?.toFixed(2) ?? '-'}%
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['3 Year']?.toFixed(2) ?? '-'}%
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['5 Year']?.toFixed(2) ?? '-'}%
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['Sharpe Ratio']?.toFixed(2) ?? '-'}
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['StdDev3Y']?.toFixed(2) ?? '-'}%
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['StdDev5Y']?.toFixed(2) ?? '-'}%
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {benchmarkData[selectedClass]['Net Expense Ratio']?.toFixed(2) ?? '-'}%
-                      </td>
-                    </tr>
-                  )}
-                  {scoredFundData
-                    .filter(f => f['Asset Class'] === selectedClass && !f.isBenchmark)
-                    .sort((a, b) => (b.scores?.final || 0) - (a.scores?.final || 0))
-                    .map((fund, idx) => (
-                      <tr 
-                        key={idx} 
-                        style={{ 
-                          borderBottom: '1px solid #f3f4f6',
-                          backgroundColor: fund.isRecommended ? '#eff6ff' : 'white'
-                        }}
-                      >
-                        <td style={{ padding: '0.75rem' }}>
-                          {fund.Symbol}
-                          {fund.isRecommended && (
-                            <span style={{ 
-                              marginLeft: '0.5rem',
-                              backgroundColor: '#34d399', 
-                              color: '#064e3b',
-                              padding: '0.125rem 0.5rem',
-                              borderRadius: '0.25rem',
-                              fontSize: '0.75rem',
-                              fontWeight: '500'
-                            }}>
-                              Rec
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ padding: '0.75rem' }}>{fund.displayName}</td>
-                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                          {fund.scores ? (
-                            <ScoreBadge score={fund.scores.final} />
-                          ) : '-'}
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['YTD']?.toFixed(2) ?? '-'}%
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['1 Year']?.toFixed(2) ?? '-'}%
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['3 Year']?.toFixed(2) ?? '-'}%
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['5 Year']?.toFixed(2) ?? '-'}%
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['Sharpe Ratio']?.toFixed(2) ?? '-'}
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['StdDev3Y']?.toFixed(2) ?? '-'}%
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['StdDev5Y']?.toFixed(2) ?? '-'}%
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {fund['Net Expense Ratio']?.toFixed(2) ?? '-'}%
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Analysis Tab */}
-      {activeTab === 'analysis' && (
-        <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-            Fund Analysis & Insights
-          </h2>
-          
-          {scoredFundData.length > 0 ? (
-            <>
-              {/* Tag Manager Section */}
-              <TagManager 
-                funds={scoredFundData}
-                benchmarkData={benchmarkData}
-              />
-              
-              {/* Review Candidates Section */}
-              <div style={{ marginTop: '3rem' }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-                  Review Candidates
-                </h3>
-                
-                {reviewCandidates.length > 0 ? (
-                  <>
-                    <div style={{ 
-                      marginBottom: '1rem', 
-                      padding: '1rem', 
-                      backgroundColor: '#fef3c7', 
-                      borderRadius: '0.5rem',
-                      border: '1px solid #fbbf24'
-                    }}>
-                      <p style={{ fontWeight: '500' }}>
-                        <AlertCircle size={20} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '0.5rem' }} />
-                        {reviewCandidates.length} funds flagged for review based on scoring criteria
-                      </p>
-                    </div>
-                    
-                    <div style={{ display: 'grid', gap: '1rem' }}>
-                      {reviewCandidates.map((fund, i) => (
-                        <div 
-                          key={i} 
-                          style={{ 
-                            padding: '1rem', 
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '0.5rem',
-                            backgroundColor: fund.isRecommended ? '#fef2f2' : 'white'
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                            <div>
-                              <h3 style={{ fontWeight: 'bold', fontSize: '1.125rem' }}>
-                                {fund.displayName}
-                              </h3>
-                              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-                                {fund.Symbol} | {fund['Asset Class']}
-                                {fund.isRecommended && (
-                                  <span style={{ 
-                                    marginLeft: '0.5rem',
-                                    color: '#dc2626',
-                                    fontWeight: 'bold'
-                                  }}>
-                                    (Recommended Fund)
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-                            <ScoreBadge score={fund.scores?.final || 0} size="large" />
-                          </div>
-                          
-                          <div style={{ marginTop: '0.75rem' }}>
-                            <strong style={{ fontSize: '0.875rem' }}>Review Reasons:</strong>
-                            <ul style={{ marginTop: '0.25rem', marginLeft: '1.5rem', fontSize: '0.875rem', color: '#dc2626' }}>
-                              {fund.reviewReasons.map((reason, j) => (
-                                <li key={j}>{reason}</li>
-                              ))}
-                            </ul>
-                          </div>
-                          
-                          <div style={{ 
-                            marginTop: '0.75rem', 
-                            display: 'grid', 
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                            gap: '0.5rem',
-                            fontSize: '0.875rem'
-                          }}>
-                            <div>
-                              <span style={{ color: '#6b7280' }}>1Y Return:</span>{' '}
-                              <strong>{fund['1 Year']?.toFixed(2) ?? '-'}%</strong>
-                            </div>
-                            <div>
-                              <span style={{ color: '#6b7280' }}>Sharpe:</span>{' '}
-                              <strong>{fund['Sharpe Ratio']?.toFixed(2) ?? '-'}</strong>
-                            </div>
-                            <div>
-                              <span style={{ color: '#6b7280' }}>Expense:</span>{' '}
-                              <strong>{fund['Net Expense Ratio']?.toFixed(2) ?? '-'}%</strong>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ 
-                    textAlign: 'center', 
-                    padding: '3rem', 
-                    backgroundColor: '#f0fdf4', 
-                    borderRadius: '0.5rem',
-                    color: '#16a34a' 
-                  }}>
-                    <Award size={48} style={{ margin: '0 auto 1rem' }} />
-                    <p style={{ fontSize: '1.125rem', fontWeight: '500' }}>
-                      All funds are performing within acceptable parameters!
-                    </p>
-                    <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>
-                      No funds currently flagged for review based on scoring criteria.
-                    </p>
+                )}
+                {error && (
+                  <div className="alert alert-error">
+                    <strong>Error:</strong> {error}
+                  </div>
+                )}
+                {uploadedFileName && (
+                  <div className="alert alert-success">
+                    <strong>Success:</strong> Loaded {uploadedFileName} with {scoredFundData.length} funds
                   </div>
                 )}
               </div>
-            </>
-          ) : (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '3rem', 
-              backgroundColor: '#f9fafb', 
-              borderRadius: '0.5rem',
-              color: '#6b7280' 
-            }}>
-              <AlertCircle size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-              <p>Upload fund performance data to see analysis</p>
             </div>
           )}
-        </div>
-      )}
 
-      {/* Analytics Tab */}
-      {activeTab === 'analytics' && (
-        <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-            Advanced Analytics
-          </h2>
-          
-          {scoredFundData.length > 0 ? (
-            <>
-              {/* Portfolio Analytics Summary */}
-              <div style={{
-                marginBottom: '2rem',
-                padding: '1.5rem',
-                backgroundColor: '#f0f9ff',
-                border: '1px solid #bfdbfe',
-                borderRadius: '0.5rem'
-              }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-                  Portfolio Analytics Summary
-                </h3>
-                
-                {(() => {
-                  const diversification = calculateDiversification(scoredFundData);
-                  const outliers = identifyOutliers(scoredFundData);
-                  
-                  return (
-                    <div style={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                      gap: '1.5rem'
-                    }}>
-                      <div>
-                        <h4 style={{ fontSize: '0.875rem', color: '#1e40af', marginBottom: '0.5rem' }}>
-                          Diversification
-                        </h4>
-                        <div style={{ fontSize: '0.875rem' }}>
-                          <div>Asset Classes: <strong>{diversification.assetClassCount}</strong></div>
-                          <div>Effective Classes: <strong>{diversification.effectiveAssetClasses}</strong></div>
-                          <div>Concentration Risk: <strong style={{
-                            color: diversification.concentrationRisk === 'High' ? '#dc2626' :
-                                  diversification.concentrationRisk === 'Medium' ? '#f59e0b' : '#16a34a'
-                          }}>{diversification.concentrationRisk}</strong></div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h4 style={{ fontSize: '0.875rem', color: '#1e40af', marginBottom: '0.5rem' }}>
-                          Score Distribution
-                        </h4>
-                        <div style={{ fontSize: '0.875rem' }}>
-                          <div>Excellent (70+): <strong style={{ color: '#16a34a' }}>{diversification.scoreDistribution.excellent}</strong></div>
-                          <div>Good (50-70): <strong style={{ color: '#eab308' }}>{diversification.scoreDistribution.good}</strong></div>
-                          <div>Poor (&lt;50): <strong style={{ color: '#dc2626' }}>{diversification.scoreDistribution.poor}</strong></div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h4 style={{ fontSize: '0.875rem', color: '#1e40af', marginBottom: '0.5rem' }}>
-                          Outliers Detected
-                        </h4>
-                        <div style={{ fontSize: '0.875rem' }}>
-                          <div>Performance: <strong>{outliers.performance.length}</strong></div>
-                          <div>Risk: <strong>{outliers.risk.length}</strong></div>
-                          <div>Expense: <strong>{outliers.expense.length}</strong></div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h4 style={{ fontSize: '0.875rem', color: '#1e40af', marginBottom: '0.5rem' }}>
-                          Geographic Mix
-                        </h4>
-                        <div style={{ fontSize: '0.875rem' }}>
-                          <div>Domestic: <strong>{diversification.geographicDiversity.domestic}</strong></div>
-                          <div>International: <strong>{diversification.geographicDiversity.international}</strong></div>
-                          <div>Emerging: <strong>{diversification.geographicDiversity.emerging}</strong></div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
+          {/* Dashboard Tab */}
+          {activeTab === 'dashboard' && (
+            <div>
+              <div className="card-header">
+                <h2 className="card-title">Fund Analysis Dashboard</h2>
+                <p className="card-subtitle">Comprehensive overview of fund performance and analysis</p>
               </div>
               
-              {/* Risk-Return Analysis */}
-              <RiskReturnScatter funds={scoredFundData} />
-              
-              {/* Correlation Matrix */}
-              <CorrelationMatrix funds={scoredFundData} />
-              
-              {/* Attribution Analysis */}
-              <div style={{
-                marginBottom: '2rem',
-                padding: '1.5rem',
-                backgroundColor: 'white',
-                border: '1px solid #e5e7eb',
-                borderRadius: '0.5rem'
-              }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-                  Performance Attribution by Asset Class
-                </h3>
-                
-                {(() => {
-                  const attribution = performAttribution(scoredFundData);
-                  
-                  return (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                            <th style={{ padding: '0.75rem', textAlign: 'left' }}>Asset Class</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'center' }}>Funds</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'right' }}>Weight</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'right' }}>Avg Return</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'right' }}>Contribution</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'right' }}>Avg Score</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(attribution.groups)
-                            .sort((a, b) => b[1].contribution - a[1].contribution)
-                            .map(([className, data]) => (
-                              <tr key={className} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                <td style={{ padding: '0.75rem', fontWeight: '500' }}>{className}</td>
-                                <td style={{ padding: '0.75rem', textAlign: 'center' }}>{data.fundCount}</td>
-                                <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                                  {(data.weight * 100).toFixed(1)}%
-                                </td>
-                                <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                                  {data.avgReturn.toFixed(2)}%
-                                </td>
-                                <td style={{ 
-                                  padding: '0.75rem', 
-                                  textAlign: 'right',
-                                  color: data.contribution >= 0 ? '#16a34a' : '#dc2626',
-                                  fontWeight: '600'
-                                }}>
-                                  {data.contribution >= 0 ? '+' : ''}{data.contribution.toFixed(2)}%
-                                </td>
-                                <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                                  <span style={{ 
-                                    padding: '0.25rem 0.5rem',
-                                    borderRadius: '0.25rem',
-                                    backgroundColor: getScoreColor(data.avgScore) + '20',
-                                    color: getScoreColor(data.avgScore)
-                                  }}>
-                                    {data.avgScore.toFixed(0)}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                        <tfoot>
-                          <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: '600' }}>
-                            <td style={{ padding: '0.75rem' }}>Total Portfolio</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>{attribution.totalFunds}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>100.0%</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                              {attribution.portfolioReturn.toFixed(2)}%
-                            </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>-</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>-</td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-                  );
-                })()}
-              </div>
-            </>
-          ) : (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '3rem', 
-              backgroundColor: '#f9fafb', 
-              borderRadius: '0.5rem',
-              color: '#6b7280' 
-            }}>
-              <TrendingUp size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-              <p>Upload a fund performance file to see scores</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* History Tab */}
-      {activeTab === 'history' && (
-        <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-            Historical Analysis
-          </h2>
-          
-          {/* Fund Timeline Component */}
-          <FundTimeline 
-            snapshots={snapshots}
-            currentFunds={scoredFundData}
-          />
-          
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem', marginTop: '2rem' }}>
-            Saved Snapshots
-          </h3>
-          
-          {snapshots.length > 0 ? (
-            <>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <button
-                  onClick={loadSnapshots}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.375rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}
-                >
-                  <RefreshCw size={16} />
-                  Refresh
-                </button>
-              </div>
-
-              {/* Comparison Section */}
-              {selectedSnapshot && (
-                <div style={{
-                  marginBottom: '1.5rem',
-                  padding: '1rem',
-                  backgroundColor: '#f3f4f6',
-                  borderRadius: '0.5rem'
-                }}>
-                  <h3 style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>Compare Snapshots</h3>
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <div>
-                      <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>Base:</label>
-                      <div style={{ fontWeight: '500' }}>
-                        {new Date(selectedSnapshot.date).toLocaleDateString()}
+              {scoredFundData.length > 0 ? (
+                <div>
+                  {/* Summary Cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 'var(--spacing-lg)', marginBottom: 'var(--spacing-lg)' }}>
+                    <div className="card">
+                      <div className="card-header">
+                        <h3 className="card-title">Total Funds</h3>
+                      </div>
+                      <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
+                        {scoredFundData.length}
                       </div>
                     </div>
-                    <div>
-                      <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>Compare to:</label>
-                      <select
-                        value={compareSnapshot?.id || ''}
-                        onChange={(e) => {
-                          const snapshot = snapshots.find(s => s.id === e.target.value);
-                          setCompareSnapshot(snapshot);
-                        }}
-                        style={{
-                          padding: '0.25rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '0.25rem'
-                        }}
-                      >
-                        <option value="">Select snapshot</option>
-                        {snapshots
-                          .filter(s => s.id !== selectedSnapshot.id)
-                          .map(s => (
-                            <option key={s.id} value={s.id}>
-                              {new Date(s.date).toLocaleDateString()}
-                            </option>
-                          ))}
-                      </select>
+                    
+                    <div className="card">
+                      <div className="card-header">
+                        <h3 className="card-title">Asset Classes</h3>
+                      </div>
+                      <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
+                        {memoizedAssetClasses.length}
+                      </div>
                     </div>
-                    {compareSnapshot && (
-                      <button
-                        onClick={handleCompareSnapshots}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          backgroundColor: '#10b981',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.375rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Compare
-                      </button>
-                    )}
+                    
+                    <div className="card">
+                      <div className="card-header">
+                        <h3 className="card-title">Top Performers</h3>
+                      </div>
+                      <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-success)' }}>
+                        {scoredFundData.filter(f => f.score >= 0.7).length}
+                      </div>
+                    </div>
+                    
+                    <div className="card">
+                      <div className="card-header">
+                        <h3 className="card-title">Review Candidates</h3>
+                      </div>
+                      <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-error)' }}>
+                        {reviewCandidates.length}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Performance Heatmap */}
+                  <div className="card">
+                    <div className="card-header">
+                      <h3 className="card-title">Performance Heatmap</h3>
+                      <p className="card-subtitle">Visual representation of fund performance across asset classes</p>
+                    </div>
+                    <PerformanceHeatmap data={scoredFundData} />
+                  </div>
+
+                  {/* Top/Bottom Performers */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-lg)' }}>
+                    <div className="card">
+                      <div className="card-header">
+                        <h3 className="card-title">Top Performers</h3>
+                      </div>
+                      <TopBottomPerformers data={scoredFundData} type="top" />
+                    </div>
+                    
+                    <div className="card">
+                      <div className="card-header">
+                        <h3 className="card-title">Bottom Performers</h3>
+                      </div>
+                      <TopBottomPerformers data={scoredFundData} type="bottom" />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="card">
+                  <div className="card-header">
+                    <h3 className="card-title">No Data Available</h3>
+                    <p className="card-subtitle">Upload fund data to see the dashboard</p>
                   </div>
                 </div>
               )}
+            </div>
+          )}
 
-              {/* Comparison Results */}
-              {snapshotComparison && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                    Score Changes: {new Date(snapshotComparison.snapshot1.date).toLocaleDateString()} → {new Date(snapshotComparison.snapshot2.date).toLocaleDateString()}
-                  </h3>
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          {/* Fund Scores Tab */}
+          {activeTab === 'funds' && (
+            <div>
+              {scoredFundData.length > 0 ? (
+                <div>
+                  <div className="card-header">
+                    <h2 className="card-title">All Funds with Scores</h2>
+                    <p className="card-subtitle">Scores calculated using weighted Z-score methodology within each asset class</p>
+                  </div>
+                  
+                  {/* Search and Filter Controls */}
+                  <div className="controls-container">
+                    <div className="input-group" style={{ margin: 0, flex: 1 }}>
+                      <input
+                        type="text"
+                        placeholder="Search funds..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="search-input"
+                      />
+                    </div>
+                    <div className="input-group" style={{ margin: 0 }}>
+                      <select
+                        value={filterAssetClass}
+                        onChange={(e) => setFilterAssetClass(e.target.value)}
+                        className="select-field"
+                      >
+                        <option value="all">All Asset Classes</option>
+                        {memoizedAssetClasses.map(cls => (
+                          <option key={cls} value={cls}>{cls}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="input-group" style={{ margin: 0 }}>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="select-field"
+                      >
+                        <option value="score">Sort by Score</option>
+                        <option value="symbol">Sort by Symbol</option>
+                        <option value="name">Sort by Name</option>
+                        <option value="assetClass">Sort by Asset Class</option>
+                      </select>
+                    </div>
+                    <button
+                      onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
+                      className="btn btn-secondary"
+                    >
+                      {sortDirection === 'asc' ? '↑' : '↓'}
+                    </button>
+                  </div>
+
+                  {/* Results Summary */}
+                  <div style={{ marginBottom: 'var(--spacing-md)', color: '#6b7280', fontSize: '0.875rem' }}>
+                    Showing {filteredAndSortedFunds.length} of {scoredFundData.length} funds
+                  </div>
+
+                  {/* Fund Scores Table */}
+                  <div className="table-container">
+                    <table>
                       <thead>
-                        <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                          <th style={{ padding: '0.5rem', textAlign: 'left' }}>Symbol</th>
-                          <th style={{ padding: '0.5rem', textAlign: 'left' }}>Fund Name</th>
-                          <th style={{ padding: '0.5rem', textAlign: 'center' }}>Old Score</th>
-                          <th style={{ padding: '0.5rem', textAlign: 'center' }}>New Score</th>
-                          <th style={{ padding: '0.5rem', textAlign: 'center' }}>Change</th>
+                        <tr>
+                          <th>Symbol</th>
+                          <th>Fund Name</th>
+                          <th>Asset Class</th>
+                          <th>Score</th>
+                          <th>YTD</th>
+                          <th>1 Year</th>
+                          <th>3 Year</th>
+                          <th>5 Year</th>
+                          <th>10 Year</th>
+                          <th>Sharpe</th>
+                          <th>Alpha</th>
+                          <th>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {snapshotComparison.changes.map((change, i) => (
-                          <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td style={{ padding: '0.5rem' }}>{change.symbol}</td>
-                            <td style={{ padding: '0.5rem' }}>{change.fundName}</td>
-                            <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                              {change.type === 'new' ? '-' : change.oldScore}
+                        {filteredAndSortedFunds.map((fund, index) => (
+                          <tr key={fund.Symbol || index}>
+                            <td><strong>{fund.Symbol}</strong></td>
+                            <td>{fund['Fund Name']}</td>
+                            <td>{fund['Asset Class']}</td>
+                            <td>
+                              <span className="score-badge" style={{
+                                backgroundColor: fund.score >= 0.7 ? '#059669' : 
+                                              fund.score >= 0.5 ? '#3B82F6' : 
+                                              fund.score >= 0.3 ? '#F59E0B' : '#DC2626',
+                                padding: 'var(--spacing-xs) var(--spacing-sm)',
+                                borderRadius: 'var(--border-radius)',
+                                color: 'white',
+                                fontWeight: '600',
+                                fontSize: '0.875rem'
+                              }}>
+                                {fund.score?.toFixed(3)}
+                              </span>
                             </td>
-                            <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                              {change.type === 'removed' ? '-' : change.newScore}
-                            </td>
-                            <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                              {change.type === 'new' ? (
-                                <span style={{ color: '#059669' }}>NEW</span>
-                              ) : change.type === 'removed' ? (
-                                <span style={{ color: '#dc2626' }}>REMOVED</span>
-                              ) : (
-                                <span style={{ 
-                                  color: change.change > 0 ? '#059669' : '#dc2626',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: '0.25rem'
-                                }}>
-                                  {change.change > 0 ? '↑' : '↓'}
-                                  {Math.abs(change.change)}
-                                </span>
-                              )}
+                            <td>{fund.YTD?.toFixed(2)}%</td>
+                            <td>{fund['1 Year']?.toFixed(2)}%</td>
+                            <td>{fund['3 Year']?.toFixed(2)}%</td>
+                            <td>{fund['5 Year']?.toFixed(2)}%</td>
+                            <td>{fund['10 Year']?.toFixed(2)}%</td>
+                            <td>{fund['Sharpe Ratio']?.toFixed(2)}</td>
+                            <td>{fund.Alpha?.toFixed(2)}</td>
+                            <td>
+                              <button
+                                onClick={() => setSelectedFundForDetails(fund)}
+                                className="btn btn-secondary"
+                                style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: '0.75rem' }}
+                              >
+                                Details
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -1899,240 +767,550 @@ const App = () => {
                     </table>
                   </div>
                 </div>
+              ) : (
+                <div className="card">
+                  <div className="card-header">
+                    <h3 className="card-title">No Fund Data Available</h3>
+                    <p className="card-subtitle">Upload a fund performance file to get started</p>
+                  </div>
+                </div>
               )}
+            </div>
+          )}
 
-              {/* Snapshots List */}
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                {snapshots.map((snapshot) => (
-                  <div
-                    key={snapshot.id}
-                    style={{
-                      padding: '1rem',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '0.5rem',
-                      backgroundColor: selectedSnapshot?.id === snapshot.id ? '#eff6ff' : 'white',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => loadSnapshot(snapshot)}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                      <div>
-                        <h3 style={{ fontWeight: 'bold', fontSize: '1.125rem' }}>
-                          <Calendar size={16} style={{ display: 'inline', marginRight: '0.5rem' }} />
-                          {new Date(snapshot.date).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
-                          })}
-                        </h3>
-                        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                          {snapshot.metadata.totalFunds} funds • 
-                          {snapshot.metadata.recommendedFunds} recommended • 
-                          Uploaded {new Date(snapshot.metadata.uploadDate).toLocaleDateString()}
-                        </p>
-                        {snapshot.metadata.fileName && (
-                          <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.125rem' }}>
-                            File: {snapshot.metadata.fileName}
-                          </p>
-                        )}
+          {/* Asset Class View Tab */}
+          {activeTab === 'class' && (
+            <div>
+              <div className="card-header">
+                <h2 className="card-title">Asset Class Analysis</h2>
+                <p className="card-subtitle">Performance analysis by asset class with benchmarks</p>
+              </div>
+              
+              <div className="input-group">
+                <label className="input-label">Select Asset Class:</label>
+                <select
+                  value={selectedClass}
+                  onChange={(e) => setSelectedClass(e.target.value)}
+                  className="select-field"
+                >
+                  <option value="">Choose an asset class...</option>
+                  {memoizedAssetClasses.map(cls => (
+                    <option key={cls} value={cls}>{cls}</option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedClass && classSummaries[selectedClass] && (
+                <div className="card">
+                  <div className="card-header">
+                    <h3 className="card-title">{selectedClass} Analysis</h3>
+                    <p className="card-subtitle">
+                      {classSummaries[selectedClass].fundCount} funds analyzed
+                    </p>
+                  </div>
+                  
+                  <div className="table-container">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Metric</th>
+                          <th>Average</th>
+                          <th>Median</th>
+                          <th>Top 25%</th>
+                          <th>Bottom 25%</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><strong>YTD Return</strong></td>
+                          <td>{classSummaries[selectedClass].avgYTD?.toFixed(2)}%</td>
+                          <td>{classSummaries[selectedClass].medianYTD?.toFixed(2)}%</td>
+                          <td>{classSummaries[selectedClass].top25YTD?.toFixed(2)}%</td>
+                          <td>{classSummaries[selectedClass].bottom25YTD?.toFixed(2)}%</td>
+                        </tr>
+                        <tr>
+                          <td><strong>1 Year Return</strong></td>
+                          <td>{classSummaries[selectedClass].avg1Y?.toFixed(2)}%</td>
+                          <td>{classSummaries[selectedClass].median1Y?.toFixed(2)}%</td>
+                          <td>{classSummaries[selectedClass].top251Y?.toFixed(2)}%</td>
+                          <td>{classSummaries[selectedClass].bottom251Y?.toFixed(2)}%</td>
+                        </tr>
+                        <tr>
+                          <td><strong>3 Year Return</strong></td>
+                          <td>{classSummaries[selectedClass].avg3Y?.toFixed(2)}%</td>
+                          <td>{classSummaries[selectedClass].median3Y?.toFixed(2)}%</td>
+                          <td>{classSummaries[selectedClass].top253Y?.toFixed(2)}%</td>
+                          <td>{classSummaries[selectedClass].bottom253Y?.toFixed(2)}%</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Sharpe Ratio</strong></td>
+                          <td>{classSummaries[selectedClass].avgSharpe?.toFixed(2)}</td>
+                          <td>{classSummaries[selectedClass].medianSharpe?.toFixed(2)}</td>
+                          <td>{classSummaries[selectedClass].top25Sharpe?.toFixed(2)}</td>
+                          <td>{classSummaries[selectedClass].bottom25Sharpe?.toFixed(2)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Analysis Tab */}
+          {activeTab === 'analysis' && (
+            <div>
+              <div className="card-header">
+                <h2 className="card-title">Fund Analysis</h2>
+                <p className="card-subtitle">Detailed analysis and insights for fund performance</p>
+              </div>
+              
+              {scoredFundData.length > 0 ? (
+                <div>
+                  {/* Review Candidates */}
+                  <div className="card">
+                    <div className="card-header">
+                      <h3 className="card-title">Review Candidates</h3>
+                      <p className="card-subtitle">Funds that may need attention based on performance metrics</p>
+                    </div>
+                    {reviewCandidates.length > 0 ? (
+                      <div className="table-container">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Symbol</th>
+                              <th>Fund Name</th>
+                              <th>Asset Class</th>
+                              <th>Score</th>
+                              <th>Issues</th>
+                              <th>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {reviewCandidates.map((fund, index) => (
+                              <tr key={fund.Symbol || index}>
+                                <td><strong>{fund.Symbol}</strong></td>
+                                <td>{fund['Fund Name']}</td>
+                                <td>{fund['Asset Class']}</td>
+                                <td>
+                                  <span className="score-badge" style={{
+                                    backgroundColor: fund.score >= 0.7 ? '#059669' : 
+                                                  fund.score >= 0.5 ? '#3B82F6' : 
+                                                  fund.score >= 0.3 ? '#F59E0B' : '#DC2626',
+                                    padding: 'var(--spacing-xs) var(--spacing-sm)',
+                                    borderRadius: 'var(--border-radius)',
+                                    color: 'white',
+                                    fontWeight: '600',
+                                    fontSize: '0.875rem'
+                                  }}>
+                                    {fund.score?.toFixed(3)}
+                                  </span>
+                                </td>
+                                <td>
+                                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                                    {fund.issues?.join(', ') || 'Low performance'}
+                                  </div>
+                                </td>
+                                <td>
+                                  <button
+                                    onClick={() => setSelectedFundForDetails(fund)}
+                                    className="btn btn-secondary"
+                                    style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: '0.75rem' }}
+                                  >
+                                    Details
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        {selectedSnapshot?.id === snapshot.id && (
-                          <span style={{
-                            padding: '0.25rem 0.75rem',
-                            backgroundColor: '#3b82f6',
-                            color: 'white',
-                            borderRadius: '0.25rem',
-                            fontSize: '0.75rem',
-                            fontWeight: '500'
-                          }}>
-                            Active
-                          </span>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm('Delete this snapshot?')) {
-                              deleteSnapshot(snapshot.id).then(() => {
-                                loadSnapshots();
-                              });
-                            }
-                          }}
-                          style={{
-                            padding: '0.25rem 0.5rem',
-                            backgroundColor: '#ef4444',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '0.25rem',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                    ) : (
+                      <div className="alert alert-success">
+                        <strong>Great news!</strong> No funds require immediate review.
                       </div>
+                    )}
+                  </div>
+
+                  {/* Asset Class Performance */}
+                  <div className="card">
+                    <div className="card-header">
+                      <h3 className="card-title">Asset Class Performance Summary</h3>
+                      <p className="card-subtitle">Performance metrics by asset class</p>
+                    </div>
+                    <div className="table-container">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Asset Class</th>
+                            <th>Fund Count</th>
+                            <th>Avg Score</th>
+                            <th>Avg YTD</th>
+                            <th>Avg 1Y</th>
+                            <th>Avg 3Y</th>
+                            <th>Avg Sharpe</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(classSummaries).map(([className, summary]) => (
+                            <tr key={className}>
+                              <td><strong>{className}</strong></td>
+                              <td>{summary.fundCount}</td>
+                              <td>{summary.averageScore?.toFixed(3)}</td>
+                              <td>{summary.avgYTD?.toFixed(2)}%</td>
+                              <td>{summary.avg1Y?.toFixed(2)}%</td>
+                              <td>{summary.avg3Y?.toFixed(2)}%</td>
+                              <td>{summary.avgSharpe?.toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                ))}
+                </div>
+              ) : (
+                <div className="card">
+                  <div className="card-header">
+                    <h3 className="card-title">No Data Available</h3>
+                    <p className="card-subtitle">Upload fund data to see analysis</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Analytics Tab */}
+          {activeTab === 'analytics' && (
+            <div>
+              <div className="card-header">
+                <h2 className="card-title">Advanced Analytics</h2>
+                <p className="card-subtitle">Correlation analysis and risk-return insights</p>
               </div>
-            </>
-          ) : (
+              
+              {scoredFundData.length > 0 ? (
+                <div>
+                  <div className="card">
+                    <div className="card-header">
+                      <h3 className="card-title">Correlation Matrix</h3>
+                      <p className="card-subtitle">Fund performance correlations across asset classes</p>
+                    </div>
+                    <CorrelationMatrix data={scoredFundData} />
+                  </div>
+
+                  <div className="card">
+                    <div className="card-header">
+                      <h3 className="card-title">Risk-Return Analysis</h3>
+                      <p className="card-subtitle">Risk-adjusted performance scatter plot</p>
+                    </div>
+                    <RiskReturnScatter data={scoredFundData} />
+                  </div>
+                </div>
+              ) : (
+                <div className="card">
+                  <div className="card-header">
+                    <h3 className="card-title">No Data Available</h3>
+                    <p className="card-subtitle">Upload fund data to see analytics</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* History Tab */}
+          {activeTab === 'history' && (
+            <div>
+              <div className="card-header">
+                <h2 className="card-title">Historical Data</h2>
+                <p className="card-subtitle">Compare fund performance over time</p>
+              </div>
+              
+              <div className="card">
+                <div className="card-header">
+                  <h3 className="card-title">Available Snapshots</h3>
+                  <p className="card-subtitle">Select snapshots to compare historical performance</p>
+                </div>
+                
+                <div className="input-group">
+                  <label className="input-label">Current Snapshot:</label>
+                  <select
+                    value={selectedSnapshot || ''}
+                    onChange={(e) => setSelectedSnapshot(e.target.value)}
+                    className="select-field"
+                  >
+                    <option value="">Select a snapshot...</option>
+                    {snapshots.map(snapshot => (
+                      <option key={snapshot.date} value={snapshot.date}>
+                        {snapshot.date} ({snapshot.fundCount} funds)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="input-group">
+                  <label className="input-label">Compare With:</label>
+                  <select
+                    value={compareSnapshot || ''}
+                    onChange={(e) => setCompareSnapshot(e.target.value)}
+                    className="select-field"
+                  >
+                    <option value="">Select comparison snapshot...</option>
+                    {snapshots.filter(s => s.date !== selectedSnapshot).map(snapshot => (
+                      <option key={snapshot.date} value={snapshot.date}>
+                        {snapshot.date} ({snapshot.fundCount} funds)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedSnapshot && compareSnapshot && snapshotComparison && (
+                  <div className="card">
+                    <div className="card-header">
+                      <h3 className="card-title">Comparison Results</h3>
+                      <p className="card-subtitle">
+                        {selectedSnapshot} vs {compareSnapshot}
+                      </p>
+                    </div>
+                    <div className="table-container">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Metric</th>
+                            <th>{selectedSnapshot}</th>
+                            <th>{compareSnapshot}</th>
+                            <th>Change</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><strong>Total Funds</strong></td>
+                            <td>{snapshotComparison.current.fundCount}</td>
+                            <td>{snapshotComparison.previous.fundCount}</td>
+                            <td style={{ color: snapshotComparison.fundCountChange >= 0 ? '#059669' : '#DC2626' }}>
+                              {snapshotComparison.fundCountChange > 0 ? '+' : ''}{snapshotComparison.fundCountChange}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td><strong>Average Score</strong></td>
+                            <td>{snapshotComparison.current.avgScore?.toFixed(3)}</td>
+                            <td>{snapshotComparison.previous.avgScore?.toFixed(3)}</td>
+                            <td style={{ color: snapshotComparison.scoreChange >= 0 ? '#059669' : '#DC2626' }}>
+                              {snapshotComparison.scoreChange > 0 ? '+' : ''}{snapshotComparison.scoreChange?.toFixed(3)}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Admin Tab */}
+          {activeTab === 'admin' && (
+            <div>
+              <div className="card-header">
+                <h2 className="card-title">Administration</h2>
+                <p className="card-subtitle">Manage fund registry and system settings</p>
+              </div>
+              
+              <FundAdmin 
+                recommendedFunds={recommendedFunds}
+                setRecommendedFunds={setRecommendedFunds}
+                assetClassBenchmarks={assetClassBenchmarks}
+                setAssetClassBenchmarks={setAssetClassBenchmarks}
+              />
+            </div>
+          )}
+
+          {/* Help Modal */}
+          {showHelp && (
             <div style={{
-              textAlign: 'center',
-              padding: '3rem',
-              backgroundColor: '#f9fafb',
-              borderRadius: '0.5rem',
-              color: '#6b7280'
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2000
+            }} onClick={() => setShowHelp(false)}>
+              <div style={{
+                backgroundColor: 'white',
+                padding: '2rem',
+                borderRadius: '0.5rem',
+                maxWidth: '800px',
+                maxHeight: '80vh',
+                overflow: 'auto',
+                width: '90%'
+              }} onClick={e => e.stopPropagation()}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+                  Lightship Fund Analysis - Help Guide
+                </h2>
+                
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Quick Start</h3>
+                  <ol style={{ marginLeft: '1.5rem', fontSize: '0.875rem', color: '#374151' }}>
+                    <li>Upload your monthly fund performance Excel file</li>
+                    <li>The system will automatically calculate Z-scores for each fund within its asset class</li>
+                    <li>Navigate tabs to view different analyses and insights</li>
+                    <li>Export reports for investment committee meetings</li>
+                  </ol>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Scoring Methodology</h3>
+                  <p style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.5rem' }}>
+                    Each fund receives a 0-100 score based on weighted Z-scores across 13 metrics:
+                  </p>
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '0.5rem',
+                    fontSize: '0.75rem',
+                    backgroundColor: '#f9fafb',
+                    padding: '1rem',
+                    borderRadius: '0.375rem'
+                  }}>
+                    <div>• YTD Return (2.5%)</div>
+                    <div>• 1-Year Return (5%)</div>
+                    <div>• 3-Year Return (10%)</div>
+                    <div>• 5-Year Return (20%)</div>
+                    <div>• 10-Year Return (10%)</div>
+                    <div>• 3Y Sharpe Ratio (15%)</div>
+                    <div>• 3Y Std Deviation (-10%)</div>
+                    <div>• 5Y Std Deviation (-15%)</div>
+                    <div>• Up Capture Ratio (7.5%)</div>
+                    <div>• Down Capture Ratio (-10%)</div>
+                    <div>• 5Y Alpha (5%)</div>
+                    <div>• Expense Ratio (-2.5%)</div>
+                    <div>• Manager Tenure (2.5%)</div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Keyboard Shortcuts</h3>
+                  <div style={{ fontSize: '0.875rem', color: '#374151' }}>
+                    <div style={{ marginBottom: '0.25rem' }}><kbd>Ctrl+H</kbd> - Open this help dialog</div>
+                    <div style={{ marginBottom: '0.25rem' }}><kbd>Ctrl+E</kbd> - Export to Excel</div>
+                    <div style={{ marginBottom: '0.25rem' }}><kbd>1-6</kbd> - Quick navigation between tabs</div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Tab Overview</h3>
+                  <div style={{ fontSize: '0.875rem', color: '#374151' }}>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <strong>Dashboard:</strong> Visual overview with heatmaps and top/bottom performers
+                    </div>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <strong>Fund Scores:</strong> Detailed table of all funds with scores and metrics
+                    </div>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <strong>Class View:</strong> Compare funds within specific asset classes
+                    </div>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <strong>Analysis:</strong> Smart tags and funds requiring review
+                    </div>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <strong>Analytics:</strong> Advanced visualizations including risk-return and correlations
+                    </div>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <strong>History:</strong> Track performance over time and compare snapshots
+                    </div>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <strong>Admin:</strong> Manage recommended funds and benchmark mappings
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Score Interpretation</h3>
+                  <div style={{ fontSize: '0.875rem', color: '#374151' }}>
+                    <div style={{ marginBottom: '0.25rem' }}>
+                      <span style={{ color: '#16a34a', fontWeight: '600' }}>70-100:</span> Excellent - Strong risk-adjusted returns and efficiency
+                    </div>
+                    <div style={{ marginBottom: '0.25rem' }}>
+                      <span style={{ color: '#eab308', fontWeight: '600' }}>50-70:</span> Good - Average performance, monitor for trends
+                    </div>
+                    <div style={{ marginBottom: '0.25rem' }}>
+                      <span style={{ color: '#dc2626', fontWeight: '600' }}>Below 50:</span> Poor - Consider for replacement or further analysis
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: 'right', marginTop: '2rem' }}>
+                  <button
+                    onClick={() => setShowHelp(false)}
+                    style={{
+                      padding: '0.5rem 1.5rem',
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '0.375rem',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showPreviewModal && uploadPreview && (
+            <div style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
-              <Database size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-              <p>No historical snapshots found</p>
-              <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
-                Upload fund data and it will be saved automatically
-              </p>
+              <div style={{ background: 'white', borderRadius: '0.5rem', padding: '2rem', maxWidth: '90vw', maxHeight: '80vh', overflow: 'auto' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>Preview Import: {uploadPreview.fileName}</h3>
+                <div style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.9rem' }}>
+                  <strong>Mapped columns:</strong> {Object.keys(uploadPreview.columnMap).join(', ')}<br/>
+                  {uploadPreview.unmappedHeaders.length > 0 && (
+                    <span style={{ color: '#dc2626' }}>
+                      Unmapped columns: {uploadPreview.unmappedHeaders.join(', ')} (will be ignored)
+                    </span>
+                  )}
+                </div>
+                <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
+                  <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                    <thead>
+                      <tr>
+                        {Object.keys(uploadPreview.columnMap).map(col => (
+                          <th key={col} style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>{col}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {uploadPreview.parsed.slice(0, 10).map((row, i) => (
+                        <tr key={i}>
+                          {Object.keys(uploadPreview.columnMap).map(col => (
+                            <td key={col} style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>{row[col]}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{ color: '#6b7280', fontSize: '0.8rem', marginTop: '0.5rem' }}>
+                    Showing first 10 rows. {uploadPreview.parsed.length} total rows will be imported.
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                  <button onClick={handleCancelImport} style={{ padding: '0.5rem 1.5rem', background: '#e5e7eb', border: 'none', borderRadius: '0.375rem', cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={handleConfirmImport} style={{ padding: '0.5rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '0.375rem', cursor: 'pointer', fontWeight: 'bold' }}>Import</button>
+                </div>
+              </div>
             </div>
           )}
         </div>
-      )}
-
-      {/* Admin Tab */}
-      {activeTab === 'admin' && <FundAdmin />}
-
-      {/* Help Modal */}
-      {showHelp && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 2000
-        }} onClick={() => setShowHelp(false)}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '2rem',
-            borderRadius: '0.5rem',
-            maxWidth: '800px',
-            maxHeight: '80vh',
-            overflow: 'auto',
-            width: '90%'
-          }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-              Lightship Fund Analysis - Help Guide
-            </h2>
-            
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Quick Start</h3>
-              <ol style={{ marginLeft: '1.5rem', fontSize: '0.875rem', color: '#374151' }}>
-                <li>Upload your monthly fund performance Excel file</li>
-                <li>The system will automatically calculate Z-scores for each fund within its asset class</li>
-                <li>Navigate tabs to view different analyses and insights</li>
-                <li>Export reports for investment committee meetings</li>
-              </ol>
-            </div>
-
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Scoring Methodology</h3>
-              <p style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.5rem' }}>
-                Each fund receives a 0-100 score based on weighted Z-scores across 13 metrics:
-              </p>
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: '1fr 1fr',
-                gap: '0.5rem',
-                fontSize: '0.75rem',
-                backgroundColor: '#f9fafb',
-                padding: '1rem',
-                borderRadius: '0.375rem'
-              }}>
-                <div>• YTD Return (2.5%)</div>
-                <div>• 1-Year Return (5%)</div>
-                <div>• 3-Year Return (10%)</div>
-                <div>• 5-Year Return (20%)</div>
-                <div>• 10-Year Return (10%)</div>
-                <div>• 3Y Sharpe Ratio (15%)</div>
-                <div>• 3Y Std Deviation (-10%)</div>
-                <div>• 5Y Std Deviation (-15%)</div>
-                <div>• Up Capture Ratio (7.5%)</div>
-                <div>• Down Capture Ratio (-10%)</div>
-                <div>• 5Y Alpha (5%)</div>
-                <div>• Expense Ratio (-2.5%)</div>
-                <div>• Manager Tenure (2.5%)</div>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Keyboard Shortcuts</h3>
-              <div style={{ fontSize: '0.875rem', color: '#374151' }}>
-                <div style={{ marginBottom: '0.25rem' }}><kbd>Ctrl+H</kbd> - Open this help dialog</div>
-                <div style={{ marginBottom: '0.25rem' }}><kbd>Ctrl+E</kbd> - Export to Excel</div>
-                <div style={{ marginBottom: '0.25rem' }}><kbd>1-6</kbd> - Quick navigation between tabs</div>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Tab Overview</h3>
-              <div style={{ fontSize: '0.875rem', color: '#374151' }}>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>Dashboard:</strong> Visual overview with heatmaps and top/bottom performers
-                </div>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>Fund Scores:</strong> Detailed table of all funds with scores and metrics
-                </div>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>Class View:</strong> Compare funds within specific asset classes
-                </div>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>Analysis:</strong> Smart tags and funds requiring review
-                </div>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>Analytics:</strong> Advanced visualizations including risk-return and correlations
-                </div>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>History:</strong> Track performance over time and compare snapshots
-                </div>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>Admin:</strong> Manage recommended funds and benchmark mappings
-                </div>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Score Interpretation</h3>
-              <div style={{ fontSize: '0.875rem', color: '#374151' }}>
-                <div style={{ marginBottom: '0.25rem' }}>
-                  <span style={{ color: '#16a34a', fontWeight: '600' }}>70-100:</span> Excellent - Strong risk-adjusted returns and efficiency
-                </div>
-                <div style={{ marginBottom: '0.25rem' }}>
-                  <span style={{ color: '#eab308', fontWeight: '600' }}>50-70:</span> Good - Average performance, monitor for trends
-                </div>
-                <div style={{ marginBottom: '0.25rem' }}>
-                  <span style={{ color: '#dc2626', fontWeight: '600' }}>Below 50:</span> Poor - Consider for replacement or further analysis
-                </div>
-              </div>
-            </div>
-
-            <div style={{ textAlign: 'right', marginTop: '2rem' }}>
-              <button
-                onClick={() => setShowHelp(false)}
-                style={{
-                  padding: '0.5rem 1.5rem',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '0.375rem',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem'
-                }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </main>
+      {/* Footer */}
+      <footer className="footer">
+        &copy; {new Date().getFullYear()} Raymond James (Demo) | Lightship Fund Analysis
+      </footer>
     </div>
   );
 };
