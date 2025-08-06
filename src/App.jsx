@@ -1,5 +1,5 @@
 // App.jsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { RefreshCw, Settings, Trash2, LayoutGrid, AlertCircle, TrendingUp, Award, Clock, Database, Calendar, Download, BarChart3, Activity, Info } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import FundAdmin from './components/Admin/FundAdmin';
@@ -119,6 +119,11 @@ const App = () => {
   const [classSummaries, setClassSummaries] = useState({});
   const [currentSnapshotDate, setCurrentSnapshotDate] = useState(null);
   const [uploadedFileName, setUploadedFileName] = useState('');
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterAssetClass, setFilterAssetClass] = useState('all');
+  const [sortBy, setSortBy] = useState('score');
+  const [sortDirection, setSortDirection] = useState('desc');
 
   // Historical data states
   const [snapshots, setSnapshots] = useState([]);
@@ -129,7 +134,21 @@ const App = () => {
   const [recommendedFunds, setRecommendedFunds] = useState([]);
   const [assetClassBenchmarks, setAssetClassBenchmarks] = useState({});
 
-  // Map of symbol -> cleaned fund name from registry
+  // Memoize expensive calculations
+  const memoizedAssetClasses = useMemo(() => {
+    const classes = new Set(Object.keys(assetClassBenchmarks));
+    scoredFundData.forEach(f => {
+      if (f['Asset Class']) classes.add(f['Asset Class']);
+    });
+    return Array.from(classes).sort();
+  }, [assetClassBenchmarks, scoredFundData]);
+
+  // Memoize review candidates calculation
+  const reviewCandidates = useMemo(() => {
+    return identifyReviewCandidates(scoredFundData);
+  }, [scoredFundData]);
+
+  // Memoize registry name map
   const registryNameMap = useMemo(() => {
     const clean = (s) => s?.toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
     const map = {};
@@ -138,15 +157,6 @@ const App = () => {
     });
     return map;
   }, [recommendedFunds]);
-
-  // List of available asset classes from benchmarks and loaded funds
-  const assetClasses = useMemo(() => {
-    const classes = new Set(Object.keys(assetClassBenchmarks));
-    scoredFundData.forEach(f => {
-      if (f['Asset Class']) classes.add(f['Asset Class']);
-    });
-    return Array.from(classes).sort();
-  }, [assetClassBenchmarks, scoredFundData]);
 
   // Help modal state
   const [showHelp, setShowHelp] = useState(false);
@@ -230,8 +240,11 @@ const App = () => {
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
+    
     setLoading(true);
+    setError(null);
     setUploadedFileName(file.name);
+    
     const reader = new FileReader();
 
     reader.onload = async (e) => {
@@ -473,10 +486,16 @@ const App = () => {
         console.log('Successfully loaded and scored', scoredFunds.length, 'funds');
       } catch (err) {
         console.error('Error parsing performance file:', err);
+        setError('Error parsing file: ' + err.message);
         alert('Error parsing file: ' + err.message);
       } finally {
         setLoading(false);
       }
+    };
+
+    reader.onerror = () => {
+      setError('Failed to read file');
+      setLoading(false);
     };
 
     reader.readAsArrayBuffer(file);
@@ -518,9 +537,72 @@ const App = () => {
     }
   };
 
-
-  // Get review candidates
-  const reviewCandidates = identifyReviewCandidates(scoredFundData);
+  // Filtered and sorted funds
+  const filteredAndSortedFunds = useMemo(() => {
+    let filtered = scoredFundData;
+    
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(fund => 
+        fund.Symbol?.toLowerCase().includes(term) ||
+        fund.displayName?.toLowerCase().includes(term) ||
+        fund['Asset Class']?.toLowerCase().includes(term)
+      );
+    }
+    
+    // Apply asset class filter
+    if (filterAssetClass !== 'all') {
+      filtered = filtered.filter(fund => fund['Asset Class'] === filterAssetClass);
+    }
+    
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'score':
+          aValue = a.scores?.final || 0;
+          bValue = b.scores?.final || 0;
+          break;
+        case 'symbol':
+          aValue = a.Symbol || '';
+          bValue = b.Symbol || '';
+          break;
+        case 'name':
+          aValue = a.displayName || '';
+          bValue = b.displayName || '';
+          break;
+        case 'ytd':
+          aValue = a['YTD'] || 0;
+          bValue = b['YTD'] || 0;
+          break;
+        case '1year':
+          aValue = a['1 Year'] || 0;
+          bValue = b['1 Year'] || 0;
+          break;
+        case 'sharpe':
+          aValue = a['Sharpe Ratio'] || 0;
+          bValue = b['Sharpe Ratio'] || 0;
+          break;
+        case 'expense':
+          aValue = a['Net Expense Ratio'] || 0;
+          bValue = b['Net Expense Ratio'] || 0;
+          break;
+        default:
+          aValue = a.scores?.final || 0;
+          bValue = b.scores?.final || 0;
+      }
+      
+      if (sortDirection === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+    
+    return filtered;
+  }, [scoredFundData, searchTerm, filterAssetClass, sortBy, sortDirection]);
 
   return (
     <div style={{ padding: '2rem', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -722,6 +804,19 @@ const App = () => {
               <RefreshCw size={16} style={{ marginRight: '0.25rem', animation: 'spin 1s linear infinite' }} />
               Processing and calculating scores...
             </span>
+          )}
+          {error && (
+            <div style={{ 
+              marginTop: '0.5rem', 
+              padding: '0.5rem', 
+              backgroundColor: '#fef2f2', 
+              border: '1px solid #fecaca', 
+              borderRadius: '0.25rem',
+              color: '#dc2626',
+              fontSize: '0.875rem'
+            }}>
+              ⚠️ {error}
+            </div>
           )}
           {scoredFundData.length > 0 && !loading && (
             <div style={{ marginTop: '0.5rem' }}>
@@ -927,6 +1022,92 @@ const App = () => {
           </p>
         </div>
         
+        {/* Search and Filter Controls */}
+        <div style={{ 
+          marginBottom: '1.5rem', 
+          padding: '1rem', 
+          backgroundColor: '#f9fafb', 
+          borderRadius: '0.5rem',
+          display: 'flex',
+          gap: '1rem',
+          flexWrap: 'wrap',
+          alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: '500' }}>Search:</label>
+            <input
+              type="text"
+              placeholder="Search by symbol, name, or asset class..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                padding: '0.5rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.375rem',
+                fontSize: '0.875rem',
+                minWidth: '200px'
+              }}
+            />
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: '500' }}>Asset Class:</label>
+            <select
+              value={filterAssetClass}
+              onChange={(e) => setFilterAssetClass(e.target.value)}
+              style={{
+                padding: '0.5rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.375rem',
+                fontSize: '0.875rem'
+              }}
+            >
+              <option value="all">All Classes</option>
+              {memoizedAssetClasses.map(ac => (
+                <option key={ac} value={ac}>{ac}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: '500' }}>Sort by:</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{
+                padding: '0.5rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.375rem',
+                fontSize: '0.875rem'
+              }}
+            >
+              <option value="score">Score</option>
+              <option value="symbol">Symbol</option>
+              <option value="name">Name</option>
+              <option value="ytd">YTD Return</option>
+              <option value="1year">1 Year Return</option>
+              <option value="sharpe">Sharpe Ratio</option>
+              <option value="expense">Expense Ratio</option>
+            </select>
+            <button
+              onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
+              style={{
+                padding: '0.25rem 0.5rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.25rem',
+                backgroundColor: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              {sortDirection === 'asc' ? '↑' : '↓'}
+            </button>
+          </div>
+          
+          <div style={{ marginLeft: 'auto', fontSize: '0.875rem', color: '#6b7280' }}>
+            Showing {filteredAndSortedFunds.length} of {scoredFundData.length} funds
+          </div>
+        </div>
+        
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -946,79 +1127,77 @@ const App = () => {
               </tr>
             </thead>
             <tbody>
-              {scoredFundData
-                .sort((a, b) => (b.scores?.final || 0) - (a.scores?.final || 0))
-                .map((fund, i) => (
-                  <tr 
-                    key={i} 
-                    style={{ 
-                      borderBottom: '1px solid #f3f4f6',
-                      backgroundColor: fund.isRecommended ? '#eff6ff' : 'white',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => setSelectedFundForDetails(fund)}
-                  >
-                    <td style={{ padding: '0.75rem', fontWeight: fund.isBenchmark ? 'bold' : 'normal' }}>
-                      {fund.Symbol}
-                    </td>
-                    <td style={{ padding: '0.75rem' }}>{fund.displayName}</td>
-                    <td style={{ padding: '0.75rem' }}>{fund['Asset Class']}</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                      {fund.scores ? (
-                        <ScoreBadge score={fund.scores.final} />
-                      ) : (
-                        <span style={{ color: '#9ca3af' }}>-</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                      {fund['YTD'] != null ? `${fund['YTD'].toFixed(2)}%` : '-'}
-                    </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                      {fund['1 Year'] != null ? `${fund['1 Year'].toFixed(2)}%` : '-'}
-                    </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                      {fund['3 Year'] != null ? `${fund['3 Year'].toFixed(2)}%` : '-'}
-                    </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                      {fund['5 Year'] != null ? `${fund['5 Year'].toFixed(2)}%` : '-'}
-                    </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                      {fund['Sharpe Ratio'] != null ? fund['Sharpe Ratio'].toFixed(2) : '-'}
-                    </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                      {fund['StdDev3Y'] != null ? `${fund['StdDev3Y'].toFixed(2)}%` : '-'}
-                    </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                      {fund['Net Expense Ratio'] != null ? `${fund['Net Expense Ratio'].toFixed(2)}%` : '-'}
-                    </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                      {fund.isBenchmark && (
-                        <span style={{ 
-                          backgroundColor: '#fbbf24', 
-                          color: '#78350f',
-                          padding: '0.125rem 0.5rem',
-                          borderRadius: '0.25rem',
-                          fontSize: '0.75rem',
-                          fontWeight: '500'
-                        }}>
-                          Benchmark
-                        </span>
-                      )}
-                      {fund.isRecommended && !fund.isBenchmark && (
-                        <span style={{ 
-                          backgroundColor: '#34d399', 
-                          color: '#064e3b',
-                          padding: '0.125rem 0.5rem',
-                          borderRadius: '0.25rem',
-                          fontSize: '0.75rem',
-                          fontWeight: '500'
-                        }}>
-                          Recommended
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+              {filteredAndSortedFunds.map((fund, i) => (
+                <tr 
+                  key={i} 
+                  style={{ 
+                    borderBottom: '1px solid #f3f4f6',
+                    backgroundColor: fund.isRecommended ? '#eff6ff' : 'white',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setSelectedFundForDetails(fund)}
+                >
+                  <td style={{ padding: '0.75rem', fontWeight: fund.isBenchmark ? 'bold' : 'normal' }}>
+                    {fund.Symbol}
+                  </td>
+                  <td style={{ padding: '0.75rem' }}>{fund.displayName}</td>
+                  <td style={{ padding: '0.75rem' }}>{fund['Asset Class']}</td>
+                  <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                    {fund.scores ? (
+                      <ScoreBadge score={fund.scores.final} />
+                    ) : (
+                      <span style={{ color: '#9ca3af' }}>-</span>
+                    )}
+                  </td>
+                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                    {fund['YTD'] != null ? `${fund['YTD'].toFixed(2)}%` : '-'}
+                  </td>
+                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                    {fund['1 Year'] != null ? `${fund['1 Year'].toFixed(2)}%` : '-'}
+                  </td>
+                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                    {fund['3 Year'] != null ? `${fund['3 Year'].toFixed(2)}%` : '-'}
+                  </td>
+                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                    {fund['5 Year'] != null ? `${fund['5 Year'].toFixed(2)}%` : '-'}
+                  </td>
+                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                    {fund['Sharpe Ratio'] != null ? fund['Sharpe Ratio'].toFixed(2) : '-'}
+                  </td>
+                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                    {fund['StdDev3Y'] != null ? `${fund['StdDev3Y'].toFixed(2)}%` : '-'}
+                  </td>
+                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                    {fund['Net Expense Ratio'] != null ? `${fund['Net Expense Ratio'].toFixed(2)}%` : '-'}
+                  </td>
+                  <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                    {fund.isBenchmark && (
+                      <span style={{ 
+                        backgroundColor: '#fbbf24', 
+                        color: '#78350f',
+                        padding: '0.125rem 0.5rem',
+                        borderRadius: '0.25rem',
+                        fontSize: '0.75rem',
+                        fontWeight: '500'
+                      }}>
+                        Benchmark
+                      </span>
+                    )}
+                    {fund.isRecommended && !fund.isBenchmark && (
+                      <span style={{ 
+                        backgroundColor: '#34d399', 
+                        color: '#064e3b',
+                        padding: '0.125rem 0.5rem',
+                        borderRadius: '0.25rem',
+                        fontSize: '0.75rem',
+                        fontWeight: '500'
+                      }}>
+                        Recommended
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -1065,7 +1244,7 @@ const App = () => {
             }}
           >
             <option value="">-- Choose an asset class --</option>
-            {assetClasses.map(ac => (
+            {memoizedAssetClasses.map(ac => (
               <option key={ac} value={ac}>{ac}</option>
             ))}
           </select>

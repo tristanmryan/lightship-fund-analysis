@@ -21,3 +21,101 @@
       transform: rotate(360deg);
     }
   }
+
+  /* Responsive design improvements */
+  @media (max-width: 768px) {
+    .app-container {
+      padding: 1rem !important;
+    }
+    
+    .tab-buttons {
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    
+    .tab-button {
+      width: 100%;
+      justify-content: center;
+    }
+    
+    .export-buttons {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .table-container {
+      overflow-x: auto;
+      font-size: 0.875rem;
+    }
+    
+    .table-container table {
+      min-width: 800px;
+    }
+  }
+
+  /* Dark mode support */
+  @media (prefers-color-scheme: dark) {
+    body {
+      background-color: #1f2937;
+      color: #f9fafb;
+    }
+    
+    .card {
+      background-color: #374151;
+      border-color: #4b5563;
+    }
+  }
+
+  /* Accessibility improvements */
+  .focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+
+  /* Smooth transitions */
+  .transition {
+    transition: all 0.2s ease-in-out;
+  }
+
+  /* Better table styling */
+  .data-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.875rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .data-table th {
+    background-color: #f9fafb;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .data-table tbody tr:hover {
+    background-color: #f3f4f6;
+  }
+
+  /* Score badge improvements */
+  .score-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    font-weight: 600;
+    color: #fff;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    transition: transform 0.1s ease;
+  }
+
+  .score-badge:hover {
+    transform: scale(1.05);
+  }
