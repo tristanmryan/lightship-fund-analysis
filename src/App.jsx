@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { RefreshCw, Settings, Trash2, LayoutGrid, AlertCircle, TrendingUp, Award, Clock, Database, Calendar, Download, BarChart3, Activity, Info, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import './App.css'; // Import the CSS file
 import FundAdmin from './components/Admin/FundAdmin';
 import {
   recommendedFunds as defaultRecommendedFunds,
@@ -53,86 +54,167 @@ import { processRawFunds } from './services/fundProcessor';
 import assetClassGroups from './data/assetClassGroups';
 import stringSimilarity from 'string-similarity';
 
-// Score badge component for visual display
-export const ScoreBadge = ({ score, size = 'normal' }) => {
-  const color = getScoreColor(score);
-  const label = getScoreLabel(score);
-
-  const sizeStyles = {
-    small: { fontSize: '0.75rem', padding: '0.125rem 0.375rem' },
-    normal: { fontSize: '0.875rem', padding: '0.25rem 0.5rem' },
-    large: { fontSize: '1rem', padding: '0.375rem 0.75rem' }
-  };
-
-  return (
-    <span
-      title={label}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: '9999px',
-        fontWeight: '600',
-        color: '#fff',
-        backgroundColor: color,
-        ...sizeStyles[size]
-      }}
-    >
-      {score}
-    </span>
-  );
-};
-
-// Metric breakdown tooltip component
-export const MetricBreakdown = ({ breakdown }) => {
-  if (!breakdown || Object.keys(breakdown).length === 0) return null;
-
-  return (
-    <div className="metric-breakdown" style={{
-      fontSize: '0.75rem',
-      marginTop: '0.5rem',
-      padding: '0.5rem',
-      backgroundColor: '#f3f4f6',
-      borderRadius: '0.25rem'
-    }}>
-      <div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>Score Breakdown:</div>
-      {METRIC_ORDER.filter(m => breakdown[m]).map(metric => {
-        const data = breakdown[metric];
-        return (
-          <div key={metric} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.125rem' }}>
-            <span>{METRICS_CONFIG.labels[metric]}:</span>
-            <span style={{ color: data.weightedZScore >= 0 ? '#16a34a' : '#dc2626' }}>
-              {data.weightedZScore >= 0 ? '+' : ''}{data.weightedZScore.toFixed(3)}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
+// Enhanced column matching with intelligent fallbacks
 const COLUMN_SYNONYMS = {
-  'Symbol': ['symbol', 'cusip', 'ticker', 'fund id'],
-  'Fund Name': ['fund name', 'product name', 'name'],
-  'YTD': ['ytd', 'total return - ytd', 'ytd return'],
-  '1 Year': ['1 year', '1y', 'total return - 1 year', '1 year return'],
-  '3 Year': ['3 year', '3y', 'annualized total return - 3 year', '3 year return'],
-  '5 Year': ['5 year', '5y', 'annualized total return - 5 year', '5 year return'],
-  '10 Year': ['10 year', '10y', 'annualized total return - 10 year', '10 year return'],
-  'Alpha': ['alpha', 'alpha (asset class) - 5 year'],
-  'Sharpe Ratio': ['sharpe', 'sharpe ratio', 'sharpe ratio - 3 year'],
-  'StdDev3Y': ['stddev3y', 'standard deviation - 3 year', 'std dev 3y'],
-  'StdDev5Y': ['stddev5y', 'standard deviation - 5 year', 'std dev 5y'],
-  'Net Expense Ratio': ['net expense ratio', 'net exp ratio', 'expense ratio'],
-  'Manager Tenure': ['manager tenure', 'longest manager tenure (years)'],
+  'Symbol': ['symbol', 'cusip', 'ticker', 'fund id', 'fundid', 'fund_id', 'fund identifier', 'symbolcusip', 'symbol/cusip', 'cusip/symbol', 'identifier', 'symbolcusip'],
+  'Fund Name': ['fund name', 'product name', 'name', 'fundname', 'fund_name', 'product', 'fund', 'security name'],
+  'YTD': ['ytd', 'total return - ytd', 'ytd return', 'year to date', 'year-to-date', 'ytd total return', 'total return ytd'],
+  '1 Year': ['1 year', '1y', 'total return - 1 year', '1 year return', '1-year', '1yr', 'one year', 'total return 1 year'],
+  '3 Year': ['3 year', '3y', 'annualized total return - 3 year', '3 year return', '3-year', '3yr', 'three year', 'total return 3 year'],
+  '5 Year': ['5 year', '5y', 'annualized total return - 5 year', '5 year return', '5-year', '5yr', 'five year', 'total return 5 year'],
+  '10 Year': ['10 year', '10y', 'annualized total return - 10 year', '10 year return', '10-year', '10yr', 'ten year', 'total return 10 year'],
+  'Alpha': ['alpha', 'alpha (asset class) - 5 year', 'alpha asset class', 'alpha 5 year'],
+  'Sharpe Ratio': ['sharpe', 'sharpe ratio', 'sharpe ratio - 3 year', 'sharpe 3 year'],
+  'Standard Deviation': ['standard deviation', 'std dev', 'volatility', 'standard deviation - 3 year', 'standard deviation - 5 year'],
+  'Net Expense Ratio': ['net expense ratio', 'expense ratio', 'net exp ratio', 'exp ratio', 'expense'],
+  'Asset Class': ['asset class', 'category', 'fund category', 'investment category', 'class']
 };
 
-const FUZZY_MATCH_THRESHOLD = 0.7;
+// Intelligent column detection with multiple strategies
+function intelligentColumnMapping(headers) {
+  const normalizedHeaders = headers.map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+  const columnMap = {};
+  const unmappedHeaders = [...headers];
+  
+  console.log('Headers to match:', headers);
+  console.log('Normalized headers:', normalizedHeaders);
+
+  // Strategy 1: Direct synonym matching
+  Object.entries(COLUMN_SYNONYMS).forEach(([targetColumn, synonyms]) => {
+    for (let i = 0; i < headers.length; i++) {
+      const header = headers[i].toLowerCase();
+      const normalizedHeader = normalizedHeaders[i];
+      
+      // Check exact matches and synonyms
+      if (synonyms.some(synonym => 
+        header.includes(synonym) || 
+        normalizedHeader.includes(synonym.replace(/[^a-z0-9]/g, ''))
+      )) {
+        columnMap[targetColumn] = i;
+        unmappedHeaders[i] = null; // Mark as mapped
+        console.log(`Matched "${headers[i]}" to "${targetColumn}"`);
+        break;
+      }
+    }
+  });
+
+  // Special handling for Symbol/CUSIP format - check this before other fallbacks
+  if (!columnMap.Symbol) {
+    for (let i = 0; i < headers.length; i++) {
+      if (unmappedHeaders[i] !== null) {
+        const header = headers[i].toLowerCase();
+        // Check for "symbol/cusip" or "symbolcusip" patterns
+        if (header.includes('symbol') && header.includes('cusip')) {
+          columnMap.Symbol = i;
+          unmappedHeaders[i] = null;
+          console.log(`Special Symbol/CUSIP match: "${headers[i]}" to Symbol`);
+          break;
+        }
+      }
+    }
+  }
+
+  // Strategy 2: Smart fallback detection
+  if (!columnMap.Symbol) {
+    // Look for any column that might be a symbol (contains letters/numbers, not too long)
+    for (let i = 0; i < headers.length; i++) {
+      if (unmappedHeaders[i] !== null && headers[i].length <= 15 && /[A-Z]/i.test(headers[i])) {
+        columnMap.Symbol = i;
+        unmappedHeaders[i] = null;
+        console.log(`Fallback: Matched "${headers[i]}" to Symbol`);
+        break;
+      }
+    }
+  }
+
+
+
+  if (!columnMap['Fund Name']) {
+    // Look for any column that might be a fund name (longer text, contains "fund" or "name")
+    for (let i = 0; i < headers.length; i++) {
+      if (unmappedHeaders[i] !== null && headers[i].length > 10 && 
+          (headers[i].toLowerCase().includes('fund') || headers[i].toLowerCase().includes('name'))) {
+        columnMap['Fund Name'] = i;
+        unmappedHeaders[i] = null;
+        console.log(`Fallback: Matched "${headers[i]}" to Fund Name`);
+        break;
+      }
+    }
+  }
+
+  // Strategy 3: Pattern-based detection for performance metrics
+  const performancePatterns = [
+    { target: 'YTD', patterns: ['ytd', 'year to date', 'total return.*ytd'] },
+    { target: '1 Year', patterns: ['1.*year', 'one.*year', 'total return.*1'] },
+    { target: '3 Year', patterns: ['3.*year', 'three.*year', 'total return.*3'] },
+    { target: '5 Year', patterns: ['5.*year', 'five.*year', 'total return.*5'] },
+    { target: '10 Year', patterns: ['10.*year', 'ten.*year', 'total return.*10'] }
+  ];
+
+  performancePatterns.forEach(({ target, patterns }) => {
+    if (!columnMap[target]) {
+      for (let i = 0; i < headers.length; i++) {
+        if (unmappedHeaders[i] !== null) {
+          const header = headers[i].toLowerCase();
+          if (patterns.some(pattern => new RegExp(pattern).test(header))) {
+            columnMap[target] = i;
+            unmappedHeaders[i] = null;
+            console.log(`Pattern match: "${headers[i]}" to "${target}"`);
+            break;
+          }
+        }
+      }
+    }
+  });
+
+  // Strategy 4: Numeric column detection for ratios
+  if (!columnMap['Sharpe Ratio']) {
+    for (let i = 0; i < headers.length; i++) {
+      if (unmappedHeaders[i] !== null && headers[i].toLowerCase().includes('sharpe')) {
+        columnMap['Sharpe Ratio'] = i;
+        unmappedHeaders[i] = null;
+        console.log(`Numeric match: "${headers[i]}" to Sharpe Ratio`);
+        break;
+      }
+    }
+  }
+
+  if (!columnMap['Net Expense Ratio']) {
+    for (let i = 0; i < headers.length; i++) {
+      if (unmappedHeaders[i] !== null && headers[i].toLowerCase().includes('expense')) {
+        columnMap['Net Expense Ratio'] = i;
+        unmappedHeaders[i] = null;
+        console.log(`Numeric match: "${headers[i]}" to Net Expense Ratio`);
+        break;
+      }
+    }
+  }
+
+  return {
+    columnMap,
+    unmappedHeaders: unmappedHeaders.filter(h => h !== null)
+  };
+}
+
+const FUZZY_MATCH_THRESHOLD = 0.4; // Lowered from 0.7 to be more permissive
 
 function fuzzyMapHeaders(headers) {
   const columnMap = {};
   const usedIndexes = new Set();
+
+  // Special fallback for Symbol: match any header containing both 'symbol' and 'cusip' (ignoring punctuation)
+  headers.forEach((header, idx) => {
+    if (!header || typeof header !== 'string') return;
+    const norm = header.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (norm.includes('symbol') && norm.includes('cusip')) {
+      columnMap['Symbol'] = idx;
+      usedIndexes.add(idx);
+    }
+  });
+
   Object.entries(COLUMN_SYNONYMS).forEach(([canonical, synonyms]) => {
+    // Skip if already matched by fallback
+    if (columnMap[canonical] !== undefined) return;
     let bestMatch = { rating: 0, index: -1 };
     headers.forEach((header, idx) => {
       if (usedIndexes.has(idx)) return;
@@ -181,6 +263,9 @@ const App = () => {
 
   const [uploadPreview, setUploadPreview] = useState(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [manualColumnMapping, setManualColumnMapping] = useState(false);
+  const [editableColumnMap, setEditableColumnMap] = useState({});
+  const [availableHeaders, setAvailableHeaders] = useState([]);
 
   // Memoize expensive calculations
   const memoizedAssetClasses = useMemo(() => {
@@ -299,54 +384,74 @@ const App = () => {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        console.log('Raw Excel data:', jsonData);
+        
         // Find header row (first row with at least 2 string cells)
-        let headerRowIndex = jsonData.findIndex(row => row.filter(cell => typeof cell === 'string').length >= 2);
-        if (headerRowIndex === -1) throw new Error('Could not find header row');
-        const headers = jsonData[headerRowIndex];
-        const dataRows = jsonData.slice(headerRowIndex + 1);
-        // Fuzzy map headers
-        const columnMap = fuzzyMapHeaders(headers);
-        // Parse data rows
+        let headerRowIndex = jsonData.findIndex(row => 
+          row.filter(cell => typeof cell === 'string' && cell.trim().length > 0).length >= 2
+        );
+        
+        if (headerRowIndex === -1) {
+          setError('Could not find header row in the file. Please ensure the first row contains column names.');
+          setLoading(false);
+          return;
+        }
+        
+        const headers = jsonData[headerRowIndex].map(h => String(h || '').trim());
+        const dataRows = jsonData.slice(headerRowIndex + 1).filter(row => 
+          row.some(cell => cell !== null && cell !== undefined && cell !== '')
+        );
+        
+        console.log('Headers found:', headers);
+        console.log('Data rows:', dataRows.length);
+        
+        // Use intelligent column mapping
+        const { columnMap, unmappedHeaders } = intelligentColumnMapping(headers);
+        
+        console.log('Column mapping result:', columnMap);
+        console.log('Unmapped headers:', unmappedHeaders);
+        
+        // Check if we have essential columns
+        if (!columnMap.Symbol) {
+          setError('Could not automatically identify a Symbol/Ticker column. Please check your file headers or use manual mapping.');
+          setLoading(false);
+          return;
+        }
+        
+        // Parse the data using the column mapping
         const parsed = dataRows.map(row => {
           const fund = {};
-          Object.entries(columnMap).forEach(([key, idx]) => {
-            let val = row[idx];
-            if (val === undefined || val === null || val === '') {
-              fund[key] = null;
-            } else if (typeof val === 'string') {
-              val = val.replace(/[%,]/g, '').trim();
-              if (val === 'N/A' || val === 'NA' || val === '-' || val === '--') {
-                fund[key] = null;
-              } else {
-                const parsed = parseFloat(val);
-                fund[key] = isNaN(parsed) ? val : parsed;
-              }
-            } else if (typeof val === 'number') {
-              fund[key] = val;
-            } else {
-              fund[key] = val;
+          Object.entries(columnMap).forEach(([targetField, sourceIndex]) => {
+            const value = row[sourceIndex];
+            if (value !== null && value !== undefined && value !== '') {
+              fund[targetField] = value;
             }
           });
           return fund;
-        }).filter(f => f.Symbol && f.Symbol !== '');
-        // Show preview modal
+        }).filter(fund => Object.keys(fund).length > 0);
+        
+        console.log('Parsed funds:', parsed.length);
+        console.log('Sample parsed fund:', parsed[0]);
+        
+        // Set up preview data
         setUploadPreview({
-          headers,
-          columnMap,
           parsed,
-          fileName: file.name,
-          unmappedHeaders: headers.filter((h, i) => !Object.values(columnMap).includes(i)),
+          columnMap,
+          unmappedHeaders,
+          headers,
+          dataRows: dataRows.slice(0, 5) // Show first 5 rows as preview
         });
+        setEditableColumnMap({ ...columnMap });
+        setAvailableHeaders(headers);
         setShowPreviewModal(true);
-      } catch (err) {
-        setError('Error parsing file: ' + err.message);
-      } finally {
+        setLoading(false);
+        
+      } catch (error) {
+        console.error('Error processing file:', error);
+        setError(`Error processing file: ${error.message}`);
         setLoading(false);
       }
-    };
-    reader.onerror = () => {
-      setError('Failed to read file');
-      setLoading(false);
     };
     reader.readAsArrayBuffer(file);
   };
@@ -357,14 +462,27 @@ const App = () => {
     setLoading(true);
     setTimeout(() => {
       try {
-        const { parsed } = uploadPreview;
+        const { parsed, columnMap } = uploadPreview;
+        // Check for essential columns
+        if (!columnMap.Symbol) {
+          setError('Import failed: Could not find a column for Symbol (Ticker/CUSIP). Please check your file headers.');
+          setLoading(false);
+          setUploadPreview(null);
+          return;
+        }
+        if (!parsed || parsed.length === 0) {
+          setError('Import failed: No valid rows found in the file. Please check your data.');
+          setLoading(false);
+          setUploadPreview(null);
+          return;
+        }
         const { scoredFunds, classSummaries, benchmarks } = processRawFunds(parsed, {
           recommendedFunds,
           benchmarks: assetClassBenchmarks
         });
-        setScoredFundData(scoredFunds);
-        setBenchmarkData(benchmarks);
-        setClassSummaries(classSummaries);
+        setScoredFundData(Array.isArray(scoredFunds) ? scoredFunds : []);
+        setBenchmarkData(benchmarks || {});
+        setClassSummaries(classSummaries || {});
         setCurrentSnapshotDate(new Date().toISOString().split('T')[0]);
         setError(null);
       } catch (err) {
@@ -527,25 +645,25 @@ const App = () => {
         <div className="card">
           {/* --- All previous tab content, upload, etc. goes here --- */}
           {/* ...existing app content... */}
-          {/* File Upload Section - Show on all tabs except admin and history */}
-          {activeTab !== 'admin' && activeTab !== 'history' && (
+      {/* File Upload Section - Show on all tabs except admin and history */}
+      {activeTab !== 'admin' && activeTab !== 'history' && (
             <div className="card">
               <div className="card-header">
                 <h3 className="card-title">Upload Fund Data</h3>
                 <p className="card-subtitle">Upload your fund performance data file (.xlsx, .xls, or .csv)</p>
               </div>
               <div className="input-group">
-                <input
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={handleFileUpload}
+          <input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleFileUpload}
                   className="input-field"
                   style={{ marginBottom: 'var(--spacing-sm)' }}
-                />
-                {loading && (
+          />
+          {loading && (
                   <div className="loading-spinner">
                     <RefreshCw size={16} />
-                    Processing and calculating scores...
+              Processing and calculating scores...
                   </div>
                 )}
                 {error && (
@@ -556,21 +674,21 @@ const App = () => {
                 {uploadedFileName && (
                   <div className="alert alert-success">
                     <strong>Success:</strong> Loaded {uploadedFileName} with {scoredFundData.length} funds
-                  </div>
-                )}
-              </div>
             </div>
           )}
+              </div>
+        </div>
+      )}
 
-          {/* Dashboard Tab */}
-          {activeTab === 'dashboard' && (
-            <div>
+      {/* Dashboard Tab */}
+      {activeTab === 'dashboard' && (
+        <div>
               <div className="card-header">
                 <h2 className="card-title">Fund Analysis Dashboard</h2>
                 <p className="card-subtitle">Comprehensive overview of fund performance and analysis</p>
               </div>
               
-              {scoredFundData.length > 0 ? (
+          {scoredFundData.length > 0 ? (
                 <div>
                   {/* Summary Cards */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 'var(--spacing-lg)', marginBottom: 'var(--spacing-lg)' }}>
@@ -581,8 +699,8 @@ const App = () => {
                       <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
                         {scoredFundData.length}
                       </div>
-                    </div>
-                    
+                </div>
+                
                     <div className="card">
                       <div className="card-header">
                         <h3 className="card-title">Asset Classes</h3>
@@ -625,10 +743,10 @@ const App = () => {
                     <div className="card">
                       <div className="card-header">
                         <h3 className="card-title">Top Performers</h3>
-                      </div>
+                </div>
                       <TopBottomPerformers data={scoredFundData} type="top" />
-                    </div>
-                    
+              </div>
+              
                     <div className="card">
                       <div className="card-header">
                         <h3 className="card-title">Bottom Performers</h3>
@@ -643,21 +761,21 @@ const App = () => {
                     <h3 className="card-title">No Data Available</h3>
                     <p className="card-subtitle">Upload fund data to see the dashboard</p>
                   </div>
-                </div>
-              )}
             </div>
           )}
+        </div>
+      )}
 
-          {/* Fund Scores Tab */}
-          {activeTab === 'funds' && (
-            <div>
-              {scoredFundData.length > 0 ? (
-                <div>
+      {/* Fund Scores Tab */}
+{activeTab === 'funds' && (
+  <div>
+    {scoredFundData.length > 0 ? (
+      <div>
                   <div className="card-header">
                     <h2 className="card-title">All Funds with Scores</h2>
                     <p className="card-subtitle">Scores calculated using weighted Z-score methodology within each asset class</p>
-                  </div>
-                  
+        </div>
+        
                   {/* Search and Filter Controls */}
                   <div className="controls-container">
                     <div className="input-group" style={{ margin: 0, flex: 1 }}>
@@ -709,7 +827,7 @@ const App = () => {
                   {/* Fund Scores Table */}
                   <div className="table-container">
                     <table>
-                      <thead>
+            <thead>
                         <tr>
                           <th>Symbol</th>
                           <th>Fund Name</th>
@@ -723,9 +841,9 @@ const App = () => {
                           <th>Sharpe</th>
                           <th>Alpha</th>
                           <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+              </tr>
+            </thead>
+            <tbody>
                         {filteredAndSortedFunds.map((fund, index) => (
                           <tr key={fund.Symbol || index}>
                             <td><strong>{fund.Symbol}</strong></td>
@@ -743,7 +861,7 @@ const App = () => {
                                 fontSize: '0.875rem'
                               }}>
                                 {fund.score?.toFixed(3)}
-                              </span>
+                        </span>
                             </td>
                             <td>{fund.YTD?.toFixed(2)}%</td>
                             <td>{fund['1 Year']?.toFixed(2)}%</td>
@@ -760,27 +878,27 @@ const App = () => {
                               >
                                 Details
                               </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : (
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+            </div>
+          ) : (
                 <div className="card">
                   <div className="card-header">
                     <h3 className="card-title">No Fund Data Available</h3>
                     <p className="card-subtitle">Upload a fund performance file to get started</p>
                   </div>
-                </div>
-              )}
             </div>
           )}
+        </div>
+      )}
 
-          {/* Asset Class View Tab */}
-          {activeTab === 'class' && (
-            <div>
+      {/* Asset Class View Tab */}
+      {activeTab === 'class' && (
+        <div>
               <div className="card-header">
                 <h2 className="card-title">Asset Class Analysis</h2>
                 <p className="card-subtitle">Performance analysis by asset class with benchmarks</p>
@@ -788,16 +906,16 @@ const App = () => {
               
               <div className="input-group">
                 <label className="input-label">Select Asset Class:</label>
-                <select
-                  value={selectedClass}
+          <select
+            value={selectedClass}
                   onChange={(e) => setSelectedClass(e.target.value)}
                   className="select-field"
                 >
                   <option value="">Choose an asset class...</option>
                   {memoizedAssetClasses.map(cls => (
                     <option key={cls} value={cls}>{cls}</option>
-                  ))}
-                </select>
+            ))}
+          </select>
               </div>
 
               {selectedClass && classSummaries[selectedClass] && (
@@ -807,7 +925,7 @@ const App = () => {
                     <p className="card-subtitle">
                       {classSummaries[selectedClass].fundCount} funds analyzed
                     </p>
-                  </div>
+                      </div>
                   
                   <div className="table-container">
                     <table>
@@ -851,32 +969,32 @@ const App = () => {
                         </tr>
                       </tbody>
                     </table>
-                  </div>
-                </div>
+                    </div>
+                      </div>
               )}
-            </div>
+                    </div>
           )}
 
           {/* Analysis Tab */}
           {activeTab === 'analysis' && (
-            <div>
+                    <div>
               <div className="card-header">
                 <h2 className="card-title">Fund Analysis</h2>
                 <p className="card-subtitle">Detailed analysis and insights for fund performance</p>
-              </div>
+                      </div>
               
               {scoredFundData.length > 0 ? (
-                <div>
+                    <div>
                   {/* Review Candidates */}
                   <div className="card">
                     <div className="card-header">
                       <h3 className="card-title">Review Candidates</h3>
                       <p className="card-subtitle">Funds that may need attention based on performance metrics</p>
-                    </div>
+                      </div>
                     {reviewCandidates.length > 0 ? (
                       <div className="table-container">
                         <table>
-                          <thead>
+                <thead>
                             <tr>
                               <th>Symbol</th>
                               <th>Fund Name</th>
@@ -884,9 +1002,9 @@ const App = () => {
                               <th>Score</th>
                               <th>Issues</th>
                               <th>Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
+                  </tr>
+                </thead>
+                <tbody>
                             {reviewCandidates.map((fund, index) => (
                               <tr key={fund.Symbol || index}>
                                 <td><strong>{fund.Symbol}</strong></td>
@@ -904,13 +1022,13 @@ const App = () => {
                                     fontSize: '0.875rem'
                                   }}>
                                     {fund.score?.toFixed(3)}
-                                  </span>
-                                </td>
+                        </span>
+                      </td>
                                 <td>
                                   <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                                     {fund.issues?.join(', ') || 'Low performance'}
                                   </div>
-                                </td>
+                      </td>
                                 <td>
                                   <button
                                     onClick={() => setSelectedFundForDetails(fund)}
@@ -919,25 +1037,25 @@ const App = () => {
                                   >
                                     Details
                                   </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+        </div>
                     ) : (
                       <div className="alert alert-success">
                         <strong>Great news!</strong> No funds require immediate review.
-                      </div>
+                    </div>
                     )}
-                  </div>
-
+                          </div>
+                          
                   {/* Asset Class Performance */}
                   <div className="card">
                     <div className="card-header">
                       <h3 className="card-title">Asset Class Performance Summary</h3>
                       <p className="card-subtitle">Performance metrics by asset class</p>
-                    </div>
+                          </div>
                     <div className="table-container">
                       <table>
                         <thead>
@@ -967,58 +1085,58 @@ const App = () => {
                       </table>
                     </div>
                   </div>
-                </div>
+              </div>
               ) : (
                 <div className="card">
                   <div className="card-header">
                     <h3 className="card-title">No Data Available</h3>
                     <p className="card-subtitle">Upload fund data to see analysis</p>
                   </div>
-                </div>
-              )}
             </div>
           )}
+        </div>
+      )}
 
-          {/* Analytics Tab */}
-          {activeTab === 'analytics' && (
-            <div>
+      {/* Analytics Tab */}
+      {activeTab === 'analytics' && (
+        <div>
               <div className="card-header">
                 <h2 className="card-title">Advanced Analytics</h2>
                 <p className="card-subtitle">Correlation analysis and risk-return insights</p>
               </div>
-              
-              {scoredFundData.length > 0 ? (
-                <div>
+          
+          {scoredFundData.length > 0 ? (
+                      <div>
                   <div className="card">
                     <div className="card-header">
                       <h3 className="card-title">Correlation Matrix</h3>
                       <p className="card-subtitle">Fund performance correlations across asset classes</p>
-                    </div>
+                        </div>
                     <CorrelationMatrix data={scoredFundData} />
-                  </div>
-
+                      </div>
+                      
                   <div className="card">
                     <div className="card-header">
                       <h3 className="card-title">Risk-Return Analysis</h3>
                       <p className="card-subtitle">Risk-adjusted performance scatter plot</p>
-                    </div>
+                        </div>
                     <RiskReturnScatter data={scoredFundData} />
-                  </div>
-                </div>
+                      </div>
+                        </div>
               ) : (
                 <div className="card">
                   <div className="card-header">
                     <h3 className="card-title">No Data Available</h3>
                     <p className="card-subtitle">Upload fund data to see analytics</p>
                   </div>
-                </div>
-              )}
             </div>
           )}
+        </div>
+      )}
 
-          {/* History Tab */}
-          {activeTab === 'history' && (
-            <div>
+      {/* History Tab */}
+      {activeTab === 'history' && (
+        <div>
               <div className="card-header">
                 <h2 className="card-title">Historical Data</h2>
                 <p className="card-subtitle">Compare fund performance over time</p>
@@ -1044,11 +1162,11 @@ const App = () => {
                       </option>
                     ))}
                   </select>
-                </div>
+              </div>
 
                 <div className="input-group">
                   <label className="input-label">Compare With:</label>
-                  <select
+                      <select
                     value={compareSnapshot || ''}
                     onChange={(e) => setCompareSnapshot(e.target.value)}
                     className="select-field"
@@ -1057,10 +1175,10 @@ const App = () => {
                     {snapshots.filter(s => s.date !== selectedSnapshot).map(snapshot => (
                       <option key={snapshot.date} value={snapshot.date}>
                         {snapshot.date} ({snapshot.fundCount} funds)
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                            </option>
+                          ))}
+                      </select>
+                    </div>
 
                 {selectedSnapshot && compareSnapshot && snapshotComparison && (
                   <div className="card">
@@ -1072,15 +1190,15 @@ const App = () => {
                     </div>
                     <div className="table-container">
                       <table>
-                        <thead>
+                      <thead>
                           <tr>
                             <th>Metric</th>
                             <th>{selectedSnapshot}</th>
                             <th>{compareSnapshot}</th>
                             <th>Change</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                        </tr>
+                      </thead>
+                      <tbody>
                           <tr>
                             <td><strong>Total Funds</strong></td>
                             <td>{snapshotComparison.current.fundCount}</td>
@@ -1097,16 +1215,16 @@ const App = () => {
                               {snapshotComparison.scoreChange > 0 ? '+' : ''}{snapshotComparison.scoreChange?.toFixed(3)}
                             </td>
                           </tr>
-                        </tbody>
-                      </table>
-                    </div>
+                      </tbody>
+                    </table>
                   </div>
-                )}
-              </div>
-            </div>
-          )}
+                </div>
+                        )}
+                      </div>
+        </div>
+      )}
 
-          {/* Admin Tab */}
+      {/* Admin Tab */}
           {activeTab === 'admin' && (
             <div>
               <div className="card-header">
@@ -1123,142 +1241,142 @@ const App = () => {
             </div>
           )}
 
-          {/* Help Modal */}
-          {showHelp && (
-            <div style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 2000
-            }} onClick={() => setShowHelp(false)}>
-              <div style={{
-                backgroundColor: 'white',
-                padding: '2rem',
-                borderRadius: '0.5rem',
-                maxWidth: '800px',
-                maxHeight: '80vh',
-                overflow: 'auto',
-                width: '90%'
-              }} onClick={e => e.stopPropagation()}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-                  Lightship Fund Analysis - Help Guide
-                </h2>
-                
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Quick Start</h3>
-                  <ol style={{ marginLeft: '1.5rem', fontSize: '0.875rem', color: '#374151' }}>
-                    <li>Upload your monthly fund performance Excel file</li>
-                    <li>The system will automatically calculate Z-scores for each fund within its asset class</li>
-                    <li>Navigate tabs to view different analyses and insights</li>
-                    <li>Export reports for investment committee meetings</li>
-                  </ol>
-                </div>
+      {/* Help Modal */}
+      {showHelp && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000
+        }} onClick={() => setShowHelp(false)}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '0.5rem',
+            maxWidth: '800px',
+            maxHeight: '80vh',
+            overflow: 'auto',
+            width: '90%'
+          }} onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+              Lightship Fund Analysis - Help Guide
+            </h2>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Quick Start</h3>
+              <ol style={{ marginLeft: '1.5rem', fontSize: '0.875rem', color: '#374151' }}>
+                <li>Upload your monthly fund performance Excel file</li>
+                <li>The system will automatically calculate Z-scores for each fund within its asset class</li>
+                <li>Navigate tabs to view different analyses and insights</li>
+                <li>Export reports for investment committee meetings</li>
+              </ol>
+            </div>
 
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Scoring Methodology</h3>
-                  <p style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.5rem' }}>
-                    Each fund receives a 0-100 score based on weighted Z-scores across 13 metrics:
-                  </p>
-                  <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '0.5rem',
-                    fontSize: '0.75rem',
-                    backgroundColor: '#f9fafb',
-                    padding: '1rem',
-                    borderRadius: '0.375rem'
-                  }}>
-                    <div>• YTD Return (2.5%)</div>
-                    <div>• 1-Year Return (5%)</div>
-                    <div>• 3-Year Return (10%)</div>
-                    <div>• 5-Year Return (20%)</div>
-                    <div>• 10-Year Return (10%)</div>
-                    <div>• 3Y Sharpe Ratio (15%)</div>
-                    <div>• 3Y Std Deviation (-10%)</div>
-                    <div>• 5Y Std Deviation (-15%)</div>
-                    <div>• Up Capture Ratio (7.5%)</div>
-                    <div>• Down Capture Ratio (-10%)</div>
-                    <div>• 5Y Alpha (5%)</div>
-                    <div>• Expense Ratio (-2.5%)</div>
-                    <div>• Manager Tenure (2.5%)</div>
-                  </div>
-                </div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Scoring Methodology</h3>
+              <p style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.5rem' }}>
+                Each fund receives a 0-100 score based on weighted Z-scores across 13 metrics:
+              </p>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr 1fr',
+                gap: '0.5rem',
+                fontSize: '0.75rem',
+                backgroundColor: '#f9fafb',
+                padding: '1rem',
+                borderRadius: '0.375rem'
+              }}>
+                <div>• YTD Return (2.5%)</div>
+                <div>• 1-Year Return (5%)</div>
+                <div>• 3-Year Return (10%)</div>
+                <div>• 5-Year Return (20%)</div>
+                <div>• 10-Year Return (10%)</div>
+                <div>• 3Y Sharpe Ratio (15%)</div>
+                <div>• 3Y Std Deviation (-10%)</div>
+                <div>• 5Y Std Deviation (-15%)</div>
+                <div>• Up Capture Ratio (7.5%)</div>
+                <div>• Down Capture Ratio (-10%)</div>
+                <div>• 5Y Alpha (5%)</div>
+                <div>• Expense Ratio (-2.5%)</div>
+                <div>• Manager Tenure (2.5%)</div>
+              </div>
+            </div>
 
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Keyboard Shortcuts</h3>
-                  <div style={{ fontSize: '0.875rem', color: '#374151' }}>
-                    <div style={{ marginBottom: '0.25rem' }}><kbd>Ctrl+H</kbd> - Open this help dialog</div>
-                    <div style={{ marginBottom: '0.25rem' }}><kbd>Ctrl+E</kbd> - Export to Excel</div>
-                    <div style={{ marginBottom: '0.25rem' }}><kbd>1-6</kbd> - Quick navigation between tabs</div>
-                  </div>
-                </div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Keyboard Shortcuts</h3>
+              <div style={{ fontSize: '0.875rem', color: '#374151' }}>
+                <div style={{ marginBottom: '0.25rem' }}><kbd>Ctrl+H</kbd> - Open this help dialog</div>
+                <div style={{ marginBottom: '0.25rem' }}><kbd>Ctrl+E</kbd> - Export to Excel</div>
+                <div style={{ marginBottom: '0.25rem' }}><kbd>1-6</kbd> - Quick navigation between tabs</div>
+              </div>
+            </div>
 
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Tab Overview</h3>
-                  <div style={{ fontSize: '0.875rem', color: '#374151' }}>
-                    <div style={{ marginBottom: '0.5rem' }}>
-                      <strong>Dashboard:</strong> Visual overview with heatmaps and top/bottom performers
-                    </div>
-                    <div style={{ marginBottom: '0.5rem' }}>
-                      <strong>Fund Scores:</strong> Detailed table of all funds with scores and metrics
-                    </div>
-                    <div style={{ marginBottom: '0.5rem' }}>
-                      <strong>Class View:</strong> Compare funds within specific asset classes
-                    </div>
-                    <div style={{ marginBottom: '0.5rem' }}>
-                      <strong>Analysis:</strong> Smart tags and funds requiring review
-                    </div>
-                    <div style={{ marginBottom: '0.5rem' }}>
-                      <strong>Analytics:</strong> Advanced visualizations including risk-return and correlations
-                    </div>
-                    <div style={{ marginBottom: '0.5rem' }}>
-                      <strong>History:</strong> Track performance over time and compare snapshots
-                    </div>
-                    <div style={{ marginBottom: '0.5rem' }}>
-                      <strong>Admin:</strong> Manage recommended funds and benchmark mappings
-                    </div>
-                  </div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Tab Overview</h3>
+              <div style={{ fontSize: '0.875rem', color: '#374151' }}>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <strong>Dashboard:</strong> Visual overview with heatmaps and top/bottom performers
                 </div>
-
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Score Interpretation</h3>
-                  <div style={{ fontSize: '0.875rem', color: '#374151' }}>
-                    <div style={{ marginBottom: '0.25rem' }}>
-                      <span style={{ color: '#16a34a', fontWeight: '600' }}>70-100:</span> Excellent - Strong risk-adjusted returns and efficiency
-                    </div>
-                    <div style={{ marginBottom: '0.25rem' }}>
-                      <span style={{ color: '#eab308', fontWeight: '600' }}>50-70:</span> Good - Average performance, monitor for trends
-                    </div>
-                    <div style={{ marginBottom: '0.25rem' }}>
-                      <span style={{ color: '#dc2626', fontWeight: '600' }}>Below 50:</span> Poor - Consider for replacement or further analysis
-                    </div>
-                  </div>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <strong>Fund Scores:</strong> Detailed table of all funds with scores and metrics
                 </div>
-
-                <div style={{ textAlign: 'right', marginTop: '2rem' }}>
-                  <button
-                    onClick={() => setShowHelp(false)}
-                    style={{
-                      padding: '0.5rem 1.5rem',
-                      backgroundColor: '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '0.375rem',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem'
-                    }}
-                  >
-                    Close
-                  </button>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <strong>Class View:</strong> Compare funds within specific asset classes
+                </div>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <strong>Analysis:</strong> Smart tags and funds requiring review
+                </div>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <strong>Analytics:</strong> Advanced visualizations including risk-return and correlations
+                </div>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <strong>History:</strong> Track performance over time and compare snapshots
+                </div>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <strong>Admin:</strong> Manage recommended funds and benchmark mappings
                 </div>
               </div>
             </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Score Interpretation</h3>
+              <div style={{ fontSize: '0.875rem', color: '#374151' }}>
+                <div style={{ marginBottom: '0.25rem' }}>
+                  <span style={{ color: '#16a34a', fontWeight: '600' }}>70-100:</span> Excellent - Strong risk-adjusted returns and efficiency
+                </div>
+                <div style={{ marginBottom: '0.25rem' }}>
+                  <span style={{ color: '#eab308', fontWeight: '600' }}>50-70:</span> Good - Average performance, monitor for trends
+                </div>
+                <div style={{ marginBottom: '0.25rem' }}>
+                  <span style={{ color: '#dc2626', fontWeight: '600' }}>Below 50:</span> Poor - Consider for replacement or further analysis
+                </div>
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right', marginTop: '2rem' }}>
+              <button
+                onClick={() => setShowHelp(false)}
+                style={{
+                  padding: '0.5rem 1.5rem',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.375rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
           )}
 
           {showPreviewModal && uploadPreview && (
@@ -1300,7 +1418,80 @@ const App = () => {
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                   <button onClick={handleCancelImport} style={{ padding: '0.5rem 1.5rem', background: '#e5e7eb', border: 'none', borderRadius: '0.375rem', cursor: 'pointer' }}>Cancel</button>
+                  <button 
+                    onClick={() => setManualColumnMapping(true)} 
+                    style={{ padding: '0.5rem 1.5rem', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '0.375rem', cursor: 'pointer' }}
+                  >
+                    Edit Mapping
+                  </button>
                   <button onClick={handleConfirmImport} style={{ padding: '0.5rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '0.375rem', cursor: 'pointer', fontWeight: 'bold' }}>Import</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Manual Column Mapping Modal */}
+          {showPreviewModal && manualColumnMapping && (
+            <div className="modal-overlay">
+              <div className="modal-content card">
+                <div className="modal-header">
+                  <h3>Manual Column Mapping</h3>
+                  <button onClick={() => setManualColumnMapping(false)} className="btn-close">×</button>
+                </div>
+                <div className="modal-body">
+                  <p>Map your file columns to the required fields. Required fields are marked with *.</p>
+                  
+                  <div className="mapping-grid">
+                    {Object.entries(COLUMN_SYNONYMS).map(([targetField, synonyms]) => (
+                      <div key={targetField} className="mapping-row">
+                        <label className="mapping-label">
+                          {targetField} {targetField === 'Symbol' && '*'}
+                        </label>
+                        <select
+                          value={editableColumnMap[targetField] !== undefined ? editableColumnMap[targetField].toString() : ''}
+                          onChange={(e) => {
+                            const newMap = { ...editableColumnMap };
+                            if (e.target.value) {
+                              newMap[targetField] = parseInt(e.target.value);
+                            } else {
+                              delete newMap[targetField];
+                            }
+                            setEditableColumnMap(newMap);
+                          }}
+                          className="mapping-select"
+                        >
+                          <option value="">-- Select Column --</option>
+                          {availableHeaders.map((header, index) => (
+                            <option key={index} value={index}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="modal-actions">
+                    <button 
+                      onClick={() => setManualColumnMapping(false)} 
+                      className="btn btn-secondary"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setUploadPreview(prev => ({
+                          ...prev,
+                          columnMap: editableColumnMap
+                        }));
+                        setManualColumnMapping(false);
+                      }}
+                      className="btn btn-primary"
+                      disabled={!editableColumnMap.Symbol}
+                    >
+                      Confirm Mapping
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

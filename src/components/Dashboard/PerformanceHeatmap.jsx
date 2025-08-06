@@ -14,21 +14,31 @@ const PerformanceHeatmap = ({ funds }) => {
   // Group funds by asset class
   const fundsByClass = useMemo(() => {
     const grouped = {};
-    funds.forEach(fund => {
-      const assetClass = fund['Asset Class'] || 'Unknown';
-      if (!grouped[assetClass]) {
-        grouped[assetClass] = [];
-      }
-      grouped[assetClass].push(fund);
-    });
-    
-    // Sort funds within each class by score
-    Object.keys(grouped).forEach(assetClass => {
-      grouped[assetClass].sort((a, b) => (b.scores?.final || 0) - (a.scores?.final || 0));
-    });
-    
+    if (Array.isArray(funds)) {
+      funds.forEach(fund => {
+        const assetClass = fund['Asset Class'] || 'Unknown';
+        if (!grouped[assetClass]) {
+          grouped[assetClass] = [];
+        }
+        grouped[assetClass].push(fund);
+      });
+      // Sort funds within each class by score
+      Object.keys(grouped).forEach(assetClass => {
+        grouped[assetClass].sort((a, b) => (b.scores?.final || 0) - (a.scores?.final || 0));
+      });
+    }
     return grouped;
   }, [funds]);
+
+  // Defensive: If funds is not an array or is empty, show a message
+  if (!Array.isArray(funds) || funds.length === 0) {
+    return (
+      <div className="card" style={{ marginBottom: '2rem', padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Performance Heatmap</h3>
+        <div>No fund data available. Please upload and import a valid fund data file.</div>
+      </div>
+    );
+  }
 
   // Calculate color based on metric value
   const getMetricColor = (fund, metric) => {

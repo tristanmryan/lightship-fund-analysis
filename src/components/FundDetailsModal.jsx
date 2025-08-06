@@ -1,7 +1,7 @@
 // src/components/FundDetailsModal.jsx
 import React from 'react';
 import { formatPercent, formatNumber, getMetricDisplayName } from '../utils/dataFormatting';
-import { ScoreBadge } from '../App';
+import ScoreBadge from './ScoreBadge';
 
 const FundDetailsModal = ({ fund, onClose }) => {
   if (!fund) return null;
