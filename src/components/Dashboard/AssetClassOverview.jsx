@@ -7,7 +7,7 @@ import { getScoreColor, generateClassSummary } from '../../services/scoring';
  * Asset Class Overview Component
  * Provides a comprehensive view of performance across all asset classes
  */
-const AssetClassOverview = ({ funds, classSummaries, benchmarkData }) => {
+const AssetClassOverview = ({ funds, classSummaries = {}, benchmarkData = {} }) => {
   const [sortBy, setSortBy] = useState('avgScore');
   const [expandedClass, setExpandedClass] = useState(null);
   const [groupBy, setGroupBy] = useState('Asset Class');
@@ -23,7 +23,7 @@ const AssetClassOverview = ({ funds, classSummaries, benchmarkData }) => {
     const keyProp = groupBy === 'assetGroup' ? 'assetGroup' : 'Asset Class';
     const fundsByClass = {};
     funds.forEach(fund => {
-      const key = fund[keyProp] || 'Unknown';
+      const key = fund[keyProp] || fund.asset_class || 'Unknown';
       if (!fundsByClass[key]) {
         fundsByClass[key] = [];
       }
@@ -33,14 +33,22 @@ const AssetClassOverview = ({ funds, classSummaries, benchmarkData }) => {
     // Calculate stats for each class
     Object.entries(fundsByClass).forEach(([group, classFunds]) => {
       const benchmark = groupBy === 'Asset Class' ? benchmarkData[group] : null;
-      const recommendedFunds = classFunds.filter(f => f.isRecommended && !f.isBenchmark);
+      const recommendedFunds = classFunds.filter(f => (f.is_recommended || f.isRecommended) && !f.isBenchmark);
       
       // Calculate various averages
       const scores = classFunds.map(f => f.scores?.final || 0).filter(s => s > 0);
-      const returns1Y = classFunds.map(f => f['1 Year']).filter(r => r != null);
-      const returns3Y = classFunds.map(f => f['3 Year']).filter(r => r != null);
-      const sharpeRatios = classFunds.map(f => f['Sharpe Ratio']).filter(r => r != null);
-      const expenses = classFunds.map(f => f['Net Expense Ratio']).filter(r => r != null);
+      const returns1Y = classFunds
+        .map(f => (f['1 Year'] ?? f.one_year_return))
+        .filter(r => r != null);
+      const returns3Y = classFunds
+        .map(f => (f['3 Year'] ?? f.three_year_return))
+        .filter(r => r != null);
+      const sharpeRatios = classFunds
+        .map(f => (f['Sharpe Ratio'] ?? f.sharpe_ratio))
+        .filter(r => r != null);
+      const expenses = classFunds
+        .map(f => (f['Net Expense Ratio'] ?? f.expense_ratio))
+        .filter(r => r != null);
       
       // Recommended funds performance
       const recScores = recommendedFunds.map(f => f.scores?.final || 0).filter(s => s > 0);
@@ -49,7 +57,7 @@ const AssetClassOverview = ({ funds, classSummaries, benchmarkData }) => {
         : null;
       
       const distribution = groupBy === 'Asset Class'
-        ? classSummaries[group]?.distribution
+        ? (classSummaries?.[group]?.distribution)
         : generateClassSummary(classFunds).distribution;
 
       stats[group] = {

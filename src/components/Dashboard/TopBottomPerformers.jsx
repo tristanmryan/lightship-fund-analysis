@@ -17,7 +17,7 @@ const TopBottomPerformers = ({ funds }) => {
     if (!funds || !Array.isArray(funds)) {
       return ['all'];
     }
-    const classes = new Set(funds.map(f => f['Asset Class'] || 'Unknown'));
+    const classes = new Set(funds.map(f => f['Asset Class'] || f.asset_class || 'Unknown'));
     return ['all', ...Array.from(classes).sort()];
   }, [funds]);
 
@@ -31,7 +31,7 @@ const TopBottomPerformers = ({ funds }) => {
     // Filter by asset class if needed
     let filteredFunds = filterAssetClass === 'all' 
       ? funds 
-      : funds.filter(f => f['Asset Class'] === filterAssetClass);
+      : funds.filter(f => (f['Asset Class'] || f.asset_class) === filterAssetClass);
 
     // Remove funds without the selected metric
     const fundsWithMetric = filteredFunds.filter(fund => {
@@ -202,7 +202,7 @@ const TopBottomPerformers = ({ funds }) => {
             {fund.displayName}
           </div>
           <div style={{ fontSize: '0.6875rem', color: '#9ca3af', marginTop: '0.125rem' }}>
-            {fund['Asset Class']}
+            {fund['Asset Class'] || fund.asset_class}
           </div>
         </div>
         

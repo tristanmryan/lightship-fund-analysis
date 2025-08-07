@@ -75,17 +75,18 @@ const App = () => {
 
   // Memoize expensive calculations
   const memoizedAssetClasses = useMemo(() => {
-    const classes = new Set(Object.keys(assetClassBenchmarks));
-    scoredFundData.forEach(f => {
-      if (f['Asset Class']) classes.add(f['Asset Class']);
+    const classes = new Set(Object.keys(assetClassBenchmarks || {}));
+    (funds || []).forEach(f => {
+      const cls = f['Asset Class'] || f.asset_class;
+      if (cls) classes.add(cls);
     });
     return Array.from(classes).sort();
-  }, [assetClassBenchmarks, scoredFundData]);
+  }, [assetClassBenchmarks, funds]);
 
   // Memoize review candidates calculation
   const reviewCandidates = useMemo(() => {
-    return identifyReviewCandidates(scoredFundData);
-  }, [scoredFundData]);
+    return identifyReviewCandidates(funds || []);
+  }, [funds]);
 
 
 
@@ -184,12 +185,12 @@ const App = () => {
         setShowHelp(true);
       }
       // Ctrl/Cmd + E for export
-      if ((e.ctrlKey || e.metaKey) && e.key === 'e' && scoredFundData.length > 0) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'e' && (funds?.length || 0) > 0) {
         e.preventDefault();
         const data = {
-          funds: scoredFundData,
+          funds,
           classSummaries,
-          reviewCandidates: identifyReviewCandidates(scoredFundData),
+          reviewCandidates: identifyReviewCandidates(funds || []),
           metadata: { date: currentSnapshotDate }
         };
         const blob = exportToExcel(data);
@@ -207,7 +208,7 @@ const App = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [scoredFundData, classSummaries, currentSnapshotDate]);
+  }, [funds, classSummaries, currentSnapshotDate]);
 
 
 
@@ -262,7 +263,7 @@ const App = () => {
 
   // Filtered and sorted funds
   const filteredAndSortedFunds = useMemo(() => {
-    let filtered = scoredFundData;
+    let filtered = funds || [];
     
     // Apply search filter
     if (searchTerm) {
@@ -325,7 +326,7 @@ const App = () => {
     });
     
     return filtered;
-  }, [scoredFundData, searchTerm, filterAssetClass, sortBy, sortDirection]);
+  }, [funds, searchTerm, filterAssetClass, sortBy, sortDirection]);
 
   // Show loading screen while checking authentication
   if (authLoading) {
@@ -526,7 +527,7 @@ const App = () => {
       {/* Fund Scores Tab */}
 {activeTab === 'funds' && (
   <div>
-    {scoredFundData.length > 0 ? (
+    {(funds?.length || 0) > 0 ? (
       <div>
                   <div className="card-header">
                     <h2 className="card-title">All Funds with Scores</h2>
@@ -577,8 +578,8 @@ const App = () => {
                   </div>
 
                   {/* Results Summary */}
-                  <div style={{ marginBottom: 'var(--spacing-md)', color: '#6b7280', fontSize: '0.875rem' }}>
-                    Showing {filteredAndSortedFunds.length} of {scoredFundData.length} funds
+                    <div style={{ marginBottom: 'var(--spacing-md)', color: '#6b7280', fontSize: '0.875rem' }}>
+                    Showing {filteredAndSortedFunds.length} of {funds.length} funds
                   </div>
 
                   {/* Fund Scores Table */}

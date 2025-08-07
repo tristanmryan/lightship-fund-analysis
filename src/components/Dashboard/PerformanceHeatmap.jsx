@@ -16,7 +16,7 @@ const PerformanceHeatmap = ({ funds }) => {
     const grouped = {};
     if (Array.isArray(funds)) {
       funds.forEach(fund => {
-        const assetClass = fund['Asset Class'] || 'Unknown';
+        const assetClass = fund['Asset Class'] || fund.asset_class || 'Unknown';
         if (!grouped[assetClass]) {
           grouped[assetClass] = [];
         }
@@ -49,7 +49,7 @@ const PerformanceHeatmap = ({ funds }) => {
         return fund.scores ? getScoreColor(fund.scores.final) : '#e5e7eb';
       
       case '1year':
-        const oneYear = fund['1 Year'];
+        const oneYear = fund['1 Year'] ?? fund.one_year_return;
         if (oneYear == null) return '#e5e7eb';
         if (oneYear >= 15) return '#16a34a';
         if (oneYear >= 5) return '#eab308';
@@ -57,7 +57,7 @@ const PerformanceHeatmap = ({ funds }) => {
         return '#dc2626';
       
       case '3year':
-        const threeYear = fund['3 Year'];
+        const threeYear = fund['3 Year'] ?? fund.three_year_return;
         if (threeYear == null) return '#e5e7eb';
         if (threeYear >= 12) return '#16a34a';
         if (threeYear >= 7) return '#eab308';
@@ -65,7 +65,7 @@ const PerformanceHeatmap = ({ funds }) => {
         return '#dc2626';
       
       case 'sharpe':
-        const sharpe = fund['Sharpe Ratio'];
+        const sharpe = fund['Sharpe Ratio'] ?? fund.sharpe_ratio;
         if (sharpe == null) return '#e5e7eb';
         if (sharpe >= 1.0) return '#16a34a';
         if (sharpe >= 0.7) return '#eab308';
@@ -73,7 +73,7 @@ const PerformanceHeatmap = ({ funds }) => {
         return '#dc2626';
       
       case 'expense':
-        const expense = fund['Net Expense Ratio'];
+        const expense = fund['Net Expense Ratio'] ?? fund.expense_ratio;
         if (expense == null) return '#e5e7eb';
         // Lower is better for expenses
         if (expense <= 0.5) return '#16a34a';
@@ -94,13 +94,13 @@ const PerformanceHeatmap = ({ funds }) => {
       case 'score':
         return fund.scores?.final || '-';
       case '1year':
-        return fund['1 Year'] != null ? `${fund['1 Year'].toFixed(1)}%` : '-';
+        return (fund['1 Year'] ?? fund.one_year_return) != null ? `${(fund['1 Year'] ?? fund.one_year_return).toFixed(1)}%` : '-';
       case '3year':
-        return fund['3 Year'] != null ? `${fund['3 Year'].toFixed(1)}%` : '-';
+        return (fund['3 Year'] ?? fund.three_year_return) != null ? `${(fund['3 Year'] ?? fund.three_year_return).toFixed(1)}%` : '-';
       case 'sharpe':
-        return fund['Sharpe Ratio'] != null ? fund['Sharpe Ratio'].toFixed(2) : '-';
+        return (fund['Sharpe Ratio'] ?? fund.sharpe_ratio) != null ? (fund['Sharpe Ratio'] ?? fund.sharpe_ratio).toFixed(2) : '-';
       case 'expense':
-        return fund['Net Expense Ratio'] != null ? `${fund['Net Expense Ratio'].toFixed(2)}%` : '-';
+        return (fund['Net Expense Ratio'] ?? fund.expense_ratio) != null ? `${(fund['Net Expense Ratio'] ?? fund.expense_ratio).toFixed(2)}%` : '-';
       default:
         return '-';
     }
