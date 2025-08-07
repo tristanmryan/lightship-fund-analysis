@@ -362,8 +362,37 @@ export default async function handler(req, res) {
         // Search functionality would need different implementation
         return res.status(501).json({ error: 'Search functionality not yet implemented with new API structure' });
 
+      case 'testConnection':
+        // Simple test to verify API key and basic connectivity
+        console.log('🧪 Testing basic API connectivity...');
+        const testUrl = new URL(`${YCHARTS_BASE_URL}/companies/AAPL/points/price`);
+        
+        console.log(`Test URL: ${testUrl.toString()}`);
+        console.log(`API Key present: ${YCHARTS_API_KEY ? 'Yes' : 'No'}`);
+        console.log(`API Key length: ${YCHARTS_API_KEY ? YCHARTS_API_KEY.length : 0}`);
+        
+        const testResponse = await fetch(testUrl.toString(), {
+          method: 'GET',
+          headers: {
+            'X-YCHARTSAUTHORIZATION': YCHARTS_API_KEY,
+            'Content-Type': 'application/json',
+            'User-Agent': 'Lightship-Fund-Analysis/1.0'
+          }
+        });
+        
+        const testData = await testResponse.text();
+        
+        result = {
+          success: testResponse.ok,
+          status: testResponse.status,
+          statusText: testResponse.statusText,
+          response: testData,
+          headers: Object.fromEntries(testResponse.headers.entries())
+        };
+        break;
+
       default:
-        return res.status(400).json({ error: 'Invalid action. Supported: getFundData, getHistoricalData' });
+        return res.status(400).json({ error: 'Invalid action. Supported: getFundData, getHistoricalData, testConnection' });
     }
 
     // Log successful request (for monitoring)
