@@ -17,6 +17,7 @@ import {
 import fundRegistry from './services/fundRegistry';
 import PerformanceHeatmap from './components/Dashboard/PerformanceHeatmap';
 import TopBottomPerformers from './components/Dashboard/TopBottomPerformers';
+import AssetClassOverview from './components/Dashboard/AssetClassOverview';
 import CorrelationMatrix from './components/Analytics/CorrelationMatrix';
 import RiskReturnScatter from './components/Analytics/RiskReturnScatter';
 import EnhancedPerformanceDashboard from './components/Dashboard/EnhancedPerformanceDashboard';
@@ -29,6 +30,7 @@ import {
 // Import new services
 import authService from './services/authService';
 import migrationService from './services/migrationService';
+import { useFundData } from './hooks/useFundData';
 
 const App = () => {
   // Authentication state
@@ -37,7 +39,20 @@ const App = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // Legacy state (will be replaced by useFundData hook)
+  // Fund data management using useFundData hook
+  const {
+    funds,
+    loading: fundsLoading,
+    error: fundsError,
+    refreshData,
+    addFund,
+    removeFund,
+    assetClasses,
+    fundCount,
+    recommendedCount
+  } = useFundData();
+
+  // Legacy state for backwards compatibility
   const [scoredFundData] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedClass, setSelectedClass] = useState('');
@@ -397,9 +412,29 @@ const App = () => {
               <div className="card-header">
                 <h2 className="card-title">Fund Analysis Dashboard</h2>
                 <p className="card-subtitle">Comprehensive overview of fund performance and analysis</p>
+                <div style={{ 
+                  marginTop: '1rem', 
+                  padding: '0.75rem', 
+                  backgroundColor: '#eff6ff', 
+                  border: '1px solid #3b82f6', 
+                  borderRadius: '0.375rem',
+                  fontSize: '0.875rem'
+                }}>
+                  💡 <strong>New:</strong> Try the <button 
+                    onClick={() => setActiveTab('performance')} 
+                    style={{ 
+                      color: '#3b82f6', 
+                      textDecoration: 'underline', 
+                      background: 'none', 
+                      border: 'none', 
+                      cursor: 'pointer',
+                      fontWeight: '600'
+                    }}
+                  >Enhanced Performance Dashboard</button> with advanced filtering and sorting capabilities!
+                </div>
               </div>
               
-          {scoredFundData.length > 0 ? (
+          {funds.length > 0 ? (
                 <div>
                   {/* Summary Cards */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 'var(--spacing-lg)', marginBottom: 'var(--spacing-lg)' }}>
@@ -408,7 +443,7 @@ const App = () => {
                         <h3 className="card-title">Total Funds</h3>
                       </div>
                       <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
-                        {scoredFundData.length}
+                        {funds.length}
                       </div>
                 </div>
                 
@@ -417,7 +452,7 @@ const App = () => {
                         <h3 className="card-title">Asset Classes</h3>
                       </div>
                       <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
-                        {memoizedAssetClasses.length}
+                        {assetClasses.length}
                       </div>
                     </div>
                     
@@ -426,7 +461,7 @@ const App = () => {
                         <h3 className="card-title">Top Performers</h3>
                       </div>
                       <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-success)' }}>
-                        {scoredFundData.filter(f => f.score >= 0.7).length}
+                        {funds.filter(f => f.is_recommended || f.recommended).length}
                       </div>
                     </div>
                     
@@ -446,7 +481,7 @@ const App = () => {
                       <h3 className="card-title">Performance Heatmap</h3>
                       <p className="card-subtitle">Visual representation of fund performance across asset classes</p>
                     </div>
-                    <PerformanceHeatmap data={scoredFundData} />
+                    <PerformanceHeatmap funds={funds} />
                   </div>
 
                   {/* Top/Bottom Performers */}
@@ -455,14 +490,14 @@ const App = () => {
                       <div className="card-header">
                         <h3 className="card-title">Top Performers</h3>
                 </div>
-                      <TopBottomPerformers data={scoredFundData} type="top" />
+                      <TopBottomPerformers funds={funds} />
               </div>
               
                     <div className="card">
                       <div className="card-header">
-                        <h3 className="card-title">Bottom Performers</h3>
+                        <h3 className="card-title">Asset Class Overview</h3>
                       </div>
-                      <TopBottomPerformers data={scoredFundData} type="bottom" />
+                      <AssetClassOverview funds={funds} />
                     </div>
                   </div>
                 </div>
@@ -480,7 +515,11 @@ const App = () => {
       {/* Performance Tab */}
       {activeTab === 'performance' && (
         <div>
-          <EnhancedPerformanceDashboard />
+          <EnhancedPerformanceDashboard 
+            funds={funds}
+            onRefresh={refreshData}
+            isLoading={fundsLoading}
+          />
         </div>
       )}
 
