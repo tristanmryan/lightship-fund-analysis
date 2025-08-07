@@ -1,6 +1,6 @@
 // src/components/Analytics/RiskReturnScatter.jsx
 import React, { useState, useMemo } from 'react';
-import { TrendingUp, Target, Info } from 'lucide-react';
+import { Target } from 'lucide-react';
 import { 
   calculateRiskReturnMetrics, 
   findEfficientFrontier,
@@ -20,12 +20,23 @@ const RiskReturnScatter = ({ funds }) => {
 
   // Get unique asset classes
   const assetClasses = useMemo(() => {
+    if (!funds || !Array.isArray(funds)) {
+      return ['all'];
+    }
     const classes = new Set(funds.map(f => f['Asset Class'] || 'Unknown'));
     return ['all', ...Array.from(classes).sort()];
   }, [funds]);
 
   // Filter funds and calculate metrics
   const { displayFunds, efficientFrontier, portfolioStats } = useMemo(() => {
+    if (!funds || !Array.isArray(funds)) {
+      return {
+        displayFunds: [],
+        efficientFrontier: [],
+        portfolioStats: { avgReturn: 0, avgRisk: 0, sharpeRatio: 0 }
+      };
+    }
+    
     let filtered = funds;
     
     if (selectedAssetClass !== 'all') {

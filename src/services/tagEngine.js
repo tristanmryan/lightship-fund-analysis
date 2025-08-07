@@ -355,6 +355,8 @@ export const DEFAULT_TAG_RULES = [
         case 'recommended_watch':
           actions.push('Review at next investment committee meeting');
           break;
+        default:
+          break;
       }
     });
     
@@ -389,7 +391,7 @@ export const DEFAULT_TAG_RULES = [
       // Convert string conditions back to functions
       return rules.map(rule => ({
         ...rule,
-        condition: new Function('fund', 'context', rule.condition)
+        condition: eval('(' + rule.condition + ')')
       }));
     } catch (error) {
       console.error('Error importing tag rules:', error);
@@ -397,15 +399,17 @@ export const DEFAULT_TAG_RULES = [
     }
   }
   
-  export default {
-    DEFAULT_TAG_RULES,
-    TAG_CATEGORIES,
-    TAG_CATEGORY_MAP,
-    applyTagRules,
-    createCustomRule,
-    getTagStatistics,
-    filterByTags,
-    getSuggestedActions,
-    exportTagRules,
-    importTagRules
-  };
+const tagEngine = {
+  DEFAULT_TAG_RULES,
+  TAG_CATEGORIES,
+  TAG_CATEGORY_MAP,
+  applyTagRules,
+  createCustomRule,
+  getTagStatistics,
+  filterByTags,
+  getSuggestedActions,
+  exportTagRules,
+  importTagRules
+};
+
+export default tagEngine;

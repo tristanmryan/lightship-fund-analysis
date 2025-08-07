@@ -1,6 +1,6 @@
 // src/components/Dashboard/TopBottomPerformers.jsx
 import React, { useState, useMemo } from 'react';
-import { TrendingUp, TrendingDown, Award, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import { getScoreColor, getScoreLabel } from '../../services/scoring';
 
 /**
@@ -14,12 +14,20 @@ const TopBottomPerformers = ({ funds }) => {
 
   // Get unique asset classes
   const assetClasses = useMemo(() => {
+    if (!funds || !Array.isArray(funds)) {
+      return ['all'];
+    }
     const classes = new Set(funds.map(f => f['Asset Class'] || 'Unknown'));
     return ['all', ...Array.from(classes).sort()];
   }, [funds]);
 
   // Filter and sort funds based on selected metric
   const { topFunds, bottomFunds } = useMemo(() => {
+    // Defensive check for funds
+    if (!funds || !Array.isArray(funds)) {
+      return { topFunds: [], bottomFunds: [] };
+    }
+    
     // Filter by asset class if needed
     let filteredFunds = filterAssetClass === 'all' 
       ? funds 
@@ -374,57 +382,66 @@ const TopBottomPerformers = ({ funds }) => {
       }}>
         <div>
           <div style={{ color: '#6b7280', fontSize: '0.75rem' }}>Average {getMetricLabel(selectedMetric)}</div>
-          <div style={{ fontWeight: '600', fontSize: '1rem' }}>
-            {(() => {
-              const validFunds = funds.filter(f => {
-                switch (selectedMetric) {
-                  case 'score': return f.scores?.final != null;
-                  case '1year': return f['1 Year'] != null;
-                  case '3year': return f['3 Year'] != null;
-                  case '5year': return f['5 Year'] != null;
-                  case 'sharpe': return f['Sharpe Ratio'] != null;
-                  case 'expense': return f['Net Expense Ratio'] != null;
-                  default: return false;
-                }
-              });
-              
-              if (validFunds.length === 0) return '-';
-              
-              const sum = validFunds.reduce((acc, f) => {
-                let value = 0;
-                switch (selectedMetric) {
-                  case 'score': value = f.scores?.final || 0; break;
-                  case '1year': value = f['1 Year'] || 0; break;
-                  case '3year': value = f['3 Year'] || 0; break;
-                  case '5year': value = f['5 Year'] || 0; break;
-                  case 'sharpe': value = f['Sharpe Ratio'] || 0; break;
-                  case 'expense': value = f['Net Expense Ratio'] || 0; break;
-                }
-                return acc + value;
-              }, 0);
-              
-              const avg = sum / validFunds.length;
-              return selectedMetric === 'sharpe' ? avg.toFixed(2) : `${avg.toFixed(2)}${selectedMetric !== 'score' ? '%' : ''}`;
-            })()}
-          </div>
+                     <div style={{ fontWeight: '600', fontSize: '1rem' }}>
+             {(() => {
+               if (!funds || !Array.isArray(funds)) return '-';
+               
+               const validFunds = funds.filter(f => {
+                 switch (selectedMetric) {
+                   case 'score': return f.scores?.final != null;
+                   case '1year': return f['1 Year'] != null;
+                   case '3year': return f['3 Year'] != null;
+                   case '5year': return f['5 Year'] != null;
+                   case 'sharpe': return f['Sharpe Ratio'] != null;
+                   case 'expense': return f['Net Expense Ratio'] != null;
+                   default: return false;
+                 }
+               });
+               
+               if (validFunds.length === 0) return '-';
+               
+               const sum = validFunds.reduce((acc, f) => {
+                 let value = 0;
+                 switch (selectedMetric) {
+                   case 'score': value = f.scores?.final || 0; break;
+                   case '1year': value = f['1 Year'] || 0; break;
+                   case '3year': value = f['3 Year'] || 0; break;
+                   case '5year': value = f['5 Year'] || 0; break;
+                   case 'sharpe': value = f['Sharpe Ratio'] || 0; break;
+                   case 'expense': value = f['Net Expense Ratio'] || 0; break;
+                   default: value = 0; break;
+                 }
+                 return acc + value;
+               }, 0);
+               
+               const avg = sum / validFunds.length;
+               return selectedMetric === 'sharpe' ? avg.toFixed(2) : `${avg.toFixed(2)}${selectedMetric !== 'score' ? '%' : ''}`;
+             })()}
+           </div>
         </div>
         
-        <div>
-          <div style={{ color: '#6b7280', fontSize: '0.75rem' }}>Funds Analyzed</div>
-          <div style={{ fontWeight: '600', fontSize: '1rem' }}>
-            {funds.filter(f => {
-              switch (selectedMetric) {
-                case 'score': return f.scores?.final != null;
-                case '1year': return f['1 Year'] != null;
-                case '3year': return f['3 Year'] != null;
-                case '5year': return f['5 Year'] != null;
-                case 'sharpe': return f['Sharpe Ratio'] != null;
-                case 'expense': return f['Net Expense Ratio'] != null;
-                default: return false;
-              }
-            }).length} / {funds.length}
-          </div>
-        </div>
+                 <div>
+           <div style={{ color: '#6b7280', fontSize: '0.75rem' }}>Funds Analyzed</div>
+           <div style={{ fontWeight: '600', fontSize: '1rem' }}>
+             {(() => {
+               if (!funds || !Array.isArray(funds)) return '0 / 0';
+               
+               const validCount = funds.filter(f => {
+                 switch (selectedMetric) {
+                   case 'score': return f.scores?.final != null;
+                   case '1year': return f['1 Year'] != null;
+                   case '3year': return f['3 Year'] != null;
+                   case '5year': return f['5 Year'] != null;
+                   case 'sharpe': return f['Sharpe Ratio'] != null;
+                   case 'expense': return f['Net Expense Ratio'] != null;
+                   default: return false;
+                 }
+               }).length;
+               
+               return `${validCount} / ${funds.length}`;
+             })()}
+           </div>
+         </div>
         
         <div>
           <div style={{ color: '#6b7280', fontSize: '0.75rem' }}>Spread (Max - Min)</div>

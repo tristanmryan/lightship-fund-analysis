@@ -1,4 +1,4 @@
-import { calculateScores, generateClassSummary } from './scoring';
+import { calculateScores, generateClassSummary } from './scoring.js';
 
 /**
  * Enhanced fund data processor with validation

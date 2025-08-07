@@ -19,22 +19,32 @@ const FundTimeline = ({ snapshots, currentFunds }) => {
     const fundSet = new Set();
     
     // Add current funds
-    currentFunds.forEach(fund => {
-      if (fund.Symbol) fundSet.add(fund.Symbol);
-    });
-    
-    // Add funds from snapshots
-    snapshots.forEach(snapshot => {
-      snapshot.funds.forEach(fund => {
+    if (currentFunds && Array.isArray(currentFunds)) {
+      currentFunds.forEach(fund => {
         if (fund.Symbol) fundSet.add(fund.Symbol);
       });
-    });
+    }
+    
+    // Add funds from snapshots
+    if (snapshots && Array.isArray(snapshots)) {
+      snapshots.forEach(snapshot => {
+        if (snapshot.funds && Array.isArray(snapshot.funds)) {
+          snapshot.funds.forEach(fund => {
+            if (fund.Symbol) fundSet.add(fund.Symbol);
+          });
+        }
+      });
+    }
     
     return Array.from(fundSet).sort();
   }, [snapshots, currentFunds]);
 
   // Filter snapshots based on time range
   const filteredSnapshots = useMemo(() => {
+    if (!snapshots || !Array.isArray(snapshots)) {
+      return [];
+    }
+    
     if (timeRange === 'all') return snapshots;
     
     const now = new Date();
@@ -52,6 +62,9 @@ const FundTimeline = ({ snapshots, currentFunds }) => {
         break;
       case '2y':
         cutoffDate.setFullYear(now.getFullYear() - 2);
+        break;
+      default:
+        cutoffDate.setMonth(now.getMonth() - 3);
         break;
     }
     
@@ -98,6 +111,9 @@ const FundTimeline = ({ snapshots, currentFunds }) => {
               break;
             case 'percentile':
               value = fund.scores?.percentile;
+              break;
+            default:
+              value = fund.scores?.final;
               break;
           }
           
@@ -313,17 +329,7 @@ const FundTimeline = ({ snapshots, currentFunds }) => {
     );
   };
 
-  const getMetricLabel = (metric) => {
-    const labels = {
-      score: 'Overall Score',
-      '1year': '1-Year Return',
-      '3year': '3-Year Return',
-      sharpe: 'Sharpe Ratio',
-      expense: 'Expense Ratio',
-      percentile: 'Percentile Rank'
-    };
-    return labels[metric] || metric;
-  };
+
 
   return (
     <div style={{ marginBottom: '2rem' }}>

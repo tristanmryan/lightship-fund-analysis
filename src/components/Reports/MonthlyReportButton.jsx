@@ -1,157 +1,196 @@
 // src/components/Reports/MonthlyReportButton.jsx
 import React, { useState } from 'react';
-import { FileText, Loader } from 'lucide-react';
-import { generateMonthlyReport } from '../../services/pdfReportService';
-import assetClassGroups from '../../data/assetClassGroups';
+import { FileText, Download, FileSpreadsheet } from 'lucide-react';
+import { generatePDFReport, exportToExcel, exportToCSV, downloadFile } from '../../services/exportService';
+import { useFundData } from '../../hooks/useFundData';
 
-const MonthlyReportButton = ({ 
-  fundData, 
-  metadata,
-  assetClassBenchmarks 
-}) => {
+const MonthlyReportButton = () => {
+  const { funds, loading, error } = useFundData();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingType, setGeneratingType] = useState('');
 
-  const handleGenerateReport = async () => {
+  const handleGenerateReport = async (type) => {
+    if (loading || funds.length === 0) {
+      alert('Please wait for fund data to load or add some funds first.');
+      return;
+    }
+
     setIsGenerating(true);
+    setGeneratingType(type);
     
     try {
-      // Prepare benchmark data by extracting from fundData
-      const benchmarkData = prepareBenchmarkData(fundData, assetClassBenchmarks);
-
-      // Filter out benchmarks from the main fund list for the report
-      const clean = (s) => s?.toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
-      const benchmarkTickers = new Set(
-        Object.values(assetClassBenchmarks).map(b => clean(b.ticker))
-      );
-      const nonBenchmarkFunds = fundData.filter(
-        f => !benchmarkTickers.has(clean(f.Symbol || f['Symbol/CUSIP'] || f.cleanSymbol))
-      );
-      
-      // Prepare report data
-      const reportData = {
-        funds: nonBenchmarkFunds,
-        benchmarks: benchmarkData,
-        metadata: {
-          ...metadata,
-          date: metadata?.date || new Date().toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-          }),
-          totalFunds: fundData.length,
-          recommendedFunds: fundData.filter(f => f.isRecommended).length,
-          assetClassCount: new Set(fundData.map(f => f['Asset Class']).filter(Boolean)).size,
-          averageScore: calculateAverageScore(fundData.filter(f => f.isRecommended))
-        }
+      const metadata = {
+        date: new Date().toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric'
+        }),
+        totalFunds: funds.length,
+        recommendedFunds: funds.filter(f => f.is_recommended).length,
+        assetClassCount: new Set(funds.map(f => f.asset_class).filter(Boolean)).size,
+        averagePerformance: calculateAveragePerformance(funds)
       };
 
-      // Generate PDF
-      const pdf = generateMonthlyReport(reportData);
-      
-      // Download PDF with proper filename
+      const reportData = { funds, metadata };
       const dateStr = new Date().toISOString().split('T')[0];
-      const fileName = `Lightship_Performance_Report_${dateStr}.pdf`;
-      pdf.save(fileName);
-      
+
+      switch (type) {
+        case 'pdf':
+          const pdf = generatePDFReport(reportData);
+          const pdfFileName = `Raymond_James_Lightship_Report_${dateStr}.pdf`;
+          pdf.save(pdfFileName);
+          break;
+
+        case 'excel':
+          const excelBlob = exportToExcel(reportData);
+          const excelFileName = `Raymond_James_Lightship_Report_${dateStr}.xlsx`;
+          downloadFile(excelBlob, excelFileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+          break;
+
+        case 'csv':
+          const csvBlob = exportToCSV(funds);
+          const csvFileName = `Raymond_James_Lightship_Report_${dateStr}.csv`;
+          downloadFile(csvBlob, csvFileName, 'text/csv');
+          break;
+
+        default:
+          throw new Error(`Unknown export type: ${type}`);
+      }
+
+      console.log(`Successfully generated ${type.toUpperCase()} report`);
     } catch (error) {
-      console.error('Error generating report:', error);
-      alert('Error generating report. Please check the console for details.');
+      console.error(`Error generating ${type} report:`, error);
+      alert(`Error generating ${type.toUpperCase()} report. Please check the console for details.`);
     } finally {
       setIsGenerating(false);
+      setGeneratingType('');
     }
   };
 
-  // Extract benchmark data from the fund list
-  const prepareBenchmarkData = (allFunds, benchmarkMappings) => {
-    const prepared = {};
-
-    // Helper to clean tickers for reliable matching
-    const clean = (s) => s?.toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
-
-    Object.entries(benchmarkMappings).forEach(([assetClass, benchmarkInfo]) => {
-      const target = clean(benchmarkInfo.ticker);
-
-      // Find the benchmark fund in the data using cleaned tickers
-      const benchmarkFund = allFunds.find(f => {
-        const symbol = f.cleanSymbol || f.Symbol || f['Symbol/CUSIP'];
-        return clean(symbol) === target;
-      });
-
-      if (benchmarkFund) {
-        prepared[assetClass] = {
-          ticker: benchmarkInfo.ticker,
-          name: benchmarkInfo.name,
-          ...benchmarkFund
-        };
-      }
-    });
-
-    return prepared;
+  // Calculate average performance
+  const calculateAveragePerformance = (funds) => {
+    const validReturns = funds.map(f => f.ytd_return).filter(v => v != null && !isNaN(v));
+    if (validReturns.length === 0) return null;
+    return validReturns.reduce((sum, val) => sum + val, 0) / validReturns.length;
   };
 
-  // Calculate average score for recommended funds only
-  const calculateAverageScore = (funds) => {
-    const scores = funds
-      .map(f => f.scores?.final)
-      .filter(s => s != null && s > 0);
-    
-    if (scores.length === 0) return 'N/A';
-    
-    const avg = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-    return avg.toFixed(1);
+  const getButtonText = (type) => {
+    if (isGenerating && generatingType === type) {
+      return `Generating ${type.toUpperCase()}...`;
+    }
+    return `Export ${type.toUpperCase()}`;
   };
+
+  const getButtonIcon = (type) => {
+    if (isGenerating && generatingType === type) {
+      return <div className="loading-spinner small"></div>;
+    }
+    
+    switch (type) {
+      case 'pdf':
+        return <FileText size={16} />;
+      case 'excel':
+        return <FileSpreadsheet size={16} />;
+      case 'csv':
+        return <Download size={16} />;
+      default:
+        return <Download size={16} />;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="export-section">
+        <div className="loading-spinner"></div>
+        <p>Loading fund data...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="export-section">
+        <div className="error-message">
+          <p>Error loading fund data: {error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (funds.length === 0) {
+    return (
+      <div className="export-section">
+        <div className="empty-state">
+          <FileText size={48} />
+          <h3>No Funds Available</h3>
+          <p>Add some funds to your list to generate reports.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <button
-      onClick={handleGenerateReport}
-      disabled={isGenerating || !fundData || fundData.length === 0}
-      className="monthly-report-button"
-      style={{
-        padding: '0.75rem 1.5rem',
-        backgroundColor: isGenerating || !fundData?.length ? '#9ca3af' : '#7c3aed',
-        color: 'white',
-        border: 'none',
-        borderRadius: '0.5rem',
-        cursor: isGenerating || !fundData?.length ? 'not-allowed' : 'pointer',
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.5rem',
-        fontSize: '0.9375rem',
-        fontWeight: '500',
-        opacity: isGenerating || !fundData?.length ? 0.7 : 1,
-        transition: 'all 0.2s ease',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-      }}
-      onMouseEnter={(e) => {
-        if (!isGenerating && fundData?.length) {
-          e.currentTarget.style.backgroundColor = '#6d28d9';
-          e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!isGenerating && fundData?.length) {
-          e.currentTarget.style.backgroundColor = '#7c3aed';
-          e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-        }
-      }}
-      title={
-        !fundData?.length 
-          ? "Please load fund data first" 
-          : "Generate PDF report matching your Excel format"
-      }
-    >
-      {isGenerating ? (
-        <>
-          <Loader size={18} className="animate-spin" />
-          Generating Report...
-        </>
-      ) : (
-        <>
-          <FileText size={18} />
-          Generate Monthly Report
-        </>
-      )}
-    </button>
+    <div className="export-section">
+      <div className="export-header">
+        <h3>Export Reports</h3>
+        <p className="subtitle">
+          Generate professional reports with Raymond James branding
+        </p>
+      </div>
+
+      <div className="export-stats">
+        <div className="stat-item">
+          <span className="stat-value">{funds.length}</span>
+          <span className="stat-label">Total Funds</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-value">{funds.filter(f => f.is_recommended).length}</span>
+          <span className="stat-label">Recommended</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-value">{new Set(funds.map(f => f.asset_class).filter(Boolean)).size}</span>
+          <span className="stat-label">Asset Classes</span>
+        </div>
+      </div>
+
+      <div className="export-buttons">
+        <button
+          onClick={() => handleGenerateReport('pdf')}
+          disabled={isGenerating}
+          className="btn btn-primary export-btn"
+        >
+          {getButtonIcon('pdf')}
+          {getButtonText('pdf')}
+        </button>
+
+        <button
+          onClick={() => handleGenerateReport('excel')}
+          disabled={isGenerating}
+          className="btn btn-secondary export-btn"
+        >
+          {getButtonIcon('excel')}
+          {getButtonText('excel')}
+        </button>
+
+        <button
+          onClick={() => handleGenerateReport('csv')}
+          disabled={isGenerating}
+          className="btn btn-outline export-btn"
+        >
+          {getButtonIcon('csv')}
+          {getButtonText('csv')}
+        </button>
+      </div>
+
+      <div className="export-info">
+        <h4>Report Features:</h4>
+        <ul>
+          <li><strong>PDF Report:</strong> Professional Raymond James branded report with cover page, asset class tables, and performance metrics</li>
+          <li><strong>Excel Report:</strong> Multi-sheet workbook with overview, all funds, recommended funds, and performance summary</li>
+          <li><strong>CSV Export:</strong> Simple data export for external analysis</li>
+        </ul>
+      </div>
+    </div>
   );
 };
 

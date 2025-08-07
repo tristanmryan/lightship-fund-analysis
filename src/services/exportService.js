@@ -1,9 +1,10 @@
 // src/services/exportService.js
 import * as XLSX from 'xlsx';
+import { generateMonthlyReport } from './pdfReportService';
 
 /**
  * Export Service
- * Handles generation of Excel, PDF, and other report formats
+ * Handles generation of Excel, PDF, and other report formats for the API-driven approach
  */
 
 /**
@@ -13,11 +14,7 @@ import * as XLSX from 'xlsx';
  */
 export function exportToExcel(data) {
   const {
-    funds = [],
-    classSummaries = {},
-    reviewCandidates = [],
-    metadata = {},
-    tagStats = null
+    funds = []
   } = data;
 
   // Create workbook
@@ -25,233 +22,215 @@ export function exportToExcel(data) {
 
   // Sheet 1: Overview
   const overviewData = [
-    ['Lightship Fund Analysis Report'],
+    ['Raymond James - Lightship Fund Analysis Report'],
     ['Generated:', new Date().toLocaleString()],
     [''],
     ['Summary Statistics'],
     ['Total Funds:', funds.length],
-    ['Recommended Funds:', funds.filter(f => f.isRecommended).length],
-    ['Average Score:', calculateAverage(funds.map(f => f.scores?.final).filter(s => s != null))],
-    ['Funds Needing Review:', reviewCandidates.length],
+    ['Recommended Funds:', funds.filter(f => f.is_recommended).length],
+    ['Asset Classes:', new Set(funds.map(f => f.asset_class).filter(Boolean)).size],
+    ['Average YTD Return:', calculateAverage(funds.map(f => f.ytd_return).filter(v => v != null))],
     [''],
     ['Asset Class Distribution']
   ];
 
   // Add asset class summary
-  Object.entries(classSummaries).forEach(([className, summary]) => {
+  const assetClassSummary = getAssetClassSummary(funds);
+  Object.entries(assetClassSummary).forEach(([className, summary]) => {
     overviewData.push([
       className,
       `${summary.fundCount} funds`,
-      `Avg Score: ${summary.averageScore || 'N/A'}`
+      `Avg YTD: ${summary.averageYTD || 'N/A'}`,
+      `Recommended: ${summary.recommendedCount}`
     ]);
   });
 
   const ws_overview = XLSX.utils.aoa_to_sheet(overviewData);
   XLSX.utils.book_append_sheet(wb, ws_overview, 'Overview');
 
-  // Sheet 2: All Funds with Scores
+  // Sheet 2: All Funds
   const fundHeaders = [
-    'Symbol',
+    'Ticker',
     'Fund Name',
     'Asset Class',
-    'Score',
-    'Percentile',
-    'YTD %',
-    '1 Year %',
-    '3 Year %',
-    '5 Year %',
-    '10 Year %',
+    'YTD Return',
+    '1 Year Return',
+    '3 Year Return',
+    '5 Year Return',
+    'Expense Ratio',
     'Sharpe Ratio',
-    'Std Dev 3Y',
-    'Std Dev 5Y',
-    'Expense Ratio %',
+    'Standard Deviation',
+    'Alpha',
+    'Beta',
     'Manager Tenure',
     'Is Recommended',
-    'Is Benchmark',
-    'Tags'
+    'Last Updated'
   ];
 
   const fundRows = funds.map(fund => [
-    fund.Symbol,
-    fund.displayName || fund['Fund Name'],
-    fund['Asset Class'],
-    fund.scores?.final || '',
-    fund.scores?.percentile || '',
-    fund.YTD || '',
-    fund['1 Year'] || '',
-    fund['3 Year'] || '',
-    fund['5 Year'] || '',
-    fund['10 Year'] || '',
-    fund['Sharpe Ratio'] || '',
-    fund['StdDev3Y'] || '',
-    fund['StdDev5Y'] || '',
-    fund['Net Expense Ratio'] || '',
-    fund['Manager Tenure'] || '',
-    fund.isRecommended ? 'Yes' : 'No',
-    fund.isBenchmark ? 'Yes' : 'No',
-    (fund.autoTags || []).map(t => t.name).join(', ')
+    fund.ticker,
+    fund.name,
+    fund.asset_class,
+    fund.ytd_return,
+    fund.one_year_return,
+    fund.three_year_return,
+    fund.five_year_return,
+    fund.expense_ratio,
+    fund.sharpe_ratio,
+    fund.standard_deviation,
+    fund.alpha,
+    fund.beta,
+    fund.manager_tenure,
+    fund.is_recommended ? 'Yes' : 'No',
+    fund.last_updated || new Date().toLocaleDateString()
   ]);
 
   const ws_funds = XLSX.utils.aoa_to_sheet([fundHeaders, ...fundRows]);
   
   // Apply column widths
   ws_funds['!cols'] = [
-    { wch: 10 }, // Symbol
+    { wch: 10 }, // Ticker
     { wch: 40 }, // Fund Name
-    { wch: 25 }, // Asset Class
-    { wch: 8 },  // Score
-    { wch: 10 }, // Percentile
-    { wch: 8 },  // YTD
-    { wch: 8 },  // 1Y
-    { wch: 8 },  // 3Y
-    { wch: 8 },  // 5Y
-    { wch: 8 },  // 10Y
-    { wch: 12 }, // Sharpe
-    { wch: 10 }, // Std Dev 3Y
-    { wch: 10 }, // Std Dev 5Y
-    { wch: 12 }, // Expense
-    { wch: 12 }, // Tenure
-    { wch: 12 }, // Recommended
-    { wch: 12 }, // Benchmark
-    { wch: 30 }  // Tags
+    { wch: 20 }, // Asset Class
+    { wch: 12 }, // YTD Return
+    { wch: 12 }, // 1 Year Return
+    { wch: 12 }, // 3 Year Return
+    { wch: 12 }, // 5 Year Return
+    { wch: 12 }, // Expense Ratio
+    { wch: 12 }, // Sharpe Ratio
+    { wch: 15 }, // Standard Deviation
+    { wch: 10 }, // Alpha
+    { wch: 10 }, // Beta
+    { wch: 15 }, // Manager Tenure
+    { wch: 12 }, // Is Recommended
+    { wch: 15 }  // Last Updated
   ];
 
   XLSX.utils.book_append_sheet(wb, ws_funds, 'All Funds');
 
-  // Sheet 3: Review Candidates
-  if (reviewCandidates.length > 0) {
-    const reviewHeaders = [
-      'Symbol',
-      'Fund Name',
-      'Asset Class',
-      'Score',
-      'Review Reasons',
-      '1 Year %',
-      'Sharpe Ratio',
-      'Expense Ratio %',
-      'Is Recommended'
-    ];
-
-    const reviewRows = reviewCandidates.map(fund => [
-      fund.Symbol,
-      fund.displayName || fund['Fund Name'],
-      fund['Asset Class'],
-      fund.scores?.final || '',
-      fund.reviewReasons.join('; '),
-      fund['1 Year'] || '',
-      fund['Sharpe Ratio'] || '',
-      fund['Net Expense Ratio'] || '',
-      fund.isRecommended ? 'Yes' : 'No'
+  // Sheet 3: Recommended Funds Only
+  const recommendedFunds = funds.filter(f => f.is_recommended);
+  if (recommendedFunds.length > 0) {
+    const recommendedRows = recommendedFunds.map(fund => [
+      fund.ticker,
+      fund.name,
+      fund.asset_class,
+      fund.ytd_return,
+      fund.one_year_return,
+      fund.three_year_return,
+      fund.five_year_return,
+      fund.expense_ratio,
+      fund.sharpe_ratio,
+      fund.standard_deviation
     ]);
 
-    const ws_review = XLSX.utils.aoa_to_sheet([reviewHeaders, ...reviewRows]);
-    ws_review['!cols'] = [
-      { wch: 10 }, // Symbol
-      { wch: 40 }, // Fund Name
-      { wch: 25 }, // Asset Class
-      { wch: 8 },  // Score
-      { wch: 50 }, // Review Reasons
-      { wch: 8 },  // 1Y
-      { wch: 12 }, // Sharpe
-      { wch: 12 }, // Expense
-      { wch: 12 }  // Recommended
-    ];
-    
-    XLSX.utils.book_append_sheet(wb, ws_review, 'Review Candidates');
+    const ws_recommended = XLSX.utils.aoa_to_sheet([fundHeaders.slice(0, 10), ...recommendedRows]);
+    ws_recommended['!cols'] = ws_funds['!cols'].slice(0, 10);
+    XLSX.utils.book_append_sheet(wb, ws_recommended, 'Recommended Funds');
   }
 
-  // Sheet 4: Asset Class Analysis
-  const classHeaders = [
-    'Asset Class',
-    'Fund Count',
-    'Avg Score',
-    'Median Score',
-    'Benchmark Score',
-    'Top Performer',
-    'Top Score',
-    'Bottom Performer',
-    'Bottom Score',
-    'Excellent (70+)',
-    'Good (50-70)',
-    'Poor (<50)'
+  // Sheet 4: Performance Summary by Asset Class
+  const performanceData = [
+    ['Asset Class', 'Fund Count', 'Avg YTD Return', 'Avg 1Y Return', 'Avg 3Y Return', 'Avg 5Y Return', 'Recommended Count']
   ];
 
-  const classRows = Object.entries(classSummaries).map(([className, summary]) => [
-    className,
-    summary.fundCount,
-    summary.averageScore || '',
-    summary.medianScore || '',
-    summary.benchmarkScore || '',
-    summary.topPerformer?.Symbol || '',
-    summary.topPerformer?.scores?.final || '',
-    summary.bottomPerformer?.Symbol || '',
-    summary.bottomPerformer?.scores?.final || '',
-    summary.distribution?.excellent || 0,
-    summary.distribution?.good || 0,
-    summary.distribution?.poor || 0
-  ]);
+  Object.entries(assetClassSummary).forEach(([className, summary]) => {
+    performanceData.push([
+      className,
+      summary.fundCount,
+      summary.averageYTD || 'N/A',
+      summary.average1Y || 'N/A',
+      summary.average3Y || 'N/A',
+      summary.average5Y || 'N/A',
+      summary.recommendedCount
+    ]);
+  });
 
-  const ws_classes = XLSX.utils.aoa_to_sheet([classHeaders, ...classRows]);
-  ws_classes['!cols'] = [
-    { wch: 30 }, // Asset Class
-    { wch: 12 }, // Count
-    { wch: 10 }, // Avg Score
-    { wch: 12 }, // Median
-    { wch: 15 }, // Benchmark
-    { wch: 15 }, // Top Fund
-    { wch: 10 }, // Top Score
-    { wch: 15 }, // Bottom Fund
-    { wch: 12 }, // Bottom Score
-    { wch: 12 }, // Excellent
-    { wch: 10 }, // Good
-    { wch: 10 }  // Poor
+  const ws_performance = XLSX.utils.aoa_to_sheet(performanceData);
+  ws_performance['!cols'] = [
+    { wch: 25 }, // Asset Class
+    { wch: 12 }, // Fund Count
+    { wch: 15 }, // Avg YTD Return
+    { wch: 15 }, // Avg 1Y Return
+    { wch: 15 }, // Avg 3Y Return
+    { wch: 15 }, // Avg 5Y Return
+    { wch: 15 }  // Recommended Count
   ];
-  
-  XLSX.utils.book_append_sheet(wb, ws_classes, 'Asset Class Analysis');
 
-  // Sheet 5: Score Breakdown (for recommended funds)
-  const recommendedFunds = funds.filter(f => f.isRecommended && f.scores?.breakdown);
-  if (recommendedFunds.length > 0) {
-    const breakdownHeaders = [
-      'Symbol',
-      'Fund Name',
-      'Final Score',
-      'YTD Z-Score',
-      '1Y Z-Score',
-      '3Y Z-Score',
-      '5Y Z-Score',
-      '10Y Z-Score',
-      'Sharpe Z-Score',
-      'Std Dev Z-Score',
-      'Expense Z-Score',
-      'Metrics Used'
-    ];
-
-    const breakdownRows = recommendedFunds.map(fund => {
-      const b = fund.scores.breakdown;
-      return [
-        fund.Symbol,
-        fund.displayName || fund['Fund Name'],
-        fund.scores.final,
-        b.ytd?.zScore?.toFixed(2) || '',
-        b.oneYear?.zScore?.toFixed(2) || '',
-        b.threeYear?.zScore?.toFixed(2) || '',
-        b.fiveYear?.zScore?.toFixed(2) || '',
-        b.tenYear?.zScore?.toFixed(2) || '',
-        b.sharpeRatio3Y?.zScore?.toFixed(2) || '',
-        b.stdDev3Y?.zScore?.toFixed(2) || '',
-        b.expenseRatio?.zScore?.toFixed(2) || '',
-        `${fund.scores.metricsUsed}/${fund.scores.totalPossibleMetrics}`
-      ];
-    });
-
-    const ws_breakdown = XLSX.utils.aoa_to_sheet([breakdownHeaders, ...breakdownRows]);
-    XLSX.utils.book_append_sheet(wb, ws_breakdown, 'Score Breakdown');
-  }
+  XLSX.utils.book_append_sheet(wb, ws_performance, 'Performance Summary');
 
   // Generate Excel file
-  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  return new Blob([wbout], { type: 'application/octet-stream' });
+  const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  return new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+/**
+ * Generate PDF report
+ * @param {Object} data - Report data
+ * @returns {jsPDF} PDF document
+ */
+export function generatePDFReport(data) {
+  const { funds, metadata } = data;
+  
+  // Prepare metadata for PDF
+  const pdfMetadata = {
+    ...metadata,
+    date: metadata?.date || new Date().toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    }),
+    totalFunds: funds.length,
+    recommendedFunds: funds.filter(f => f.is_recommended).length,
+    assetClassCount: new Set(funds.map(f => f.asset_class).filter(Boolean)).size,
+    averagePerformance: calculateAverage(funds.map(f => f.ytd_return).filter(v => v != null))
+  };
+
+  return generateMonthlyReport({
+    funds,
+    metadata: pdfMetadata
+  });
+}
+
+/**
+ * Export data to CSV
+ * @param {Array} funds - Fund data
+ * @returns {Blob} CSV file blob
+ */
+export function exportToCSV(funds) {
+  const headers = [
+    'Ticker',
+    'Fund Name',
+    'Asset Class',
+    'YTD Return',
+    '1 Year Return',
+    '3 Year Return',
+    '5 Year Return',
+    'Expense Ratio',
+    'Sharpe Ratio',
+    'Standard Deviation',
+    'Is Recommended'
+  ];
+
+  const csvData = funds.map(fund => [
+    fund.ticker,
+    fund.name,
+    fund.asset_class,
+    fund.ytd_return,
+    fund.one_year_return,
+    fund.three_year_return,
+    fund.five_year_return,
+    fund.expense_ratio,
+    fund.sharpe_ratio,
+    fund.standard_deviation,
+    fund.is_recommended ? 'Yes' : 'No'
+  ]);
+
+  const csvContent = [headers, ...csvData]
+    .map(row => row.map(cell => `"${cell || ''}"`).join(','))
+    .join('\n');
+
+  return new Blob([csvContent], { type: 'text/csv' });
 }
 
 /**
@@ -260,22 +239,18 @@ export function exportToExcel(data) {
  * @returns {string} HTML string
  */
 export function generateHTMLReport(data) {
-  const {
-    funds = [],
-    classSummaries = {},
-    reviewCandidates = [],
-    metadata = {}
-  } = data;
+  const { funds = [] } = data;
 
-  const avgScore = calculateAverage(funds.map(f => f.scores?.final).filter(s => s != null));
-  const recommendedCount = funds.filter(f => f.isRecommended).length;
+  const assetClassSummary = getAssetClassSummary(funds);
+  const recommendedCount = funds.filter(f => f.is_recommended).length;
+  const avgYTD = calculateAverage(funds.map(f => f.ytd_return).filter(v => v != null));
 
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Lightship Fund Analysis Report</title>
+  <title>Raymond James - Lightship Fund Analysis Report</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -287,7 +262,7 @@ export function generateHTMLReport(data) {
       background-color: #f5f5f5;
     }
     .header {
-      background-color: #1e3a8a;
+      background-color: #002f6c;
       color: white;
       padding: 30px;
       border-radius: 8px;
@@ -315,7 +290,7 @@ export function generateHTMLReport(data) {
     }
     .summary-card h3 {
       margin: 0 0 10px 0;
-      color: #1e3a8a;
+      color: #002f6c;
       font-size: 0.9em;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -338,7 +313,7 @@ export function generateHTMLReport(data) {
     }
     .section h2 {
       margin: 0 0 20px 0;
-      color: #1e3a8a;
+      color: #002f6c;
       border-bottom: 2px solid #e5e7eb;
       padding-bottom: 10px;
     }
@@ -359,22 +334,9 @@ export function generateHTMLReport(data) {
     tr:hover {
       background-color: #f9fafb;
     }
-    .score-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 999px;
+    .recommended {
+      background-color: #fef3c7;
       font-weight: 600;
-      font-size: 0.9em;
-    }
-    .score-excellent { background: #d1fae5; color: #065f46; }
-    .score-good { background: #fef3c7; color: #78350f; }
-    .score-poor { background: #fee2e2; color: #991b1b; }
-    .alert {
-      background: #fef3c7;
-      border: 1px solid #fbbf24;
-      padding: 15px;
-      border-radius: 6px;
-      margin-bottom: 20px;
     }
     .footer {
       text-align: center;
@@ -386,142 +348,60 @@ export function generateHTMLReport(data) {
 </head>
 <body>
   <div class="header">
-    <h1>Lightship Fund Analysis Report</h1>
-    <p>Generated on ${new Date().toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    })}</p>
+    <h1>Raymond James</h1>
+    <p>Lightship Fund Analysis Report - Generated on ${new Date().toLocaleDateString()}</p>
   </div>
 
   <div class="summary-grid">
     <div class="summary-card">
-      <h3>Total Funds Analyzed</h3>
+      <h3>Total Funds</h3>
       <div class="value">${funds.length}</div>
-      <div class="subtitle">${recommendedCount} recommended</div>
+      <div class="subtitle">Funds analyzed</div>
     </div>
     <div class="summary-card">
-      <h3>Average Score</h3>
-      <div class="value">${avgScore.toFixed(1)}</div>
-      <div class="subtitle">Out of 100</div>
-    </div>
-    <div class="summary-card">
-      <h3>Funds Needing Review</h3>
-      <div class="value">${reviewCandidates.length}</div>
-      <div class="subtitle">Flagged for attention</div>
+      <h3>Recommended</h3>
+      <div class="value">${recommendedCount}</div>
+      <div class="subtitle">Recommended funds</div>
     </div>
     <div class="summary-card">
       <h3>Asset Classes</h3>
-      <div class="value">${Object.keys(classSummaries).length}</div>
-      <div class="subtitle">Diversified portfolio</div>
+      <div class="value">${Object.keys(assetClassSummary).length}</div>
+      <div class="subtitle">Different asset classes</div>
+    </div>
+    <div class="summary-card">
+      <h3>Avg YTD Return</h3>
+      <div class="value">${avgYTD ? avgYTD.toFixed(2) + '%' : 'N/A'}</div>
+      <div class="subtitle">Average year-to-date return</div>
     </div>
   </div>
 
-  ${reviewCandidates.length > 0 ? `
   <div class="section">
-    <h2>⚠️ Funds Requiring Review</h2>
-    <div class="alert">
-      <strong>${reviewCandidates.length} funds</strong> have been flagged for review based on performance metrics.
-    </div>
+    <h2>Fund Performance Summary</h2>
     <table>
       <thead>
         <tr>
-          <th>Fund</th>
-          <th>Score</th>
-          <th>Review Reasons</th>
-          <th>Key Metrics</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${reviewCandidates.slice(0, 10).map(fund => `
-        <tr>
-          <td>
-            <strong>${fund.Symbol}</strong><br>
-            <small>${fund.displayName || fund['Fund Name']}</small><br>
-            <small style="color: #666">${fund['Asset Class']}</small>
-          </td>
-          <td>
-            <span class="score-badge ${getScoreClass(fund.scores?.final || 0)}">
-              ${fund.scores?.final || 'N/A'}
-            </span>
-          </td>
-          <td>
-            ${fund.reviewReasons.map(r => `• ${r}`).join('<br>')}
-          </td>
-          <td>
-            1Y: ${fund['1 Year']?.toFixed(2) || 'N/A'}%<br>
-            Sharpe: ${fund['Sharpe Ratio']?.toFixed(2) || 'N/A'}<br>
-            Expense: ${fund['Net Expense Ratio']?.toFixed(2) || 'N/A'}%
-          </td>
-        </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  </div>
-  ` : ''}
-
-  <div class="section">
-    <h2>📊 Asset Class Performance</h2>
-    <table>
-      <thead>
-        <tr>
+          <th>Ticker</th>
+          <th>Fund Name</th>
           <th>Asset Class</th>
-          <th>Funds</th>
-          <th>Avg Score</th>
-          <th>Distribution</th>
-          <th>Top Performer</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${Object.entries(classSummaries).map(([className, summary]) => `
-        <tr>
-          <td><strong>${className}</strong></td>
-          <td>${summary.fundCount}</td>
-          <td>${summary.averageScore || 'N/A'}</td>
-          <td>
-            <span style="color: #059669">●</span> ${summary.distribution?.excellent || 0}
-            <span style="color: #eab308">●</span> ${summary.distribution?.good || 0}
-            <span style="color: #dc2626">●</span> ${summary.distribution?.poor || 0}
-          </td>
-          <td>${summary.topPerformer?.Symbol || 'N/A'} (${summary.topPerformer?.scores?.final || 'N/A'})</td>
-        </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="section">
-    <h2>🏆 Top Performers</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Rank</th>
-          <th>Fund</th>
-          <th>Score</th>
+          <th>YTD Return</th>
           <th>1Y Return</th>
-          <th>Sharpe Ratio</th>
+          <th>3Y Return</th>
+          <th>Expense Ratio</th>
+          <th>Recommended</th>
         </tr>
       </thead>
       <tbody>
-        ${funds
-          .sort((a, b) => (b.scores?.final || 0) - (a.scores?.final || 0))
-          .slice(0, 10)
-          .map((fund, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>
-            <strong>${fund.Symbol}</strong><br>
-            <small>${fund.displayName || fund['Fund Name']}</small>
-          </td>
-          <td>
-            <span class="score-badge ${getScoreClass(fund.scores?.final || 0)}">
-              ${fund.scores?.final || 'N/A'}
-            </span>
-          </td>
-          <td>${fund['1 Year']?.toFixed(2) || 'N/A'}%</td>
-          <td>${fund['Sharpe Ratio']?.toFixed(2) || 'N/A'}</td>
-        </tr>
+        ${funds.map(fund => `
+          <tr class="${fund.is_recommended ? 'recommended' : ''}">
+            <td><strong>${fund.ticker}</strong></td>
+            <td>${fund.name}</td>
+            <td>${fund.asset_class || 'Unassigned'}</td>
+            <td>${formatPercent(fund.ytd_return)}</td>
+            <td>${formatPercent(fund.one_year_return)}</td>
+            <td>${formatPercent(fund.three_year_return)}</td>
+            <td>${formatPercent(fund.expense_ratio)}</td>
+            <td>${fund.is_recommended ? 'Yes' : 'No'}</td>
+          </tr>
         `).join('')}
       </tbody>
     </table>
@@ -531,155 +411,92 @@ export function generateHTMLReport(data) {
     <p>This report is for internal use only. Generated by Lightship Fund Analysis System.</p>
   </div>
 </body>
-</html>
-  `;
+</html>`;
 
   return html;
 }
 
 /**
- * Generate CSV export
- * @param {Array<Object>} funds - Fund data
- * @returns {string} CSV string
- */
-export function exportToCSV(funds) {
-  const headers = [
-    'Symbol',
-    'Fund Name',
-    'Asset Class',
-    'Score',
-    'Percentile',
-    'YTD %',
-    '1 Year %',
-    '3 Year %',
-    '5 Year %',
-    'Sharpe Ratio',
-    'Expense Ratio %',
-    'Is Recommended',
-    'Tags'
-  ];
-
-  const rows = funds.map(fund => [
-    fund.Symbol,
-    `"${fund.displayName || fund['Fund Name']}"`,
-    `"${fund['Asset Class']}"`,
-    fund.scores?.final || '',
-    fund.scores?.percentile || '',
-    fund.YTD || '',
-    fund['1 Year'] || '',
-    fund['3 Year'] || '',
-    fund['5 Year'] || '',
-    fund['Sharpe Ratio'] || '',
-    fund['Net Expense Ratio'] || '',
-    fund.isRecommended ? 'Yes' : 'No',
-    `"${(fund.autoTags || []).map(t => t.name).join(', ')}"`
-  ]);
-
-  const csvContent = [
-    headers.join(','),
-    ...rows.map(row => row.join(','))
-  ].join('\n');
-
-  return csvContent;
-}
-
-/**
- * Generate executive summary text
- * @param {Object} data - Report data
- * @returns {string} Summary text
- */
-export function generateExecutiveSummary(data) {
-  const {
-    funds = [],
-    classSummaries = {},
-    reviewCandidates = [],
-    metadata = {}
-  } = data;
-
-  const avgScore = calculateAverage(funds.map(f => f.scores?.final).filter(s => s != null));
-  const recommendedFunds = funds.filter(f => f.isRecommended);
-  const recommendedAvgScore = calculateAverage(recommendedFunds.map(f => f.scores?.final).filter(s => s != null));
-
-  const summary = `
-EXECUTIVE SUMMARY
-Lightship Fund Analysis - ${new Date().toLocaleDateString()}
-
-PORTFOLIO OVERVIEW:
-• Total funds analyzed: ${funds.length}
-• Recommended funds: ${recommendedFunds.length}
-• Average portfolio score: ${avgScore.toFixed(1)}/100
-• Recommended funds average: ${recommendedAvgScore.toFixed(1)}/100
-
-KEY FINDINGS:
-${reviewCandidates.length > 0 ? `• ${reviewCandidates.length} funds require immediate review` : '• All funds performing within acceptable parameters'}
-${reviewCandidates.filter(f => f.isRecommended).length > 0 ? `• ${reviewCandidates.filter(f => f.isRecommended).length} recommended funds are underperforming` : ''}
-
-TOP PERFORMERS:
-${funds
-  .sort((a, b) => (b.scores?.final || 0) - (a.scores?.final || 0))
-  .slice(0, 5)
-  .map((f, i) => `${i + 1}. ${f.Symbol} - ${f.displayName || f['Fund Name']} (Score: ${f.scores?.final || 'N/A'})`)
-  .join('\n')}
-
-BOTTOM PERFORMERS:
-${funds
-  .sort((a, b) => (a.scores?.final || 999) - (b.scores?.final || 999))
-  .slice(0, 5)
-  .map((f, i) => `${i + 1}. ${f.Symbol} - ${f.displayName || f['Fund Name']} (Score: ${f.scores?.final || 'N/A'})`)
-  .join('\n')}
-
-ASSET CLASS SUMMARY:
-${Object.entries(classSummaries)
-  .map(([className, summary]) => 
-    `• ${className}: ${summary.fundCount} funds, Avg Score: ${summary.averageScore || 'N/A'}`
-  )
-  .join('\n')}
-
-RECOMMENDED ACTIONS:
-${reviewCandidates.length > 0 ? '1. Review underperforming funds at next investment committee meeting' : '1. Continue monitoring all funds'}
-${reviewCandidates.filter(f => f.isRecommended).length > 0 ? '2. Consider replacements for underperforming recommended funds' : ''}
-${funds.filter(f => f.autoTags?.some(t => t.id === 'expensive')).length > 0 ? '3. Evaluate high-expense funds for lower-cost alternatives' : ''}
-
-Generated by Lightship Fund Analysis System
-  `;
-
-  return summary.trim();
-}
-
-// Helper functions
-function calculateAverage(numbers) {
-  if (numbers.length === 0) return 0;
-  return numbers.reduce((a, b) => a + b, 0) / numbers.length;
-}
-
-function getScoreClass(score) {
-  if (score >= 70) return 'score-excellent';
-  if (score >= 50) return 'score-good';
-  return 'score-poor';
-}
-
-/**
- * Download file helper
+ * Download file with proper filename
  * @param {Blob|string} content - File content
- * @param {string} filename - File name
+ * @param {string} filename - Filename
  * @param {string} type - MIME type
  */
 export function downloadFile(content, filename, type = 'application/octet-stream') {
   const blob = content instanceof Blob ? content : new Blob([content], { type });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
 
-export default {
-  exportToExcel,
-  generateHTMLReport,
-  exportToCSV,
-  generateExecutiveSummary,
-  downloadFile
-};
+/**
+ * Calculate average of numbers
+ * @param {Array} numbers - Array of numbers
+ * @returns {number|null} Average or null if no valid numbers
+ */
+function calculateAverage(numbers) {
+  const validNumbers = numbers.filter(n => n != null && !isNaN(n));
+  if (validNumbers.length === 0) return null;
+  return validNumbers.reduce((sum, num) => sum + num, 0) / validNumbers.length;
+}
+
+/**
+ * Get asset class summary
+ * @param {Array} funds - Fund data
+ * @returns {Object} Asset class summary
+ */
+function getAssetClassSummary(funds) {
+  const summary = {};
+  
+  funds.forEach(fund => {
+    const assetClass = fund.asset_class || 'Unassigned';
+    if (!summary[assetClass]) {
+      summary[assetClass] = {
+        fundCount: 0,
+        recommendedCount: 0,
+        ytdReturns: [],
+        oneYearReturns: [],
+        threeYearReturns: [],
+        fiveYearReturns: []
+      };
+    }
+    
+    summary[assetClass].fundCount++;
+    if (fund.is_recommended) {
+      summary[assetClass].recommendedCount++;
+    }
+    
+    if (fund.ytd_return != null) summary[assetClass].ytdReturns.push(fund.ytd_return);
+    if (fund.one_year_return != null) summary[assetClass].oneYearReturns.push(fund.one_year_return);
+    if (fund.three_year_return != null) summary[assetClass].threeYearReturns.push(fund.three_year_return);
+    if (fund.five_year_return != null) summary[assetClass].fiveYearReturns.push(fund.five_year_return);
+  });
+  
+  // Calculate averages
+  Object.keys(summary).forEach(assetClass => {
+    const data = summary[assetClass];
+    data.averageYTD = calculateAverage(data.ytdReturns);
+    data.average1Y = calculateAverage(data.oneYearReturns);
+    data.average3Y = calculateAverage(data.threeYearReturns);
+    data.average5Y = calculateAverage(data.fiveYearReturns);
+  });
+  
+  return summary;
+}
+
+/**
+ * Format percentage for display
+ * @param {number} value - Percentage value
+ * @returns {string} Formatted percentage
+ */
+function formatPercent(value) {
+  if (value === null || value === undefined || isNaN(value)) {
+    return 'N/A';
+  }
+  return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+}

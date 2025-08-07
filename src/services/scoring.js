@@ -240,7 +240,6 @@ export async function setMetricWeights(weights) {
    */
   function calculateFundScore(fund, statistics) {
     const scoreBreakdown = {};
-    let totalWeight = 0;
     let weightedSum = 0;
     
     Object.entries(METRIC_WEIGHTS).forEach(([metric, weight]) => {
@@ -263,7 +262,6 @@ export async function setMetricWeights(weights) {
         };
         
         weightedSum += weightedZScore;
-        totalWeight += Math.abs(weight);
       }
     });
     

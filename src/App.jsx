@@ -1,252 +1,48 @@
 // App.jsx
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { RefreshCw, Settings, Trash2, LayoutGrid, AlertCircle, TrendingUp, Award, Clock, Database, Calendar, Download, BarChart3, Activity, Info, FileText } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import React, { useState, useEffect, useMemo } from 'react';
 import './App.css'; // Import the CSS file
-import FundAdmin from './components/Admin/FundAdmin';
+import LoginModal from './components/Auth/LoginModal';
 import {
   recommendedFunds as defaultRecommendedFunds,
   assetClassBenchmarks as defaultBenchmarks
 } from './data/config';
 import { 
-  calculateScores, 
-  generateClassSummary, 
   identifyReviewCandidates,
-  getScoreColor,
-  getScoreLabel,
-  METRICS_CONFIG,
-  METRIC_ORDER,
   loadMetricWeights
 } from './services/scoring';
 import {
-  saveSnapshot,
-  deleteSnapshot
-} from './services/dataStore';
-import {
   getAllCombinedSnapshots,
-  getDataSummary,
-  compareCombinedSnapshots as compareSnapshotsAPI
+  getDataSummary
 } from './services/enhancedDataStore';
 import fundRegistry from './services/fundRegistry';
 import PerformanceHeatmap from './components/Dashboard/PerformanceHeatmap';
 import TopBottomPerformers from './components/Dashboard/TopBottomPerformers';
-import AssetClassOverview from './components/Dashboard/AssetClassOverview';
-import FundTimeline from './components/Trends/FundTimeline';
-import TagManager from './components/Tags/TagManager';
 import CorrelationMatrix from './components/Analytics/CorrelationMatrix';
 import RiskReturnScatter from './components/Analytics/RiskReturnScatter';
-import FundDetailsModal from './components/FundDetailsModal';
-import MonthlyReportButton from './components/Reports/MonthlyReportButton';
+import EnhancedPerformanceDashboard from './components/Dashboard/EnhancedPerformanceDashboard';
+import FundManagement from './components/Admin/FundManagement';
 import { 
   exportToExcel, 
-  generateHTMLReport, 
-  exportToCSV, 
-  generateExecutiveSummary,
-  downloadFile,
-  generatePDFReport
+  downloadFile
 } from './services/exportService';
-import {
-  calculateDiversification,
-  identifyOutliers,
-  performAttribution
-} from './services/analytics';
-import { processRawFunds } from './services/fundProcessor';
-import assetClassGroups from './data/assetClassGroups';
-import stringSimilarity from 'string-similarity';
 
-// Enhanced column matching with intelligent fallbacks
-const COLUMN_SYNONYMS = {
-  'Symbol': ['symbol', 'cusip', 'ticker', 'fund id', 'fundid', 'fund_id', 'fund identifier', 'symbolcusip', 'symbol/cusip', 'cusip/symbol', 'identifier', 'symbolcusip'],
-  'Fund Name': ['fund name', 'product name', 'name', 'fundname', 'fund_name', 'product', 'fund', 'security name'],
-  'YTD': ['ytd', 'total return - ytd', 'ytd return', 'year to date', 'year-to-date', 'ytd total return', 'total return ytd'],
-  '1 Year': ['1 year', '1y', 'total return - 1 year', '1 year return', '1-year', '1yr', 'one year', 'total return 1 year'],
-  '3 Year': ['3 year', '3y', 'annualized total return - 3 year', '3 year return', '3-year', '3yr', 'three year', 'total return 3 year'],
-  '5 Year': ['5 year', '5y', 'annualized total return - 5 year', '5 year return', '5-year', '5yr', 'five year', 'total return 5 year'],
-  '10 Year': ['10 year', '10y', 'annualized total return - 10 year', '10 year return', '10-year', '10yr', 'ten year', 'total return 10 year'],
-  'Alpha': ['alpha', 'alpha (asset class) - 5 year', 'alpha asset class', 'alpha 5 year'],
-  'Sharpe Ratio': ['sharpe', 'sharpe ratio', 'sharpe ratio - 3 year', 'sharpe 3 year'],
-  'Standard Deviation': ['standard deviation', 'std dev', 'volatility', 'standard deviation - 3 year', 'standard deviation - 5 year'],
-  'Net Expense Ratio': ['net expense ratio', 'expense ratio', 'net exp ratio', 'exp ratio', 'expense'],
-  'Asset Class': ['asset class', 'category', 'fund category', 'investment category', 'class']
-};
-
-// Intelligent column detection with multiple strategies
-function intelligentColumnMapping(headers) {
-  const normalizedHeaders = headers.map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
-  const columnMap = {};
-  const unmappedHeaders = [...headers];
-  
-  console.log('Headers to match:', headers);
-  console.log('Normalized headers:', normalizedHeaders);
-
-  // Strategy 1: Direct synonym matching
-  Object.entries(COLUMN_SYNONYMS).forEach(([targetColumn, synonyms]) => {
-    for (let i = 0; i < headers.length; i++) {
-      const header = headers[i].toLowerCase();
-      const normalizedHeader = normalizedHeaders[i];
-      
-      // Check exact matches and synonyms
-      if (synonyms.some(synonym => 
-        header.includes(synonym) || 
-        normalizedHeader.includes(synonym.replace(/[^a-z0-9]/g, ''))
-      )) {
-        columnMap[targetColumn] = i;
-        unmappedHeaders[i] = null; // Mark as mapped
-        console.log(`Matched "${headers[i]}" to "${targetColumn}"`);
-        break;
-      }
-    }
-  });
-
-  // Special handling for Symbol/CUSIP format - check this before other fallbacks
-  if (!columnMap.Symbol) {
-    for (let i = 0; i < headers.length; i++) {
-      if (unmappedHeaders[i] !== null) {
-        const header = headers[i].toLowerCase();
-        // Check for "symbol/cusip" or "symbolcusip" patterns
-        if (header.includes('symbol') && header.includes('cusip')) {
-          columnMap.Symbol = i;
-          unmappedHeaders[i] = null;
-          console.log(`Special Symbol/CUSIP match: "${headers[i]}" to Symbol`);
-          break;
-        }
-      }
-    }
-  }
-
-  // Strategy 2: Smart fallback detection
-  if (!columnMap.Symbol) {
-    // Look for any column that might be a symbol (contains letters/numbers, not too long)
-    for (let i = 0; i < headers.length; i++) {
-      if (unmappedHeaders[i] !== null && headers[i].length <= 15 && /[A-Z]/i.test(headers[i])) {
-        columnMap.Symbol = i;
-        unmappedHeaders[i] = null;
-        console.log(`Fallback: Matched "${headers[i]}" to Symbol`);
-        break;
-      }
-    }
-  }
-
-
-
-  if (!columnMap['Fund Name']) {
-    // Look for any column that might be a fund name (longer text, contains "fund" or "name")
-    for (let i = 0; i < headers.length; i++) {
-      if (unmappedHeaders[i] !== null && headers[i].length > 10 && 
-          (headers[i].toLowerCase().includes('fund') || headers[i].toLowerCase().includes('name'))) {
-        columnMap['Fund Name'] = i;
-        unmappedHeaders[i] = null;
-        console.log(`Fallback: Matched "${headers[i]}" to Fund Name`);
-        break;
-      }
-    }
-  }
-
-  // Strategy 3: Pattern-based detection for performance metrics
-  const performancePatterns = [
-    { target: 'YTD', patterns: ['ytd', 'year to date', 'total return.*ytd'] },
-    { target: '1 Year', patterns: ['1.*year', 'one.*year', 'total return.*1'] },
-    { target: '3 Year', patterns: ['3.*year', 'three.*year', 'total return.*3'] },
-    { target: '5 Year', patterns: ['5.*year', 'five.*year', 'total return.*5'] },
-    { target: '10 Year', patterns: ['10.*year', 'ten.*year', 'total return.*10'] }
-  ];
-
-  performancePatterns.forEach(({ target, patterns }) => {
-    if (!columnMap[target]) {
-      for (let i = 0; i < headers.length; i++) {
-        if (unmappedHeaders[i] !== null) {
-          const header = headers[i].toLowerCase();
-          if (patterns.some(pattern => new RegExp(pattern).test(header))) {
-            columnMap[target] = i;
-            unmappedHeaders[i] = null;
-            console.log(`Pattern match: "${headers[i]}" to "${target}"`);
-            break;
-          }
-        }
-      }
-    }
-  });
-
-  // Strategy 4: Numeric column detection for ratios
-  if (!columnMap['Sharpe Ratio']) {
-    for (let i = 0; i < headers.length; i++) {
-      if (unmappedHeaders[i] !== null && headers[i].toLowerCase().includes('sharpe')) {
-        columnMap['Sharpe Ratio'] = i;
-        unmappedHeaders[i] = null;
-        console.log(`Numeric match: "${headers[i]}" to Sharpe Ratio`);
-        break;
-      }
-    }
-  }
-
-  if (!columnMap['Net Expense Ratio']) {
-    for (let i = 0; i < headers.length; i++) {
-      if (unmappedHeaders[i] !== null && headers[i].toLowerCase().includes('expense')) {
-        columnMap['Net Expense Ratio'] = i;
-        unmappedHeaders[i] = null;
-        console.log(`Numeric match: "${headers[i]}" to Net Expense Ratio`);
-        break;
-      }
-    }
-  }
-
-  return {
-    columnMap,
-    unmappedHeaders: unmappedHeaders.filter(h => h !== null)
-  };
-}
-
-const FUZZY_MATCH_THRESHOLD = 0.4; // Lowered from 0.7 to be more permissive
-
-function fuzzyMapHeaders(headers) {
-  const columnMap = {};
-  const usedIndexes = new Set();
-
-  // Special fallback for Symbol: match any header containing both 'symbol' and 'cusip' (ignoring punctuation)
-  headers.forEach((header, idx) => {
-    if (!header || typeof header !== 'string') return;
-    const norm = header.toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (norm.includes('symbol') && norm.includes('cusip')) {
-      columnMap['Symbol'] = idx;
-      usedIndexes.add(idx);
-    }
-  });
-
-  Object.entries(COLUMN_SYNONYMS).forEach(([canonical, synonyms]) => {
-    // Skip if already matched by fallback
-    if (columnMap[canonical] !== undefined) return;
-    let bestMatch = { rating: 0, index: -1 };
-    headers.forEach((header, idx) => {
-      if (usedIndexes.has(idx)) return;
-      if (!header || typeof header !== 'string') return;
-      const headerNorm = header.toLowerCase().replace(/[^a-z0-9]/g, '');
-      for (const synonym of synonyms) {
-        const synonymNorm = synonym.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const rating = stringSimilarity.compareTwoStrings(headerNorm, synonymNorm);
-        if (rating > bestMatch.rating) {
-          bestMatch = { rating, index: idx };
-        }
-      }
-    });
-    if (bestMatch.rating >= FUZZY_MATCH_THRESHOLD) {
-      columnMap[canonical] = bestMatch.index;
-      usedIndexes.add(bestMatch.index);
-    }
-  });
-  return columnMap;
-}
+// Import new services
+import authService from './services/authService';
+import migrationService from './services/migrationService';
 
 const App = () => {
-  const [scoredFundData, setScoredFundData] = useState([]);
-  const [benchmarkData, setBenchmarkData] = useState({});
-  const [loading, setLoading] = useState(false);
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Legacy state (will be replaced by useFundData hook)
+  const [scoredFundData] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedClass, setSelectedClass] = useState('');
-  const [selectedFundForDetails, setSelectedFundForDetails] = useState(null);
-  const [classSummaries, setClassSummaries] = useState({});
-  const [currentSnapshotDate, setCurrentSnapshotDate] = useState(null);
-  const [uploadedFileName, setUploadedFileName] = useState('');
-  const [error, setError] = useState(null);
+  const [classSummaries] = useState({});
+  const [currentSnapshotDate] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAssetClass, setFilterAssetClass] = useState('all');
   const [sortBy, setSortBy] = useState('score');
@@ -256,16 +52,11 @@ const App = () => {
   const [snapshots, setSnapshots] = useState([]);
   const [selectedSnapshot, setSelectedSnapshot] = useState(null);
   const [compareSnapshot, setCompareSnapshot] = useState(null);
-  const [snapshotComparison, setSnapshotComparison] = useState(null);
+  const [snapshotComparison] = useState(null);
 
-  const [recommendedFunds, setRecommendedFunds] = useState([]);
   const [assetClassBenchmarks, setAssetClassBenchmarks] = useState({});
 
-  const [uploadPreview, setUploadPreview] = useState(null);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [manualColumnMapping, setManualColumnMapping] = useState(false);
-  const [editableColumnMap, setEditableColumnMap] = useState({});
-  const [availableHeaders, setAvailableHeaders] = useState([]);
+
 
   // Memoize expensive calculations
   const memoizedAssetClasses = useMemo(() => {
@@ -281,35 +72,93 @@ const App = () => {
     return identifyReviewCandidates(scoredFundData);
   }, [scoredFundData]);
 
-  // Memoize registry name map
-  const registryNameMap = useMemo(() => {
-    const clean = (s) => s?.toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
-    const map = {};
-    recommendedFunds.forEach(f => {
-      map[clean(f.symbol)] = f.name;
-    });
-    return map;
-  }, [recommendedFunds]);
+
 
   // Help modal state
   const [showHelp, setShowHelp] = useState(false);
 
-  // Initialize fund registry and load data
+  // Check authentication on app load
   useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        console.log('🔐 Checking authentication...');
+        console.log('🔧 Environment check:', {
+          supabaseUrl: process.env.REACT_APP_SUPABASE_URL ? '✅ Set' : '❌ Missing',
+          supabaseKey: process.env.REACT_APP_SUPABASE_ANON_KEY ? '✅ Set' : '❌ Missing',
+          ychartsKey: process.env.REACT_APP_YCHARTS_API_KEY ? '✅ Set' : '❌ Missing',
+          appPassword: process.env.REACT_APP_APP_PASSWORD ? '✅ Set' : '❌ Missing'
+        });
+        
+        setAuthLoading(true);
+        const authResult = await authService.checkAuth();
+        
+        console.log('🔐 Auth result:', authResult);
+        
+        if (authResult.success) {
+          console.log('✅ User is authenticated');
+          setIsAuthenticated(true);
+          setCurrentUser(authResult.user);
+        } else {
+          console.log('❌ User is not authenticated, showing login modal');
+          setIsAuthenticated(false);
+          setCurrentUser(null);
+          setShowLoginModal(true);
+        }
+      } catch (error) {
+        console.error('❌ Authentication check failed:', error);
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+        setShowLoginModal(true);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  // Check for migration when authenticated
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      const checkMigration = async () => {
+        try {
+          console.log('🔍 Checking migration status...');
+          const migrationStatus = await migrationService.checkMigrationStatus();
+          console.log('📊 Migration status:', migrationStatus);
+          
+          if (migrationStatus.needsMigration) {
+            console.log('🔄 Migration needed. Starting migration from IndexedDB to Supabase...');
+            const migrationResult = await migrationService.migrateFromIndexedDB();
+            console.log('✅ Migration completed:', migrationResult);
+          } else {
+            console.log('✅ No migration needed. Supabase data is up to date.');
+          }
+        } catch (error) {
+          console.error('❌ Migration check failed:', error);
+        }
+      };
+
+      checkMigration();
+    }
+  }, [isAuthenticated, authLoading]);
+
+  // Initialize fund registry and load data (legacy - will be replaced)
+  useEffect(() => {
+    if (!isAuthenticated) return; // Only load legacy data if not using new system
+    
     const initializeRegistry = async () => {
       await loadMetricWeights();
       await fundRegistry.initialize(defaultRecommendedFunds, defaultBenchmarks);
-      const [funds, benchmarkMap] = await Promise.all([
+      const [, benchmarkMap] = await Promise.all([
         fundRegistry.getActiveFunds(),
         fundRegistry.getBenchmarksByAssetClass()
       ]);
 
-      setRecommendedFunds(funds);
       setAssetClassBenchmarks(benchmarkMap);
     };
 
     initializeRegistry();
-  }, []);
+  }, [isAuthenticated]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -326,7 +175,7 @@ const App = () => {
           funds: scoredFundData,
           classSummaries,
           reviewCandidates: identifyReviewCandidates(scoredFundData),
-          metadata: { date: currentSnapshotDate, fileName: uploadedFileName }
+          metadata: { date: currentSnapshotDate }
         };
         const blob = exportToExcel(data);
         downloadFile(blob, `fund_analysis_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -343,7 +192,7 @@ const App = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [scoredFundData, classSummaries, currentSnapshotDate, uploadedFileName]);
+  }, [scoredFundData, classSummaries, currentSnapshotDate]);
 
 
 
@@ -353,6 +202,26 @@ const App = () => {
       loadSnapshots();
     }
   }, [activeTab]);
+
+  // Handle login
+  const handleLogin = (user) => {
+    console.log('✅ Login successful:', user);
+    setIsAuthenticated(true);
+    setCurrentUser(user);
+    setShowLoginModal(false);
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+      setShowLoginModal(true);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   const loadSnapshots = async () => {
     try {
@@ -370,170 +239,11 @@ const App = () => {
     }
   };
 
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    setLoading(true);
-    setError(null);
-    setUploadedFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-        console.log('Raw Excel data:', jsonData);
-        
-        // Find header row (first row with at least 2 string cells)
-        let headerRowIndex = jsonData.findIndex(row => 
-          row.filter(cell => typeof cell === 'string' && cell.trim().length > 0).length >= 2
-        );
-        
-        if (headerRowIndex === -1) {
-          setError('Could not find header row in the file. Please ensure the first row contains column names.');
-          setLoading(false);
-          return;
-        }
-        
-        const headers = jsonData[headerRowIndex].map(h => String(h || '').trim());
-        const dataRows = jsonData.slice(headerRowIndex + 1).filter(row => 
-          row.some(cell => cell !== null && cell !== undefined && cell !== '')
-        );
-        
-        console.log('Headers found:', headers);
-        console.log('Data rows:', dataRows.length);
-        
-        // Use intelligent column mapping
-        const { columnMap, unmappedHeaders } = intelligentColumnMapping(headers);
-        
-        console.log('Column mapping result:', columnMap);
-        console.log('Unmapped headers:', unmappedHeaders);
-        
-        // Check if we have essential columns
-        if (!columnMap.Symbol) {
-          setError('Could not automatically identify a Symbol/Ticker column. Please check your file headers or use manual mapping.');
-          setLoading(false);
-          return;
-        }
-        
-        // Parse the data using the column mapping
-        const parsed = dataRows.map(row => {
-          const fund = {};
-          Object.entries(columnMap).forEach(([targetField, sourceIndex]) => {
-            const value = row[sourceIndex];
-            if (value !== null && value !== undefined && value !== '') {
-              fund[targetField] = value;
-            }
-          });
-          return fund;
-        }).filter(fund => Object.keys(fund).length > 0);
-        
-        console.log('Parsed funds:', parsed.length);
-        console.log('Sample parsed fund:', parsed[0]);
-        
-        // Set up preview data
-        setUploadPreview({
-          parsed,
-          columnMap,
-          unmappedHeaders,
-          headers,
-          dataRows: dataRows.slice(0, 5) // Show first 5 rows as preview
-        });
-        setEditableColumnMap({ ...columnMap });
-        setAvailableHeaders(headers);
-        setShowPreviewModal(true);
-        setLoading(false);
-        
-      } catch (error) {
-        console.error('Error processing file:', error);
-        setError(`Error processing file: ${error.message}`);
-        setLoading(false);
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  };
 
-  function handleConfirmImport() {
-    if (!uploadPreview) return;
-    setShowPreviewModal(false);
-    setLoading(true);
-    setTimeout(() => {
-      try {
-        const { parsed, columnMap } = uploadPreview;
-        // Check for essential columns
-        if (!columnMap.Symbol) {
-          setError('Import failed: Could not find a column for Symbol (Ticker/CUSIP). Please check your file headers.');
-          setLoading(false);
-          setUploadPreview(null);
-          return;
-        }
-        if (!parsed || parsed.length === 0) {
-          setError('Import failed: No valid rows found in the file. Please check your data.');
-          setLoading(false);
-          setUploadPreview(null);
-          return;
-        }
-        const { scoredFunds, classSummaries, benchmarks } = processRawFunds(parsed, {
-          recommendedFunds,
-          benchmarks: assetClassBenchmarks
-        });
-        setScoredFundData(Array.isArray(scoredFunds) ? scoredFunds : []);
-        setBenchmarkData(benchmarks || {});
-        setClassSummaries(classSummaries || {});
-        setCurrentSnapshotDate(new Date().toISOString().split('T')[0]);
-        setError(null);
-      } catch (err) {
-        setError('Error processing imported data: ' + err.message);
-      } finally {
-        setLoading(false);
-        setUploadPreview(null);
-      }
-    }, 100);
-  }
 
-  function handleCancelImport() {
-    setShowPreviewModal(false);
-    setUploadPreview(null);
-  }
 
-  const loadSnapshot = async (snapshot) => {
-    setSelectedSnapshot(snapshot);
-    const fundsWithGroup = snapshot.funds.map(f => ({
-      ...f,
-      assetGroup: f.assetGroup || assetClassGroups[f['Asset Class']] || 'Other',
-      displayName: registryNameMap[f.cleanSymbol] || f.displayName || f['Fund Name']
-    }));
-    setScoredFundData(fundsWithGroup);
-    setClassSummaries(snapshot.classSummaries || {});
-    setCurrentSnapshotDate(new Date(snapshot.date).toLocaleDateString());
-    setUploadedFileName(snapshot.metadata?.fileName || 'Historical snapshot');
-    
-    // Extract benchmark data
-    const benchmarks = {};
-    Object.entries(assetClassBenchmarks).forEach(([assetClass, { ticker, name }]) => {
-      const clean = (s) => s?.toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
-      const match = snapshot.funds.find(f => f.cleanSymbol === clean(ticker));
-      if (match) {
-        benchmarks[assetClass] = { ...match, name };
-      }
-    });
-    setBenchmarkData(benchmarks);
-  };
 
-  const handleCompareSnapshots = async () => {
-    if (!selectedSnapshot || !compareSnapshot) return;
-
-    try {
-      const comparison = await compareSnapshotsAPI(selectedSnapshot.id, compareSnapshot.id);
-      setSnapshotComparison(comparison);
-    } catch (error) {
-      console.error('Error comparing snapshots:', error);
-      alert('Error comparing snapshots');
-    }
-  };
 
   // Filtered and sorted funds
   const filteredAndSortedFunds = useMemo(() => {
@@ -602,6 +312,31 @@ const App = () => {
     return filtered;
   }, [scoredFundData, searchTerm, filterAssetClass, sortBy, sortDirection]);
 
+  // Show loading screen while checking authentication
+  if (authLoading) {
+    return (
+      <div className="app-container">
+        <div className="loading-screen">
+          <div className="loading-spinner large"></div>
+          <p>Loading Lightship Fund Analysis...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login modal if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="app-container">
+        <LoginModal 
+          isOpen={showLoginModal}
+          onLogin={handleLogin}
+          onClose={() => setShowLoginModal(false)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       {/* Sidebar */}
@@ -609,6 +344,7 @@ const App = () => {
         <div className="sidebar-logo">Raymond James</div>
         <nav className="sidebar-nav">
           <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
+          <button className={activeTab === 'performance' ? 'active' : ''} onClick={() => setActiveTab('performance')}>Performance</button>
           <button className={activeTab === 'funds' ? 'active' : ''} onClick={() => setActiveTab('funds')}>Fund Scores</button>
           <button className={activeTab === 'class' ? 'active' : ''} onClick={() => setActiveTab('class')}>Class View</button>
           <button className={activeTab === 'analysis' ? 'active' : ''} onClick={() => setActiveTab('analysis')}>Analysis</button>
@@ -616,6 +352,14 @@ const App = () => {
           <button className={activeTab === 'history' ? 'active' : ''} onClick={() => setActiveTab('history')}>History</button>
           <button className={activeTab === 'admin' ? 'active' : ''} onClick={() => setActiveTab('admin')}>Admin</button>
         </nav>
+        <div className="sidebar-footer">
+          <div className="user-info">
+            <span>Welcome, {currentUser?.name || 'User'}</span>
+          </div>
+          <button onClick={handleLogout} className="btn btn-secondary">
+            Logout
+          </button>
+        </div>
       </aside>
       {/* Main Content */}
       <main className="main-content">
@@ -625,60 +369,27 @@ const App = () => {
             <h1 style={{ fontSize: '2rem', fontWeight: 600, color: 'var(--color-primary)' }}>Lightship Fund Analysis</h1>
             <p style={{ color: 'var(--color-primary-light)' }}>Monthly fund performance analysis with Z-score ranking system</p>
           </div>
-          <button
+        <button 
             onClick={() => setShowHelp(true)}
-            style={{
-              padding: '0.5rem 1rem',
+          style={{ 
+            padding: '0.5rem 1rem',
               backgroundColor: 'var(--color-primary-light)',
               color: 'var(--color-white)',
-              border: 'none',
-              borderRadius: '0.375rem',
-              cursor: 'pointer',
+            border: 'none',
+            borderRadius: '0.375rem',
+            cursor: 'pointer',
               fontWeight: 600
-            }}
+          }}
             title="Help (Ctrl+H)"
-          >
+        >
             Help
-          </button>
-        </div>
+        </button>
+      </div>
         {/* Card-based main content */}
         <div className="card">
           {/* --- All previous tab content, upload, etc. goes here --- */}
           {/* ...existing app content... */}
-      {/* File Upload Section - Show on all tabs except admin and history */}
-      {activeTab !== 'admin' && activeTab !== 'history' && (
-            <div className="card">
-              <div className="card-header">
-                <h3 className="card-title">Upload Fund Data</h3>
-                <p className="card-subtitle">Upload your fund performance data file (.xlsx, .xls, or .csv)</p>
-              </div>
-              <div className="input-group">
-          <input
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            onChange={handleFileUpload}
-                  className="input-field"
-                  style={{ marginBottom: 'var(--spacing-sm)' }}
-          />
-          {loading && (
-                  <div className="loading-spinner">
-                    <RefreshCw size={16} />
-              Processing and calculating scores...
-                  </div>
-                )}
-                {error && (
-                  <div className="alert alert-error">
-                    <strong>Error:</strong> {error}
-                  </div>
-                )}
-                {uploadedFileName && (
-                  <div className="alert alert-success">
-                    <strong>Success:</strong> Loaded {uploadedFileName} with {scoredFundData.length} funds
-            </div>
-          )}
-              </div>
-        </div>
-      )}
+
 
       {/* Dashboard Tab */}
       {activeTab === 'dashboard' && (
@@ -763,6 +474,13 @@ const App = () => {
                   </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Performance Tab */}
+      {activeTab === 'performance' && (
+        <div>
+          <EnhancedPerformanceDashboard />
         </div>
       )}
 
@@ -872,7 +590,6 @@ const App = () => {
                             <td>{fund.Alpha?.toFixed(2)}</td>
                             <td>
                               <button
-                                onClick={() => setSelectedFundForDetails(fund)}
                                 className="btn btn-secondary"
                                 style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: '0.75rem' }}
                               >
@@ -1031,7 +748,6 @@ const App = () => {
                       </td>
                                 <td>
                                   <button
-                                    onClick={() => setSelectedFundForDetails(fund)}
                                     className="btn btn-secondary"
                                     style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: '0.75rem' }}
                                   >
@@ -1225,21 +941,11 @@ const App = () => {
       )}
 
       {/* Admin Tab */}
-          {activeTab === 'admin' && (
-            <div>
-              <div className="card-header">
-                <h2 className="card-title">Administration</h2>
-                <p className="card-subtitle">Manage fund registry and system settings</p>
-              </div>
-              
-              <FundAdmin 
-                recommendedFunds={recommendedFunds}
-                setRecommendedFunds={setRecommendedFunds}
-                assetClassBenchmarks={assetClassBenchmarks}
-                setAssetClassBenchmarks={setAssetClassBenchmarks}
-              />
-            </div>
-          )}
+      {activeTab === 'admin' && (
+        <div>
+          <FundManagement />
+        </div>
+      )}
 
       {/* Help Modal */}
       {showHelp && (
@@ -1271,10 +977,10 @@ const App = () => {
             <div style={{ marginBottom: '1.5rem' }}>
               <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Quick Start</h3>
               <ol style={{ marginLeft: '1.5rem', fontSize: '0.875rem', color: '#374151' }}>
-                <li>Upload your monthly fund performance Excel file</li>
-                <li>The system will automatically calculate Z-scores for each fund within its asset class</li>
-                <li>Navigate tabs to view different analyses and insights</li>
-                <li>Export reports for investment committee meetings</li>
+                <li>Go to Admin tab to add funds by entering ticker symbols (e.g., VTSAX, SPY)</li>
+                <li>Assign asset classes to each fund (Large Cap Growth, etc.)</li>
+                <li>The system automatically fetches performance data from Ycharts API</li>
+                <li>View real-time performance data in the Performance tab</li>
               </ol>
             </div>
 
@@ -1324,6 +1030,9 @@ const App = () => {
                   <strong>Dashboard:</strong> Visual overview with heatmaps and top/bottom performers
                 </div>
                 <div style={{ marginBottom: '0.5rem' }}>
+                  <strong>Performance:</strong> Real-time fund performance analysis with filtering
+                </div>
+                <div style={{ marginBottom: '0.5rem' }}>
                   <strong>Fund Scores:</strong> Detailed table of all funds with scores and metrics
                 </div>
                 <div style={{ marginBottom: '0.5rem' }}>
@@ -1339,7 +1048,7 @@ const App = () => {
                   <strong>History:</strong> Track performance over time and compare snapshots
                 </div>
                 <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>Admin:</strong> Manage recommended funds and benchmark mappings
+                  <strong>Admin:</strong> Add and manage funds with automatic API data fetching
                 </div>
               </div>
             </div>
@@ -1379,123 +1088,7 @@ const App = () => {
         </div>
           )}
 
-          {showPreviewModal && uploadPreview && (
-            <div style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <div style={{ background: 'white', borderRadius: '0.5rem', padding: '2rem', maxWidth: '90vw', maxHeight: '80vh', overflow: 'auto' }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>Preview Import: {uploadPreview.fileName}</h3>
-                <div style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.9rem' }}>
-                  <strong>Mapped columns:</strong> {Object.keys(uploadPreview.columnMap).join(', ')}<br/>
-                  {uploadPreview.unmappedHeaders.length > 0 && (
-                    <span style={{ color: '#dc2626' }}>
-                      Unmapped columns: {uploadPreview.unmappedHeaders.join(', ')} (will be ignored)
-                    </span>
-                  )}
-                </div>
-                <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
-                  <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-                    <thead>
-                      <tr>
-                        {Object.keys(uploadPreview.columnMap).map(col => (
-                          <th key={col} style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>{col}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {uploadPreview.parsed.slice(0, 10).map((row, i) => (
-                        <tr key={i}>
-                          {Object.keys(uploadPreview.columnMap).map(col => (
-                            <td key={col} style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>{row[col]}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div style={{ color: '#6b7280', fontSize: '0.8rem', marginTop: '0.5rem' }}>
-                    Showing first 10 rows. {uploadPreview.parsed.length} total rows will be imported.
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                  <button onClick={handleCancelImport} style={{ padding: '0.5rem 1.5rem', background: '#e5e7eb', border: 'none', borderRadius: '0.375rem', cursor: 'pointer' }}>Cancel</button>
-                  <button 
-                    onClick={() => setManualColumnMapping(true)} 
-                    style={{ padding: '0.5rem 1.5rem', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '0.375rem', cursor: 'pointer' }}
-                  >
-                    Edit Mapping
-                  </button>
-                  <button onClick={handleConfirmImport} style={{ padding: '0.5rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '0.375rem', cursor: 'pointer', fontWeight: 'bold' }}>Import</button>
-                </div>
-              </div>
-            </div>
-          )}
 
-          {/* Manual Column Mapping Modal */}
-          {showPreviewModal && manualColumnMapping && (
-            <div className="modal-overlay">
-              <div className="modal-content card">
-                <div className="modal-header">
-                  <h3>Manual Column Mapping</h3>
-                  <button onClick={() => setManualColumnMapping(false)} className="btn-close">×</button>
-                </div>
-                <div className="modal-body">
-                  <p>Map your file columns to the required fields. Required fields are marked with *.</p>
-                  
-                  <div className="mapping-grid">
-                    {Object.entries(COLUMN_SYNONYMS).map(([targetField, synonyms]) => (
-                      <div key={targetField} className="mapping-row">
-                        <label className="mapping-label">
-                          {targetField} {targetField === 'Symbol' && '*'}
-                        </label>
-                        <select
-                          value={editableColumnMap[targetField] !== undefined ? editableColumnMap[targetField].toString() : ''}
-                          onChange={(e) => {
-                            const newMap = { ...editableColumnMap };
-                            if (e.target.value) {
-                              newMap[targetField] = parseInt(e.target.value);
-                            } else {
-                              delete newMap[targetField];
-                            }
-                            setEditableColumnMap(newMap);
-                          }}
-                          className="mapping-select"
-                        >
-                          <option value="">-- Select Column --</option>
-                          {availableHeaders.map((header, index) => (
-                            <option key={index} value={index}>
-                              {header}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="modal-actions">
-                    <button 
-                      onClick={() => setManualColumnMapping(false)} 
-                      className="btn btn-secondary"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setUploadPreview(prev => ({
-                          ...prev,
-                          columnMap: editableColumnMap
-                        }));
-                        setManualColumnMapping(false);
-                      }}
-                      className="btn btn-primary"
-                      disabled={!editableColumnMap.Symbol}
-                    >
-                      Confirm Mapping
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </main>
       {/* Footer */}

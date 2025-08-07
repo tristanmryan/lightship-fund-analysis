@@ -5,11 +5,10 @@ import {
     getAllHistoricalSnapshots, 
     getHistoricalSnapshot 
 } from '../data/historicalSnapshots.js';
-  import { 
-    getAllSnapshots as getUserSnapshots, 
-    getSnapshot as getUserSnapshot,
-    saveSnapshot,
-    getSnapshotsByDateRange as getUserSnapshotsByDateRange
+  import {
+  getAllSnapshots as getUserSnapshots,
+  getSnapshot as getUserSnapshot,
+  saveSnapshot
 } from './dataStore.js';
   
   /**

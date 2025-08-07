@@ -106,17 +106,7 @@ const PerformanceHeatmap = ({ funds }) => {
     }
   };
 
-  // Get metric label
-  const getMetricLabel = (metric) => {
-    const labels = {
-      score: 'Score (0-100)',
-      '1year': '1-Year Return',
-      '3year': '3-Year Return',
-      sharpe: 'Sharpe Ratio',
-      expense: 'Expense Ratio'
-    };
-    return labels[metric] || metric;
-  };
+
 
   return (
     <div style={{ marginBottom: '2rem' }}>

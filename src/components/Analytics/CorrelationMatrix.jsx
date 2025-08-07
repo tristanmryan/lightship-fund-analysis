@@ -1,6 +1,6 @@
 // src/components/Analytics/CorrelationMatrix.jsx
 import React, { useState, useMemo } from 'react';
-import { Activity, Info, Filter } from 'lucide-react';
+import { Activity, Info } from 'lucide-react';
 import { calculateCorrelationMatrix } from '../../services/analytics';
 
 /**
@@ -14,12 +14,19 @@ const CorrelationMatrix = ({ funds }) => {
 
   // Get unique asset classes
   const assetClasses = useMemo(() => {
+    if (!funds || !Array.isArray(funds)) {
+      return ['all'];
+    }
     const classes = new Set(funds.map(f => f['Asset Class'] || 'Unknown'));
     return ['all', ...Array.from(classes).sort()];
   }, [funds]);
 
   // Filter and limit funds for display
   const displayFunds = useMemo(() => {
+    if (!funds || !Array.isArray(funds)) {
+      return [];
+    }
+    
     let filtered = funds;
     
     if (selectedAssetClass !== 'all') {

@@ -1,6 +1,6 @@
 // src/components/Dashboard/AssetClassOverview.jsx
 import React, { useState, useMemo } from 'react';
-import { BarChart3, TrendingUp, TrendingDown, Activity, DollarSign } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import { getScoreColor, generateClassSummary } from '../../services/scoring';
 
 /**
@@ -16,6 +16,10 @@ const AssetClassOverview = ({ funds, classSummaries, benchmarkData }) => {
   const classStats = useMemo(() => {
     const stats = {};
 
+    if (!funds || !Array.isArray(funds)) {
+      return stats;
+    }
+
     const keyProp = groupBy === 'assetGroup' ? 'assetGroup' : 'Asset Class';
     const fundsByClass = {};
     funds.forEach(fund => {
@@ -30,7 +34,6 @@ const AssetClassOverview = ({ funds, classSummaries, benchmarkData }) => {
     Object.entries(fundsByClass).forEach(([group, classFunds]) => {
       const benchmark = groupBy === 'Asset Class' ? benchmarkData[group] : null;
       const recommendedFunds = classFunds.filter(f => f.isRecommended && !f.isBenchmark);
-      const nonRecommendedFunds = classFunds.filter(f => !f.isRecommended && !f.isBenchmark);
       
       // Calculate various averages
       const scores = classFunds.map(f => f.scores?.final || 0).filter(s => s > 0);

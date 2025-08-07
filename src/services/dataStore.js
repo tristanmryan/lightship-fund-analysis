@@ -1093,7 +1093,7 @@ export async function clearAllData() {
   logAction('data_cleared', { timestamp: new Date().toISOString() });
 }
 
-export default {
+const dataStore = {
   saveSnapshot,
   getAllSnapshots,
   getSnapshot,
@@ -1122,3 +1122,5 @@ export default {
   getFundVersions,
   restoreFundVersion
 };
+
+export default dataStore;

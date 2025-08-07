@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@supabase/auth-helpers-react": "^0.5.0",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.53.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
@@ -21,10 +24,11 @@
   "scripts": {
     "start": "react-scripts start",
     "prebuild": "node scripts/buildData.mjs",
-    "build": "GENERATE_SOURCEMAP=false CI=false react-scripts build",
+    "build": "set GENERATE_SOURCEMAP=false && set CI=false && set DISABLE_ESLINT_PLUGIN=true && react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "process-data": "node scripts/buildData.mjs"
+    "process-data": "node scripts/buildData.mjs",
+    "setup": "node scripts/setup.js"
   },
   "eslintConfig": {
     "extends": [

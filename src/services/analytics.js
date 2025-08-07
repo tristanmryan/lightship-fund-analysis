@@ -394,6 +394,9 @@ export function calculateDiversification(funds, groupBy = 'Asset Class') {
           case 'score':
             value = fund.scores?.final;
             break;
+          default:
+            value = null;
+            break;
         }
         
         if (value != null) {
@@ -413,13 +416,15 @@ export function calculateDiversification(funds, groupBy = 'Asset Class') {
     return outliers;
   }
   
-  export default {
-    calculateCorrelation,
-    calculateCorrelationMatrix,
-    calculateRiskReturnMetrics,
-    findEfficientFrontier,
-    calculatePortfolioStatistics,
-    performAttribution,
-    calculateDiversification,
-    identifyOutliers
-  };
+const analytics = {
+  calculateCorrelation,
+  calculateCorrelationMatrix,
+  calculateRiskReturnMetrics,
+  findEfficientFrontier,
+  calculatePortfolioStatistics,
+  performAttribution,
+  calculateDiversification,
+  identifyOutliers
+};
+
+export default analytics;
