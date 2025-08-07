@@ -5,10 +5,14 @@ const YCHARTS_API_KEY = process.env.YCHARTS_API_KEY;
 const YCHARTS_BASE_URL = 'https://api.ycharts.com/v3';
 
 // Rate limiting storage (in production, use Redis or similar)
+// Based on YCharts API limits: 10 requests/second, 10,000 requests/hour
 const rateLimit = {
   requests: new Map(),
-  maxRequests: 100, // per hour per IP
-  windowMs: 60 * 60 * 1000 // 1 hour
+  burstRequests: new Map(),
+  maxBurstRequests: 8, // Slightly under 10 req/sec for safety
+  maxHourlyRequests: 9000, // Under 10,000/hour for safety
+  burstWindowMs: 1000, // 1 second
+  hourlyWindowMs: 60 * 60 * 1000 // 1 hour
 };
 
 // Security type detection logic
@@ -87,22 +91,45 @@ function getEndpointConfig(ticker, securityType) {
   return { endpoint, metrics };
 }
 
-// Check rate limiting
+// Check rate limiting (both burst and sustained)
 function checkRateLimit(ip) {
   const now = Date.now();
-  const userRequests = rateLimit.requests.get(ip) || [];
   
-  // Remove old requests outside the window
-  const recentRequests = userRequests.filter(time => now - time < rateLimit.windowMs);
+  // Check burst rate limit (8 req/sec for safety)
+  const burstRequests = rateLimit.burstRequests.get(ip) || [];
+  const recentBurstRequests = burstRequests.filter(timestamp => 
+    now - timestamp < rateLimit.burstWindowMs
+  );
   
-  if (recentRequests.length >= rateLimit.maxRequests) {
-    return false; // Rate limited
+  if (recentBurstRequests.length >= rateLimit.maxBurstRequests) {
+    return { 
+      allowed: false, 
+      reason: 'burst_limit',
+      retryAfter: Math.ceil((rateLimit.burstWindowMs - (now - Math.min(...recentBurstRequests))) / 1000)
+    };
   }
   
-  // Add current request
-  recentRequests.push(now);
-  rateLimit.requests.set(ip, recentRequests);
-  return true;
+  // Check sustained rate limit (9000 req/hour for safety)
+  const hourlyRequests = rateLimit.requests.get(ip) || [];
+  const recentHourlyRequests = hourlyRequests.filter(timestamp => 
+    now - timestamp < rateLimit.hourlyWindowMs
+  );
+  
+  if (recentHourlyRequests.length >= rateLimit.maxHourlyRequests) {
+    return { 
+      allowed: false, 
+      reason: 'hourly_limit',
+      retryAfter: Math.ceil((rateLimit.hourlyWindowMs - (now - Math.min(...recentHourlyRequests))) / 1000)
+    };
+  }
+  
+  // Add current request to both trackers
+  recentBurstRequests.push(now);
+  recentHourlyRequests.push(now);
+  rateLimit.burstRequests.set(ip, recentBurstRequests);
+  rateLimit.requests.set(ip, recentHourlyRequests);
+  
+  return { allowed: true };
 }
 
 // Make request to Ycharts API with correct authentication
@@ -118,6 +145,9 @@ async function makeYchartsRequest(ticker, securityType = null) {
   const url = new URL(`${YCHARTS_BASE_URL}${endpoint}`);
   
   console.log(`Making Ycharts API request for ${ticker} (${securityType}): ${endpoint}`);
+  console.log(`Full URL: ${url.toString()}`);
+  console.log(`API Key present: ${YCHARTS_API_KEY ? 'Yes' : 'No'}`);
+  console.log(`API Key length: ${YCHARTS_API_KEY ? YCHARTS_API_KEY.length : 0}`);
   
   const response = await fetch(url.toString(), {
     method: 'GET',
@@ -280,10 +310,16 @@ export default async function handler(req, res) {
                    'unknown';
 
   // Check rate limiting
-  if (!checkRateLimit(clientIP)) {
+  const rateLimitResult = checkRateLimit(clientIP);
+  if (!rateLimitResult.allowed) {
+    const message = rateLimitResult.reason === 'burst_limit' 
+      ? 'Burst rate limit exceeded (max 8 requests per second)'
+      : 'Hourly rate limit exceeded (max 9000 requests per hour)';
+    
     return res.status(429).json({ 
-      error: 'Rate limit exceeded',
-      message: 'Too many requests. Please try again later.'
+      error: message,
+      retryAfter: rateLimitResult.retryAfter,
+      rateLimitType: rateLimitResult.reason
     });
   }
 
