@@ -302,6 +302,9 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'Ticker parameter required' });
         }
         
+        // Log API usage for monitoring
+        console.log(`📊 API Request: ${ticker.toUpperCase()} at ${new Date().toISOString()}`);
+        
         // Use the new YCharts API with automatic security type detection
         result = await makeYchartsRequest(ticker.toUpperCase());
         break;
@@ -340,11 +343,35 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('❌ Ycharts API error:', error.message);
     
-    // Return error response
-    res.status(500).json({ 
-      error: 'Failed to fetch data from Ycharts API',
-      message: error.message,
-      timestamp: new Date().toISOString()
+    // Parse error for better handling
+    let errorStatus = 500;
+    let errorMessage = error.message;
+    let helpfulMessage = 'Failed to fetch data from Ycharts API';
+    
+    // Handle specific error types
+    if (error.message.includes('403')) {
+      errorStatus = 403;
+      helpfulMessage = 'YCharts API rate limit exceeded - using mock data fallback';
+      if (error.message.includes('API limit exceeded')) {
+        helpfulMessage = 'YCharts API daily/hourly limit reached. Please check your API plan or wait before trying again.';
+      }
+    } else if (error.message.includes('401')) {
+      errorStatus = 401;
+      helpfulMessage = 'YCharts API authentication failed - please check your API key';
+    } else if (error.message.includes('404')) {
+      errorStatus = 404;
+      helpfulMessage = 'YCharts API endpoint not found - ticker may not exist or endpoint may be incorrect';
+    }
+    
+    // Return detailed error response
+    res.status(errorStatus).json({ 
+      error: helpfulMessage,
+      message: errorMessage,
+      timestamp: new Date().toISOString(),
+      apiStatus: errorStatus,
+      suggestion: errorStatus === 403 ? 
+        'Consider upgrading your YCharts API plan or implementing request caching to reduce API calls' :
+        'Please check your API configuration and try again'
     });
   }
 }
