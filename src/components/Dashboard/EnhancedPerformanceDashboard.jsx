@@ -10,6 +10,7 @@ import PerformanceHeatmap from './PerformanceHeatmap';
 import TopBottomPerformers from './TopBottomPerformers';
 import AssetClassOverview from './AssetClassOverview';
 import FundDetailsModal from '../FundDetailsModal';
+import ComparisonPanel from './ComparisonPanel';
 
 /**
  * Enhanced Performance Dashboard
@@ -19,7 +20,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
   // State management
   const [filteredFunds, setFilteredFunds] = useState(funds || []);
   const [activeFilters, setActiveFilters] = useState({});
-  const [viewMode, setViewMode] = useState('table'); // 'table', 'heatmap', 'overview', 'performers'
+  const [viewMode, setViewMode] = useState('table'); // 'table', 'heatmap', 'overview', 'performers', 'compare'
   const [selectedFund, setSelectedFund] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
@@ -101,6 +102,13 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
         return (
           <div className="card">
             <TopBottomPerformers funds={filteredFunds} />
+          </div>
+        );
+      
+      case 'compare':
+        return (
+          <div className="card">
+            <ComparisonPanel funds={filteredFunds} />
           </div>
         );
       
@@ -290,7 +298,8 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
               { key: 'table', label: 'Table View', icon: Table },
               { key: 'heatmap', label: 'Heatmap', icon: Grid },
               { key: 'overview', label: 'Asset Classes', icon: BarChart3 },
-              { key: 'performers', label: 'Top/Bottom', icon: TrendingUp }
+              { key: 'performers', label: 'Top/Bottom', icon: TrendingUp },
+              { key: 'compare', label: 'Compare', icon: Info }
             ].map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
