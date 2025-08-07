@@ -1,4 +1,4 @@
-// scripts/buildData.js
+// scripts/buildData.mjs
 import fs from 'fs';
 import path from 'path';
 import Papa from 'papaparse';
