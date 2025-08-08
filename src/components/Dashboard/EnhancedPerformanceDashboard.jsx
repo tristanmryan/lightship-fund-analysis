@@ -11,6 +11,7 @@ import TopBottomPerformers from './TopBottomPerformers';
 import AssetClassOverview from './AssetClassOverview';
 import FundDetailsModal from '../FundDetailsModal';
 import ComparisonPanel from './ComparisonPanel';
+import DrilldownCards from './DrilldownCards';
 
 /**
  * Enhanced Performance Dashboard
@@ -22,6 +23,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
   const [activeFilters, setActiveFilters] = useState({});
   const [viewMode, setViewMode] = useState('table'); // 'table', 'heatmap', 'overview', 'performers', 'compare'
   const [selectedFund, setSelectedFund] = useState(null);
+  const [chartPeriod, setChartPeriod] = useState('1Y'); // '1M','3M','6M','1Y','YTD'
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Handle filter changes
@@ -70,7 +72,8 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
   // Handle fund selection
   const handleFundSelect = useCallback((fund) => {
     setSelectedFund(fund);
-    setShowDetailsModal(true);
+    setShowDetailsModal(false);
+    setViewMode('details');
   }, []);
 
   // Render view mode content
@@ -81,6 +84,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
           <EnhancedFundTable 
             funds={filteredFunds}
             onFundSelect={handleFundSelect}
+            chartPeriod={chartPeriod}
           />
         );
       
@@ -109,6 +113,16 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
         return (
           <div className="card">
             <ComparisonPanel funds={filteredFunds} />
+          </div>
+        );
+      case 'details':
+        return (
+          <div className="card" style={{ padding: 16 }}>
+            {selectedFund ? (
+              <DrilldownCards fund={selectedFund} funds={filteredFunds} />
+            ) : (
+              <div style={{ color: '#6b7280' }}>Select a fund to view drilldown details.</div>
+            )}
           </div>
         );
       
@@ -303,7 +317,8 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
               { key: 'heatmap', label: 'Heatmap', icon: Grid },
               { key: 'overview', label: 'Asset Classes', icon: BarChart3 },
               { key: 'performers', label: 'Top/Bottom', icon: TrendingUp },
-              { key: 'compare', label: 'Compare', icon: Info }
+              { key: 'compare', label: 'Compare', icon: Info },
+              { key: 'details', label: 'Drilldown', icon: Info }
             ].map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -324,6 +339,26 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
                 <Icon size={16} />
                 {label}
               </button>
+            ))}
+          </div>
+
+          {/* Mini-chart period toggles */}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {['1M','3M','6M','1Y','YTD'].map(p => (
+              <button
+                key={p}
+                onClick={() => setChartPeriod(p)}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: chartPeriod === p ? '2px solid #3b82f6' : '1px solid #d1d5db',
+                  background: chartPeriod === p ? '#eff6ff' : 'white',
+                  color: chartPeriod === p ? '#3b82f6' : '#374151',
+                  fontSize: 12,
+                  cursor: 'pointer'
+                }}
+                title={`Sparkline period: ${p}`}
+              >{p}</button>
             ))}
           </div>
 

@@ -1,5 +1,5 @@
 // src/components/Dashboard/EnhancedFundTable.jsx
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   ArrowUp, ArrowDown, ArrowUpDown, Eye, Star, TrendingUp, 
   TrendingDown, Shield, DollarSign, Calendar, MoreHorizontal,
@@ -7,12 +7,14 @@ import {
 } from 'lucide-react';
 import { getScoreColor, getScoreLabel } from '../../services/scoring';
 import { computeBenchmarkDelta, resolveAssetClass, getBenchmarkConfigForFund } from './benchmarkUtils';
+import Sparkline from './Sparkline';
+import fundService from '../../services/fundService';
 
 /**
  * Enhanced Fund Table Component
  * Advanced sortable table with multi-column sorting and detailed fund information
  */
-const EnhancedFundTable = ({ funds, onFundSelect, showDetailModal = false }) => {
+const EnhancedFundTable = ({ funds, onFundSelect, showDetailModal = false, chartPeriod = '1Y' }) => {
   const [sortConfig, setSortConfig] = useState([
     { key: 'score', direction: 'desc' }
   ]);
@@ -22,6 +24,7 @@ const EnhancedFundTable = ({ funds, onFundSelect, showDetailModal = false }) => 
   ]);
   const [columnWidths, setColumnWidths] = useState({});
   const [hoveredFund, setHoveredFund] = useState(null);
+  const [historyCache, setHistoryCache] = useState({});
 
   // Column definitions
   const columnDefinitions = useMemo(() => ({
@@ -179,6 +182,54 @@ const EnhancedFundTable = ({ funds, onFundSelect, showDetailModal = false }) => 
           {value >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
           {value?.toFixed(2)}%
         </div>
+      )
+    },
+    sparkline: {
+      label: 'Trend',
+      key: 'sparkline',
+      getValue: () => null,
+      sortable: false,
+      width: '180px',
+      render: (_, fund) => {
+        const key = fund.ticker || fund.Symbol;
+        const hist = historyCache[key];
+        useEffect(() => {
+          let alive = true;
+          (async () => {
+            if (!key || historyCache[key]) return;
+            const rows = await fundService.getFundPerformanceHistory(key);
+            if (!alive) return;
+            const sorted = (rows || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+            let picked = sorted;
+            const clamp = (arr, n) => arr.slice(Math.max(0, arr.length - n));
+            switch (chartPeriod) {
+              case '1M': picked = clamp(sorted, 21); break; // ~21 trading days
+              case '3M': picked = clamp(sorted, 63); break;
+              case '6M': picked = clamp(sorted, 126); break;
+              case 'YTD': {
+                const year = new Date().getFullYear();
+                picked = sorted.filter(r => new Date(r.date).getFullYear() === year);
+                break;
+              }
+              case '1Y':
+              default: picked = clamp(sorted, 252); break; // ~252 trading days
+            }
+            const values = picked.map(r => r.one_year_return ?? r.ytd_return ?? null);
+            setHistoryCache(prev => ({ ...prev, [key]: values }));
+          })();
+          return () => { alive = false; };
+        }, [key, chartPeriod]);
+        return <Sparkline values={hist || []} />;
+      }
+    },
+    sparkline: {
+      label: 'Trend',
+      key: 'sparkline',
+      getValue: () => null,
+      sortable: false,
+      width: '180px',
+      render: (_, fund) => (
+        <AsyncSpark fund={fund} />
       )
     },
     expenseRatio: {

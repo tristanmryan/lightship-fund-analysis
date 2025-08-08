@@ -17,10 +17,10 @@
 - **Status**: Escalated to YCharts sales team for production access
 - **Timeline**: Waiting for sales rep follow-up
 
-### 🔄 Current Operation: SUPABASE-FIRST (Mock for API-only features)
-- **Behavior**: App uses Supabase as the authoritative data source with a dictionary-backed resolver; YCharts serverless remains in place but is not required for features.
+### 🔄 Current Operation: SUPABASE-FIRST
+- **Behavior**: App uses Supabase as the authoritative data source with a dictionary-backed resolver. YCharts serverless remains ready for real data, but is not required for current features.
 - **Fallback**: Config fallback for benchmarks is disabled in production; Supabase-only mapping is active.
-- **Mock**: Manual add tool (flagged) can seed same-day performance for testing in dev/preview.
+- **Testing utilities**: Manual add tool (flagged) can seed same-day performance in dev/preview.
 
 ## 🚀 Development Guidelines
 
@@ -47,6 +47,7 @@ When YCharts API access is enabled:
 - ✅ 3-Year Return
 - ✅ 5-Year Return
 - ✅ 10-Year Return
+ - ✅ Mini-charts: sparkline foundation with period toggles (1M/3M/6M/1Y/YTD)
 
 ### Risk Metrics:
 - ✅ Sharpe Ratio
@@ -78,11 +79,17 @@ When YCharts API access is enabled:
 - **Fund Data**: `/api/ycharts?action=getFundData&ticker=VTSAX`
 - **Vercel Logs**: Monitor serverless function execution
 
+### Visual Verification
+- Performance table + sparkline: `docs/screenshots/performance_table.svg`
+- Drilldowns (risk/capture/fees): `docs/screenshots/drilldown_cards.svg`
+- Compare view: `docs/screenshots/compare_view.svg`
+
 ## 📞 Next Steps
 
 ### Immediate Actions:
-- ✅ Continue building new features using mock data
-- ✅ Deploy and demonstrate app functionality
+- ✅ Continue building features using Supabase-first data
+- ✅ Drilldowns and Compare implemented with normalized fields and resolver
+- ✅ Sparkline foundation added; period toggles next
 - ⏳ Wait for YCharts sales team confirmation
 
 ### Upon API Access:

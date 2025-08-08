@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680">
+  <rect x="0" y="0" width="1200" height="680" fill="#ffffff"/>
+  <text x="24" y="40" font-size="24" font-family="Arial" fill="#111827">Performance Dashboard - Table View (Example)</text>
+  <rect x="24" y="64" width="1152" height="560" fill="#f9fafb" stroke="#e5e7eb"/>
+  <text x="40" y="100" font-size="14" font-family="Arial" fill="#374151">Symbol | Fund Name | Asset Class | 1Y | Delta vs Benchmark | Trend</text>
+  <text x="40" y="140" font-size="13" font-family="Arial" fill="#111827">JQUA | JPM US Quality | Large Cap Growth | 15.10% | +2.10% vs IWF | ▄▆▅▇██</text>
+  <text x="40" y="170" font-size="13" font-family="Arial" fill="#111827">PRWCX | TRP Capital Appreciation | Asset Allocation | 10.10% | +2.50% vs AOM | ▄▅▄▆▇█</text>
+  <text x="40" y="620" font-size="12" font-family="Arial" fill="#6b7280">Note: Deltas require same-day rows for fund and benchmark. Graphic is illustrative.</text>
+</svg>
+

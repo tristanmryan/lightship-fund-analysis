@@ -25,11 +25,36 @@ Current tested state
 - Admin Dictionary: primary benchmark updates persist; cache invalidation/refresh working.
 - Manual Add: supports merge vs overwrite of today’s row; includes 10Y/Alpha/Beta.
 
+### Drilldowns & Compare (Priority 2)
+
+- Drilldown Cards (Risk, Capture, Fees)
+  - Normalized fields only; no hardcoded maps
+  - Null-safe placeholders (—) and tooltips
+  - Benchmark deltas where same-day benchmark data exists
+  - Access via Performance table row click → Drilldown tab
+
+- Compare View (updated)
+  - Normalized getters + unified formatters
+  - Benchmark context for 1Y, identical delta styling as table
+
+- Mini-charts (sparkline foundation)
+  - Sparkline column added to table (per-fund cached history)
+  - Uses available return series; shows "No data" when empty
+  - Period toggles planned (next step)
+
+Screenshots
+- Performance (table with deltas and sparkline): `docs/screenshots/performance_table.svg`
+- Drilldown (risk/capture/fees): `docs/screenshots/drilldown_cards.svg`
+- Compare (side-by-side): `docs/screenshots/compare_view.svg`
+
 Manual QA checklist:
 - Performance table shows ticker in Symbol column and renders return columns.
 - Fund Scores table renders ticker, name, asset class, and return/ratio columns (score may be 0.000 until scoring is wired).
 - Benchmark badges show deltas for funds with matching benchmark tickers present in the dataset.
 - Health shows 0 unresolved funds and 0 classes missing benchmarks with Supabase-only mode.
+- Drilldown cards render with normalized values and benchmark badges where applicable; no layout break with nulls.
+- Compare renders side-by-side metrics with normalized fields and consistent formatting.
+- Sparkline column renders when history rows exist; shows "No data" otherwise.
 
 Next steps (Priority 2 sequence)
 1) Admin MVP: complete CRUD (asset classes; primary/alternate benchmarks; fund overrides), with cache invalidation and basic validations.
