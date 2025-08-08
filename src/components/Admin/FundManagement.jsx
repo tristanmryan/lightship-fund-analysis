@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Search, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import { useFundData } from '../../hooks/useFundData';
+import DictionaryAdmin from './DictionaryAdmin';
 
 const FundManagement = () => {
   const { 
@@ -174,6 +175,11 @@ const FundManagement = () => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Dictionary Admin (MVP) */}
+      <div className="dictionary-admin" style={{ marginTop: '2rem' }}>
+        <DictionaryAdmin />
       </div>
 
       {/* Fund List Section */}

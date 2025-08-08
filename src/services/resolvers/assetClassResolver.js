@@ -119,3 +119,9 @@ export async function resolveAssetClassDisplay(fund) {
   return null;
 }
 
+// Expose cache clear for admin updates
+export function clearAssetClassResolverCaches() {
+  assetClassByIdCache.clear();
+  assetClassByLabelCache.clear();
+}
+
