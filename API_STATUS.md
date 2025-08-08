@@ -17,11 +17,10 @@
 - **Status**: Escalated to YCharts sales team for production access
 - **Timeline**: Waiting for sales rep follow-up
 
-### 🔄 Current Operation: MOCK DATA FALLBACK
-- **Behavior**: App automatically uses comprehensive mock data when API fails
-- **Coverage**: Mock data includes ALL required fields for full functionality
-- **Compatibility**: Mock structure exactly matches real API response format
-- **User Experience**: Zero impact - app functions normally
+### 🔄 Current Operation: SUPABASE-FIRST (Mock for API-only features)
+- **Behavior**: App uses Supabase as the authoritative data source with a dictionary-backed resolver; YCharts serverless remains in place but is not required for features.
+- **Fallback**: Config fallback for benchmarks is disabled in production; Supabase-only mapping is active.
+- **Mock**: Manual add tool (flagged) can seed same-day performance for testing in dev/preview.
 
 ## 🚀 Development Guidelines
 
@@ -94,6 +93,6 @@ When YCharts API access is enabled:
 
 ---
 
-**Last Updated**: January 8, 2025 (updated with Priority 1 completion)  
+**Last Updated**: January 8, 2025 (updated with Priority 2: Dictionary, resolver, and Supabase-first mode)  
 **Next Review**: Upon YCharts sales team response  
 **Contact**: YCharts Sales Rep (escalated case)

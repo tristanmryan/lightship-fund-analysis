@@ -3,7 +3,7 @@
 - Introduced a Supabase-backed Asset Class Dictionary with codes, names, group order, and benchmark mapping.
 - Added feature flags to allow Supabase-first resolution with config fallback during migration:
   - `REACT_APP_RESOLVER_SUPABASE_FIRST=true`
-  - `REACT_APP_ENABLE_CONFIG_BENCHMARK_FALLBACK=true`
+  - `REACT_APP_ENABLE_CONFIG_BENCHMARK_FALLBACK=false` (disabled in production; Supabase authoritative)
   - `REACT_APP_ENABLE_LEGACY_ASSETCLASS_SHIM=true`
   - `REACT_APP_ENABLE_ALTERNATE_BENCHMARKS=false`
 - Prepared resolvers:
@@ -18,11 +18,25 @@ Testing-only tools (temporary):
   - After save, caches invalidate and UI refreshes.
   - To disable: set `REACT_APP_ENABLE_ADMIN_MANUAL_ADD=false`.
 
+Current tested state
+- Health: 0 unresolved funds; 0 classes missing benchmarks (Supabase-only mode).
+- Performance: Symbol column fixed (uses `ticker`), returns render from normalized fields.
+- Fund Scores: renders ticker/name/asset class/returns from normalized fields (score shows 0.000 pending scoring wire-up).
+- Admin Dictionary: primary benchmark updates persist; cache invalidation/refresh working.
+- Manual Add: supports merge vs overwrite of today’s row; includes 10Y/Alpha/Beta.
+
 Manual QA checklist:
 - Performance table shows ticker in Symbol column and renders return columns.
 - Fund Scores table renders ticker, name, asset class, and return/ratio columns (score may be 0.000 until scoring is wired).
 - Benchmark badges show deltas for funds with matching benchmark tickers present in the dataset.
 - Health shows 0 unresolved funds and 0 classes missing benchmarks with Supabase-only mode.
+
+Next steps (Priority 2 sequence)
+1) Admin MVP: complete CRUD (asset classes; primary/alternate benchmarks; fund overrides), with cache invalidation and basic validations.
+2) Drilldown cards and comparison: consume resolver-only; no hardcoded maps.
+3) Mini-charts (sparklines) off fund_performance history.
+4) Legacy normalization PR: remove remaining `['Asset Class']` reads in scoring/analytics/utils; keep shim until merged.
+5) Tests: unit tests for resolvers and delta math; snapshot for Scores table rendering.
 
 Migration sequence (no downtime):
 1. Run DB migrations to create dictionary/mapping tables and add `funds.asset_class_id`.

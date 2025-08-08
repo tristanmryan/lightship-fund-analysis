@@ -3,6 +3,7 @@ import { Plus, Search, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import { useFundData } from '../../hooks/useFundData';
 import DictionaryAdmin from './DictionaryAdmin';
 import ManualAddFund from './ManualAddFund';
+import FundOverridesAdmin from './FundOverridesAdmin';
 
 const FundManagement = () => {
   const { 
@@ -177,6 +178,9 @@ const FundManagement = () => {
 
       {/* Manual Add (testing only, behind flag) */}
       <ManualAddFund />
+
+      {/* Fund Overrides Admin */}
+      <FundOverridesAdmin />
 
       {/* Fund List Section */}
       <div className="fund-list-section">

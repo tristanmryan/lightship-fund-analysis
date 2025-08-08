@@ -1,32 +1,33 @@
 // src/components/Dashboard/ComparisonPanel.jsx
 import React, { useState, useMemo } from 'react';
-import { computeBenchmarkDelta, getBenchmarkConfigForFund } from './benchmarkUtils';
+import { computeBenchmarkDelta } from './benchmarkUtils';
+import { formatPercent, formatNumber } from '../../utils/formatters';
 
 const metricDefs = [
-  { key: 'scores.final', label: 'Score', fmt: (v) => v?.toFixed?.(1) ?? '-' },
-  { key: 'ytd', label: 'YTD Return', fmt: (v) => v != null ? `${v.toFixed(2)}%` : '-' },
-  { key: '1y', label: '1-Year Return', fmt: (v) => v != null ? `${v.toFixed(2)}%` : '-' },
-  { key: '3y', label: '3-Year Return', fmt: (v) => v != null ? `${v.toFixed(2)}%` : '-' },
-  { key: '5y', label: '5-Year Return', fmt: (v) => v != null ? `${v.toFixed(2)}%` : '-' },
-  { key: 'sharpe', label: 'Sharpe Ratio', fmt: (v) => v != null ? v.toFixed(2) : '-' },
-  { key: 'expense', label: 'Expense Ratio', fmt: (v) => v != null ? `${v.toFixed(2)}%` : '-' },
-  { key: 'beta', label: 'Beta', fmt: (v) => v != null ? v.toFixed(2) : '-' },
-  { key: 'upCapture', label: 'Up Capture (3Y)', fmt: (v) => v != null ? `${v.toFixed(1)}%` : '-' },
-  { key: 'downCapture', label: 'Down Capture (3Y)', fmt: (v) => v != null ? `${v.toFixed(1)}%` : '-' }
+  { key: 'scores.final', label: 'Score', fmt: (v) => (v == null ? '—' : formatNumber(v, 1)) },
+  { key: 'ytd', label: 'YTD Return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
+  { key: '1y', label: '1-Year Return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
+  { key: '3y', label: '3-Year Return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
+  { key: '5y', label: '5-Year Return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
+  { key: 'sharpe', label: 'Sharpe Ratio', fmt: (v) => (v == null ? '—' : formatNumber(v, 2)) },
+  { key: 'expense', label: 'Expense Ratio', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
+  { key: 'beta', label: 'Beta', fmt: (v) => (v == null ? '—' : formatNumber(v, 2)) },
+  { key: 'upCapture', label: 'Up Capture (3Y)', fmt: (v) => (v == null ? '—' : formatPercent(v, 1)) },
+  { key: 'downCapture', label: 'Down Capture (3Y)', fmt: (v) => (v == null ? '—' : formatPercent(v, 1)) }
 ];
 
 function getValue(fund, key) {
   switch (key) {
     case 'scores.final': return fund?.scores?.final ?? fund?.score ?? null;
-    case 'ytd': return fund['Total Return - YTD (%)'] ?? fund?.ytd_return ?? null;
-    case '1y': return fund['Total Return - 1 Year (%)'] ?? fund?.one_year_return ?? null;
-    case '3y': return fund['Annualized Total Return - 3 Year (%)'] ?? fund?.three_year_return ?? null;
-    case '5y': return fund['Annualized Total Return - 5 Year (%)'] ?? fund?.five_year_return ?? null;
-    case 'sharpe': return fund['Sharpe Ratio - 3 Year'] ?? fund['Sharpe Ratio'] ?? fund?.sharpe_ratio ?? null;
-    case 'expense': return fund['Net Exp Ratio (%)'] ?? fund['Net Expense Ratio'] ?? fund?.expense_ratio ?? null;
-    case 'beta': return fund['Beta - 5 Year'] ?? fund?.beta ?? null;
-    case 'upCapture': return fund['Up Capture Ratio (Morningstar Standard) - 3 Year'] ?? fund?.up_capture_ratio ?? null;
-    case 'downCapture': return fund['Down Capture Ratio (Morningstar Standard) - 3 Year'] ?? fund?.down_capture_ratio ?? null;
+    case 'ytd': return fund?.ytd_return ?? null;
+    case '1y': return fund?.one_year_return ?? null;
+    case '3y': return fund?.three_year_return ?? null;
+    case '5y': return fund?.five_year_return ?? null;
+    case 'sharpe': return fund?.sharpe_ratio ?? null;
+    case 'expense': return fund?.expense_ratio ?? null;
+    case 'beta': return fund?.beta ?? null;
+    case 'upCapture': return fund?.up_capture_ratio ?? null;
+    case 'downCapture': return fund?.down_capture_ratio ?? null;
     default: return null;
   }
 }
@@ -100,14 +101,14 @@ const ComparisonPanel = ({ funds = [] }) => {
                   <td style={{ padding: 12, borderBottom: '1px solid #f3f4f6', fontWeight: 600 }}>{m.label}</td>
                   {selected.map(f => {
                     const val = getValue(f, m.key);
-                    const bench = m.key === '1y' ? computeBenchmarkDelta(f, funds, '1y') : null;
+                     const bench = m.key === '1y' ? computeBenchmarkDelta(f, funds, '1y') : null;
                     return (
                       <td key={(f.Symbol || f.ticker) + m.key} style={{ padding: 12, borderBottom: '1px solid #f3f4f6' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
                           <div>{m.fmt(val)}</div>
                           {bench && bench.benchTicker && (
                             <div
-                              title={`Benchmark: ${bench.benchName} (${bench.benchTicker})\nPeriod: 1-Year Return\nSource: Config (YCharts-ready)`}
+                              title={`Benchmark: ${bench.benchName} (${bench.benchTicker})\nPeriod: 1-Year Return`}
                               style={{
                                 fontSize: 12,
                                 backgroundColor: bench.delta != null && bench.delta >= 0 ? '#ecfdf5' : '#fef2f2',

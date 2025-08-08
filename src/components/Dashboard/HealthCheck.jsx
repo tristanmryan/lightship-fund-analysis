@@ -40,6 +40,9 @@ const HealthCheck = () => {
         <p className="card-subtitle">Unresolved funds and classes missing benchmarks</p>
       </div>
       <div style={{ padding: '1rem' }}>
+        <div style={{ marginBottom: '1rem', fontSize: 12, color: '#6b7280' }}>
+          Legacy check: If any UI still imports ['Asset Class'], normalization is pending in the next PR.
+        </div>
         <h4>Unresolved Funds ({summary.unresolvedFunds.length})</h4>
         {summary.unresolvedFunds.length === 0 ? (
           <div>None</div>

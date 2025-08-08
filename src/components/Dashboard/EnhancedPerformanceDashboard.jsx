@@ -170,6 +170,10 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
             <p style={{ color: '#6b7280', fontSize: '1rem', margin: '0.25rem 0 0 0' }}>
               Advanced fund analysis with comprehensive filtering and sorting
             </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, color: '#6b7280', fontSize: '0.875rem' }}>
+              <Info size={14} />
+              Benchmark deltas require same-day performance rows to exist for both the fund and its benchmark ticker.
+            </div>
           </div>
           
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
