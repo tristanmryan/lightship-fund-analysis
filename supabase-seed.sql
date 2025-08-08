@@ -52,6 +52,9 @@ ON CONFLICT (label) DO NOTHING;
 -- (Add or upsert common ETFs used as proxies)
 INSERT INTO benchmarks (ticker, name, proxy_type, source)
 VALUES
+ ('CWB','SPDR Bloomberg Convertible Securities','ETF','seed'),
+ ('BNDW','Vanguard Total World Bond','ETF','seed'),
+ ('BIL','SPDR 1-3M T-Bill','ETF','seed'),
  ('IWF','Russell 1000 Growth','ETF','seed'),
  ('IWD','Russell 1000 Value','ETF','seed'),
  ('IWB','Russell 1000','ETF','seed'),
@@ -84,6 +87,7 @@ FROM asset_classes ac
 JOIN LATERAL (
   SELECT * FROM benchmarks WHERE (
     (ac.code = 'ASSET_ALLOCATION' AND ticker='AOM') OR
+    (ac.code = 'MONEY_MARKET' AND ticker='BIL') OR
     (ac.code = 'CONVERTIBLE_BONDS' AND ticker='CWB') OR
     (ac.code = 'EMERGING_MARKETS' AND ticker='ACWX') OR
     (ac.code = 'FOREIGN_BONDS' AND ticker='BNDW') OR
@@ -102,7 +106,6 @@ JOIN LATERAL (
     (ac.code = 'MID_CAP_BLEND' AND ticker='IWR') OR
     (ac.code = 'MID_CAP_GROWTH' AND ticker='IWP') OR
     (ac.code = 'MID_CAP_VALUE' AND ticker='IWS') OR
-    (ac.code = 'MONEY_MARKET' AND ticker='BIL') OR
     (ac.code = 'MULTI_SECTOR_BONDS' AND ticker='AGG') OR
     (ac.code = 'MULTI_ASSET_INCOME' AND ticker='AOM') OR
     (ac.code = 'NON_TRADITIONAL_BONDS' AND ticker='AGG') OR
