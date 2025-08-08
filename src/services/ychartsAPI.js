@@ -193,6 +193,7 @@ class YchartsAPI {
         ticker: fundData.ticker || ticker,
         name: fundData.name || `${ticker} Fund`,
         asset_class: fundData.asset_class || 'Unassigned',
+        asset_class_id: null, // may be resolved by service using Supabase
         expense_ratio: fundData.expense_ratio || null,
         ytd_return: fundData.ytd_return || null,
         one_year_return: fundData.one_year_return || null,

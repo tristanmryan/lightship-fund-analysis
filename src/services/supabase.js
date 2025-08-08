@@ -20,7 +20,12 @@ export const TABLES = {
   USER_SESSIONS: 'user_sessions',
   ACTIVITY_LOGS: 'activity_logs',
   SNAPSHOTS: 'snapshots',
-  BENCHMARKS: 'benchmarks'
+  BENCHMARKS: 'benchmarks',
+  ASSET_CLASSES: 'asset_classes',
+  ASSET_CLASS_SYNONYMS: 'asset_class_synonyms',
+  ASSET_CLASS_BENCHMARKS: 'asset_class_benchmarks',
+  FUND_OVERRIDES: 'fund_overrides',
+  BENCHMARK_HISTORY: 'benchmark_history'
 };
 
 // Utility functions for database operations

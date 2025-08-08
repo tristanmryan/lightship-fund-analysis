@@ -6,6 +6,7 @@ import {
   ExternalLink, Info
 } from 'lucide-react';
 import { getScoreColor, getScoreLabel } from '../../services/scoring';
+import { computeBenchmarkDelta, resolveAssetClass, getBenchmarkConfigForFund } from './benchmarkUtils';
 
 /**
  * Enhanced Fund Table Component
@@ -57,7 +58,7 @@ const EnhancedFundTable = ({ funds, onFundSelect, showDetailModal = false }) => 
     assetClass: {
       label: 'Asset Class',
       key: 'assetClass',
-      getValue: (fund) => fund['Asset Class'] || fund.asset_class,
+      getValue: (fund) => fund.asset_class_name || fund.asset_class || fund['Asset Class'],
       sortable: true,
       width: '150px',
       render: (value) => (
@@ -116,18 +117,31 @@ const EnhancedFundTable = ({ funds, onFundSelect, showDetailModal = false }) => 
       getValue: (fund) => fund['Total Return - 1 Year (%)'] || fund.one_year_return || 0,
       sortable: true,
       width: '100px',
-      render: (value) => (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '0.25rem',
-          color: value >= 0 ? '#16a34a' : '#dc2626'
-        }}>
-          {value >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-          {value?.toFixed(2)}%
-        </div>
-      )
+      render: (value, fund, allFunds) => {
+        const bench = computeBenchmarkDelta(fund, allFunds, '1y');
+        const color = value >= 0 ? '#16a34a' : '#dc2626';
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color }}>
+              {value >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+              {value?.toFixed(2)}%
+            </div>
+            {bench && bench.delta != null && (
+              <div title={`Benchmark: ${bench.benchName} (${bench.benchTicker})\nPeriod: 1-Year Return`}
+                style={{
+                  fontSize: '0.6875rem',
+                  backgroundColor: bench.delta >= 0 ? '#ecfdf5' : '#fef2f2',
+                  color: bench.delta >= 0 ? '#065f46' : '#7f1d1d',
+                  border: `1px solid ${bench.delta >= 0 ? '#a7f3d0' : '#fecaca'}`,
+                  borderRadius: '9999px',
+                  padding: '0.125rem 0.375rem'
+                }}>
+                {bench.delta >= 0 ? '+' : ''}{bench.delta.toFixed(2)}% vs {bench.benchTicker}
+              </div>
+            )}
+          </div>
+        );
+      }
     },
     threeYearReturn: {
       label: '3Y Return',
@@ -556,7 +570,7 @@ const EnhancedFundTable = ({ funds, onFundSelect, showDetailModal = false }) => 
                           verticalAlign: 'middle'
                         }}
                       >
-                        {column.render ? column.render(value, fund) : value}
+                        {column.render ? column.render(value, fund, sortedFunds) : value}
                       </td>
                     );
                   })}

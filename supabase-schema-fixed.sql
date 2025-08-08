@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS funds (
     ticker VARCHAR(20) UNIQUE NOT NULL,
     name VARCHAR(500) NOT NULL,
     asset_class VARCHAR(100),
+    asset_class_id UUID NULL, -- new FK to asset_classes
     is_recommended BOOLEAN DEFAULT false,
     added_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     removed_date TIMESTAMP WITH TIME ZONE,
@@ -91,10 +92,13 @@ CREATE TABLE IF NOT EXISTS snapshots (
 -- Benchmarks table
 CREATE TABLE IF NOT EXISTS benchmarks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    asset_class VARCHAR(100) UNIQUE NOT NULL,
+    asset_class VARCHAR(100), -- relaxed, will be deprecated
     ticker VARCHAR(20) NOT NULL,
     name VARCHAR(255) NOT NULL,
     is_active BOOLEAN DEFAULT true,
+    proxy_type TEXT CHECK (proxy_type IN ('ETF','INDEX')) DEFAULT 'ETF',
+    source TEXT,
+    notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -102,6 +106,7 @@ CREATE TABLE IF NOT EXISTS benchmarks (
 -- Create indexes for better performance (IF NOT EXISTS)
 CREATE INDEX IF NOT EXISTS idx_funds_ticker ON funds(ticker);
 CREATE INDEX IF NOT EXISTS idx_funds_asset_class ON funds(asset_class);
+CREATE INDEX IF NOT EXISTS idx_funds_asset_class_id ON funds(asset_class_id);
 CREATE INDEX IF NOT EXISTS idx_funds_recommended ON funds(is_recommended);
 CREATE INDEX IF NOT EXISTS idx_fund_performance_ticker_date ON fund_performance(fund_ticker, date);
 CREATE INDEX IF NOT EXISTS idx_fund_performance_date ON fund_performance(date);
@@ -110,6 +115,7 @@ CREATE INDEX IF NOT EXISTS idx_activity_logs_timestamp ON activity_logs(timestam
 CREATE INDEX IF NOT EXISTS idx_snapshots_date ON snapshots(date);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_expires ON user_sessions(expires_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_benchmarks_ticker ON benchmarks(ticker);
 
 -- Disable RLS for now (we'll enable it later with proper policies)
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
@@ -132,18 +138,18 @@ VALUES (
 ) ON CONFLICT (id) DO NOTHING;
 
 -- Insert some default benchmarks
-INSERT INTO benchmarks (asset_class, ticker, name) VALUES
-('Large Cap Growth', 'IWF', 'Russell 1000 Growth'),
-('Large Cap Value', 'IWD', 'Russell 1000 Value'),
-('Mid Cap Growth', 'IWP', 'Russell Mid Cap Growth'),
-('Mid Cap Value', 'IWS', 'Russell Mid Cap Value'),
-('Small Cap Growth', 'IWO', 'Russell 2000 Growth'),
-('Small Cap Value', 'IWN', 'Russell 2000 Value'),
-('International', 'EFA', 'MSCI EAFE'),
-('Emerging Markets', 'EEM', 'MSCI Emerging Markets'),
-('Bonds', 'AGG', 'US Aggregate Bond'),
-('Real Estate', 'IYR', 'US Real Estate')
-ON CONFLICT (asset_class) DO NOTHING;
+INSERT INTO benchmarks (asset_class, ticker, name, proxy_type, source) VALUES
+('Large Cap Growth', 'IWF', 'Russell 1000 Growth', 'ETF', 'config'),
+('Large Cap Value', 'IWD', 'Russell 1000 Value', 'ETF', 'config'),
+('Mid Cap Growth', 'IWP', 'Russell Mid Cap Growth', 'ETF', 'config'),
+('Mid Cap Value', 'IWS', 'Russell Mid Cap Value', 'ETF', 'config'),
+('Small Cap Growth', 'IWO', 'Russell 2000 Growth', 'ETF', 'config'),
+('Small Cap Value', 'IWN', 'Russell 2000 Value', 'ETF', 'config'),
+('International', 'EFA', 'MSCI EAFE', 'ETF', 'config'),
+('Emerging Markets', 'EEM', 'MSCI Emerging Markets', 'ETF', 'config'),
+('Bonds', 'AGG', 'US Aggregate Bond', 'ETF', 'config'),
+('Real Estate', 'IYR', 'US Real Estate', 'ETF', 'config')
+ON CONFLICT DO NOTHING;
 
 -- Create functions for common operations
 CREATE OR REPLACE FUNCTION update_fund_last_updated()
@@ -153,6 +159,66 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- ===============================
+-- New dictionary & mapping tables
+-- ===============================
+
+-- Asset class dictionary
+CREATE TABLE IF NOT EXISTS asset_classes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  group_name TEXT NOT NULL,
+  sort_group INT DEFAULT 0,
+  sort_order INT DEFAULT 0,
+  primary_benchmark_id UUID NULL REFERENCES benchmarks(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Synonyms to map legacy strings to codes
+CREATE TABLE IF NOT EXISTS asset_class_synonyms (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code TEXT NOT NULL REFERENCES asset_classes(code) ON DELETE CASCADE,
+  label TEXT NOT NULL UNIQUE
+);
+
+-- Asset class to benchmark mapping (primary/alternate)
+CREATE TABLE IF NOT EXISTS asset_class_benchmarks (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  asset_class_id UUID NOT NULL REFERENCES asset_classes(id) ON DELETE CASCADE,
+  benchmark_id UUID NOT NULL REFERENCES benchmarks(id),
+  kind TEXT NOT NULL CHECK (kind IN ('primary','alternate')),
+  rank INT DEFAULT 1,
+  UNIQUE(asset_class_id, kind, rank)
+);
+
+-- Fund-specific overrides (asset class or benchmark)
+CREATE TABLE IF NOT EXISTS fund_overrides (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  fund_ticker VARCHAR(20) NOT NULL REFERENCES funds(ticker) ON DELETE CASCADE,
+  override_type TEXT NOT NULL CHECK (override_type IN ('asset_class','benchmark')),
+  asset_class_id UUID REFERENCES asset_classes(id),
+  benchmark_id UUID REFERENCES benchmarks(id),
+  reason TEXT,
+  changed_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ
+);
+
+-- Benchmark change history (dictionary-level)
+CREATE TABLE IF NOT EXISTS benchmark_history (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  asset_class_id UUID NOT NULL REFERENCES asset_classes(id) ON DELETE CASCADE,
+  previous_benchmark_id UUID REFERENCES benchmarks(id),
+  new_benchmark_id UUID REFERENCES benchmarks(id),
+  reason TEXT,
+  changed_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 
 -- Create trigger to automatically update last_updated
 CREATE TRIGGER update_funds_last_updated

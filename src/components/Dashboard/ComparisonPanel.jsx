@@ -1,5 +1,6 @@
 // src/components/Dashboard/ComparisonPanel.jsx
 import React, { useState, useMemo } from 'react';
+import { computeBenchmarkDelta, getBenchmarkConfigForFund } from './benchmarkUtils';
 
 const metricDefs = [
   { key: 'scores.final', label: 'Score', fmt: (v) => v?.toFixed?.(1) ?? '-' },
@@ -97,11 +98,32 @@ const ComparisonPanel = ({ funds = [] }) => {
               {metricDefs.map(m => (
                 <tr key={m.key}>
                   <td style={{ padding: 12, borderBottom: '1px solid #f3f4f6', fontWeight: 600 }}>{m.label}</td>
-                  {selected.map(f => (
-                    <td key={(f.Symbol || f.ticker) + m.key} style={{ padding: 12, borderBottom: '1px solid #f3f4f6' }}>
-                      {m.fmt(getValue(f, m.key))}
-                    </td>
-                  ))}
+                  {selected.map(f => {
+                    const val = getValue(f, m.key);
+                    const bench = m.key === '1y' ? computeBenchmarkDelta(f, funds, '1y') : null;
+                    return (
+                      <td key={(f.Symbol || f.ticker) + m.key} style={{ padding: 12, borderBottom: '1px solid #f3f4f6' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+                          <div>{m.fmt(val)}</div>
+                          {bench && bench.benchTicker && (
+                            <div
+                              title={`Benchmark: ${bench.benchName} (${bench.benchTicker})\nPeriod: 1-Year Return\nSource: Config (YCharts-ready)`}
+                              style={{
+                                fontSize: 12,
+                                backgroundColor: bench.delta != null && bench.delta >= 0 ? '#ecfdf5' : '#fef2f2',
+                                color: bench.delta != null && bench.delta >= 0 ? '#065f46' : '#7f1d1d',
+                                border: `1px solid ${bench.delta != null && bench.delta >= 0 ? '#a7f3d0' : '#fecaca'}`,
+                                borderRadius: 12,
+                                padding: '2px 6px'
+                              }}
+                            >
+                              {bench.delta == null ? `vs ${bench.benchTicker}` : `${bench.delta >= 0 ? '+' : ''}${bench.delta.toFixed(2)}% vs ${bench.benchTicker}`}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

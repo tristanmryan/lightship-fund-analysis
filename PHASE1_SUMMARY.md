@@ -1,3 +1,7 @@
+---
+Note on Phase 2 Enhancements
+
+Phase 2 introduces a Supabase-backed Asset Class Dictionary and Benchmark mapping to replace file-based configs. UI consumes normalized `asset_class_*` fields and resolver APIs, ensuring consistent overlays and analytics with audited admin overrides and safe fallbacks during migration.
 # Phase 1 Implementation Summary
 
 ## ✅ Completed Components

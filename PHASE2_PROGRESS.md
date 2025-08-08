@@ -1,3 +1,31 @@
+## Asset Class Dictionary & Resolver (Priority 2 foundation)
+
+- Introduced a Supabase-backed Asset Class Dictionary with codes, names, group order, and benchmark mapping.
+- Added feature flags to allow Supabase-first resolution with config fallback during migration:
+  - `REACT_APP_RESOLVER_SUPABASE_FIRST=true`
+  - `REACT_APP_ENABLE_CONFIG_BENCHMARK_FALLBACK=true`
+  - `REACT_APP_ENABLE_LEGACY_ASSETCLASS_SHIM=true`
+  - `REACT_APP_ENABLE_ALTERNATE_BENCHMARKS=false`
+- Prepared resolvers:
+  - Asset class resolver (overrides > id > synonyms/name > heuristic)
+  - Benchmark resolver (Supabase primary > config fallback)
+- Enhanced service to expose normalized fields: `asset_class_id`, `asset_class_code`, `asset_class_name`, `group_name`.
+- Wired benchmark overlay in table to use resolver API without visual changes.
+
+Migration sequence (no downtime):
+1. Run DB migrations to create dictionary/mapping tables and add `funds.asset_class_id`.
+2. Seed classes, synonyms, and primary benchmarks from current config.
+3. Backfill `funds.asset_class_id` from legacy `funds.asset_class` via synonyms; report unresolved.
+4. Keep flags on (Supabase-first + config fallback) until seeding complete, then disable fallback.
+
+Acceptance criteria:
+- Table/Compare consume resolver; deltas/badges stable.
+- Admin can change primary benchmark; UI reflects post refresh.
+- Health Check shows zero unresolved after backfill.
+
+Risks & mitigations:
+- Missing mappings → show Unassigned/hide badges; config fallback enabled.
+- API rate/caching → client caches + serverless rate limiting.
 # Phase 2 Implementation Progress - API-Driven Approach
 
 ## 🎯 **New Approach: API-Driven Fund Management**

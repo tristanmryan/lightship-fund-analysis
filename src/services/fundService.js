@@ -1,5 +1,6 @@
 // src/services/fundService.js
 import { supabase, TABLES, dbUtils, handleSupabaseError } from './supabase';
+import { resolveAssetClassForTicker } from './resolvers/assetClassResolver';
 import ychartsAPI from './ychartsAPI';
 
 class FundService {
@@ -15,18 +16,32 @@ class FundService {
       if (fundsError) throw fundsError;
       if (!funds || funds.length === 0) return [];
 
-      // Get latest performance data for each fund
-      const fundsWithPerformance = await Promise.all(
+      // Join with asset_classes for normalized fields
+      const fundsWithClasses = await Promise.all(
         funds.map(async (fund) => {
+          let assetClass = null;
+          if (fund.asset_class_id) {
+            const { data: ac } = await supabase.from(TABLES.ASSET_CLASSES)
+              .select('id, code, name, group_name, sort_group, sort_order')
+              .eq('id', fund.asset_class_id)
+              .maybeSingle();
+            assetClass = ac || null;
+          }
           const performance = await this.getFundPerformance(fund.ticker);
           return {
             ...fund,
-            ...performance // Merge performance data with fund data
+            ...performance,
+            asset_class_id: assetClass?.id || fund.asset_class_id || null,
+            asset_class_code: assetClass?.code || null,
+            asset_class_name: assetClass?.name || fund.asset_class || null,
+            asset_group_name: assetClass?.group_name || null,
+            asset_group_sort: assetClass?.sort_group || null,
+            asset_class_sort: assetClass?.sort_order || null
           };
         })
       );
 
-      return fundsWithPerformance;
+      return fundsWithClasses;
     } catch (error) {
       handleSupabaseError(error, 'getAllFunds');
       return [];
@@ -58,6 +73,7 @@ class FundService {
         ticker: cleanTicker,
         name: fundData.name || fundData['Fund Name'] || '',
         asset_class: fundData.asset_class || fundData['Asset Class'] || '',
+        asset_class_id: fundData.asset_class_id || null,
         is_recommended: fundData.is_recommended || false,
         added_date: fundData.added_date || dbUtils.formatDate(new Date()),
         notes: fundData.notes || '',
@@ -210,11 +226,13 @@ class FundService {
         throw new Error(`No data returned from Ycharts API for ${ticker}`);
       }
 
-      // Save fund info
+      // Resolve asset class via Supabase dictionary first
+      const { asset_class_id, asset_class_name } = await resolveAssetClassForTicker(ticker, apiData.asset_class);
       const fundData = {
         ticker: ticker,
         name: apiData.name || '',
-        asset_class: apiData.asset_class || '',
+        asset_class: asset_class_name || apiData.asset_class || '',
+        asset_class_id: asset_class_id || null,
         is_recommended: false // Will be updated separately
       };
 

@@ -102,6 +102,7 @@ export function useFundData() {
         ticker: ticker.toUpperCase(),
         name: fundInfo.name || `${ticker} Fund`,
         asset_class: assetClass || fundInfo.asset_class || 'Unassigned',
+        asset_class_id: fundInfo.asset_class_id || null,
         is_recommended: false
       };
 

@@ -22,6 +22,7 @@ import CorrelationMatrix from './components/Analytics/CorrelationMatrix';
 import RiskReturnScatter from './components/Analytics/RiskReturnScatter';
 import EnhancedPerformanceDashboard from './components/Dashboard/EnhancedPerformanceDashboard';
 import FundManagement from './components/Admin/FundManagement';
+import HealthCheck from './components/Dashboard/HealthCheck';
 import { 
   exportToExcel, 
   downloadFile
@@ -31,6 +32,7 @@ import {
 import authService from './services/authService';
 import migrationService from './services/migrationService';
 import { useFundData } from './hooks/useFundData';
+import { prefetchBenchmarkMappings } from './services/resolvers/benchmarkResolverClient';
 
 const App = () => {
   // Authentication state
@@ -157,6 +159,13 @@ const App = () => {
       checkMigration();
     }
   }, [isAuthenticated, authLoading]);
+
+  // Prefetch benchmark mappings after funds load (Supabase-first cache)
+  useEffect(() => {
+    if ((funds || []).length > 0) {
+      prefetchBenchmarkMappings();
+    }
+  }, [funds]);
 
   // Initialize fund registry and load data (legacy - will be replaced)
   useEffect(() => {
@@ -367,6 +376,7 @@ const App = () => {
           <button className={activeTab === 'analytics' ? 'active' : ''} onClick={() => setActiveTab('analytics')}>Analytics</button>
           <button className={activeTab === 'history' ? 'active' : ''} onClick={() => setActiveTab('history')}>History</button>
           <button className={activeTab === 'admin' ? 'active' : ''} onClick={() => setActiveTab('admin')}>Admin</button>
+          <button className={activeTab === 'health' ? 'active' : ''} onClick={() => setActiveTab('health')}>Health</button>
         </nav>
         <div className="sidebar-footer">
           <div className="user-info">
@@ -984,6 +994,13 @@ const App = () => {
       {activeTab === 'admin' && (
         <div>
           <FundManagement />
+        </div>
+      )}
+
+      {/* Health Tab */}
+      {activeTab === 'health' && (
+        <div>
+          <HealthCheck />
         </div>
       )}
 
