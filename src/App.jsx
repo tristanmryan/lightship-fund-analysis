@@ -613,10 +613,10 @@ const App = () => {
             </thead>
             <tbody>
                         {filteredAndSortedFunds.map((fund, index) => (
-                          <tr key={fund.Symbol || index}>
-                            <td><strong>{fund.Symbol}</strong></td>
-                            <td>{fund['Fund Name']}</td>
-                            <td>{fund['Asset Class']}</td>
+                          <tr key={fund.ticker || fund.Symbol || index}>
+                            <td><strong>{fund.ticker || fund.symbol || fund.Symbol}</strong></td>
+                            <td>{fund.name || fund['Fund Name'] || '—'}</td>
+                            <td>{fund.asset_class_name || fund.asset_class || fund['Asset Class'] || '—'}</td>
                             <td>
                               <span className="score-badge" style={{
                                 backgroundColor: fund.score >= 0.7 ? '#059669' : 
@@ -628,16 +628,16 @@ const App = () => {
                                 fontWeight: '600',
                                 fontSize: '0.875rem'
                               }}>
-                                {fund.score?.toFixed(3)}
+                                {(typeof fund.score === 'number' ? fund.score : 0).toFixed(3)}
                         </span>
                             </td>
-                            <td>{fund.YTD?.toFixed(2)}%</td>
-                            <td>{fund['1 Year']?.toFixed(2)}%</td>
-                            <td>{fund['3 Year']?.toFixed(2)}%</td>
-                            <td>{fund['5 Year']?.toFixed(2)}%</td>
-                            <td>{fund['10 Year']?.toFixed(2)}%</td>
-                            <td>{fund['Sharpe Ratio']?.toFixed(2)}</td>
-                            <td>{fund.Alpha?.toFixed(2)}</td>
+                            <td>{fund.ytd_return != null ? `${fund.ytd_return.toFixed(2)}%` : '—'}</td>
+                            <td>{fund.one_year_return != null ? `${fund.one_year_return.toFixed(2)}%` : '—'}</td>
+                            <td>{fund.three_year_return != null ? `${fund.three_year_return.toFixed(2)}%` : '—'}</td>
+                            <td>{fund.five_year_return != null ? `${fund.five_year_return.toFixed(2)}%` : '—'}</td>
+                            <td>{fund.ten_year_return != null ? `${fund.ten_year_return.toFixed(2)}%` : '—'}</td>
+                            <td>{fund.sharpe_ratio != null ? fund.sharpe_ratio.toFixed(2) : '—'}</td>
+                            <td>{fund.alpha != null ? fund.alpha.toFixed(2) : '—'}</td>
                             <td>
                               <button
                                 className="btn btn-secondary"

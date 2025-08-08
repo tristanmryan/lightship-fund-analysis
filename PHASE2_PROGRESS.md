@@ -11,6 +11,18 @@
   - Benchmark resolver (Supabase primary > config fallback)
 - Enhanced service to expose normalized fields: `asset_class_id`, `asset_class_code`, `asset_class_name`, `group_name`.
 - Wired benchmark overlay in table to use resolver API without visual changes.
+ - Added Health route in sidebar for unresolved classes/benchmarks.
+
+Testing-only tools (temporary):
+- Admin → Add Fund (manual) behind flag `REACT_APP_ENABLE_ADMIN_MANUAL_ADD` (default ON in dev/preview, OFF in prod). Allows upserting a fund and same-day performance for quick end-to-end checks.
+  - After save, caches invalidate and UI refreshes.
+  - To disable: set `REACT_APP_ENABLE_ADMIN_MANUAL_ADD=false`.
+
+Manual QA checklist:
+- Performance table shows ticker in Symbol column and renders return columns.
+- Fund Scores table renders ticker, name, asset class, and return/ratio columns (score may be 0.000 until scoring is wired).
+- Benchmark badges show deltas for funds with matching benchmark tickers present in the dataset.
+- Health shows 0 unresolved funds and 0 classes missing benchmarks with Supabase-only mode.
 
 Migration sequence (no downtime):
 1. Run DB migrations to create dictionary/mapping tables and add `funds.asset_class_id`.

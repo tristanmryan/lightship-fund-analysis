@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Search, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import { useFundData } from '../../hooks/useFundData';
 import DictionaryAdmin from './DictionaryAdmin';
+import ManualAddFund from './ManualAddFund';
 
 const FundManagement = () => {
   const { 
@@ -22,18 +23,10 @@ const FundManagement = () => {
 
   // Available asset classes
   const assetClasses = [
-    'Large Cap Growth',
-    'Large Cap Value', 
-    'Mid Cap Growth',
-    'Mid Cap Value',
-    'Small Cap Growth',
-    'Small Cap Value',
-    'International',
-    'Emerging Markets',
-    'Bonds',
-    'Real Estate',
-    'Commodities',
-    'Other'
+    // Deprecated static list; replaced by dictionary in DictionaryAdmin
+    'Large Cap Growth', 'Large Cap Value', 'Mid Cap Growth', 'Mid Cap Value',
+    'Small Cap Growth', 'Small Cap Value', 'International', 'Emerging Markets',
+    'Bonds', 'Real Estate', 'Commodities', 'Other'
   ];
 
   // Handle adding a new fund
@@ -181,6 +174,9 @@ const FundManagement = () => {
       <div className="dictionary-admin" style={{ marginTop: '2rem' }}>
         <DictionaryAdmin />
       </div>
+
+      {/* Manual Add (testing only, behind flag) */}
+      <ManualAddFund />
 
       {/* Fund List Section */}
       <div className="fund-list-section">

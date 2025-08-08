@@ -28,7 +28,7 @@ const EnhancedFundTable = ({ funds, onFundSelect, showDetailModal = false }) => 
     symbol: {
       label: 'Symbol',
       key: 'symbol',
-      getValue: (fund) => fund.Symbol || fund.symbol,
+      getValue: (fund) => fund.ticker || fund.symbol || fund.Symbol,
       sortable: true,
       width: '100px',
       render: (value, fund) => (

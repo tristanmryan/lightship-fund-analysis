@@ -31,6 +31,7 @@ class FundService {
           return {
             ...fund,
             ...performance,
+            symbol: fund.ticker, // temporary alias for legacy reads
             asset_class_id: assetClass?.id || fund.asset_class_id || null,
             asset_class_code: assetClass?.code || null,
             asset_class_name: assetClass?.name || fund.asset_class || null,
