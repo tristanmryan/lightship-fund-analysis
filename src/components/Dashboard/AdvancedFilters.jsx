@@ -9,9 +9,11 @@ import {
  * Advanced Filters Component
  * Comprehensive filtering system for fund data with saved presets
  */
-const AdvancedFilters = ({ funds, onFilterChange, className = '' }) => {
+import preferencesService from '../../services/preferencesService';
+
+const AdvancedFilters = ({ funds, onFilterChange, className = '', initialFilters = null }) => {
   // Filter state
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState(() => initialFilters || {
     search: '',
     assetClasses: [],
     performanceRank: 'all',
@@ -34,10 +36,29 @@ const AdvancedFilters = ({ funds, onFilterChange, className = '' }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
   const [presetName, setPresetName] = useState('');
-  const [savedPresets, setSavedPresets] = useState(() => {
-    const saved = localStorage.getItem('fundFilterPresets');
-    return saved ? JSON.parse(saved) : getDefaultPresets();
-  });
+  const [savedPresets, setSavedPresets] = useState({});
+
+  // Load presets (per-user via preferences) with fallback to localStorage/defaults
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const fromPrefs = await preferencesService.getFilterPresets();
+        if (!cancelled && fromPrefs && Object.keys(fromPrefs).length > 0) {
+          setSavedPresets(fromPrefs);
+          return;
+        }
+      } catch {}
+      if (cancelled) return;
+      try {
+        const saved = localStorage.getItem('fundFilterPresets');
+        setSavedPresets(saved ? JSON.parse(saved) : getDefaultPresets());
+      } catch {
+        setSavedPresets(getDefaultPresets());
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Get unique asset classes from funds
   const assetClasses = useMemo(() => {
@@ -249,6 +270,8 @@ const AdvancedFilters = ({ funds, onFilterChange, className = '' }) => {
     
     setSavedPresets(newPresets);
     localStorage.setItem('fundFilterPresets', JSON.stringify(newPresets));
+    // Persist per-user as well
+    preferencesService.saveFilterPresets(newPresets).catch(() => {});
     setPresetName('');
     setShowPresets(false);
   };

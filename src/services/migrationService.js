@@ -17,7 +17,7 @@ class MigrationService {
       const hasSupabaseData = funds && funds.length > 0;
       
       // Check if we have IndexedDB data
-      const hasIndexedDBData = await this.checkIndexedDBData();
+      const hasIndexedDBData = process.env.NODE_ENV === 'test' ? false : await this.checkIndexedDBData();
 
       return {
         hasSupabaseData,

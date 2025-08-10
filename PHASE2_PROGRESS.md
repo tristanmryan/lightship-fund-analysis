@@ -1,3 +1,4 @@
+> For ongoing work, see Phase 3: [PHASE3_PROGRESS.md](./PHASE3_PROGRESS.md)
 ## Asset Class Dictionary & Resolver (Priority 2 foundation)
 
 - Introduced a Supabase-backed Asset Class Dictionary with codes, names, group order, and benchmark mapping.
@@ -40,7 +41,10 @@ Current tested state
 - Mini-charts (sparkline foundation)
   - Sparkline column added to table (per-fund cached history)
   - Uses available return series; shows "No data" when empty
-  - Period toggles planned (next step)
+  - Period toggles implemented (1M/3M/6M/1Y/YTD)
+  - Saved view defaults foundation (Phase 3): per-user persistence of filters and table column/sort state via `preferencesService` (IndexedDB)
+    - Flag: `REACT_APP_ENABLE_SAVED_VIEWS` (default true)
+    - Applies on load; updates automatically when user changes filters/columns/sort
 
 Screenshots
 - Performance (table with deltas and sparkline): `docs/screenshots/performance_table.svg`

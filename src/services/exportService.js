@@ -1,6 +1,6 @@
 // src/services/exportService.js
 import * as XLSX from 'xlsx';
-import { generateMonthlyReport } from './pdfReportService';
+// Avoid importing jsPDF/pdf generation in test/node by lazy-loading pdfReportService inside the function
 
 /**
  * Export Service
@@ -186,10 +186,10 @@ export function generatePDFReport(data) {
     averagePerformance: calculateAverage(funds.map(f => f.ytd_return).filter(v => v != null))
   };
 
-  return generateMonthlyReport({
-    funds,
-    metadata: pdfMetadata
-  });
+  // Lazy require to prevent jsdom canvas errors during tests
+  // eslint-disable-next-line global-require
+  const { generateMonthlyReport } = require('./pdfReportService');
+  return generateMonthlyReport({ funds, metadata: pdfMetadata });
 }
 
 /**

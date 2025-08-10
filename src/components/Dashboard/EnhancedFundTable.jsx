@@ -14,17 +14,32 @@ import fundService from '../../services/fundService';
  * Enhanced Fund Table Component
  * Advanced sortable table with multi-column sorting and detailed fund information
  */
-const EnhancedFundTable = ({ funds, onFundSelect, showDetailModal = false, chartPeriod = '1Y' }) => {
-  const [sortConfig, setSortConfig] = useState([
+const EnhancedFundTable = ({
+  funds,
+  onFundSelect,
+  showDetailModal = false,
+  chartPeriod = '1Y',
+  initialSortConfig = null,
+  initialSelectedColumns = null,
+  onStateChange
+}) => {
+  const [sortConfig, setSortConfig] = useState(() => initialSortConfig || [
     { key: 'score', direction: 'desc' }
   ]);
-  const [selectedColumns, setSelectedColumns] = useState([
+  const [selectedColumns, setSelectedColumns] = useState(() => initialSelectedColumns || [
     'symbol', 'name', 'assetClass', 'score', 'ytdReturn', 'oneYearReturn', 
     'threeYearReturn', 'expenseRatio', 'sharpeRatio', 'recommended'
   ]);
   const [columnWidths, setColumnWidths] = useState({});
   const [hoveredFund, setHoveredFund] = useState(null);
   const [historyCache, setHistoryCache] = useState({});
+
+  // Emit state changes to parent for persistence
+  useEffect(() => {
+    if (typeof onStateChange === 'function') {
+      onStateChange({ sortConfig, selectedColumns });
+    }
+  }, [sortConfig, selectedColumns, onStateChange]);
 
   // Column definitions
   const columnDefinitions = useMemo(() => ({

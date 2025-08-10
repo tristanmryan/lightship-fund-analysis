@@ -20,6 +20,10 @@ class FundRegistry {
    * @param {Object} defaultBenchmarks - Default benchmark mappings
    */
   async initialize(defaultFunds = [], defaultBenchmarks = {}) {
+    if (process.env.NODE_ENV === 'test') {
+      // Skip IndexedDB access in unit tests
+      return;
+    }
     const existingFunds = await dataStore.getAllFunds();
 
     if (existingFunds.length === 0 && defaultFunds.length > 0) {

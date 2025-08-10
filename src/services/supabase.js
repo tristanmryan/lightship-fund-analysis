@@ -6,11 +6,43 @@ const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables. Please set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY');
+  if (process.env.NODE_ENV !== 'test') {
+    console.error('Missing Supabase environment variables. Please set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY');
+  }
 }
 
-// Create Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// In tests or when env is missing, provide a no-op stub to avoid crashes
+const shouldStub = process.env.NODE_ENV === 'test' || !supabaseUrl || !supabaseAnonKey;
+
+function createStubClient() {
+  const resolved = (data = null) => Promise.resolve({ data, error: null });
+  const builder = {
+    // Typical read chain: select(...).eq(...)
+    select: () => ({
+      eq: () => resolved([]),
+      order: () => ({ range: () => resolved([]) }),
+      single: () => resolved(null),
+      limit: () => resolved([])
+    }),
+    insert: () => resolved(null),
+    upsert: () => resolved(null),
+    delete: () => resolved(null),
+    update: () => resolved(null),
+    order: () => ({ range: () => resolved([]) }),
+    range: () => resolved([]),
+    single: () => resolved(null),
+    limit: () => resolved([])
+  };
+  return {
+    from: () => builder,
+    auth: {
+      getUser: async () => ({ data: { user: null }, error: null })
+    }
+  };
+}
+
+// Create Supabase client or stub
+export const supabase = shouldStub ? createStubClient() : createClient(supabaseUrl, supabaseAnonKey);
 
 // Database table names
 export const TABLES = {

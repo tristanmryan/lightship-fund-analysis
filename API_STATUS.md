@@ -83,6 +83,8 @@ When YCharts API access is enabled:
 - Performance table + sparkline: `docs/screenshots/performance_table.svg`
 - Drilldowns (risk/capture/fees): `docs/screenshots/drilldown_cards.svg`
 - Compare view: `docs/screenshots/compare_view.svg`
+ - Saved view defaults: filters/columns/sort/chartPeriod restore on reload (Phase 3 foundation)
+ - Manual check: Change chartPeriod to 6M, refresh the page, confirm the 6M toggle remains selected
 
 ## 📞 Next Steps
 
