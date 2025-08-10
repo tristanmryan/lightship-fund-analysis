@@ -12,6 +12,7 @@ import AssetClassOverview from './AssetClassOverview';
 import FundDetailsModal from '../FundDetailsModal';
 import ComparisonPanel from './ComparisonPanel';
 import DrilldownCards from './DrilldownCards';
+import preferencesService from '../../services/preferencesService';
 
 /**
  * Enhanced Performance Dashboard
@@ -25,12 +26,89 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
   const [selectedFund, setSelectedFund] = useState(null);
   const [chartPeriod, setChartPeriod] = useState('1Y'); // '1M','3M','6M','1Y','YTD'
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+  const [initialFilters, setInitialFilters] = useState(null);
+  const [initialTableState, setInitialTableState] = useState({ sortConfig: null, selectedColumns: null });
+  const [tableState, setTableState] = useState({ sortConfig: null, selectedColumns: null });
+  const tableExportRef = React.useRef(null);
+
+  // Load saved view defaults on mount
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const defaults = await preferencesService.getViewDefaults();
+        if (cancelled) return;
+        if (defaults) {
+          setInitialFilters(defaults.filters || null);
+          setInitialTableState({
+            sortConfig: defaults.table?.sortConfig || null,
+            selectedColumns: defaults.table?.selectedColumns || null
+          });
+          if (defaults.chartPeriod && ['1M','3M','6M','1Y','YTD'].includes(defaults.chartPeriod)) {
+            setChartPeriod(defaults.chartPeriod);
+          }
+        }
+      } catch {}
+      if (!cancelled) setInitialized(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Handle filter changes
   const handleFilterChange = useCallback((filtered, filters) => {
     setFilteredFunds(filtered);
     setActiveFilters(filters);
   }, []);
+
+  // Persist view defaults when filters or table state change
+  const handleTableStateChange = useCallback(async (state) => {
+    setTableState(state);
+    try {
+      await preferencesService.saveViewDefaults({
+        filters: activeFilters,
+        table: {
+          sortConfig: state.sortConfig,
+          selectedColumns: state.selectedColumns
+        },
+        chartPeriod
+      });
+    } catch {}
+  }, [activeFilters, chartPeriod]);
+
+  // Persist when filters change too
+  React.useEffect(() => {
+    if (!initialized) return;
+    (async () => {
+      try {
+        await preferencesService.saveViewDefaults({
+          filters: activeFilters,
+          table: {
+            sortConfig: tableState.sortConfig,
+            selectedColumns: tableState.selectedColumns
+          },
+          chartPeriod
+        });
+      } catch {}
+    })();
+  }, [activeFilters, initialized, tableState.sortConfig, tableState.selectedColumns, chartPeriod]);
+
+  // Persist when chartPeriod changes independently
+  React.useEffect(() => {
+    if (!initialized) return;
+    (async () => {
+      try {
+        await preferencesService.saveViewDefaults({
+          filters: activeFilters,
+          table: {
+            sortConfig: tableState.sortConfig,
+            selectedColumns: tableState.selectedColumns
+          },
+          chartPeriod
+        });
+      } catch {}
+    })();
+  }, [chartPeriod, initialized]);
 
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
@@ -85,6 +163,10 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
             funds={filteredFunds}
             onFundSelect={handleFundSelect}
             chartPeriod={chartPeriod}
+            initialSortConfig={initialTableState.sortConfig}
+            initialSelectedColumns={initialTableState.selectedColumns}
+            onStateChange={handleTableStateChange}
+            registerExportHandler={(fn) => { tableExportRef.current = fn; }}
           />
         );
       
@@ -119,7 +201,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
         return (
           <div className="card" style={{ padding: 16 }}>
             {selectedFund ? (
-              <DrilldownCards fund={selectedFund} funds={filteredFunds} chartPeriod={chartPeriod} onChangePeriod={setChartPeriod} />
+              <DrilldownCards fund={selectedFund} funds={filteredFunds} />
             ) : (
               <div style={{ color: '#6b7280' }}>Select a fund to view drilldown details.</div>
             )}
@@ -220,11 +302,14 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
                 padding: '0.5rem 1rem',
                 border: '1px solid #3b82f6',
                 borderRadius: '0.375rem',
-                backgroundColor: '#3b82f6',
+                backgroundColor: filteredFunds.length > 0 ? '#3b82f6' : '#93c5fd',
                 color: 'white',
                 fontSize: '0.875rem',
-                cursor: 'pointer'
+                cursor: filteredFunds.length > 0 && tableExportRef.current ? 'pointer' : 'not-allowed',
+                opacity: filteredFunds.length > 0 && tableExportRef.current ? 1 : 0.6
               }}
+              onClick={() => tableExportRef.current && filteredFunds.length > 0 && tableExportRef.current()}
+              disabled={!tableExportRef.current || filteredFunds.length === 0}
             >
               <Download size={16} />
               Export Results
@@ -299,10 +384,12 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
         </div>
 
         {/* Advanced Filters */}
+        {initialized && (
         <AdvancedFilters 
           funds={funds}
           onFilterChange={handleFilterChange}
-        />
+          initialFilters={initialFilters}
+        />)}
 
         {/* View Mode Selector */}
         <div style={{

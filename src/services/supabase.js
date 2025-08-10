@@ -6,11 +6,54 @@ const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables. Please set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY');
+  if (process.env.NODE_ENV !== 'test') {
+    console.error('Missing Supabase environment variables. Please set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY');
+  }
 }
 
-// Create Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// In tests or when env is missing, provide a no-op stub to avoid crashes
+const shouldStub = process.env.NODE_ENV === 'test' || !supabaseUrl || !supabaseAnonKey;
+
+function createStubClient() {
+  const resolved = (data = null) => Promise.resolve({ data, error: null });
+
+  const makeFilterBuilder = () => {
+    const fb = {
+      select: () => fb,
+      eq: () => fb,
+      is: () => fb,
+      or: () => fb,
+      order: () => resolved([]),
+      limit: () => resolved([]),
+      range: () => resolved([]),
+      single: () => resolved(null),
+      maybeSingle: () => resolved(null)
+    };
+    return fb;
+  };
+
+  const fromBuilder = {
+    select: () => makeFilterBuilder(),
+    insert: () => resolved(null),
+    upsert: () => resolved(null),
+    delete: () => resolved(null),
+    update: () => resolved(null),
+    order: () => resolved([]),
+    range: () => resolved([]),
+    single: () => resolved(null),
+    maybeSingle: () => resolved(null),
+    limit: () => resolved([])
+  };
+  return {
+    from: () => fromBuilder,
+    auth: {
+      getUser: async () => ({ data: { user: null }, error: null })
+    }
+  };
+}
+
+// Create Supabase client or stub
+export const supabase = shouldStub ? createStubClient() : createClient(supabaseUrl, supabaseAnonKey);
 
 // Database table names
 export const TABLES = {
@@ -25,7 +68,8 @@ export const TABLES = {
   ASSET_CLASS_SYNONYMS: 'asset_class_synonyms',
   ASSET_CLASS_BENCHMARKS: 'asset_class_benchmarks',
   FUND_OVERRIDES: 'fund_overrides',
-  BENCHMARK_HISTORY: 'benchmark_history'
+  BENCHMARK_HISTORY: 'benchmark_history',
+  FUND_RESEARCH_NOTES: 'fund_research_notes'
 };
 
 // Utility functions for database operations

@@ -83,6 +83,11 @@ When YCharts API access is enabled:
 - Performance table + sparkline: `docs/screenshots/performance_table.svg`
 - Drilldowns (risk/capture/fees): `docs/screenshots/drilldown_cards.svg`
 - Compare view: `docs/screenshots/compare_view.svg`
+ - Saved view defaults: filters/columns/sort/chartPeriod restore on reload (Phase 3 foundation)
+ - Manual check: Change chartPeriod to 6M, refresh the page, confirm the 6M toggle remains selected
+ - Research Notes (flagged): enable `REACT_APP_ENABLE_NOTES`, add a note in Drilldown, refresh; confirm note appears newest-first with author and timestamp
+ - Compare Sets: in Compare view, select funds, name and Save the set, reload and Load it, then Delete; verify missing ticker handling notice appears when applicable
+  - CSV Export: open exported CSVs in Excel on Windows. Confirm UTF-8 BOM (no garbled characters), CRLF line endings, and that numbers are raw numerics (no thousands separators). Percent-like values are decimals (e.g., 0.1234 = 12.34%).
 
 ## 📞 Next Steps
 

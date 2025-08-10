@@ -79,6 +79,10 @@ export const METRIC_ORDER = [
 // Load stored weights and set METRIC_WEIGHTS
 export async function loadMetricWeights() {
   try {
+    if (process.env.NODE_ENV === 'test') {
+      METRIC_WEIGHTS = { ...DEFAULT_WEIGHTS };
+      return;
+    }
     const stored = await getConfig(CONFIG_KEYS.SCORING_WEIGHTS);
     if (stored && typeof stored === 'object') {
       METRIC_WEIGHTS = { ...DEFAULT_WEIGHTS, ...stored };

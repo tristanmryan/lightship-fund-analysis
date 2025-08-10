@@ -179,7 +179,7 @@ export function formatFundForDisplay(fund) {
    */
   export function filterFundsByAssetClass(funds, assetClass) {
     if (!assetClass || assetClass === 'all') return funds;
-    return funds.filter(f => (f.asset_class_name || f.asset_class) === assetClass);
+    return funds.filter(f => f['Asset Class'] === assetClass);
   }
   
   /**
@@ -188,6 +188,6 @@ export function formatFundForDisplay(fund) {
    * @returns {Array} Sorted array of unique asset classes
    */
 export function getUniqueAssetClasses(funds) {
-  const classes = new Set(funds.map(f => (f.asset_class_name || f.asset_class || 'Unknown')));
+  const classes = new Set(funds.map(f => f['Asset Class'] || 'Unknown'));
   return Array.from(classes).sort();
 }

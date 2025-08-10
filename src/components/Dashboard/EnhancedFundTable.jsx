@@ -9,22 +9,39 @@ import { getScoreColor, getScoreLabel } from '../../services/scoring';
 import { computeBenchmarkDelta, resolveAssetClass, getBenchmarkConfigForFund } from './benchmarkUtils';
 import Sparkline from './Sparkline';
 import fundService from '../../services/fundService';
+import { exportTableCSV, downloadFile, shouldConfirmLargeExport } from '../../services/exportService';
 
 /**
  * Enhanced Fund Table Component
  * Advanced sortable table with multi-column sorting and detailed fund information
  */
-const EnhancedFundTable = ({ funds, onFundSelect, showDetailModal = false, chartPeriod = '1Y' }) => {
-  const [sortConfig, setSortConfig] = useState([
+const EnhancedFundTable = ({
+  funds,
+  onFundSelect,
+  showDetailModal = false,
+  chartPeriod = '1Y',
+  initialSortConfig = null,
+  initialSelectedColumns = null,
+  onStateChange,
+  registerExportHandler
+}) => {
+  const [sortConfig, setSortConfig] = useState(() => initialSortConfig || [
     { key: 'score', direction: 'desc' }
   ]);
-  const [selectedColumns, setSelectedColumns] = useState([
+  const [selectedColumns, setSelectedColumns] = useState(() => initialSelectedColumns || [
     'symbol', 'name', 'assetClass', 'score', 'ytdReturn', 'oneYearReturn', 
     'threeYearReturn', 'expenseRatio', 'sharpeRatio', 'recommended'
   ]);
   const [columnWidths, setColumnWidths] = useState({});
   const [hoveredFund, setHoveredFund] = useState(null);
   const [historyCache, setHistoryCache] = useState({});
+
+  // Emit state changes to parent for persistence
+  useEffect(() => {
+    if (typeof onStateChange === 'function') {
+      onStateChange({ sortConfig, selectedColumns });
+    }
+  }, [sortConfig, selectedColumns, onStateChange]);
 
   // Column definitions
   const columnDefinitions = useMemo(() => ({
@@ -454,6 +471,59 @@ const EnhancedFundTable = ({ funds, onFundSelect, showDetailModal = false, chart
     );
   }, []);
 
+  const percentColumnKeys = new Set([
+    'ytdReturn', 'oneYearReturn', 'threeYearReturn', 'fiveYearReturn',
+    'expenseRatio', 'standardDeviation', 'upCaptureRatio', 'downCaptureRatio'
+  ]);
+
+  const buildExportColumns = () => {
+    return selectedColumns
+      .filter((key) => key !== 'sparkline')
+      .map((key) => {
+        const def = columnDefinitions[key];
+        if (!def) return null;
+        return {
+          key,
+          label: def.label,
+          isPercent: percentColumnKeys.has(key),
+          valueGetter: (fund) => def.getValue?.(fund)
+        };
+      })
+      .filter(Boolean);
+  };
+
+  const exportCSV = useCallback(() => {
+    const rowsCount = sortedFunds?.length || 0;
+    if (shouldConfirmLargeExport(rowsCount)) {
+      const proceed = window.confirm(`You are exporting ${rowsCount.toLocaleString()} rows. Continue?`);
+      if (!proceed) return;
+    }
+    const cols = buildExportColumns();
+    const metaSort = (sortConfig || []).map(cfg => ({
+      key: cfg.key,
+      direction: cfg.direction,
+      label: columnDefinitions[cfg.key]?.label || cfg.key
+    }));
+    const blob = exportTableCSV({
+      funds: sortedFunds,
+      columns: cols,
+      sortConfig: metaSort,
+      metadata: {
+        chartPeriod,
+        exportedAt: new Date()
+      }
+    });
+    const now = new Date();
+    const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
+    downloadFile(blob, `table_export_${ts}.csv`, 'text/csv;charset=utf-8');
+  }, [sortedFunds, sortConfig, selectedColumns, chartPeriod, columnDefinitions]);
+
+  useEffect(() => {
+    if (typeof registerExportHandler === 'function') {
+      registerExportHandler(() => exportCSV());
+    }
+  }, [registerExportHandler, exportCSV]);
+
   if (!funds || funds.length === 0) {
     return (
       <div style={{
@@ -500,6 +570,21 @@ const EnhancedFundTable = ({ funds, onFundSelect, showDetailModal = false, chart
         </div>
 
         <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={exportCSV}
+            disabled={sortedFunds.length === 0}
+            style={{
+              padding: '0.5rem 1rem',
+              border: '1px solid #3b82f6',
+              borderRadius: '0.375rem',
+              backgroundColor: sortedFunds.length > 0 ? '#3b82f6' : '#93c5fd',
+              color: 'white',
+              fontSize: '0.875rem',
+              cursor: sortedFunds.length > 0 ? 'pointer' : 'not-allowed'
+            }}
+          >
+            Export CSV
+          </button>
           <button
             onClick={() => setSortConfig([])}
             disabled={sortConfig.length === 0}

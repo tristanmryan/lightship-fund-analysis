@@ -10,3 +10,12 @@ export function formatNumber(value, digits = 2) {
   return Number(value).toFixed(digits);
 }
 
+export function toISODateTime(dateLike) {
+  try {
+    const d = dateLike instanceof Date ? dateLike : new Date(dateLike);
+    return d.toISOString();
+  } catch {
+    return '';
+  }
+}
+
