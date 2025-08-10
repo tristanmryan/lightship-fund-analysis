@@ -119,7 +119,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
         return (
           <div className="card" style={{ padding: 16 }}>
             {selectedFund ? (
-              <DrilldownCards fund={selectedFund} funds={filteredFunds} />
+              <DrilldownCards fund={selectedFund} funds={filteredFunds} chartPeriod={chartPeriod} onChangePeriod={setChartPeriod} />
             ) : (
               <div style={{ color: '#6b7280' }}>Select a fund to view drilldown details.</div>
             )}

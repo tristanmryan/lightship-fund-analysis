@@ -72,7 +72,7 @@ export function processRawFunds(rawFunds, options = {}) {
       displayName: recommendedFund?.name || fund['Fund Name'] || fund.Symbol,
       isRecommended: !!recommendedFund,
       isBenchmark: !!benchmark,
-      assetClass: recommendedFund?.assetClass || fund['Asset Class'] || 'Unknown',
+      assetClass: recommendedFund?.assetClass || fund.asset_class || fund['Asset Class'] || 'Unknown',
       autoTags: generateAutoTags(fund, recommendedFund, benchmark)
     };
   });

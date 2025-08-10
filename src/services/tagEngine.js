@@ -45,7 +45,7 @@ export const DEFAULT_TAG_RULES = [
       name: 'Expensive',
       description: 'Expense ratio above asset class average by 50%',
       condition: (fund, context) => {
-        const avgExpense = context.assetClassAverages[fund['Asset Class']]?.avgExpense;
+const avgExpense = context.assetClassAverages[fund.asset_class_name || fund.asset_class || fund['Asset Class']]?.avgExpense;
         return avgExpense && fund['Net Expense Ratio'] > avgExpense * 1.5;
       },
       color: '#f59e0b',
@@ -57,7 +57,7 @@ export const DEFAULT_TAG_RULES = [
       name: 'High Risk',
       description: 'Standard deviation above asset class average by 20%',
       condition: (fund, context) => {
-        const avgStdDev = context.assetClassAverages[fund['Asset Class']]?.avgStdDev;
+const avgStdDev = context.assetClassAverages[fund.asset_class_name || fund.asset_class || fund['Asset Class']]?.avgStdDev;
         return avgStdDev && (fund['StdDev3Y'] ?? fund['Standard Deviation']) > avgStdDev * 1.2;
       },
       color: '#ef4444',
@@ -80,7 +80,7 @@ export const DEFAULT_TAG_RULES = [
       name: 'Beats Benchmark',
       description: 'Score higher than asset class benchmark',
       condition: (fund, context) => {
-        const benchmark = context.benchmarks[fund['Asset Class']];
+const benchmark = context.benchmarks[fund.asset_class_name || fund.asset_class || fund['Asset Class']];
         return benchmark && fund.scores?.final > benchmark.scores?.final;
       },
       color: '#0891b2',
@@ -207,7 +207,7 @@ export const DEFAULT_TAG_RULES = [
     // Group by asset class
     const fundsByClass = {};
     funds.forEach(fund => {
-      const assetClass = fund['Asset Class'] || 'Unknown';
+const assetClass = fund.asset_class_name || fund.asset_class || fund['Asset Class'] || 'Unknown';
       if (!fundsByClass[assetClass]) {
         fundsByClass[assetClass] = [];
       }

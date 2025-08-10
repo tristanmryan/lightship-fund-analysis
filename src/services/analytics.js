@@ -202,7 +202,7 @@ export function calculateCorrelation(x, y) {
       avgExpenseRatio,
       avgScore,
       fundCount: funds.length,
-      assetClasses: [...new Set(funds.map(f => f['Asset Class']))].length
+  assetClasses: [...new Set(funds.map(f => f.asset_class_name || f.asset_class || f['Asset Class']))].length
     };
   }
   
@@ -332,7 +332,7 @@ export function calculateDiversification(funds, groupBy = 'Asset Class') {
     
     funds.forEach(fund => {
       const name = (fund.displayName || fund['Fund Name'])?.toLowerCase() || '';
-      const assetClass = fund['Asset Class']?.toLowerCase() || '';
+  const assetClass = (fund.asset_class_name || fund.asset_class || fund['Asset Class'] || '')?.toLowerCase() || '';
       
       if (name.includes('international') || name.includes('foreign') || 
           assetClass.includes('international')) {

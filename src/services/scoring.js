@@ -328,7 +328,7 @@ export async function setMetricWeights(weights) {
     // Group funds by asset class
     const fundsByClass = {};
     funds.forEach(fund => {
-      const assetClass = fund['Asset Class'] || 'Unknown';
+      const assetClass = fund.asset_class_name || fund.asset_class || fund['Asset Class'] || 'Unknown';
       if (!fundsByClass[assetClass]) {
         fundsByClass[assetClass] = [];
       }

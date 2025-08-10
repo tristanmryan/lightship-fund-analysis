@@ -76,7 +76,7 @@ class MigrationService {
                 const fundData = {
                   ticker: dbUtils.cleanSymbol(fund.Symbol),
                   name: fund['Fund Name'] || fund['Product Name'] || '',
-                  asset_class: fund['Asset Class'] || '',
+  asset_class: fund.asset_class || fund['Asset Class'] || '',
                   is_recommended: recommendedFunds.some(rf => 
                     dbUtils.cleanSymbol(rf.Symbol) === dbUtils.cleanSymbol(fund.Symbol)
                   ),

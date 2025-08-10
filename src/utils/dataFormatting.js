@@ -119,25 +119,25 @@ export function formatFundForDisplay(fund) {
   if (!fund) return {};
 
   return {
-    symbol: fund.Symbol || '-',
+    symbol: fund.ticker || fund.symbol || fund.Symbol || '-',
     name: getFundDisplayName(fund) || '-',
-      assetClass: fund['Asset Class'] || 'Unknown',
+      assetClass: fund.asset_class_name || fund.asset_class || fund['Asset Class'] || 'Unknown',
       score: fund.scores?.final || null,
       scoreLabel: fund.scores?.final ? `${fund.scores.final} - ${getScoreLabel(fund.scores.final)}` : '-',
       percentile: fund.scores?.percentile || null,
-      ytd: formatPercent(fund['YTD']),
-      return1Y: formatPercent(fund['1 Year']),
-      return3Y: formatPercent(fund['3 Year']),
-      return5Y: formatPercent(fund['5 Year']),
-      return10Y: formatPercent(fund['10 Year']),
-      sharpe: formatNumber(fund['Sharpe Ratio']),
-      stdDev3Y: formatPercent(fund['StdDev3Y']),
-      stdDev5Y: formatPercent(fund['StdDev5Y']),
-      expense: formatPercent(fund['Net Expense Ratio']),
-      alpha: formatNumber(fund['Alpha']),
-      upCapture: formatPercent(fund['Up Capture Ratio']),
-      downCapture: formatPercent(fund['Down Capture Ratio']),
-      tenure: formatNumber(fund['Manager Tenure'], 1),
+      ytd: formatPercent(fund.ytd_return ?? fund['YTD']),
+      return1Y: formatPercent(fund.one_year_return ?? fund['1 Year']),
+      return3Y: formatPercent(fund.three_year_return ?? fund['3 Year']),
+      return5Y: formatPercent(fund.five_year_return ?? fund['5 Year']),
+      return10Y: formatPercent(fund.ten_year_return ?? fund['10 Year']),
+      sharpe: formatNumber(fund.sharpe_ratio ?? fund['Sharpe Ratio']),
+      stdDev3Y: formatPercent(fund['StdDev3Y'] ?? fund.standard_deviation),
+      stdDev5Y: formatPercent(fund['StdDev5Y'] ?? fund.standard_deviation),
+      expense: formatPercent(fund.expense_ratio ?? fund['Net Expense Ratio']),
+      alpha: formatNumber(fund.alpha ?? fund['Alpha']),
+      upCapture: formatPercent(fund.up_capture_ratio ?? fund['Up Capture Ratio']),
+      downCapture: formatPercent(fund.down_capture_ratio ?? fund['Down Capture Ratio']),
+      tenure: formatNumber(fund.manager_tenure ?? fund['Manager Tenure'], 1),
       isRecommended: fund.isRecommended || false,
       isBenchmark: fund.isBenchmark || false
     };
@@ -179,7 +179,7 @@ export function formatFundForDisplay(fund) {
    */
   export function filterFundsByAssetClass(funds, assetClass) {
     if (!assetClass || assetClass === 'all') return funds;
-    return funds.filter(f => f['Asset Class'] === assetClass);
+    return funds.filter(f => (f.asset_class_name || f.asset_class) === assetClass);
   }
   
   /**
@@ -188,6 +188,6 @@ export function formatFundForDisplay(fund) {
    * @returns {Array} Sorted array of unique asset classes
    */
 export function getUniqueAssetClasses(funds) {
-  const classes = new Set(funds.map(f => f['Asset Class'] || 'Unknown'));
+  const classes = new Set(funds.map(f => (f.asset_class_name || f.asset_class || 'Unknown')));
   return Array.from(classes).sort();
 }

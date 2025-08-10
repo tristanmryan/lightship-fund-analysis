@@ -498,7 +498,7 @@ export async function compareSnapshots(snapshotId1, snapshotId2) {
         comparison.changes.push({
           symbol,
           fundName: fund2['Fund Name'],
-          assetClass: fund2['Asset Class'],
+          assetClass: fund2.asset_class_name || fund2.asset_class || fund2['Asset Class'],
           oldScore: fund1.scores.final,
           newScore: fund2.scores.final,
           change: scoreDiff,
@@ -510,7 +510,7 @@ export async function compareSnapshots(snapshotId1, snapshotId2) {
       comparison.changes.push({
         symbol,
         fundName: fund2['Fund Name'],
-        assetClass: fund2['Asset Class'],
+          assetClass: fund2.asset_class_name || fund2.asset_class || fund2['Asset Class'],
         type: 'new',
         newScore: fund2.scores?.final
       });
@@ -523,7 +523,7 @@ export async function compareSnapshots(snapshotId1, snapshotId2) {
       comparison.changes.push({
         symbol,
         fundName: fund1['Fund Name'],
-        assetClass: fund1['Asset Class'],
+          assetClass: fund1.asset_class_name || fund1.asset_class || fund1['Asset Class'],
         type: 'removed',
         oldScore: fund1.scores?.final
       });
