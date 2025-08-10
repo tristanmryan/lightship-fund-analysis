@@ -10,3 +10,8 @@
   - UI panel in Drilldown when `REACT_APP_ENABLE_NOTES=true`
   - Author recorded from interim auth service; RLS deferred until Supabase Auth
 
+- Saved Compare Sets v1
+  - `ComparisonPanel` toolbar to Save/Load/Delete named sets (4-fund limit)
+  - Stored per-user in `preferencesService` under `compare_sets_v1`, case-insensitive names
+  - Missing tickers skipped with notice; remote-first plan once Supabase Auth is live
+

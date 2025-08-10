@@ -86,6 +86,7 @@ When YCharts API access is enabled:
  - Saved view defaults: filters/columns/sort/chartPeriod restore on reload (Phase 3 foundation)
  - Manual check: Change chartPeriod to 6M, refresh the page, confirm the 6M toggle remains selected
  - Research Notes (flagged): enable `REACT_APP_ENABLE_NOTES`, add a note in Drilldown, refresh; confirm note appears newest-first with author and timestamp
+ - Compare Sets: in Compare view, select funds, name and Save the set, reload and Load it, then Delete; verify missing ticker handling notice appears when applicable
 
 ## 📞 Next Steps
 

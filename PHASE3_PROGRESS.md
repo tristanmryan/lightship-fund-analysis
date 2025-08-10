@@ -25,10 +25,11 @@
 - `chartPeriod` is persisted and restored as part of the saved view.
 - Minimal unit tests added; all tests pass locally.
  - Research Notes v1 (append-only) behind `REACT_APP_ENABLE_NOTES` flag; interim author = `authService.getCurrentUser()?.id || 'guest'`.
+ - Saved Compare Sets v1 in `ComparisonPanel` using `preferencesService` (`compare_sets_v1`), with Save/Load/Delete, 4-fund limit, case-insensitive names, and missing-ticker notice.
 
 ### In Progress
 - Research workflow: schema and UI spec (notes + decision log; audited; linked to overrides).
-- Compare sets: per-user saved groups (local), design for later team-shared sets.
+- CSV exports for table and compare; PDF to follow.
 - CSV exports for table and compare; PDF to follow.
 - YCharts ingestion: job schedule + retry policy + Health surfacing.
 
