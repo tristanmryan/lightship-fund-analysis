@@ -2,6 +2,7 @@
 import React, { useMemo } from 'react';
 import { formatPercent, formatNumber } from '../../utils/formatters';
 import { getPrimaryBenchmark } from '../../services/resolvers/benchmarkResolverClient';
+import NotesPanel from './NotesPanel';
 
 function MetricRow({ label, value, delta, benchTicker, tooltip }) {
   const showDelta = delta != null && !isNaN(delta);
@@ -83,6 +84,9 @@ export default function DrilldownCards({ fund, funds }) {
           ))}
         </div>
       ))}
+      <div style={{ gridColumn: '1 / -1' }}>
+        <NotesPanel fundId={fund?.id || null} fundTicker={fund?.ticker || fund?.Symbol || null} />
+      </div>
     </div>
   );
 }

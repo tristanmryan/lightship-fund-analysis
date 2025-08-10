@@ -5,3 +5,8 @@
   - `chartPeriod` value is now persisted and restored
   - Docs: added `PHASE3_PROGRESS.md`; linked from `PHASE2_PROGRESS.md`; updated `API_STATUS.md`
 
+- Research Notes v1 (append-only, behind flag)
+  - Supabase table `fund_research_notes` with append-only triggers
+  - UI panel in Drilldown when `REACT_APP_ENABLE_NOTES=true`
+  - Author recorded from interim auth service; RLS deferred until Supabase Auth
+

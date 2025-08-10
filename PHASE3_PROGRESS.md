@@ -24,6 +24,7 @@
 - Saved View Defaults v1 using `preferencesService` (IndexedDB) with per-user namespace derived from `authService.getCurrentUser()?.id || 'guest'`.
 - `chartPeriod` is persisted and restored as part of the saved view.
 - Minimal unit tests added; all tests pass locally.
+ - Research Notes v1 (append-only) behind `REACT_APP_ENABLE_NOTES` flag; interim author = `authService.getCurrentUser()?.id || 'guest'`.
 
 ### In Progress
 - Research workflow: schema and UI spec (notes + decision log; audited; linked to overrides).
@@ -70,6 +71,7 @@
 
 ### Screenshots
 - Saved Views (placeholder): `docs/screenshots/phase3/saved_views.png`
+ - Research Notes (placeholder): `docs/screenshots/phase3/research_notes.png`
 
 ### Migration Sequence (if any)
 1) Keep using IndexedDB (local) for preferences now.

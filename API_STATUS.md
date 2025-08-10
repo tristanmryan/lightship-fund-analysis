@@ -85,6 +85,7 @@ When YCharts API access is enabled:
 - Compare view: `docs/screenshots/compare_view.svg`
  - Saved view defaults: filters/columns/sort/chartPeriod restore on reload (Phase 3 foundation)
  - Manual check: Change chartPeriod to 6M, refresh the page, confirm the 6M toggle remains selected
+ - Research Notes (flagged): enable `REACT_APP_ENABLE_NOTES`, add a note in Drilldown, refresh; confirm note appears newest-first with author and timestamp
 
 ## 📞 Next Steps
 

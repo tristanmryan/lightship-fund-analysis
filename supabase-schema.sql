@@ -106,6 +106,39 @@ CREATE INDEX IF NOT EXISTS idx_snapshots_date ON snapshots(date);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_expires ON user_sessions(expires_at);
 
+-- Research notes table (append-only)
+create table if not exists public.fund_research_notes (
+  id uuid primary key default gen_random_uuid(),
+  fund_id uuid null,
+  fund_ticker text null,
+  override_id uuid null references public.fund_overrides(id) on delete set null,
+  body text not null,
+  decision text null check (decision in ('approve','monitor','reject','hold')),
+  created_by text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_notes_fund_created_at on public.fund_research_notes (fund_id, created_at desc);
+create index if not exists idx_notes_override on public.fund_research_notes (override_id);
+
+create or replace function public.forbid_update_delete()
+returns trigger language plpgsql as $$
+begin
+  raise exception 'fund_research_notes is append-only';
+end $$;
+
+drop trigger if exists trg_notes_no_update on public.fund_research_notes;
+create trigger trg_notes_no_update before update on public.fund_research_notes
+for each row execute function public.forbid_update_delete();
+
+drop trigger if exists trg_notes_no_delete on public.fund_research_notes;
+create trigger trg_notes_no_delete before delete on public.fund_research_notes
+for each row execute function public.forbid_update_delete();
+
+-- RLS plan (deferred until Supabase Auth in UI)
+-- alter table public.fund_research_notes enable row level security;
+-- policies will use auth.uid(); implement in the Auth PR
+
 -- Create RLS (Row Level Security) policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;

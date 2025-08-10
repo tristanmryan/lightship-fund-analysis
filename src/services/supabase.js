@@ -16,25 +16,36 @@ const shouldStub = process.env.NODE_ENV === 'test' || !supabaseUrl || !supabaseA
 
 function createStubClient() {
   const resolved = (data = null) => Promise.resolve({ data, error: null });
-  const builder = {
-    // Typical read chain: select(...).eq(...)
-    select: () => ({
-      eq: () => resolved([]),
-      order: () => ({ range: () => resolved([]) }),
+
+  const makeFilterBuilder = () => {
+    const fb = {
+      select: () => fb,
+      eq: () => fb,
+      is: () => fb,
+      or: () => fb,
+      order: () => resolved([]),
+      limit: () => resolved([]),
+      range: () => resolved([]),
       single: () => resolved(null),
-      limit: () => resolved([])
-    }),
+      maybeSingle: () => resolved(null)
+    };
+    return fb;
+  };
+
+  const fromBuilder = {
+    select: () => makeFilterBuilder(),
     insert: () => resolved(null),
     upsert: () => resolved(null),
     delete: () => resolved(null),
     update: () => resolved(null),
-    order: () => ({ range: () => resolved([]) }),
+    order: () => resolved([]),
     range: () => resolved([]),
     single: () => resolved(null),
+    maybeSingle: () => resolved(null),
     limit: () => resolved([])
   };
   return {
-    from: () => builder,
+    from: () => fromBuilder,
     auth: {
       getUser: async () => ({ data: { user: null }, error: null })
     }
@@ -57,7 +68,8 @@ export const TABLES = {
   ASSET_CLASS_SYNONYMS: 'asset_class_synonyms',
   ASSET_CLASS_BENCHMARKS: 'asset_class_benchmarks',
   FUND_OVERRIDES: 'fund_overrides',
-  BENCHMARK_HISTORY: 'benchmark_history'
+  BENCHMARK_HISTORY: 'benchmark_history',
+  FUND_RESEARCH_NOTES: 'fund_research_notes'
 };
 
 // Utility functions for database operations
