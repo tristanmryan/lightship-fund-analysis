@@ -87,6 +87,7 @@ When YCharts API access is enabled:
  - Manual check: Change chartPeriod to 6M, refresh the page, confirm the 6M toggle remains selected
  - Research Notes (flagged): enable `REACT_APP_ENABLE_NOTES`, add a note in Drilldown, refresh; confirm note appears newest-first with author and timestamp
  - Compare Sets: in Compare view, select funds, name and Save the set, reload and Load it, then Delete; verify missing ticker handling notice appears when applicable
+  - CSV Export: open exported CSVs in Excel on Windows. Confirm UTF-8 BOM (no garbled characters), CRLF line endings, and that numbers are raw numerics (no thousands separators). Percent-like values are decimals (e.g., 0.1234 = 12.34%).
 
 ## 📞 Next Steps
 

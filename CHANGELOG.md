@@ -15,3 +15,7 @@
   - Stored per-user in `preferencesService` under `compare_sets_v1`, case-insensitive names
   - Missing tickers skipped with notice; remote-first plan once Supabase Auth is live
 
+- CSV Export v1
+  - Table export: only visible rows/columns, honors current sort; metadata rows; UTF-8 BOM, CRLF; numerics raw; percent decimals
+  - Compare export: requested metrics plus 1Y benchmark delta; metadata rows; UTF-8 BOM, CRLF; numerics raw; percent decimals
+

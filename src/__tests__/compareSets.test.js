@@ -2,8 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ComparisonPanel from '../components/Dashboard/ComparisonPanel';
-
-// Mock preferencesService
+// Mock preferencesService using an in-memory store
 const store = {};
 jest.mock('../services/preferencesService', () => ({
   __esModule: true,
@@ -12,6 +11,8 @@ jest.mock('../services/preferencesService', () => ({
     saveCompareSets: jest.fn(async (v) => { Object.assign(store, v); })
   }
 }));
+// Components import via '../../services/preferencesService' relative to their files,
+// but from tests we only need to ensure the module resolution at '../services/preferencesService'
 
 const funds = [
   { ticker: 'AAA', name: 'AAA Fund' },
@@ -65,8 +66,8 @@ test('Save, load, delete compare sets and overwrite flow', async () => {
 test('Missing tickers skipped without crashing and notice shown', async () => {
   // Preload store with a set that includes a missing ticker
   store['mixed'] = { name: 'Mixed', tickers: ['AAA','ZZZ'], created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-  render(<ComparisonPanel funds={funds} />);
-  // Wait until the saved set option exists (by its display name)
+  render(<ComparisonPanel funds={funds} initialSavedSets={{ ...store }} />);
+  // Saved set option should exist by its display name
   await screen.findByRole('option', { name: /Mixed/i });
   const loadSelects = screen.getAllByDisplayValue('Load set…');
   fireEvent.change(loadSelects[loadSelects.length - 1], { target: { value: 'mixed' } });

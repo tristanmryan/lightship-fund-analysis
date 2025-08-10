@@ -30,6 +30,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
   const [initialFilters, setInitialFilters] = useState(null);
   const [initialTableState, setInitialTableState] = useState({ sortConfig: null, selectedColumns: null });
   const [tableState, setTableState] = useState({ sortConfig: null, selectedColumns: null });
+  const tableExportRef = React.useRef(null);
 
   // Load saved view defaults on mount
   React.useEffect(() => {
@@ -165,6 +166,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
             initialSortConfig={initialTableState.sortConfig}
             initialSelectedColumns={initialTableState.selectedColumns}
             onStateChange={handleTableStateChange}
+            registerExportHandler={(fn) => { tableExportRef.current = fn; }}
           />
         );
       
@@ -300,11 +302,14 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
                 padding: '0.5rem 1rem',
                 border: '1px solid #3b82f6',
                 borderRadius: '0.375rem',
-                backgroundColor: '#3b82f6',
+                backgroundColor: filteredFunds.length > 0 ? '#3b82f6' : '#93c5fd',
                 color: 'white',
                 fontSize: '0.875rem',
-                cursor: 'pointer'
+                cursor: filteredFunds.length > 0 && tableExportRef.current ? 'pointer' : 'not-allowed',
+                opacity: filteredFunds.length > 0 && tableExportRef.current ? 1 : 0.6
               }}
+              onClick={() => tableExportRef.current && filteredFunds.length > 0 && tableExportRef.current()}
+              disabled={!tableExportRef.current || filteredFunds.length === 0}
             >
               <Download size={16} />
               Export Results

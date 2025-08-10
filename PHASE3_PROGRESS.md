@@ -29,14 +29,13 @@
 
 ### In Progress
 - Research workflow: schema and UI spec (notes + decision log; audited; linked to overrides).
-- CSV exports for table and compare; PDF to follow.
-- CSV exports for table and compare; PDF to follow.
+- PDF exports to follow.
 - YCharts ingestion: job schedule + retry policy + Health surfacing.
 
 ### Next Steps (Prioritized)
 1) Research workflow MVP (notes/decision log per fund; audit trail; attach to overrides).
 2) Compare sets (local per-user first; design shared model).
-3) CSV exports (table + compare) with current filters/columns applied.
+3) CSV exports (table + compare) — Completed.
 4) Server-side Saved Views with Supabase RLS once Supabase Auth is in the UI; keep IndexedDB as offline cache.
 5) YCharts production ingestion (schedule, retries, error surfacing in Health).
 
@@ -68,6 +67,9 @@
 - On reload, filters, columns, sort, and `chartPeriod` restore for the user.
 - Changing those updates the default transparently.
 - No regressions in Drilldowns, Compare, or sparklines.
+- CSV Export:
+  - Table export includes only visible columns/rows and honors current sort; metadata present; UTF-8 BOM+CRLF; numbers unformatted; percent decimals.
+  - Compare export includes requested metrics and 1Y benchmark delta when available; metadata present; UTF-8 BOM+CRLF; numbers unformatted; percent decimals.
 - Limitation documented: placeholder user IDs mean all logged-in users share the same defaults until Supabase Auth is adopted.
 
 ### Screenshots

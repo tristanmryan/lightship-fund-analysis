@@ -1,5 +1,6 @@
 // src/services/exportService.js
 import * as XLSX from 'xlsx';
+import { toISODateTime } from '../utils/formatters';
 // Avoid importing jsPDF/pdf generation in test/node by lazy-loading pdfReportService inside the function
 
 /**
@@ -414,6 +415,141 @@ export function generateHTMLReport(data) {
 </html>`;
 
   return html;
+}
+
+/**
+ * Build CSV content string with BOM, CRLF line endings, and all fields quoted
+ * Rows is an array of arrays of primitive values (string | number | null | undefined)
+ * Returns a string starting with BOM for Excel compatibility
+ */
+export function buildCSV(rows) {
+  const BOM = '\uFEFF';
+  const escapeCell = (val) => {
+    if (val === null || val === undefined) return '';
+    // Ensure raw numerics remain plain (no thousands separators or symbols)
+    const str = typeof val === 'number' ? String(val) : String(val);
+    // Escape quotes by doubling them
+    const escaped = str.replace(/"/g, '""');
+    return `"${escaped}"`;
+  };
+  const content = rows.map(row => row.map(escapeCell).join(',')).join('\r\n');
+  return `${BOM}${content}`;
+}
+
+/**
+ * Export the currently visible table as CSV.
+ * Expect funds to already be sorted in UI order.
+ * columns: [{ key, label, isPercent?: boolean, valueGetter: (fund) => any }]
+ * sortConfig is used to render a human description only.
+ */
+export function exportTableCSV({ funds = [], columns = [], sortConfig = [], metadata = {} }) {
+  const visibleColumnLabels = columns.map(c => c.label);
+
+  const metaRows = [
+    ['Exported at', toISODateTime(metadata.exportedAt || new Date())],
+    ['Chart period', metadata.chartPeriod || ''],
+    ['Visible columns', visibleColumnLabels.join(', ')],
+    ['Sort description', (sortConfig || []).map(s => `${s.label || s.key} (${s.direction})`).join(', ')],
+    ['Row count', funds.length],
+    ['Note', 'Percent columns are decimals (e.g., 0.1234 = 12.34%).']
+  ];
+
+  const headerRow = visibleColumnLabels;
+  const dataRows = funds.map(fund => (
+    columns.map(col => {
+      const raw = typeof col.valueGetter === 'function' ? col.valueGetter(fund) : null;
+      if (raw === null || raw === undefined || raw === '') return '';
+      if (typeof raw === 'number') {
+        return col.isPercent ? raw / 100 : raw;
+      }
+      // Attempt to preserve numerics passed as strings
+      const asNum = Number(raw);
+      if (!Number.isNaN(asNum) && raw !== true && raw !== false && String(raw).trim() !== '') {
+        return col.isPercent ? asNum / 100 : asNum;
+      }
+      return String(raw);
+    })
+  ));
+
+  const rows = [...metaRows, [''], headerRow, ...dataRows];
+  const csv = buildCSV(rows);
+  return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+}
+
+/**
+ * Export the compare selection as CSV.
+ * funds: array of fund-like objects; may include precomputed fields:
+ *   exportDelta1y, exportBenchTicker, exportBenchName
+ */
+export function exportCompareCSV({ funds = [], metadata = {} }) {
+  const headers = [
+    'Ticker', 'Name', 'Asset Class', 'Score',
+    'YTD', '1Y', '3Y', '5Y',
+    'Sharpe', 'Expense Ratio', 'Beta',
+    'Up Capture (3Y)', 'Down Capture (3Y)',
+    '1Y vs Benchmark (delta)', 'Benchmark Ticker', 'Benchmark Name'
+  ];
+
+  const percentKeys = new Set(['YTD', '1Y', '3Y', '5Y', 'Expense Ratio', 'Up Capture (3Y)', 'Down Capture (3Y)', '1Y vs Benchmark (delta)']);
+
+  const get = (f, ...alts) => {
+    for (const k of alts) {
+      const v = f?.[k];
+      if (v !== undefined) return v;
+    }
+    return undefined;
+  };
+
+  const metaRows = [
+    ['Exported at', toISODateTime(metadata.exportedAt || new Date())],
+    ['Selected fund count', funds.length]
+  ];
+
+  const dataRows = funds.map(f => {
+    const rowMap = {
+      'Ticker': get(f, 'Symbol', 'ticker', 'symbol') || '',
+      'Name': get(f, 'Fund Name', 'name') || '',
+      'Asset Class': get(f, 'asset_class_name', 'asset_class', 'Asset Class') || '',
+      'Score': get(f, 'scores')?.final ?? get(f, 'score') ?? '',
+      'YTD': get(f, 'ytd_return'),
+      '1Y': get(f, 'one_year_return', 'Total Return - 1 Year (%)'),
+      '3Y': get(f, 'three_year_return', 'Annualized Total Return - 3 Year (%)'),
+      '5Y': get(f, 'five_year_return', 'Annualized Total Return - 5 Year (%)'),
+      'Sharpe': get(f, 'sharpe_ratio', 'Sharpe Ratio - 3 Year'),
+      'Expense Ratio': get(f, 'expense_ratio', 'Net Exp Ratio (%)'),
+      'Beta': get(f, 'beta', 'Beta - 5 Year'),
+      'Up Capture (3Y)': get(f, 'up_capture_ratio', 'Up Capture Ratio (Morningstar Standard) - 3 Year'),
+      'Down Capture (3Y)': get(f, 'down_capture_ratio', 'Down Capture Ratio (Morningstar Standard) - 3 Year'),
+      '1Y vs Benchmark (delta)': get(f, 'exportDelta1y'),
+      'Benchmark Ticker': get(f, 'exportBenchTicker'),
+      'Benchmark Name': get(f, 'exportBenchName')
+    };
+
+    return headers.map(h => {
+      const raw = rowMap[h];
+      if (raw === null || raw === undefined || raw === '') return '';
+      if (typeof raw === 'number') return percentKeys.has(h) ? raw / 100 : raw;
+      const asNum = Number(raw);
+      if (!Number.isNaN(asNum) && String(raw).trim() !== '') return percentKeys.has(h) ? asNum / 100 : asNum;
+      return String(raw);
+    });
+  });
+
+  const rows = [
+    ...metaRows,
+    [''],
+    headers,
+    ...dataRows
+  ];
+  const csv = buildCSV(rows);
+  return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+}
+
+/**
+ * Helper to centralize large export confirmation threshold
+ */
+export function shouldConfirmLargeExport(rowCount) {
+  return Number(rowCount) > 50000;
 }
 
 /**
