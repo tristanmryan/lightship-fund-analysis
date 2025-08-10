@@ -1,10 +1,7 @@
 // src/components/Dashboard/DrilldownCards.jsx
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { formatPercent, formatNumber } from '../../utils/formatters';
 import { getPrimaryBenchmark } from '../../services/resolvers/benchmarkResolverClient';
-import Sparkline from './Sparkline';
-import fundService from '../../services/fundService';
-import { pickHistoryValues } from '../../utils/sparklineUtils';
 
 function MetricRow({ label, value, delta, benchTicker, tooltip }) {
   const showDelta = delta != null && !isNaN(delta);
@@ -27,7 +24,7 @@ function MetricRow({ label, value, delta, benchTicker, tooltip }) {
   );
 }
 
-export default function DrilldownCards({ fund, funds, chartPeriod = '1Y', onChangePeriod = () => {} }) {
+export default function DrilldownCards({ fund, funds }) {
   const benchmark = useMemo(() => {
     try {
       const cfg = getPrimaryBenchmark(fund);
@@ -43,20 +40,6 @@ export default function DrilldownCards({ fund, funds, chartPeriod = '1Y', onChan
   };
 
   const benchFund = benchmark?.fund;
-
-  // Local sparkline history for fund
-  const [history, setHistory] = useState(null);
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const key = fund?.ticker || fund?.Symbol;
-      if (!key) return;
-      const rows = await fundService.getFundPerformanceHistory(key);
-      if (!alive) return;
-      setHistory(pickHistoryValues(rows || [], chartPeriod));
-    })();
-    return () => { alive = false; };
-  }, [fund?.ticker, fund?.Symbol, chartPeriod]);
 
   // Compute deltas where meaningful
   const diff = (fVal, bVal) => {
@@ -91,47 +74,15 @@ export default function DrilldownCards({ fund, funds, chartPeriod = '1Y', onChan
   ];
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
-      {/* Trend header with period badges and legend */}
-      <div className="card" style={{ padding: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 8, height: 8, borderRadius: 4, background: '#3b82f6' }} />
-          <div style={{ color: '#374151', fontSize: 12 }}>Return Trend</div>
-        </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {['1M','3M','6M','1Y','YTD'].map(p => (
-            <button
-              key={p}
-              onClick={() => onChangePeriod(p)}
-              style={{
-                padding: '4px 8px',
-                borderRadius: 6,
-                border: chartPeriod === p ? '2px solid #3b82f6' : '1px solid #d1d5db',
-                background: chartPeriod === p ? '#eff6ff' : 'white',
-                color: chartPeriod === p ? '#3b82f6' : '#374151',
-                fontSize: 12,
-                cursor: 'pointer'
-              }}
-              title={`Sparkline period: ${p}`}
-            >{p}</button>
-          ))}
-        </div>
-      </div>
-      <div className="card" style={{ padding: 12 }}>
-        <Sparkline values={history || []} />
-      </div>
-
-      {/* Sections */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
-        {sections.map(sec => (
-          <div key={sec.title} className="card" style={{ padding: 12 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+      {sections.map(sec => (
+        <div key={sec.title} className="card" style={{ padding: 12 }}>
           <div style={{ fontWeight: 600, marginBottom: 8 }}>{sec.title}</div>
           {sec.items.map(it => (
             <MetricRow key={it.label} label={it.label} value={it.value} delta={it.delta} benchTicker={benchmark?.ticker} />
           ))}
-          </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
 }
