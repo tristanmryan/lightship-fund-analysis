@@ -47,9 +47,12 @@ const FundDetailsModal = ({ fund, onClose }) => {
           maxHeight: '80vh',
           overflow: 'auto'
         }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="fund-details-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+        <h3 id="fund-details-title" style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
           {fund.displayName}
         </h3>
         <div style={{ marginBottom: '1rem' }}>
