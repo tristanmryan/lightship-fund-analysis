@@ -5,6 +5,10 @@ import DictionaryAdmin from './DictionaryAdmin';
 import ManualAddFund from './ManualAddFund';
 import FundOverridesAdmin from './FundOverridesAdmin';
 import MonthlySnapshotUpload from './MonthlySnapshotUpload';
+import SnapshotManager from './SnapshotManager';
+import SeedRecommendedFunds from './SeedRecommendedFunds';
+import SeedBenchmarks from './SeedBenchmarks';
+import { useAssetClassOptions } from '../../hooks/useAssetClassOptions';
 
 const FundManagement = () => {
   const { 
@@ -22,14 +26,10 @@ const FundManagement = () => {
   const [isAddingFund, setIsAddingFund] = useState(false);
   const [addError, setAddError] = useState('');
   const [addSuccess, setAddSuccess] = useState('');
+  const [activeTab, setActiveTab] = useState('data'); // data, catalogs, mappings, scoring, utilities
 
-  // Available asset classes
-  const assetClasses = [
-    // Deprecated static list; replaced by dictionary in DictionaryAdmin
-    'Large Cap Growth', 'Large Cap Value', 'Mid Cap Growth', 'Mid Cap Value',
-    'Small Cap Growth', 'Small Cap Value', 'International', 'Emerging Markets',
-    'Bonds', 'Real Estate', 'Commodities', 'Other'
-  ];
+  // Canonical asset classes from dictionary
+  const { options: assetClassOptions, loading: acLoading, error: acError } = useAssetClassOptions();
 
   // Handle adding a new fund
   const handleAddFund = async () => {
@@ -48,7 +48,7 @@ const FundManagement = () => {
     setAddSuccess('');
 
     try {
-      // Add the fund with the selected asset class
+      // Add the fund with the selected asset class (by name)
       const success = await addFund(newTicker.trim().toUpperCase(), selectedAssetClass);
       
       if (success) {
@@ -131,8 +131,10 @@ const FundManagement = () => {
                 disabled={isAddingFund}
               >
                 <option value="">Select Asset Class</option>
-                {assetClasses.map(ac => (
-                  <option key={ac} value={ac}>{ac}</option>
+                {acLoading && <option value="" disabled>Loading…</option>}
+                {acError && <option value="" disabled>Error loading classes</option>}
+                {!acLoading && !acError && (assetClassOptions || []).map(ac => (
+                  <option key={ac.id} value={ac.name}>{ac.name}</option>
                 ))}
               </select>
             </div>
@@ -172,107 +174,155 @@ const FundManagement = () => {
         </div>
       </div>
 
-      {/* Dictionary Admin (MVP) */}
-      <div className="dictionary-admin" style={{ marginTop: '2rem' }}>
-        <DictionaryAdmin />
-      </div>
-
-      {/* Manual Add (testing only, behind flag) */}
-      <ManualAddFund />
-
-      {/* Fund Overrides Admin */}
-      <FundOverridesAdmin />
-
-      {/* Monthly Snapshot Upload (CSV) - admin only, behind flag */}
-      <MonthlySnapshotUpload />
-
-      {/* Fund List Section */}
-      <div className="fund-list-section">
-        <div className="section-header">
-          <h3>Your Fund List ({funds.length} funds)</h3>
-          <button onClick={handleRefreshData} className="btn btn-secondary">
-            <Search size={16} />
-            Refresh Data
-          </button>
+      {/* Admin Tabs */}
+      <div style={{ marginTop: '1.5rem' }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          {[
+            { key: 'data', label: 'Data Uploads' },
+            { key: 'catalogs', label: 'Catalogs' },
+            { key: 'mappings', label: 'Mappings' },
+            { key: 'scoring', label: 'Scoring' },
+            { key: 'utilities', label: 'Utilities' }
+          ].map(tab => (
+            <button
+              key={tab.key}
+              className={`btn ${activeTab === tab.key ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {loading ? (
-          <div className="loading-state">
-            <div className="loading-spinner"></div>
-            <p>Loading fund data...</p>
+        {activeTab === 'data' && (
+          <>
+            <MonthlySnapshotUpload />
+            <SnapshotManager />
+            <SeedRecommendedFunds />
+            <SeedBenchmarks />
+          </>
+        )}
+
+        {activeTab === 'catalogs' && (
+          <>
+            {/* Dictionary Admin (MVP) */}
+            <div className="dictionary-admin" style={{ marginTop: '1rem' }}>
+              <DictionaryAdmin />
+            </div>
+
+            {/* Manual Add (testing only, behind flag) */}
+            <ManualAddFund />
+
+            {/* Fund List Section */}
+            <div className="fund-list-section">
+              <div className="section-header">
+                <h3>Your Fund List ({funds.length} funds)</h3>
+                <button onClick={handleRefreshData} className="btn btn-secondary">
+                  <Search size={16} />
+                  Refresh Data
+                </button>
+              </div>
+
+              {loading ? (
+                <div className="loading-state">
+                  <div className="loading-spinner"></div>
+                  <p>Loading fund data...</p>
+                </div>
+              ) : error ? (
+                <div className="error-state">
+                  <AlertCircle size={24} />
+                  <p>Error loading funds: {error}</p>
+                </div>
+              ) : funds.length === 0 ? (
+                <div className="empty-state">
+                  <p>No funds in your list yet. Add your first fund above!</p>
+                </div>
+              ) : (
+                <div className="funds-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Ticker</th>
+                        <th>Fund Name</th>
+                        <th>Asset Class</th>
+                        <th>YTD Return</th>
+                        <th>1 Year</th>
+                        <th>Expense Ratio</th>
+                        <th>Recommended</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {funds.map(fund => (
+                        <tr key={fund.ticker}>
+                          <td>
+                            <strong>{fund.ticker}</strong>
+                          </td>
+                          <td>{fund.name || 'Loading...'}</td>
+                          <td>{fund.asset_class || fund.asset_class_name || 'Unassigned'}</td>
+                          <td>
+                            {fund.ytd_return !== null && fund.ytd_return !== undefined 
+                              ? `${fund.ytd_return > 0 ? '+' : ''}${fund.ytd_return.toFixed(2)}%`
+                              : 'N/A'
+                            }
+                          </td>
+                          <td>
+                            {fund.one_year_return !== null && fund.one_year_return !== undefined
+                              ? `${fund.one_year_return > 0 ? '+' : ''}${fund.one_year_return.toFixed(2)}%`
+                              : 'N/A'
+                            }
+                          </td>
+                          <td>
+                            {fund.expense_ratio !== null && fund.expense_ratio !== undefined
+                              ? `${fund.expense_ratio.toFixed(2)}%`
+                              : 'N/A'
+                            }
+                          </td>
+                          <td>
+                            <button
+                              onClick={() => handleToggleRecommendation(fund.ticker, fund.is_recommended)}
+                              className={`recommendation-toggle ${fund.is_recommended ? 'recommended' : 'not-recommended'}`}
+                              title={fund.is_recommended ? 'Remove from recommended' : 'Add to recommended'}
+                            >
+                              {fund.is_recommended ? '✓' : '○'}
+                            </button>
+                          </td>
+                          <td>
+                            <button
+                              onClick={() => handleRemoveFund(fund.ticker)}
+                              className="btn btn-danger small"
+                              title="Remove fund"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {activeTab === 'mappings' && (
+          <>
+            <FundOverridesAdmin />
+          </>
+        )}
+
+        {activeTab === 'scoring' && (
+          <div className="card" style={{ padding: 16, marginTop: 16 }}>
+            <h3 style={{ marginTop: 0 }}>Scoring (placeholder)</h3>
+            <p style={{ color: '#6b7280' }}>Weights editor coming in a subsequent phase.</p>
           </div>
-        ) : error ? (
-          <div className="error-state">
-            <AlertCircle size={24} />
-            <p>Error loading funds: {error}</p>
-          </div>
-        ) : funds.length === 0 ? (
-          <div className="empty-state">
-            <p>No funds in your list yet. Add your first fund above!</p>
-          </div>
-        ) : (
-          <div className="funds-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>Ticker</th>
-                  <th>Fund Name</th>
-                  <th>Asset Class</th>
-                  <th>YTD Return</th>
-                  <th>1 Year</th>
-                  <th>Expense Ratio</th>
-                  <th>Recommended</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {funds.map(fund => (
-                  <tr key={fund.ticker}>
-                    <td>
-                      <strong>{fund.ticker}</strong>
-                    </td>
-                    <td>{fund.name || 'Loading...'}</td>
-                    <td>{fund.asset_class || 'Unassigned'}</td>
-                    <td>
-                      {fund.ytd_return !== null && fund.ytd_return !== undefined 
-                        ? `${fund.ytd_return > 0 ? '+' : ''}${fund.ytd_return.toFixed(2)}%`
-                        : 'N/A'
-                      }
-                    </td>
-                    <td>
-                      {fund.one_year_return !== null && fund.one_year_return !== undefined
-                        ? `${fund.one_year_return > 0 ? '+' : ''}${fund.one_year_return.toFixed(2)}%`
-                        : 'N/A'
-                      }
-                    </td>
-                    <td>
-                      {fund.expense_ratio !== null && fund.expense_ratio !== undefined
-                        ? `${fund.expense_ratio.toFixed(2)}%`
-                        : 'N/A'
-                      }
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleToggleRecommendation(fund.ticker, fund.is_recommended)}
-                        className={`recommendation-toggle ${fund.is_recommended ? 'recommended' : 'not-recommended'}`}
-                        title={fund.is_recommended ? 'Remove from recommended' : 'Add to recommended'}
-                      >
-                        {fund.is_recommended ? '✓' : '○'}
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        onClick={() => handleRemoveFund(fund.ticker)}
-                        className="btn btn-danger small"
-                        title="Remove fund"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        )}
+
+        {activeTab === 'utilities' && (
+          <div className="card" style={{ padding: 16, marginTop: 16 }}>
+            <h3 style={{ marginTop: 0 }}>Utilities</h3>
+            <p style={{ color: '#6b7280' }}>Template download, Export and Diagnostics are available in their respective panels.</p>
           </div>
         )}
       </div>

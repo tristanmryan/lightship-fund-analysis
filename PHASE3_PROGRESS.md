@@ -21,16 +21,23 @@
 ---
 
 ### Completed Features
-- Saved View Defaults v1 using `preferencesService` (IndexedDB) with per-user namespace derived from `authService.getCurrentUser()?.id || 'guest'`.
-- `chartPeriod` is persisted and restored as part of the saved view.
-- Minimal unit tests added; all tests pass locally.
+ - Saved View Defaults v1 using `preferencesService` (IndexedDB) with per-user namespace derived from `authService.getCurrentUser()?.id || 'guest'`.
+ - `chartPeriod` is persisted and restored as part of the saved view.
+ - Minimal unit tests added; all tests pass locally.
  - Research Notes v1 (append-only) behind `REACT_APP_ENABLE_NOTES` flag; interim author = `authService.getCurrentUser()?.id || 'guest'`.
  - Saved Compare Sets v1 in `ComparisonPanel` using `preferencesService` (`compare_sets_v1`), with Save/Load/Delete, 4-fund limit, case-insensitive names, and missing-ticker notice.
  - Runtime scoring per As-of month (flagged): `REACT_APP_ENABLE_RUNTIME_SCORING`
    - Computes Z-score–based scores at runtime for the current As-of month peer set (per asset class; benchmarks excluded), wiring added in `useFundData`.
    - Capture-field alignment implemented (live `up_capture_ratio`/`down_capture_ratio` and CSV “Up/Down Capture (… Ratio)”) to engine inputs.
    - Tests added: runtime scoring unit tests (Sharpe/expense effects, capture mapping, as-of recompute concept); CI passing.
-  - Compare view shows Std Dev (3Y) and Std Dev (5Y). Both Table CSV and Compare CSV exports include “Std Dev (3Y)” and “Std Dev (5Y)”. Legacy import triggers a console warning when mapping `standard_deviation` → `standard_deviation_3y`.
+ - Compare view shows Std Dev (3Y) and Std Dev (5Y). Both Table CSV and Compare CSV exports include “Std Dev (3Y)” and “Std Dev (5Y)”. Legacy import triggers a console warning when mapping `standard_deviation` → `standard_deviation_3y`.
+ - Admin IA tabs: Data Uploads, Catalogs, Mappings, Scoring (placeholder), Utilities.
+ - Snapshot Manager: lists distinct `fund_performance.date` with row counts, supports delete with confirm, and per-month template download.
+ - Monthly Snapshot Upload: Month/Year picker added (required). Picker overrides CSV `AsOfMonth`; non-EOM dates auto-corrected to EOM. Legacy CSV still supported.
+ - Bulk seeders: Seed Recommended Funds and Seed Benchmarks (CSV). Headers:
+   - Recommended: `Ticker,AssetClass,Name`
+   - Benchmarks: `AssetClass,BenchmarkTicker,Name`
+ - CSV template: default template excludes `AsOfMonth`; legacy template available.
 
 ### In Progress
 - Research workflow: schema and UI spec (notes + decision log; audited; linked to overrides).
@@ -85,8 +92,9 @@
   - Table export includes only visible columns/rows and honors current sort; metadata present; UTF-8 BOM+CRLF; numbers unformatted; percent decimals.
   - Compare export includes requested metrics and 1Y benchmark delta when available; metadata present; UTF-8 BOM+CRLF; numbers unformatted; percent decimals.
 - Limitation documented: placeholder user IDs mean all logged-in users share the same defaults until Supabase Auth is adopted.
- - Monthly Snapshot Upload: upload→preview shows counts, first 20 rows, skip reasons, EOM warnings; import batches (~500) and summarizes parsed/imported/skipped with months used; re-import same month updates rows.
- - As-of selector: switching month updates table, compare, drilldowns; sparklines clamp to selected month; “Latest” uses most recent date in `fund_performance`.
+- Monthly Snapshot Upload: Month/Year picker required; picker overrides CSV dates; upload→preview shows counts, first 20 rows, skip reasons, EOM warnings; import batches (~500) and summarizes parsed/imported/skipped with month used; re-import same month updates rows.
+- Snapshot Manager lists months with counts; delete works with confirmation; template downloads.
+- Seeders import valid rows, skip invalid, and summarize results; asset class validated from canonical list.
 
 ### Screenshots
 - Saved Views (placeholder): `docs/screenshots/phase3/saved_views.png`

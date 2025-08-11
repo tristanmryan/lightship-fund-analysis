@@ -25,6 +25,24 @@
   - Batching (~500 rows per upsert call) with summary results
   - Dashboard “As of” selector lists distinct months; switching clamps sparklines and updates all views; selection persisted
 
+### 2025-08-11
+
+- Admin IA tabs in Fund Management: Data Uploads, Catalogs, Mappings, Scoring (placeholder), Utilities
+- Snapshot Manager (Admin → Data Uploads)
+  - Lists distinct `fund_performance.date` with row counts, newest first
+  - Delete month (confirm) cascades removal of that month’s rows only
+  - Download monthly CSV template
+- Monthly Snapshot Upload
+  - Added required Month/Year picker; picker overrides CSV `AsOfMonth`
+  - Non-EOM dates are auto-corrected to end-of-month
+  - Legacy CSV with `AsOfMonth` still supported during transition
+- Bulk seeders (Admin → Data Uploads)
+  - Seed Recommended Funds (CSV headers: `Ticker,AssetClass,Name`): upsert funds, set `is_recommended=true`, resolve `asset_class_id` from canonical dictionary, skip invalid
+  - Seed Benchmarks (CSV headers: `AssetClass,BenchmarkTicker,Name`): upsert benchmarks by ticker and set mapping in `asset_class_benchmarks` as primary (rank 1)
+- CSV template service
+  - Default template no longer includes `AsOfMonth`
+  - Added legacy template generator including `AsOfMonth`
+
 ### Added
 - Runtime Scoring (flagged): `REACT_APP_ENABLE_RUNTIME_SCORING`
   - When enabled (default true in dev), calculates scores at runtime for the current As-of month peer set (per asset class; benchmarks excluded).

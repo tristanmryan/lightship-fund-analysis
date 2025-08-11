@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Papa from 'papaparse';
 import fundService from '../../services/fundService';
 import { dbUtils } from '../../services/supabase';
-import { createMonthlyTemplateCSV } from '../../services/csvTemplate';
+import { createMonthlyTemplateCSV, createLegacyMonthlyTemplateCSV } from '../../services/csvTemplate';
 
 const FLAG_ENABLE_IMPORT = (process.env.REACT_APP_ENABLE_IMPORT || 'false') === 'true';
 
@@ -67,6 +67,8 @@ export default function MonthlySnapshotUpload() {
   const [monthsInFile, setMonthsInFile] = useState([]);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState(null);
+  const [month, setMonth] = useState(''); // 1-12 as string
+  const [year, setYear] = useState(''); // YYYY as string
 
   useEffect(() => {
     let mounted = true;
@@ -99,6 +101,18 @@ export default function MonthlySnapshotUpload() {
       const a = document.createElement('a');
       a.href = url;
       a.download = 'fund-monthly-template.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
+  }, []);
+
+  const handleDownloadLegacyTemplate = useCallback(() => {
+    try {
+      const blob = createLegacyMonthlyTemplateCSV();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'fund-monthly-template-legacy.csv';
       a.click();
       URL.revokeObjectURL(url);
     } catch {}
@@ -160,16 +174,32 @@ export default function MonthlySnapshotUpload() {
     setCounts({ parsed, willImport, skipped, eomWarnings });
   }, [parsedRows, knownTickers, benchmarkMap]);
 
+  function computePickerDate() {
+    if (!year || !month) return null;
+    const y = Number(String(year).trim());
+    const m = Number(String(month).trim());
+    if (!y || !m || m < 1 || m > 12) return null;
+    // Compute end-of-month in UTC
+    const eom = new Date(Date.UTC(y, m, 0));
+    return eom.toISOString().slice(0, 10);
+  }
+
   const handleImport = async () => {
     if (preview.length === 0) return;
+    const pickerDate = computePickerDate();
+    if (!pickerDate) {
+      alert('Please select Month and Year. The picker is required and overrides CSV dates.');
+      return;
+    }
     setImporting(true);
     setResult(null);
     try {
       const rowsToImport = preview.filter(r => r.willImport).map((r) => {
         const original = parsedRows.find(pr => pr.__ticker === r.ticker && pr.__asOf === r.asOf) || {};
+          // Picker overrides CSV AsOfMonth
           return {
           ticker: r.ticker,
-          date: r.asOf,
+          date: pickerDate,
           ytd_return: original.ytd_return ?? original.YTD,
           one_year_return: original.one_year_return ?? original['1 Year'],
           three_year_return: original.three_year_return ?? original['3 Year'],
@@ -215,16 +245,38 @@ export default function MonthlySnapshotUpload() {
   return (
     <div className="card" style={{ padding: 16, marginTop: 16 }}>
       <h3 style={{ marginTop: 0 }}>Monthly Snapshot Upload (CSV)</h3>
-      <p style={{ color: '#6b7280', marginTop: 4 }}>Upload → Preview → Import. One CSV per month. Required columns: <code>Ticker</code>, <code>AsOfMonth</code> (YYYY-MM-DD, end-of-month).</p>
+      <p style={{ color: '#6b7280', marginTop: 4 }}>Upload → Preview → Import. One CSV per month. Month/Year picker is required; it overrides any CSV dates.</p>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
         <button onClick={handleDownloadTemplate} className="btn btn-secondary" title="Download a blank monthly snapshot CSV template">
           Download CSV Template
         </button>
+        <button onClick={handleDownloadLegacyTemplate} className="btn btn-link" title="Download legacy CSV template that includes AsOfMonth">
+          Legacy template (includes AsOfMonth)
+        </button>
         <input type="file" accept=".csv,text/csv" onChange={handleFileChange} />
         <button onClick={parseCsv} disabled={!file || parsing} className="btn btn-primary">
           {parsing ? 'Parsing…' : 'Parse CSV'}
         </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+        <div>
+          <label style={{ display: 'block', fontSize: 12, color: '#6b7280' }}>Month *</label>
+          <select value={month} onChange={(e) => setMonth(e.target.value)}>
+            <option value="">Select…</option>
+            {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(m => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 12, color: '#6b7280' }}>Year *</label>
+          <input value={year} onChange={(e) => setYear(e.target.value)} placeholder="YYYY" style={{ width: 100 }} />
+        </div>
+        <div style={{ color: '#6b7280', fontSize: 12 }}>
+          Picker overrides CSV dates.
+        </div>
       </div>
 
       {preview.length > 0 && (
@@ -238,7 +290,7 @@ export default function MonthlySnapshotUpload() {
           </div>
           {counts.eomWarnings > 0 && (
             <div style={{ padding: 8, background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', borderRadius: 6, marginBottom: 8 }}>
-              Some rows are not end-of-month. You can proceed, but it is recommended to correct them.
+              Some CSV rows are not end-of-month. The picker will auto-correct to end-of-month.
             </div>
           )}
           <PreviewTable rows={preview} />
