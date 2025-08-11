@@ -8,6 +8,7 @@ export default function SeedBenchmarks() {
   const [rows, setRows] = useState([]);
   const [result, setResult] = useState(null);
   const [assetClasses, setAssetClasses] = useState([]);
+  const [validateOnly, setValidateOnly] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -64,30 +65,41 @@ export default function SeedBenchmarks() {
         if (!ac) { skipped++; errors.push(`AC invalid: '${r.assetClass}'`); continue; }
 
         // Upsert benchmark by ticker
-        const { data: existingBm } = await supabase
-          .from(TABLES.BENCHMARKS)
-          .select('id')
-          .eq('ticker', r.ticker)
-          .maybeSingle();
-        const { data: bm, error: bmErr } = await supabase
-          .from(TABLES.BENCHMARKS)
-          .upsert({ ticker: r.ticker, name: r.name || r.ticker, is_active: true }, { onConflict: 'ticker' })
-          .select()
-          .single();
-        if (bmErr) throw bmErr;
+        let existingBm = null;
+        let bm = null;
+        if (!validateOnly) {
+          const resp = await supabase
+            .from(TABLES.BENCHMARKS)
+            .select('id')
+            .eq('ticker', r.ticker)
+            .maybeSingle();
+          existingBm = resp?.data || null;
+          const up = await supabase
+            .from(TABLES.BENCHMARKS)
+            .upsert({ ticker: r.ticker, name: r.name || r.ticker, is_active: true }, { onConflict: 'ticker' })
+            .select()
+            .single();
+          if (up.error) throw up.error;
+          bm = up.data;
+        } else {
+          existingBm = null;
+          bm = { id: 'validate' };
+        }
         if (existingBm) updated++; else inserted++;
 
         // Upsert mapping as primary (rank=1)
-        const { data: existingMap } = await supabase
-          .from(TABLES.ASSET_CLASS_BENCHMARKS)
-          .select('id')
-          .eq('asset_class_id', ac.id)
-          .eq('kind', 'primary')
-          .maybeSingle();
-        if (existingMap) {
-          await supabase.from(TABLES.ASSET_CLASS_BENCHMARKS).update({ benchmark_id: bm.id, rank: 1 }).eq('id', existingMap.id);
-        } else {
-          await supabase.from(TABLES.ASSET_CLASS_BENCHMARKS).insert({ asset_class_id: ac.id, benchmark_id: bm.id, kind: 'primary', rank: 1 });
+        if (!validateOnly) {
+          const { data: existingMap } = await supabase
+            .from(TABLES.ASSET_CLASS_BENCHMARKS)
+            .select('id')
+            .eq('asset_class_id', ac.id)
+            .eq('kind', 'primary')
+            .maybeSingle();
+          if (existingMap) {
+            await supabase.from(TABLES.ASSET_CLASS_BENCHMARKS).update({ benchmark_id: bm.id, rank: 1 }).eq('id', existingMap.id);
+          } else {
+            await supabase.from(TABLES.ASSET_CLASS_BENCHMARKS).insert({ asset_class_id: ac.id, benchmark_id: bm.id, kind: 'primary', rank: 1 });
+          }
         }
         mappings++;
       } catch (e) {
@@ -109,6 +121,10 @@ export default function SeedBenchmarks() {
         <button className="btn btn-secondary" onClick={downloadTemplate}>Download Template</button>
         <input type="file" accept=".csv,text/csv" onChange={onFileChange} />
         <button className="btn btn-primary" onClick={parse} disabled={!file || parsing}>{parsing ? 'Parsing…' : 'Parse'}</button>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <input type="checkbox" checked={validateOnly} onChange={(e) => setValidateOnly(e.target.checked)} />
+          Validate only (no writes)
+        </label>
         <button className="btn btn-primary" onClick={runImport} disabled={rows.length === 0}>Import</button>
       </div>
       {rows.length > 0 && (

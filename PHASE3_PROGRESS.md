@@ -39,6 +39,8 @@
    - Recommended: `Ticker,AssetClass,Name`
    - Benchmarks: `AssetClass,BenchmarkTicker,Name`
  - CSV template: default template excludes `AsOfMonth`; legacy template available.
+  - Admin Overview (setup checklist) added with export buttons; shows asset classes, mapping coverage, recommended funds, and snapshots summary.
+  - Seeders now support "Validate only (no writes)" dry-run mode.
 
 ### In Progress
 - Research workflow: schema and UI spec (notes + decision log; audited; linked to overrides).

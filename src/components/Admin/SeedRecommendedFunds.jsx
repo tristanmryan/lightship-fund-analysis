@@ -8,6 +8,7 @@ export default function SeedRecommendedFunds() {
   const [rows, setRows] = useState([]);
   const [result, setResult] = useState(null);
   const [assetClasses, setAssetClasses] = useState([]);
+  const [validateOnly, setValidateOnly] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -62,11 +63,18 @@ export default function SeedRecommendedFunds() {
       try {
         const ac = byName.get(r.assetClass.toLowerCase());
         if (!ac) { skipped++; errors.push(`${r.ticker}: invalid AssetClass '${r.assetClass}'`); continue; }
-        const { data: existing } = await supabase
-          .from(TABLES.FUNDS)
-          .select('ticker')
-          .eq('ticker', r.ticker)
-          .maybeSingle();
+        let existing = null;
+        if (!validateOnly) {
+          const resp = await supabase
+            .from(TABLES.FUNDS)
+            .select('ticker')
+            .eq('ticker', r.ticker)
+            .maybeSingle();
+          existing = resp?.data || null;
+        } else {
+          // Assume unknown; only affects counters
+          existing = null;
+        }
         const payload = {
           ticker: r.ticker,
           name: r.name || r.ticker,
@@ -75,12 +83,12 @@ export default function SeedRecommendedFunds() {
           is_recommended: true,
           last_updated: new Date().toISOString()
         };
-        const { data, error } = await supabase
-          .from(TABLES.FUNDS)
-          .upsert(payload, { onConflict: 'ticker' })
-          .select()
-          .single();
-        if (error) throw error;
+        if (!validateOnly) {
+          const { error } = await supabase
+            .from(TABLES.FUNDS)
+            .upsert(payload, { onConflict: 'ticker' });
+          if (error) throw error;
+        }
         if (existing) updated++; else inserted++;
       } catch (e) {
         skipped++;
@@ -101,6 +109,10 @@ export default function SeedRecommendedFunds() {
         <button className="btn btn-secondary" onClick={downloadTemplate}>Download Template</button>
         <input type="file" accept=".csv,text/csv" onChange={onFileChange} />
         <button className="btn btn-primary" onClick={parse} disabled={!file || parsing}>{parsing ? 'Parsing…' : 'Parse'}</button>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <input type="checkbox" checked={validateOnly} onChange={(e) => setValidateOnly(e.target.checked)} />
+          Validate only (no writes)
+        </label>
         <button className="btn btn-primary" onClick={runImport} disabled={rows.length === 0}>Import</button>
       </div>
       {rows.length > 0 && (

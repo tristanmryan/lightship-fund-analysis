@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Search, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import { useFundData } from '../../hooks/useFundData';
 import DictionaryAdmin from './DictionaryAdmin';
+import AdminOverview from './AdminOverview';
 import ManualAddFund from './ManualAddFund';
 import FundOverridesAdmin from './FundOverridesAdmin';
 import MonthlySnapshotUpload from './MonthlySnapshotUpload';
@@ -102,6 +103,9 @@ const FundManagement = () => {
           Manage your recommended fund list and automatically fetch performance data
         </p>
       </div>
+
+      {/* Admin Overview at top */}
+      <AdminOverview onNavigate={setActiveTab} />
 
       {/* Add New Fund Section */}
       <div className="add-fund-section">

@@ -59,3 +59,7 @@
 ### Fixed
 - Fix Snapshot Manager query to use aggregate select; remove unsupported `.group()`.
 
+### Added
+- Admin Overview (setup checklist) with quick links and two exports.
+- Seeder “Validate only” mode for Recommended Funds and Benchmarks.
+
