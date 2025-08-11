@@ -53,7 +53,8 @@ export default function DrilldownCards({ fund, funds }) {
       title: 'Risk',
       items: [
         { label: 'Sharpe Ratio', value: make(fund?.sharpe_ratio, 'num', 2), delta: diff(fund?.sharpe_ratio, benchFund?.sharpe_ratio), kind: 'num' },
-        { label: 'Std Dev', value: make(fund?.standard_deviation, 'pct', 2), delta: diff(fund?.standard_deviation, benchFund?.standard_deviation), kind: 'pct' },
+        { label: 'Std Dev (3Y)', value: make(fund?.standard_deviation_3y, 'pct', 2), delta: diff(fund?.standard_deviation_3y, benchFund?.standard_deviation_3y ?? benchFund?.standard_deviation), kind: 'pct' },
+        { label: 'Std Dev (5Y)', value: make(fund?.standard_deviation_5y, 'pct', 2), delta: diff(fund?.standard_deviation_5y, benchFund?.standard_deviation_5y ?? benchFund?.standard_deviation), kind: 'pct' },
         { label: 'Beta', value: make(fund?.beta, 'num', 2), delta: diff(fund?.beta, benchFund?.beta), kind: 'num' },
         { label: 'Alpha', value: make(fund?.alpha, 'num', 2), delta: diff(fund?.alpha, benchFund?.alpha), kind: 'num' }
       ]
