@@ -55,3 +55,6 @@
    - Drilldown shows both Std Dev (3Y) and Std Dev (5Y) with em-dash when missing.
   - Compare view adds both horizons; Table and Compare CSV exports include “Std Dev (3Y)” and “Std Dev (5Y)”. Legacy import logs a console warning when mapping `standard_deviation` to 3Y.
 
+### Fixed
+- Fix Snapshot Manager query to use aggregate select; remove unsupported `.group()`.
+

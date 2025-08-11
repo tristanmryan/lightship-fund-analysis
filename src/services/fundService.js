@@ -445,27 +445,10 @@ class FundService {
     try {
       const { data, error } = await supabase
         .from(TABLES.FUND_PERFORMANCE)
-        .select('date, count:fund_ticker', { count: 'exact', head: false })
-        .group('date')
+        .select('date, rows:count(*)')
         .order('date', { ascending: false });
-      // Try group result first if no error and has count field
-      if (!error && Array.isArray(data) && data.length > 0 && (data[0].count !== undefined)) {
-        return data.map(r => ({ date: dbUtils.formatDateOnly(r.date), rows: r.count }));
-      }
-
-      // Fallback: client-side reduce or when group unsupported
-      const { data: rows, error: e2 } = await supabase
-        .from(TABLES.FUND_PERFORMANCE)
-        .select('date');
-      if (e2) throw e2;
-      const counts = new Map();
-      for (const r of rows || []) {
-        const d = dbUtils.formatDateOnly(r.date);
-        counts.set(d, (counts.get(d) || 0) + 1);
-      }
-      return Array.from(counts.entries())
-        .map(([date, rows]) => ({ date, rows }))
-        .sort((a, b) => b.date.localeCompare(a.date));
+      if (error) throw error;
+      return (data ?? []).map(({ date, rows }) => ({ date: dbUtils.formatDateOnly(date), rows }));
     } catch (error) {
       handleSupabaseError(error, 'listSnapshotsWithCounts');
       return [];
