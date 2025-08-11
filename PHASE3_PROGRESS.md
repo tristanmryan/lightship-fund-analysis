@@ -85,6 +85,10 @@
   - `REACT_APP_ENABLE_CONFIG_BENCHMARK_FALLBACK=false`
   - `REACT_APP_ENABLE_ADMIN_MANUAL_ADD=false`
 
+### Environment
+- Local: use `.env.local` with `REACT_APP_SUPABASE_URL` and `REACT_APP_SUPABASE_ANON_KEY` (alias `REACT_APP_SUPABASE_ANON` also supported). The status script auto-loads `.env.local`/`.env`.
+- Vercel: set `REACT_APP_SUPABASE_URL` and the anon key as `REACT_APP_SUPABASE_ANON_KEY` (or `REACT_APP_SUPABASE_ANON`). `_ANON_KEY` is preferred.
+
 ### QA & Acceptance Checklist
 - On reload, filters, columns, sort, and `chartPeriod` restore for the user.
 - Changing those updates the default transparently.

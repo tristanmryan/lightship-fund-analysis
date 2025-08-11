@@ -3,11 +3,28 @@ import { createClient } from '@supabase/supabase-js';
 
 // Environment variables for Supabase configuration
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+// Harden: Support legacy alias REACT_APP_SUPABASE_ANON
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || process.env.REACT_APP_SUPABASE_ANON;
+
+// Dev-only init log (sanitized)
+(() => {
+  try {
+    if (process.env.NODE_ENV !== 'production') {
+      const host = (() => {
+        try { return new URL(supabaseUrl || '').hostname || (supabaseUrl || ''); } catch { return supabaseUrl || ''; }
+      })();
+      const hasKey = Boolean(supabaseAnonKey && String(supabaseAnonKey).length > 0);
+      // Log once on module init
+      // eslint-disable-next-line no-console
+      console.log(`[Init] Supabase host: ${host || 'n/a'} (anon key present: ${hasKey ? 'yes' : 'no'})`);
+    }
+  } catch {}
+})();
 
 if (!supabaseUrl || !supabaseAnonKey) {
   if (process.env.NODE_ENV !== 'test') {
-    console.error('Missing Supabase environment variables. Please set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY');
+    // eslint-disable-next-line no-console
+    console.error('Missing Supabase environment variables. Please set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY (or REACT_APP_SUPABASE_ANON)');
   }
 }
 
