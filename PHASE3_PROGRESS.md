@@ -26,6 +26,10 @@
 - Minimal unit tests added; all tests pass locally.
  - Research Notes v1 (append-only) behind `REACT_APP_ENABLE_NOTES` flag; interim author = `authService.getCurrentUser()?.id || 'guest'`.
  - Saved Compare Sets v1 in `ComparisonPanel` using `preferencesService` (`compare_sets_v1`), with Save/Load/Delete, 4-fund limit, case-insensitive names, and missing-ticker notice.
+ - Runtime scoring per As-of month (flagged): `REACT_APP_ENABLE_RUNTIME_SCORING`
+   - Computes Z-score–based scores at runtime for the current As-of month peer set (per asset class; benchmarks excluded), wiring added in `useFundData`.
+   - Capture-field alignment implemented (live `up_capture_ratio`/`down_capture_ratio` and CSV “Up/Down Capture (… Ratio)”) to engine inputs.
+   - Tests added: runtime scoring unit tests (Sharpe/expense effects, capture mapping, as-of recompute concept); CI passing.
 
 ### In Progress
 - Research workflow: schema and UI spec (notes + decision log; audited; linked to overrides).
@@ -56,6 +60,14 @@
 - `EnhancedFundTable` accepts initial sort/columns and reports state changes.
 - `ComparisonPanel` will integrate with compare sets.
 - Health view to show YCharts ingestion status/errors (later step).
+
+#### Data Dictionary (selected fields)
+- fund_performance:
+  - `standard_deviation` (deprecated)
+  - `standard_deviation_3y` (preferred standard deviation horizon for 3Y)
+  - `standard_deviation_5y` (preferred standard deviation horizon for 5Y)
+  - `sharpe_ratio` (3Y), `alpha` (5Y; alias: `alpha_5y` accepted), `beta` (3Y; alias: `beta_3y` accepted)
+  - `up_capture_ratio`/`down_capture_ratio` (3Y; aliases `*_3y` accepted)
 
 #### Feature Flags
 - `REACT_APP_ENABLE_SAVED_VIEWS` (default true in dev; keep OFF in prod until QA completes).

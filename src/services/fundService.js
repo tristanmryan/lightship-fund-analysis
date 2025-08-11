@@ -191,13 +191,35 @@ class FundService {
         ten_year_return: dbUtils.parseNumeric(performanceData.ten_year_return || performanceData['10 Year']),
         sharpe_ratio: dbUtils.parseNumeric(performanceData.sharpe_ratio || performanceData['Sharpe Ratio']),
         standard_deviation: dbUtils.parseNumeric(performanceData.standard_deviation || performanceData['Standard Deviation']),
+        standard_deviation_3y: dbUtils.parseNumeric(
+          performanceData.standard_deviation_3y
+          ?? performanceData['standard_deviation_3y']
+          ?? performanceData['Standard Deviation 3Y']
+          ?? performanceData.standard_deviation // legacy fallback: map to 3Y
+          ?? performanceData['Standard Deviation']
+        ),
+        standard_deviation_5y: dbUtils.parseNumeric(
+          performanceData.standard_deviation_5y
+          ?? performanceData['standard_deviation_5y']
+          ?? performanceData['Standard Deviation 5Y']
+        ),
         expense_ratio: dbUtils.parseNumeric(performanceData.expense_ratio || performanceData['Net Expense Ratio']),
-        alpha: dbUtils.parseNumeric(performanceData.alpha || performanceData.Alpha),
-        beta: dbUtils.parseNumeric(performanceData.beta || performanceData.Beta),
+        alpha: dbUtils.parseNumeric(performanceData.alpha || performanceData.alpha_5y || performanceData.Alpha),
+        beta: dbUtils.parseNumeric(performanceData.beta || performanceData.beta_3y || performanceData.Beta),
         manager_tenure: dbUtils.parseNumeric(performanceData.manager_tenure || performanceData['Manager Tenure']),
         // NEW FIELDS - Capture ratios and additional data
-        up_capture_ratio: dbUtils.parseNumeric(performanceData.up_capture_ratio || performanceData['Up Capture Ratio']),
-        down_capture_ratio: dbUtils.parseNumeric(performanceData.down_capture_ratio || performanceData['Down Capture Ratio']),
+        up_capture_ratio: dbUtils.parseNumeric(
+          performanceData.up_capture_ratio
+          ?? performanceData.up_capture_ratio_3y
+          ?? performanceData['Up Capture Ratio']
+          ?? performanceData['Up Capture Ratio (Morningstar Standard) - 3 Year']
+        ),
+        down_capture_ratio: dbUtils.parseNumeric(
+          performanceData.down_capture_ratio
+          ?? performanceData.down_capture_ratio_3y
+          ?? performanceData['Down Capture Ratio']
+          ?? performanceData['Down Capture Ratio (Morningstar Standard) - 3 Year']
+        ),
         category_rank: dbUtils.parseNumeric(performanceData.category_rank || performanceData['Category Rank']),
         sec_yield: dbUtils.parseNumeric(performanceData.sec_yield || performanceData['SEC Yield']),
         fund_family: performanceData.fund_family || performanceData['Fund Family'] || null
@@ -388,12 +410,22 @@ class FundService {
         ten_year_return: dbUtils.parseNumeric(r.ten_year_return ?? r['10 Year']),
         sharpe_ratio: dbUtils.parseNumeric(r.sharpe_ratio ?? r['Sharpe Ratio']),
         standard_deviation: dbUtils.parseNumeric(r.standard_deviation ?? r['Standard Deviation']),
+        standard_deviation_3y: dbUtils.parseNumeric(
+          r.standard_deviation_3y ?? r['standard_deviation_3y'] ?? r['Standard Deviation 3Y'] ?? r.standard_deviation ?? r['Standard Deviation']
+        ),
+        standard_deviation_5y: dbUtils.parseNumeric(
+          r.standard_deviation_5y ?? r['standard_deviation_5y'] ?? r['Standard Deviation 5Y']
+        ),
         expense_ratio: dbUtils.parseNumeric(r.expense_ratio ?? r['Net Expense Ratio']),
-        alpha: dbUtils.parseNumeric(r.alpha ?? r['Alpha']),
-        beta: dbUtils.parseNumeric(r.beta ?? r['Beta']),
+        alpha: dbUtils.parseNumeric(r.alpha ?? r.alpha_5y ?? r['Alpha']),
+        beta: dbUtils.parseNumeric(r.beta ?? r.beta_3y ?? r['Beta']),
         manager_tenure: dbUtils.parseNumeric(r.manager_tenure ?? r['Manager Tenure']),
-        up_capture_ratio: dbUtils.parseNumeric(r.up_capture_ratio ?? r['Up Capture Ratio']),
-        down_capture_ratio: dbUtils.parseNumeric(r.down_capture_ratio ?? r['Down Capture Ratio'])
+        up_capture_ratio: dbUtils.parseNumeric(
+          r.up_capture_ratio ?? r.up_capture_ratio_3y ?? r['Up Capture Ratio'] ?? r['Up Capture Ratio (Morningstar Standard) - 3 Year']
+        ),
+        down_capture_ratio: dbUtils.parseNumeric(
+          r.down_capture_ratio ?? r.down_capture_ratio_3y ?? r['Down Capture Ratio'] ?? r['Down Capture Ratio (Morningstar Standard) - 3 Year']
+        )
       }));
 
       const { error } = await supabase

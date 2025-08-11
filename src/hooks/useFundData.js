@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import fundService from '../services/fundService';
 import ychartsAPI from '../services/ychartsAPI';
+import { computeRuntimeScores } from '../services/scoring';
 
 export function useFundData() {
   const [funds, setFunds] = useState([]);
@@ -10,6 +11,8 @@ export function useFundData() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [asOfMonth, setAsOfMonth] = useState(null); // YYYY-MM-DD or null for latest
+  // Feature flag: runtime scoring for live as-of month data
+  const ENABLE_RUNTIME_SCORING = (process.env.REACT_APP_ENABLE_RUNTIME_SCORING || 'false') === 'true';
 
   // Load funds from database
   const loadFunds = useCallback(async (asOf = asOfMonth) => {
@@ -18,17 +21,31 @@ export function useFundData() {
       setError(null);
       
       const fundData = await fundService.getAllFunds(asOf);
-      setFunds(fundData);
+      const enriched = ENABLE_RUNTIME_SCORING ? computeRuntimeScores(fundData) : fundData;
+      setFunds(enriched);
       setLastUpdated(new Date());
       
-      console.log(`Loaded ${fundData.length} funds from database${asOf ? ` as of ${asOf}` : ''}`);
+      console.log(`Loaded ${fundData.length} funds from database${asOf ? ` as of ${asOf}` : ''}${ENABLE_RUNTIME_SCORING ? ' (runtime scoring enabled)' : ''}`);
     } catch (error) {
       console.error('Failed to load funds:', error);
       setError('Failed to load funds from database');
     } finally {
       setLoading(false);
     }
-  }, [asOfMonth]);
+  }, [asOfMonth, ENABLE_RUNTIME_SCORING]);
+
+  // Recompute runtime scores when asOfMonth or fetched funds change if flag is ON
+  useEffect(() => {
+    if (!ENABLE_RUNTIME_SCORING) return;
+    if (!Array.isArray(funds) || funds.length === 0) return;
+    try {
+      const rescored = computeRuntimeScores(funds);
+      setFunds(rescored);
+    } catch (e) {
+      // no-op: don't break UI on scoring issues
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asOfMonth, funds.length, ENABLE_RUNTIME_SCORING]);
 
   // Refresh data from Ycharts API
   const refreshData = useCallback(async (tickers = null) => {

@@ -25,3 +25,14 @@
   - Batching (~500 rows per upsert call) with summary results
   - Dashboard “As of” selector lists distinct months; switching clamps sparklines and updates all views; selection persisted
 
+### Added
+- Runtime Scoring (flagged): `REACT_APP_ENABLE_RUNTIME_SCORING`
+  - When enabled (default true in dev), calculates scores at runtime for the current As-of month peer set (per asset class; benchmarks excluded).
+  - Capture-field alignment (live up/down capture, standard_deviation to both stdDev3Y/stdDev5Y) included.
+  - Added unit tests for runtime scoring behavior; CI green.
+ - Scoring Quality: Std Dev Horizons
+   - Schema: added `standard_deviation_3y` and `standard_deviation_5y` to `fund_performance`; `standard_deviation_3y` backfilled from legacy `standard_deviation` where present; `standard_deviation_5y` left null.
+   - Importer & CSV template updated to prefer horizon-specific fields with legacy fallbacks (including aliases for alpha/beta and capture ratios with `_3y`).
+   - Runtime scoring uses `standard_deviation_3y` and `standard_deviation_5y` directly; missing metrics trigger proportional reweighting.
+   - Drilldown shows both Std Dev (3Y) and Std Dev (5Y) with em-dash when missing.
+

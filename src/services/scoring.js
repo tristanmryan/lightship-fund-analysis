@@ -188,26 +188,53 @@ export async function setMetricWeights(weights) {
    * @returns {Object} Standardized metrics object
    */
   function extractMetrics(fundData) {
-    // Map the column names from your Excel file to our metric names
-    // Note: Some metrics might be in different columns or missing
+    // Map both legacy CSV-derived keys and live Supabase keys to engine metrics
+    // Legacy/CSV keys
+    const csv = {
+      ytd: fundData['YTD'],
+      oneYear: fundData['1 Year'],
+      threeYear: fundData['3 Year'],
+      fiveYear: fundData['5 Year'],
+      tenYear: fundData['10 Year'],
+      sharpeRatio3Y: fundData['Sharpe Ratio'] || fundData['Sharpe Ratio - 3 Year'],
+      stdDev3Y: fundData['StdDev3Y'] || fundData['Standard Deviation - 3 Year'],
+      stdDev5Y: fundData['StdDev5Y'] || fundData['Standard Deviation - 5 Year'] || fundData['Standard Deviation'],
+      upCapture3Y: fundData['Up Capture Ratio'] || fundData['Up Capture'] || fundData['Up Capture Ratio (Morningstar Standard) - 3 Year'],
+      downCapture3Y: fundData['Down Capture Ratio'] || fundData['Down Capture'] || fundData['Down Capture Ratio (Morningstar Standard) - 3 Year'],
+      alpha5Y: fundData['Alpha'] || fundData['Alpha (Asset Class) - 5 Year'],
+      expenseRatio: fundData['Net Expense Ratio'] || fundData['Net Exp Ratio (%)'],
+      managerTenure: fundData['Manager Tenure'] || fundData['Longest Manager Tenure (Years)']
+    };
+    // Live/Supabase keys
+    const live = {
+      ytd: fundData.ytd_return,
+      oneYear: fundData.one_year_return,
+      threeYear: fundData.three_year_return,
+      fiveYear: fundData.five_year_return,
+      tenYear: fundData.ten_year_return,
+      sharpeRatio3Y: fundData.sharpe_ratio,
+      stdDev3Y: fundData.standard_deviation_3y,
+      stdDev5Y: fundData.standard_deviation_5y,
+      upCapture3Y: fundData.up_capture_ratio,
+      downCapture3Y: fundData.down_capture_ratio,
+      alpha5Y: fundData.alpha,
+      expenseRatio: fundData.expense_ratio,
+      managerTenure: fundData.manager_tenure
+    };
     return {
-      ytd: parseMetricValue(fundData['YTD']),
-      oneYear: parseMetricValue(fundData['1 Year']),
-      threeYear: parseMetricValue(fundData['3 Year']),
-      fiveYear: parseMetricValue(fundData['5 Year']),
-      tenYear: parseMetricValue(fundData['10 Year']),
-      sharpeRatio3Y: parseMetricValue(fundData['Sharpe Ratio']),
-      stdDev3Y: parseMetricValue(fundData['StdDev3Y']),
-      stdDev5Y: parseMetricValue(
-        fundData.hasOwnProperty('StdDev5Y')
-          ? fundData['StdDev5Y']
-          : fundData['Standard Deviation']
-      ),
-      upCapture3Y: parseMetricValue(fundData['Up Capture Ratio']),
-      downCapture3Y: parseMetricValue(fundData['Down Capture Ratio']),
-      alpha5Y: parseMetricValue(fundData['Alpha']),
-      expenseRatio: parseMetricValue(fundData['Net Expense Ratio']),
-      managerTenure: parseMetricValue(fundData['Manager Tenure'])
+      ytd: parseMetricValue(live.ytd ?? csv.ytd),
+      oneYear: parseMetricValue(live.oneYear ?? csv.oneYear),
+      threeYear: parseMetricValue(live.threeYear ?? csv.threeYear),
+      fiveYear: parseMetricValue(live.fiveYear ?? csv.fiveYear),
+      tenYear: parseMetricValue(live.tenYear ?? csv.tenYear),
+      sharpeRatio3Y: parseMetricValue(live.sharpeRatio3Y ?? csv.sharpeRatio3Y),
+      stdDev3Y: parseMetricValue(live.stdDev3Y ?? csv.stdDev3Y),
+      stdDev5Y: parseMetricValue(live.stdDev5Y ?? csv.stdDev5Y),
+      upCapture3Y: parseMetricValue(live.upCapture3Y ?? csv.upCapture3Y),
+      downCapture3Y: parseMetricValue(live.downCapture3Y ?? csv.downCapture3Y),
+      alpha5Y: parseMetricValue(live.alpha5Y ?? csv.alpha5Y),
+      expenseRatio: parseMetricValue(live.expenseRatio ?? csv.expenseRatio),
+      managerTenure: parseMetricValue(live.managerTenure ?? csv.managerTenure)
     };
   }
   
@@ -269,11 +296,24 @@ export async function setMetricWeights(weights) {
       }
     });
     
-    // Don't adjust weights - use raw sum
-    // This maintains consistency when funds have missing metrics
-    
+    // Reweighting for missing metrics: adjust contributions proportionally
+    const present = Object.keys(scoreBreakdown);
+    let reweightedSum = 0;
+    if (present.length > 0) {
+      const totalAbs = present.reduce((s, m) => s + Math.abs(METRIC_WEIGHTS[m] || 0), 0);
+      present.forEach((m) => {
+        const w = METRIC_WEIGHTS[m] || 0;
+        const z = scoreBreakdown[m].zScore;
+        const proportional = (Math.abs(w) / totalAbs) * Math.sign(w);
+        const contrib = z * proportional;
+        scoreBreakdown[m].reweightedContribution = Math.round(contrib * 1000) / 1000;
+        reweightedSum += contrib;
+      });
+    }
+
     return {
       raw: weightedSum,
+      rawReweighted: Math.round(reweightedSum * 1000) / 1000,
       breakdown: scoreBreakdown,
       metricsUsed: Object.keys(scoreBreakdown).length,
       totalPossibleMetrics: Object.keys(METRIC_WEIGHTS).length
@@ -387,12 +427,13 @@ export async function setMetricWeights(weights) {
         };
       });
       
-      // Get all raw scores for scaling
-      const rawScores = fundsWithRawScores.map(f => f.scoreData.raw);
+      // Get all raw scores for scaling (use reweighted if available)
+      const rawScores = fundsWithRawScores.map(f => (Number.isFinite(f.scoreData.rawReweighted) ? f.scoreData.rawReweighted : f.scoreData.raw));
 
       // Scale scores to 0-100 and calculate final percentiles
       fundsWithRawScores.forEach((fund, index) => {
-        const finalScore = scaleScore(fund.scoreData.raw);
+        const base = Number.isFinite(fund.scoreData.rawReweighted) ? fund.scoreData.rawReweighted : fund.scoreData.raw;
+        const finalScore = scaleScore(base);
         
         // Calculate percentile within asset class
         const betterThanCount = rawScores.filter(s => s < fund.scoreData.raw).length;
@@ -401,7 +442,7 @@ export async function setMetricWeights(weights) {
         scoredFunds.push({
           ...fund,
           scores: {
-            raw: Math.round(fund.scoreData.raw * 1000) / 1000, // Round to 3 decimals
+            raw: Math.round(base * 1000) / 1000, // Round to 3 decimals
             final: finalScore,
             percentile,
             breakdown: fund.scoreData.breakdown,
@@ -414,6 +455,20 @@ export async function setMetricWeights(weights) {
     });
     
     return scoredFunds;
+  }
+
+  /**
+   * Convenience helper for runtime scoring of live Supabase funds.
+   * Accepts array of funds in live shape and returns the enriched scored array.
+   */
+  export function computeRuntimeScores(funds) {
+    if (!Array.isArray(funds) || funds.length === 0) return funds || [];
+    try {
+      return calculateScores(funds);
+    } catch (e) {
+      console.error('Runtime scoring failed:', e);
+      return funds;
+    }
   }
   
   /**

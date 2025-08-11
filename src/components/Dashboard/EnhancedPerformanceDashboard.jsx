@@ -95,7 +95,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
       if (!cancelled) setInitialized(true);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [asOfMonthProp, onAsOfMonthChange]);
 
   // Handle filter changes
   const handleFilterChange = useCallback((filtered, filters) => {

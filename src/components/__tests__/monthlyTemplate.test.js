@@ -1,28 +1,37 @@
-// Lightweight test to verify template CSV header
+// Lightweight test to verify template CSV header and BOM
 import { describe, it, expect } from '@jest/globals';
-
-// Import the function from the csv template service
 import { createMonthlyTemplateCSV } from '../../services/csvTemplate';
 
-function blobToText(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsText(blob);
-  });
-}
-
 describe('Monthly CSV Template', () => {
-  it('produces a BOM-prefixed CSV with the expected header and CRLF', async () => {
+  it('CSV template has BOM + quoted header + CRLF', async () => {
     const blob = createMonthlyTemplateCSV();
-    const text = await blobToText(blob);
-    // Expect BOM at start
-    expect(text.charCodeAt(0)).toBe(0xFEFF);
-    const firstLine = text.split('\r\n')[0];
-    expect(firstLine).toBe('"Ticker","AsOfMonth","ytd_return","one_year_return","three_year_return","five_year_return","ten_year_return","sharpe_ratio","standard_deviation","expense_ratio","alpha","beta","manager_tenure","up_capture_ratio","down_capture_ratio","name","asset_class","is_recommended"');
-    // Only header + trailing CRLF
-    expect(text.endsWith('\r\n')).toBe(true);
+    // Fallback for environments without Blob.arrayBuffer
+    const buf = await new Promise((resolve, reject) => {
+      try {
+        const reader = new FileReader();
+        reader.onload = () => resolve(new Uint8Array(reader.result));
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(blob);
+      } catch (e) {
+        reject(e);
+      }
+    });
+    // BOM bytes
+    expect(buf[0]).toBe(0xEF);
+    expect(buf[1]).toBe(0xBB);
+    expect(buf[2]).toBe(0xBF);
+    // Find first CRLF and slice header bytes after BOM
+    let eol = -1;
+    for (let i = 3; i < buf.length - 1; i++) {
+      if (buf[i] === 0x0D && buf[i + 1] === 0x0A) { eol = i; break; }
+    }
+    expect(eol).toBeGreaterThan(3);
+    const headerBytes = buf.slice(3, eol);
+    const firstLine = String.fromCharCode(...headerBytes);
+    expect(firstLine).toBe('"Ticker","AsOfMonth","ytd_return","one_year_return","three_year_return","five_year_return","ten_year_return","sharpe_ratio","standard_deviation_3y","standard_deviation_5y","expense_ratio","alpha","beta","manager_tenure","up_capture_ratio","down_capture_ratio","name","asset_class","is_recommended"');
+    // Ends with CRLF
+    expect(buf[buf.length - 2]).toBe(0x0D);
+    expect(buf[buf.length - 1]).toBe(0x0A);
   });
 });
 

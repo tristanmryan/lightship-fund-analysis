@@ -1,5 +1,5 @@
 // src/components/Admin/MonthlySnapshotUpload.jsx
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Papa from 'papaparse';
 import fundService from '../../services/fundService';
 import { dbUtils } from '../../services/supabase';
@@ -167,7 +167,7 @@ export default function MonthlySnapshotUpload() {
     try {
       const rowsToImport = preview.filter(r => r.willImport).map((r) => {
         const original = parsedRows.find(pr => pr.__ticker === r.ticker && pr.__asOf === r.asOf) || {};
-        return {
+          return {
           ticker: r.ticker,
           date: r.asOf,
           ytd_return: original.ytd_return ?? original.YTD,
@@ -176,13 +176,15 @@ export default function MonthlySnapshotUpload() {
           five_year_return: original.five_year_return ?? original['5 Year'],
           ten_year_return: original.ten_year_return ?? original['10 Year'],
           sharpe_ratio: original.sharpe_ratio ?? original['Sharpe Ratio'],
-          standard_deviation: original.standard_deviation ?? original['Standard Deviation'],
+            standard_deviation: original.standard_deviation ?? original['Standard Deviation'],
+            standard_deviation_3y: original.standard_deviation_3y ?? original['standard_deviation_3y'] ?? original['Standard Deviation 3Y'] ?? original.standard_deviation ?? original['Standard Deviation'],
+            standard_deviation_5y: original.standard_deviation_5y ?? original['standard_deviation_5y'] ?? original['Standard Deviation 5Y'],
           expense_ratio: original.expense_ratio ?? original['Net Expense Ratio'],
-          alpha: original.alpha ?? original['Alpha'],
-          beta: original.beta ?? original['Beta'],
-          manager_tenure: original.manager_tenure ?? original['Manager Tenure'],
-          up_capture_ratio: original.up_capture_ratio ?? original['Up Capture Ratio'],
-          down_capture_ratio: original.down_capture_ratio ?? original['Down Capture Ratio']
+            alpha: original.alpha ?? original.alpha_5y ?? original['Alpha'],
+            beta: original.beta ?? original.beta_3y ?? original['Beta'],
+            manager_tenure: original.manager_tenure ?? original['Manager Tenure'],
+            up_capture_ratio: original.up_capture_ratio ?? original.up_capture_ratio_3y ?? original['Up Capture Ratio'] ?? original['Up Capture Ratio (Morningstar Standard) - 3 Year'],
+            down_capture_ratio: original.down_capture_ratio ?? original.down_capture_ratio_3y ?? original['Down Capture Ratio'] ?? original['Down Capture Ratio (Morningstar Standard) - 3 Year']
         };
       });
       const { success, failed } = await fundService.bulkUpsertFundPerformance(rowsToImport, 500);
