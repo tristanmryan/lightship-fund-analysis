@@ -35,4 +35,5 @@
    - Importer & CSV template updated to prefer horizon-specific fields with legacy fallbacks (including aliases for alpha/beta and capture ratios with `_3y`).
    - Runtime scoring uses `standard_deviation_3y` and `standard_deviation_5y` directly; missing metrics trigger proportional reweighting.
    - Drilldown shows both Std Dev (3Y) and Std Dev (5Y) with em-dash when missing.
+  - Compare view adds both horizons; Table and Compare CSV exports include “Std Dev (3Y)” and “Std Dev (5Y)”. Legacy import logs a console warning when mapping `standard_deviation` to 3Y.
 

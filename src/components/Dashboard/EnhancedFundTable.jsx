@@ -299,15 +299,27 @@ const EnhancedFundTable = ({
         </div>
       )
     },
-    standardDeviation: {
-      label: 'Std Dev',
-      key: 'standardDeviation',
-      getValue: (fund) => fund['Standard Deviation - 5 Year'] || fund.standard_deviation || 0,
+    stdDev3Y: {
+      label: 'Std Dev (3Y)',
+      key: 'stdDev3Y',
+      getValue: (fund) => fund.standard_deviation_3y ?? null,
       sortable: true,
-      width: '90px',
+      width: '100px',
       render: (value) => (
         <div style={{ textAlign: 'center' }}>
-          {value?.toFixed(2)}%
+          {value == null ? '—' : `${value.toFixed(2)}%`}
+        </div>
+      )
+    },
+    stdDev5Y: {
+      label: 'Std Dev (5Y)',
+      key: 'stdDev5Y',
+      getValue: (fund) => fund.standard_deviation_5y ?? null,
+      sortable: true,
+      width: '100px',
+      render: (value) => (
+        <div style={{ textAlign: 'center' }}>
+          {value == null ? '—' : `${value.toFixed(2)}%`}
         </div>
       )
     },

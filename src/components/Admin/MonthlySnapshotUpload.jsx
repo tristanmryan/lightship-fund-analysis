@@ -177,7 +177,18 @@ export default function MonthlySnapshotUpload() {
           ten_year_return: original.ten_year_return ?? original['10 Year'],
           sharpe_ratio: original.sharpe_ratio ?? original['Sharpe Ratio'],
             standard_deviation: original.standard_deviation ?? original['Standard Deviation'],
-            standard_deviation_3y: original.standard_deviation_3y ?? original['standard_deviation_3y'] ?? original['Standard Deviation 3Y'] ?? original.standard_deviation ?? original['Standard Deviation'],
+            standard_deviation_3y: (() => {
+              const v = original.standard_deviation_3y ?? original['standard_deviation_3y'] ?? original['Standard Deviation 3Y'];
+              if (v != null) return v;
+              const legacy = original.standard_deviation ?? original['Standard Deviation'];
+              if (legacy != null) {
+                // legacy fallback mapping notice
+                // eslint-disable-next-line no-console
+                console.warn('[Importer] Legacy "standard_deviation" mapped to 3Y. Please switch to "standard_deviation_3y".');
+                return legacy;
+              }
+              return null;
+            })(),
             standard_deviation_5y: original.standard_deviation_5y ?? original['standard_deviation_5y'] ?? original['Standard Deviation 5Y'],
           expense_ratio: original.expense_ratio ?? original['Net Expense Ratio'],
             alpha: original.alpha ?? original.alpha_5y ?? original['Alpha'],

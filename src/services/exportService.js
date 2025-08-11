@@ -454,9 +454,10 @@ export function exportTableCSV({ funds = [], columns = [], sortConfig = [], meta
     ['Note', 'Percent columns are decimals (e.g., 0.1234 = 12.34%).']
   ];
 
-  const headerRow = visibleColumnLabels;
-  const dataRows = funds.map(fund => (
-    columns.map(col => {
+  // Always include Std Dev horizons at the end of the export, even if hidden on screen
+  const headerRow = [...visibleColumnLabels, 'Std Dev (3Y)', 'Std Dev (5Y)'];
+  const dataRows = funds.map(fund => {
+    const row = columns.map(col => {
       const raw = typeof col.valueGetter === 'function' ? col.valueGetter(fund) : null;
       if (raw === null || raw === undefined || raw === '') return '';
       if (typeof raw === 'number') {
@@ -468,8 +469,14 @@ export function exportTableCSV({ funds = [], columns = [], sortConfig = [], meta
         return col.isPercent ? asNum / 100 : asNum;
       }
       return String(raw);
-    })
-  ));
+    });
+    // Append std dev horizons
+    const s3 = fund.standard_deviation_3y;
+    const s5 = fund.standard_deviation_5y;
+    row.push(s3 == null ? '' : s3 / 100);
+    row.push(s5 == null ? '' : s5 / 100);
+    return row;
+  });
 
   const rows = [...metaRows, [''], headerRow, ...dataRows];
   const csv = buildCSV(rows);
@@ -485,7 +492,7 @@ export function exportCompareCSV({ funds = [], metadata = {} }) {
   const headers = [
     'Ticker', 'Name', 'Asset Class', 'Score',
     'YTD', '1Y', '3Y', '5Y',
-    'Sharpe', 'Expense Ratio', 'Beta',
+    'Sharpe', 'Expense Ratio', 'Beta', 'Std Dev (3Y)', 'Std Dev (5Y)',
     'Up Capture (3Y)', 'Down Capture (3Y)',
     '1Y vs Benchmark (delta)', 'Benchmark Ticker', 'Benchmark Name'
   ];
@@ -518,6 +525,8 @@ export function exportCompareCSV({ funds = [], metadata = {} }) {
       'Sharpe': get(f, 'sharpe_ratio', 'Sharpe Ratio - 3 Year'),
       'Expense Ratio': get(f, 'expense_ratio', 'Net Exp Ratio (%)'),
       'Beta': get(f, 'beta', 'Beta - 5 Year'),
+      'Std Dev (3Y)': get(f, 'standard_deviation_3y'),
+      'Std Dev (5Y)': get(f, 'standard_deviation_5y'),
       'Up Capture (3Y)': get(f, 'up_capture_ratio', 'Up Capture Ratio (Morningstar Standard) - 3 Year'),
       'Down Capture (3Y)': get(f, 'down_capture_ratio', 'Down Capture Ratio (Morningstar Standard) - 3 Year'),
       '1Y vs Benchmark (delta)': get(f, 'exportDelta1y'),

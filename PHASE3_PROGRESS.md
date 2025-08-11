@@ -30,6 +30,7 @@
    - Computes Z-score–based scores at runtime for the current As-of month peer set (per asset class; benchmarks excluded), wiring added in `useFundData`.
    - Capture-field alignment implemented (live `up_capture_ratio`/`down_capture_ratio` and CSV “Up/Down Capture (… Ratio)”) to engine inputs.
    - Tests added: runtime scoring unit tests (Sharpe/expense effects, capture mapping, as-of recompute concept); CI passing.
+  - Compare view shows Std Dev (3Y) and Std Dev (5Y). Both Table CSV and Compare CSV exports include “Std Dev (3Y)” and “Std Dev (5Y)”. Legacy import triggers a console warning when mapping `standard_deviation` → `standard_deviation_3y`.
 
 ### In Progress
 - Research workflow: schema and UI spec (notes + decision log; audited; linked to overrides).

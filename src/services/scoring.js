@@ -311,6 +311,12 @@ export async function setMetricWeights(weights) {
       });
     }
 
+    // Future policy: small penalty per missing metric
+    if (SCORING_MISSING_POLICY === 'penalty' && MISSING_METRIC_PENALTY > 0) {
+      const missingCount = Object.keys(METRIC_WEIGHTS).length - present.length;
+      reweightedSum -= (MISSING_METRIC_PENALTY * missingCount);
+    }
+
     return {
       raw: weightedSum,
       rawReweighted: Math.round(reweightedSum * 1000) / 1000,
@@ -597,5 +603,9 @@ export const METRICS_CONFIG = {
   },
   labels: METRIC_LABELS
 };
+
+// Missing data policy scaffold
+export const SCORING_MISSING_POLICY = 'reweight'; // future: 'penalty'
+export const MISSING_METRIC_PENALTY = 0; // default 0 for no change
 
  
