@@ -34,7 +34,7 @@ const EnhancedFundTable = ({
   ]);
   const [columnWidths, setColumnWidths] = useState({});
   const [hoveredFund, setHoveredFund] = useState(null);
-  const [historyCache, setHistoryCache] = useState({});
+  const [historyCache, setHistoryCache] = useState({}); // stores sorted history rows per symbol
 
   // Emit state changes to parent for persistence
   useEffect(() => {
@@ -42,6 +42,21 @@ const EnhancedFundTable = ({
       onStateChange({ sortConfig, selectedColumns });
     }
   }, [sortConfig, selectedColumns, onStateChange]);
+
+  // Preload sparkline history rows for visible funds when the sparkline column is selected
+  const preloadSparklineData = useCallback(async (currentSortedFunds, currentHistoryCache) => {
+    const needed = new Set((currentSortedFunds || []).map(f => (f.ticker || f.Symbol)).filter(Boolean));
+    const toLoad = Array.from(needed).filter(sym => !(sym in currentHistoryCache));
+    for (const sym of toLoad) {
+      try {
+        const rows = await fundService.getFundPerformanceHistory(sym);
+        const sorted = (rows || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+        setHistoryCache(prev => ({ ...prev, [sym]: sorted }));
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
 
   // Column definitions
   const columnDefinitions = useMemo(() => ({
@@ -209,45 +224,24 @@ const EnhancedFundTable = ({
       width: '180px',
       render: (_, fund) => {
         const key = fund.ticker || fund.Symbol;
-        const hist = historyCache[key];
-        useEffect(() => {
-          let alive = true;
-          (async () => {
-            if (!key || historyCache[key]) return;
-            const rows = await fundService.getFundPerformanceHistory(key);
-            if (!alive) return;
-            const sorted = (rows || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
-            let picked = sorted;
-            const clamp = (arr, n) => arr.slice(Math.max(0, arr.length - n));
-            switch (chartPeriod) {
-              case '1M': picked = clamp(sorted, 21); break; // ~21 trading days
-              case '3M': picked = clamp(sorted, 63); break;
-              case '6M': picked = clamp(sorted, 126); break;
-              case 'YTD': {
-                const year = new Date().getFullYear();
-                picked = sorted.filter(r => new Date(r.date).getFullYear() === year);
-                break;
-              }
-              case '1Y':
-              default: picked = clamp(sorted, 252); break; // ~252 trading days
-            }
-            const values = picked.map(r => r.one_year_return ?? r.ytd_return ?? null);
-            setHistoryCache(prev => ({ ...prev, [key]: values }));
-          })();
-          return () => { alive = false; };
-        }, [key, chartPeriod]);
-        return <Sparkline values={hist || []} />;
+        const rows = historyCache[key] || [];
+        let picked = rows;
+        const clamp = (arr, n) => arr.slice(Math.max(0, arr.length - n));
+        switch (chartPeriod) {
+          case '1M': picked = clamp(rows, 21); break; // ~21 trading days
+          case '3M': picked = clamp(rows, 63); break;
+          case '6M': picked = clamp(rows, 126); break;
+          case 'YTD': {
+            const year = new Date().getFullYear();
+            picked = rows.filter(r => new Date(r.date).getFullYear() === year);
+            break;
+          }
+          case '1Y':
+          default: picked = clamp(rows, 252); break; // ~252 trading days
+        }
+        const values = picked.map(r => r.one_year_return ?? r.ytd_return ?? null);
+        return <Sparkline values={values} />;
       }
-    },
-    sparkline: {
-      label: 'Trend',
-      key: 'sparkline',
-      getValue: () => null,
-      sortable: false,
-      width: '180px',
-      render: (_, fund) => (
-        <AsyncSpark fund={fund} />
-      )
     },
     expenseRatio: {
       label: 'Expense Ratio',
@@ -407,6 +401,13 @@ const EnhancedFundTable = ({
       return 0;
     });
   }, [funds, sortConfig, columnDefinitions]);
+
+  // Kick off preload when sparkline column is visible
+  useEffect(() => {
+    if (!selectedColumns.includes('sparkline')) return;
+    preloadSparklineData(sortedFunds, historyCache);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedColumns, sortedFunds]);
 
   // Handle column sorting
   const handleSort = useCallback((columnKey) => {
