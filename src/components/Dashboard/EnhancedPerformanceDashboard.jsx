@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { 
   TrendingUp, BarChart3, Grid, Table, RefreshCw, Download,
-  Filter, Eye, Target, AlertCircle, Info
+  Filter, Target, AlertCircle, Info
 } from 'lucide-react';
 import AdvancedFilters from './AdvancedFilters';
 import EnhancedFundTable from './EnhancedFundTable';
@@ -13,6 +13,30 @@ import FundDetailsModal from '../FundDetailsModal';
 import ComparisonPanel from './ComparisonPanel';
 import DrilldownCards from './DrilldownCards';
 import preferencesService from '../../services/preferencesService';
+
+const DEFAULT_FILTERS = {
+  search: '',
+  assetClasses: [],
+  performanceRank: null,
+  expenseRatioMax: null,
+  sharpeRatioMin: null,
+  betaMax: null,
+  timePerformance: { period: null, minReturn: null, maxReturn: null },
+  scoreRange: { min: null, max: null },
+  isRecommended: null
+};
+
+function sanitizeViewDefaults(view) {
+  if (!view || typeof view !== 'object') return { filters: { ...DEFAULT_FILTERS } };
+  const safeFilters = {
+    ...DEFAULT_FILTERS,
+    ...(view.filters || {}),
+    assetClasses: Array.isArray(view?.filters?.assetClasses) ? view.filters.assetClasses : [],
+    timePerformance: { ...DEFAULT_FILTERS.timePerformance, ...(view?.filters?.timePerformance || {}) },
+    scoreRange: { ...DEFAULT_FILTERS.scoreRange, ...(view?.filters?.scoreRange || {}) }
+  };
+  return { ...view, filters: safeFilters };
+}
 
 /**
  * Enhanced Performance Dashboard
@@ -37,7 +61,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
     let cancelled = false;
     (async () => {
       try {
-        const defaults = await preferencesService.getViewDefaults();
+        const defaults = sanitizeViewDefaults(await preferencesService.getViewDefaults());
         if (cancelled) return;
         if (defaults) {
           setInitialFilters(defaults.filters || null);
@@ -91,7 +115,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
         });
       } catch {}
     })();
-  }, [activeFilters, initialized, tableState.sortConfig, tableState.selectedColumns, chartPeriod]);
+  }, [activeFilters, initialized, tableState, chartPeriod]);
 
   // Persist when chartPeriod changes independently
   React.useEffect(() => {
@@ -108,7 +132,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
         });
       } catch {}
     })();
-  }, [chartPeriod, initialized]);
+  }, [chartPeriod, initialized, activeFilters, tableState]);
 
   // Calculate summary statistics
   const summaryStats = useMemo(() => {

@@ -2,11 +2,10 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   ArrowUp, ArrowDown, ArrowUpDown, Eye, Star, TrendingUp, 
-  TrendingDown, Shield, DollarSign, Calendar, MoreHorizontal,
-  ExternalLink, Info
+  TrendingDown, Shield, DollarSign, Calendar, MoreHorizontal
 } from 'lucide-react';
-import { getScoreColor, getScoreLabel } from '../../services/scoring';
-import { computeBenchmarkDelta, resolveAssetClass, getBenchmarkConfigForFund } from './benchmarkUtils';
+import { getScoreColor } from '../../services/scoring';
+import { computeBenchmarkDelta } from './benchmarkUtils';
 import Sparkline from './Sparkline';
 import fundService from '../../services/fundService';
 import { exportTableCSV, downloadFile, shouldConfirmLargeExport } from '../../services/exportService';
@@ -32,7 +31,7 @@ const EnhancedFundTable = ({
     'symbol', 'name', 'assetClass', 'score', 'ytdReturn', 'oneYearReturn', 
     'threeYearReturn', 'expenseRatio', 'sharpeRatio', 'recommended'
   ]);
-  const [columnWidths, setColumnWidths] = useState({});
+  // const [columnWidths, setColumnWidths] = useState({});
   const [hoveredFund, setHoveredFund] = useState(null);
   const [historyCache, setHistoryCache] = useState({}); // stores sorted history rows per symbol
 
@@ -376,9 +375,10 @@ const EnhancedFundTable = ({
         </div>
       )
     }
-  }), []);
+  }), [historyCache, chartPeriod]);
 
   // Multi-column sorting
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const sortedFunds = useMemo(() => {
     if (!funds || funds.length === 0 || sortConfig.length === 0) return funds || [];
 
@@ -464,20 +464,20 @@ const EnhancedFundTable = ({
   };
 
   // Column visibility toggle
-  const toggleColumn = useCallback((columnKey) => {
-    setSelectedColumns(prev => 
-      prev.includes(columnKey) 
-        ? prev.filter(col => col !== columnKey)
-        : [...prev, columnKey]
-    );
-  }, []);
+  // const toggleColumn = useCallback((columnKey) => {
+  //   setSelectedColumns(prev => 
+  //     prev.includes(columnKey) 
+  //       ? prev.filter(col => col !== columnKey)
+  //       : [...prev, columnKey]
+  //   );
+  // }, []);
 
-  const percentColumnKeys = new Set([
+  const percentColumnKeys = useMemo(() => new Set([
     'ytdReturn', 'oneYearReturn', 'threeYearReturn', 'fiveYearReturn',
     'expenseRatio', 'standardDeviation', 'upCaptureRatio', 'downCaptureRatio'
-  ]);
+  ]), []);
 
-  const buildExportColumns = () => {
+  const buildExportColumns = useCallback(() => {
     return selectedColumns
       .filter((key) => key !== 'sparkline')
       .map((key) => {
@@ -491,7 +491,7 @@ const EnhancedFundTable = ({
         };
       })
       .filter(Boolean);
-  };
+  }, [selectedColumns, columnDefinitions, percentColumnKeys]);
 
   const exportCSV = useCallback(() => {
     const rowsCount = sortedFunds?.length || 0;
@@ -517,7 +517,7 @@ const EnhancedFundTable = ({
     const now = new Date();
     const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
     downloadFile(blob, `table_export_${ts}.csv`, 'text/csv;charset=utf-8');
-  }, [sortedFunds, sortConfig, selectedColumns, chartPeriod, columnDefinitions]);
+  }, [sortedFunds, sortConfig, chartPeriod, columnDefinitions, buildExportColumns]);
 
   useEffect(() => {
     if (typeof registerExportHandler === 'function') {

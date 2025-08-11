@@ -25,11 +25,36 @@ const VIEW_DEFAULTS_KEY_SUFFIX = 'view_defaults_v1';
 const FILTER_PRESETS_KEY_SUFFIX = 'filter_presets_v1';
 const COMPARE_SETS_KEY_SUFFIX = 'compare_sets_v1';
 
+const DEFAULT_FILTERS = {
+  search: '',
+  assetClasses: [],
+  performanceRank: null,
+  expenseRatioMax: null,
+  sharpeRatioMin: null,
+  betaMax: null,
+  timePerformance: { period: null, minReturn: null, maxReturn: null },
+  scoreRange: { min: null, max: null },
+  isRecommended: null
+};
+
+function sanitizeViewDefaultsShape(view) {
+  if (!view || typeof view !== 'object') return null;
+  const safeFilters = {
+    ...DEFAULT_FILTERS,
+    ...(view.filters || {}),
+    assetClasses: Array.isArray(view?.filters?.assetClasses) ? view.filters.assetClasses : [],
+    timePerformance: { ...DEFAULT_FILTERS.timePerformance, ...(view?.filters?.timePerformance || {}) },
+    scoreRange: { ...DEFAULT_FILTERS.scoreRange, ...(view?.filters?.scoreRange || {}) }
+  };
+  return { ...view, filters: safeFilters };
+}
+
 export async function getViewDefaults() {
   if (!isEnabled()) return null;
   const key = buildKey(VIEW_DEFAULTS_KEY_SUFFIX);
   try {
-    return await getPreference(key);
+    const raw = await getPreference(key);
+    return sanitizeViewDefaultsShape(raw);
   } catch {
     return null;
   }
@@ -80,7 +105,7 @@ export async function saveCompareSets(compareSets) {
   await savePreference(key, compareSets || {});
 }
 
-export default {
+const preferencesApi = {
   getViewDefaults,
   saveViewDefaults,
   clearViewDefaults,
@@ -89,4 +114,6 @@ export default {
   getCompareSets,
   saveCompareSets
 };
+
+export default preferencesApi;
 

@@ -92,8 +92,8 @@ const AssetClassOverview = ({ funds, classSummaries = {}, benchmarkData = {} }) 
     const classes = Object.entries(classStats);
     
     classes.sort((a, b) => {
-      const [classA, statsA] = a;
-      const [classB, statsB] = b;
+      const statsA = a[1];
+      const statsB = b[1];
       
       switch (sortBy) {
         case 'avgScore':

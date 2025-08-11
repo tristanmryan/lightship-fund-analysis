@@ -7,7 +7,7 @@ const DictionaryAdmin = () => {
   const [assetClasses, setAssetClasses] = useState([]);
   const [benchmarks, setBenchmarks] = useState([]);
   const [mappings, setMappings] = useState([]);
-  const [alternates, setAlternates] = useState({});
+  // const [alternates, setAlternates] = useState({}); // reserved for future use
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [newClass, setNewClass] = useState({ code: '', name: '', group_name: '', sort_group: 0, sort_order: 0 });

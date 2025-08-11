@@ -1,8 +1,8 @@
 // src/components/Dashboard/AdvancedFilters.jsx
 import React, { useState, useMemo, useCallback } from 'react';
 import { 
-  Filter, Search, X, Save, Bookmark, ChevronDown, ChevronUp,
-  TrendingUp, DollarSign, Target, Shield, Calendar, Zap
+  Filter, Search, X, Bookmark, ChevronDown, ChevronUp,
+  TrendingUp, DollarSign, Target
 } from 'lucide-react';
 
 /**
@@ -11,26 +11,33 @@ import {
  */
 import preferencesService from '../../services/preferencesService';
 
+const DEFAULT_FILTERS = {
+  search: '',
+  assetClasses: [],
+  performanceRank: null,
+  expenseRatioMax: null,
+  sharpeRatioMin: null,
+  betaMax: null,
+  timePerformance: { period: null, minReturn: null, maxReturn: null },
+  scoreRange: { min: null, max: null },
+  isRecommended: null
+};
+
+function buildSafeFilters(initialFilters) {
+  const base = DEFAULT_FILTERS;
+  const src = initialFilters || {};
+  return {
+    ...base,
+    ...src,
+    assetClasses: Array.isArray(src?.assetClasses) ? src.assetClasses : [],
+    timePerformance: { ...base.timePerformance, ...(src?.timePerformance || {}) },
+    scoreRange: { ...base.scoreRange, ...(src?.scoreRange || {}) }
+  };
+}
+
 const AdvancedFilters = ({ funds, onFilterChange, className = '', initialFilters = null }) => {
   // Filter state
-  const [filters, setFilters] = useState(() => initialFilters || {
-    search: '',
-    assetClasses: [],
-    performanceRank: 'all',
-    expenseRatioMax: '',
-    sharpeRatioMin: '',
-    betaMax: '',
-    timePerformance: {
-      period: 'ytd',
-      minReturn: '',
-      maxReturn: ''
-    },
-    scoreRange: {
-      min: '',
-      max: ''
-    },
-    isRecommended: 'all'
-  });
+  const [filters, setFilters] = useState(() => buildSafeFilters(initialFilters));
 
   // UI state
   const [isExpanded, setIsExpanded] = useState(false);
@@ -114,7 +121,7 @@ const AdvancedFilters = ({ funds, onFilterChange, className = '', initialFilters
       }
 
       // Asset class filter
-      if (filters.assetClasses.length > 0) {
+      if ((filters.assetClasses?.length ?? 0) > 0) {
         const fundAssetClass = fund['Asset Class'] || fund.asset_class;
         if (!filters.assetClasses.includes(fundAssetClass)) {
           return false;
@@ -122,7 +129,7 @@ const AdvancedFilters = ({ funds, onFilterChange, className = '', initialFilters
       }
 
       // Performance rank filter
-      if (filters.performanceRank !== 'all') {
+      if (filters.performanceRank && filters.performanceRank !== 'all') {
         const score = fund.scores?.final || fund.score || 0;
         const scorePercentile = getScorePercentile(score, funds);
         
@@ -138,6 +145,8 @@ const AdvancedFilters = ({ funds, onFilterChange, className = '', initialFilters
             break;
           case 'bottom50':
             if (scorePercentile > 50) return false;
+            break;
+          default:
             break;
         }
       }
@@ -167,7 +176,7 @@ const AdvancedFilters = ({ funds, onFilterChange, className = '', initialFilters
       }
 
       // Time performance filter
-      if (filters.timePerformance.minReturn || filters.timePerformance.maxReturn) {
+      if ((filters.timePerformance?.minReturn ?? '') !== '' || (filters.timePerformance?.maxReturn ?? '') !== '') {
         const returnValue = getReturnValue(fund, filters.timePerformance.period);
         
         if (filters.timePerformance.minReturn && returnValue < parseFloat(filters.timePerformance.minReturn)) {
@@ -180,7 +189,7 @@ const AdvancedFilters = ({ funds, onFilterChange, className = '', initialFilters
       }
 
       // Score range filter
-      if (filters.scoreRange.min || filters.scoreRange.max) {
+      if ((filters.scoreRange?.min ?? '') !== '' || (filters.scoreRange?.max ?? '') !== '') {
         const score = fund.scores?.final || fund.score || 0;
         
         if (filters.scoreRange.min && score < parseFloat(filters.scoreRange.min)) {
@@ -193,7 +202,7 @@ const AdvancedFilters = ({ funds, onFilterChange, className = '', initialFilters
       }
 
       // Recommended filter
-      if (filters.isRecommended !== 'all') {
+      if (filters.isRecommended && filters.isRecommended !== 'all') {
         const isRecommended = fund.is_recommended || fund.recommended || false;
         if (filters.isRecommended === 'yes' && !isRecommended) {
           return false;
@@ -301,14 +310,14 @@ const AdvancedFilters = ({ funds, onFilterChange, className = '', initialFilters
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filters.search) count++;
-    if (filters.assetClasses.length > 0) count++;
-    if (filters.performanceRank !== 'all') count++;
-    if (filters.expenseRatioMax) count++;
-    if (filters.sharpeRatioMin) count++;
-    if (filters.betaMax) count++;
-    if (filters.timePerformance.minReturn || filters.timePerformance.maxReturn) count++;
-    if (filters.scoreRange.min || filters.scoreRange.max) count++;
-    if (filters.isRecommended !== 'all') count++;
+    if ((filters.assetClasses?.length ?? 0) > 0) count++;
+    if (filters.performanceRank && filters.performanceRank !== 'all') count++;
+    if (filters.expenseRatioMax != null && filters.expenseRatioMax !== '') count++;
+    if (filters.sharpeRatioMin != null && filters.sharpeRatioMin !== '') count++;
+    if (filters.betaMax != null && filters.betaMax !== '') count++;
+    if ((filters.timePerformance?.minReturn ?? '') !== '' || (filters.timePerformance?.maxReturn ?? '') !== '') count++;
+    if ((filters.scoreRange?.min ?? '') !== '' || (filters.scoreRange?.max ?? '') !== '') count++;
+    if (filters.isRecommended && filters.isRecommended !== 'all') count++;
     return count;
   }, [filters]);
 

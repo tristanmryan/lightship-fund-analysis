@@ -45,13 +45,9 @@ const App = () => {
   const {
     funds,
     loading: fundsLoading,
-    error: fundsError,
+    // error: fundsError,
     refreshData,
-    addFund,
-    removeFund,
-    assetClasses,
-    fundCount,
-    recommendedCount
+    assetClasses
   } = useFundData();
 
   // Legacy state for backwards compatibility
