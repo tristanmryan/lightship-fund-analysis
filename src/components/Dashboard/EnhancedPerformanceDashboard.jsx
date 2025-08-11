@@ -38,6 +38,15 @@ function sanitizeViewDefaults(view) {
   return { ...view, filters: safeFilters };
 }
 
+function sanitizeTableState(saved, validColumnKeys, defaultSelected) {
+  const selected = Array.isArray(saved?.selectedColumns) ? saved.selectedColumns : defaultSelected;
+  const filteredSelected = (selected || []).filter((k) => validColumnKeys.includes(k));
+  const safeSelected = filteredSelected.length ? filteredSelected : defaultSelected;
+  const sort = Array.isArray(saved?.sortConfig) ? saved.sortConfig : [];
+  const safeSort = sort.filter((s) => s && validColumnKeys.includes(s.key) && (s.direction === 'asc' || s.direction === 'desc'));
+  return { selectedColumns: safeSelected, sortConfig: safeSort };
+}
+
 /**
  * Enhanced Performance Dashboard
  * Comprehensive dashboard with advanced filtering and multiple view modes
@@ -178,17 +187,36 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
     setViewMode('details');
   }, []);
 
+  // Valid table column keys and defaults (must match EnhancedFundTable)
+  const DEFAULT_TABLE_COLUMNS = [
+    'symbol', 'name', 'assetClass', 'score', 'ytdReturn', 'oneYearReturn',
+    'threeYearReturn', 'expenseRatio', 'sharpeRatio', 'recommended'
+  ];
+
+  // This list should align with EnhancedFundTable's definitions
+  const VALID_COLUMN_KEYS = [
+    'symbol','name','assetClass','score','ytdReturn','oneYearReturn','threeYearReturn','fiveYearReturn',
+    'sparkline','expenseRatio','sharpeRatio','beta','standardDeviation','upCaptureRatio','downCaptureRatio',
+    'managerTenure','recommended'
+  ];
+
   // Render view mode content
   const renderViewContent = () => {
     switch (viewMode) {
       case 'table':
+        // Sanitize any saved/initial table state before passing to table
+        const sanitized = sanitizeTableState(
+          { sortConfig: initialTableState.sortConfig, selectedColumns: initialTableState.selectedColumns },
+          VALID_COLUMN_KEYS,
+          DEFAULT_TABLE_COLUMNS
+        );
         return (
           <EnhancedFundTable 
             funds={filteredFunds}
             onFundSelect={handleFundSelect}
             chartPeriod={chartPeriod}
-            initialSortConfig={initialTableState.sortConfig}
-            initialSelectedColumns={initialTableState.selectedColumns}
+            initialSortConfig={sanitized.sortConfig}
+            initialSelectedColumns={sanitized.selectedColumns}
             onStateChange={handleTableStateChange}
             registerExportHandler={(fn) => { tableExportRef.current = fn; }}
           />
@@ -237,14 +265,14 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
     }
   };
 
-  // Get active filter summary
+  // Get active filter summary (null-safe)
   const getFilterSummary = () => {
-    const activeCount = Object.values(activeFilters).filter(value => {
+    const obj = activeFilters ?? {};
+    const activeCount = Object.values(obj).filter(value => {
       if (Array.isArray(value)) return value.length > 0;
-      if (typeof value === 'object') return Object.values(value).some(v => v !== '' && v !== 'all');
+      if (value && typeof value === 'object') return Object.values(value ?? {}).some(v => v !== '' && v !== 'all');
       return value !== '' && value !== 'all';
     }).length;
-
     return activeCount;
   };
 

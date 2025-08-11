@@ -27,6 +27,10 @@ const EnhancedFundTable = ({
   const [sortConfig, setSortConfig] = useState(() => initialSortConfig || [
     { key: 'score', direction: 'desc' }
   ]);
+  const DEFAULT_TABLE_COLUMNS = useMemo(() => ([
+    'symbol', 'name', 'assetClass', 'score', 'ytdReturn', 'oneYearReturn', 
+    'threeYearReturn', 'expenseRatio', 'sharpeRatio', 'recommended'
+  ]), []);
   const [selectedColumns, setSelectedColumns] = useState(() => initialSelectedColumns || [
     'symbol', 'name', 'assetClass', 'score', 'ytdReturn', 'oneYearReturn', 
     'threeYearReturn', 'expenseRatio', 'sharpeRatio', 'recommended'
@@ -376,6 +380,17 @@ const EnhancedFundTable = ({
       )
     }
   }), [historyCache, chartPeriod]);
+
+  // Table-side safety: if selectedColumns is empty or contains unknown keys, fall back to defaults
+  React.useEffect(() => {
+    const validKeys = Object.keys(columnDefinitions);
+    const filtered = (selectedColumns || []).filter(k => validKeys.includes(k));
+    if (filtered.length === 0) {
+      setSelectedColumns(DEFAULT_TABLE_COLUMNS.filter(k => validKeys.includes(k)));
+    } else if (filtered.length !== (selectedColumns || []).length) {
+      setSelectedColumns(filtered);
+    }
+  }, [selectedColumns, columnDefinitions, DEFAULT_TABLE_COLUMNS]);
 
   // Multi-column sorting
   // eslint-disable-next-line react-hooks/exhaustive-deps
