@@ -42,5 +42,6 @@ export async function addNote({ fundId = null, fundTicker = null, overrideId = n
   return data;
 }
 
-export default { listNotes, addNote };
+const researchNotesService = { listNotes, addNote };
+export default researchNotesService;
 

@@ -94,6 +94,23 @@ export const dbUtils = {
     if (date instanceof Date) return date.toISOString();
     if (typeof date === 'string') return new Date(date).toISOString();
     return new Date().toISOString();
+  },
+
+  // Format to date-only string (YYYY-MM-DD) for DATE columns
+  formatDateOnly: (date) => {
+    try {
+      const d = date instanceof Date ? date : new Date(date);
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    } catch {
+      const now = new Date();
+      const y = now.getUTCFullYear();
+      const m = String(now.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(now.getUTCDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
   }
 };
 

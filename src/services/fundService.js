@@ -4,8 +4,8 @@ import { resolveAssetClassForTicker } from './resolvers/assetClassResolver';
 import ychartsAPI from './ychartsAPI';
 
 class FundService {
-  // Get all funds from database with latest performance data
-  async getAllFunds() {
+  // Get all funds from database with performance at a given date (or latest if null)
+  async getAllFunds(asOfDate = null) {
     try {
       // First get all funds
       const { data: funds, error: fundsError } = await supabase
@@ -27,7 +27,7 @@ class FundService {
               .maybeSingle();
             assetClass = ac || null;
           }
-          const performance = await this.getFundPerformance(fund.ticker);
+          const performance = await this.getFundPerformance(fund.ticker, asOfDate);
           return {
             ...fund,
             ...performance,
@@ -120,7 +120,8 @@ class FundService {
         .eq('fund_ticker', dbUtils.cleanSymbol(ticker));
 
       if (date) {
-        query = query.eq('date', dbUtils.formatDate(date));
+        // Query by date-only equality against DATE column
+        query = query.eq('date', dbUtils.formatDateOnly(date));
       } else {
         query = query.order('date', { ascending: false }).limit(1);
       }
@@ -182,7 +183,7 @@ class FundService {
     try {
       const performance = {
         fund_ticker: dbUtils.cleanSymbol(performanceData.ticker),
-        date: dbUtils.formatDate(performanceData.date || new Date()),
+        date: dbUtils.formatDateOnly(performanceData.date || new Date()),
         ytd_return: dbUtils.parseNumeric(performanceData.ytd_return || performanceData.YTD),
         one_year_return: dbUtils.parseNumeric(performanceData.one_year_return || performanceData['1 Year']),
         three_year_return: dbUtils.parseNumeric(performanceData.three_year_return || performanceData['3 Year']),
@@ -190,13 +191,35 @@ class FundService {
         ten_year_return: dbUtils.parseNumeric(performanceData.ten_year_return || performanceData['10 Year']),
         sharpe_ratio: dbUtils.parseNumeric(performanceData.sharpe_ratio || performanceData['Sharpe Ratio']),
         standard_deviation: dbUtils.parseNumeric(performanceData.standard_deviation || performanceData['Standard Deviation']),
+        standard_deviation_3y: dbUtils.parseNumeric(
+          performanceData.standard_deviation_3y
+          ?? performanceData['standard_deviation_3y']
+          ?? performanceData['Standard Deviation 3Y']
+          ?? performanceData.standard_deviation // legacy fallback: map to 3Y
+          ?? performanceData['Standard Deviation']
+        ),
+        standard_deviation_5y: dbUtils.parseNumeric(
+          performanceData.standard_deviation_5y
+          ?? performanceData['standard_deviation_5y']
+          ?? performanceData['Standard Deviation 5Y']
+        ),
         expense_ratio: dbUtils.parseNumeric(performanceData.expense_ratio || performanceData['Net Expense Ratio']),
-        alpha: dbUtils.parseNumeric(performanceData.alpha || performanceData.Alpha),
-        beta: dbUtils.parseNumeric(performanceData.beta || performanceData.Beta),
+        alpha: dbUtils.parseNumeric(performanceData.alpha || performanceData.alpha_5y || performanceData.Alpha),
+        beta: dbUtils.parseNumeric(performanceData.beta || performanceData.beta_3y || performanceData.Beta),
         manager_tenure: dbUtils.parseNumeric(performanceData.manager_tenure || performanceData['Manager Tenure']),
         // NEW FIELDS - Capture ratios and additional data
-        up_capture_ratio: dbUtils.parseNumeric(performanceData.up_capture_ratio || performanceData['Up Capture Ratio']),
-        down_capture_ratio: dbUtils.parseNumeric(performanceData.down_capture_ratio || performanceData['Down Capture Ratio']),
+        up_capture_ratio: dbUtils.parseNumeric(
+          performanceData.up_capture_ratio
+          ?? performanceData.up_capture_ratio_3y
+          ?? performanceData['Up Capture Ratio']
+          ?? performanceData['Up Capture Ratio (Morningstar Standard) - 3 Year']
+        ),
+        down_capture_ratio: dbUtils.parseNumeric(
+          performanceData.down_capture_ratio
+          ?? performanceData.down_capture_ratio_3y
+          ?? performanceData['Down Capture Ratio']
+          ?? performanceData['Down Capture Ratio (Morningstar Standard) - 3 Year']
+        ),
         category_rank: dbUtils.parseNumeric(performanceData.category_rank || performanceData['Category Rank']),
         sec_yield: dbUtils.parseNumeric(performanceData.sec_yield || performanceData['SEC Yield']),
         fund_family: performanceData.fund_family || performanceData['Fund Family'] || null
@@ -352,10 +375,10 @@ class FundService {
         .order('date', { ascending: false });
 
       if (startDate) {
-        query = query.gte('date', dbUtils.formatDate(startDate));
+        query = query.gte('date', dbUtils.formatDateOnly(startDate));
       }
       if (endDate) {
-        query = query.lte('date', dbUtils.formatDate(endDate));
+        query = query.lte('date', dbUtils.formatDateOnly(endDate));
       }
 
       const { data, error } = await query;
@@ -364,6 +387,109 @@ class FundService {
       return data || [];
     } catch (error) {
       handleSupabaseError(error, 'getFundPerformanceHistory');
+      return [];
+    }
+  }
+
+  // Bulk upsert fund performance rows in chunks
+  async bulkUpsertFundPerformance(rows = [], chunkSize = 500) {
+    const toBatches = [];
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      toBatches.push(rows.slice(i, i + chunkSize));
+    }
+    let success = 0;
+    let failed = 0;
+    for (const batch of toBatches) {
+      const payload = batch.map((r) => ({
+        fund_ticker: dbUtils.cleanSymbol(r.ticker || r.fund_ticker),
+        date: dbUtils.formatDateOnly(r.date || r.AsOfMonth || r.as_of_month),
+        ytd_return: dbUtils.parseNumeric(r.ytd_return ?? r['YTD']),
+        one_year_return: dbUtils.parseNumeric(r.one_year_return ?? r['1 Year']),
+        three_year_return: dbUtils.parseNumeric(r.three_year_return ?? r['3 Year']),
+        five_year_return: dbUtils.parseNumeric(r.five_year_return ?? r['5 Year']),
+        ten_year_return: dbUtils.parseNumeric(r.ten_year_return ?? r['10 Year']),
+        sharpe_ratio: dbUtils.parseNumeric(r.sharpe_ratio ?? r['Sharpe Ratio']),
+        standard_deviation: dbUtils.parseNumeric(r.standard_deviation ?? r['Standard Deviation']),
+        standard_deviation_3y: dbUtils.parseNumeric(
+          r.standard_deviation_3y ?? r['standard_deviation_3y'] ?? r['Standard Deviation 3Y'] ?? r.standard_deviation ?? r['Standard Deviation']
+        ),
+        standard_deviation_5y: dbUtils.parseNumeric(
+          r.standard_deviation_5y ?? r['standard_deviation_5y'] ?? r['Standard Deviation 5Y']
+        ),
+        expense_ratio: dbUtils.parseNumeric(r.expense_ratio ?? r['Net Expense Ratio']),
+        alpha: dbUtils.parseNumeric(r.alpha ?? r.alpha_5y ?? r['Alpha']),
+        beta: dbUtils.parseNumeric(r.beta ?? r.beta_3y ?? r['Beta']),
+        manager_tenure: dbUtils.parseNumeric(r.manager_tenure ?? r['Manager Tenure']),
+        up_capture_ratio: dbUtils.parseNumeric(
+          r.up_capture_ratio ?? r.up_capture_ratio_3y ?? r['Up Capture Ratio'] ?? r['Up Capture Ratio (Morningstar Standard) - 3 Year']
+        ),
+        down_capture_ratio: dbUtils.parseNumeric(
+          r.down_capture_ratio ?? r.down_capture_ratio_3y ?? r['Down Capture Ratio'] ?? r['Down Capture Ratio (Morningstar Standard) - 3 Year']
+        )
+      }));
+
+      const { error } = await supabase
+        .from(TABLES.FUND_PERFORMANCE)
+        .upsert(payload, { onConflict: 'fund_ticker,date' });
+      if (error) {
+        failed += payload.length;
+      } else {
+        success += payload.length;
+      }
+    }
+    return { success, failed };
+  }
+
+  // List distinct snapshot months (dates) present in fund_performance
+  async listSnapshotMonths(limit = 240) {
+    try {
+      const { data, error } = await supabase
+        .from(TABLES.FUND_PERFORMANCE)
+        .select('date')
+        .order('date', { ascending: false })
+        .limit(limit * 1000); // guardrail; many tickers share same date
+      if (error) throw error;
+      const seen = new Set();
+      const months = [];
+      for (const row of data || []) {
+        const d = dbUtils.formatDateOnly(row.date);
+        if (!seen.has(d)) {
+          seen.add(d);
+          months.push(d);
+        }
+        if (months.length >= limit) break;
+      }
+      return months;
+    } catch (error) {
+      handleSupabaseError(error, 'listSnapshotMonths');
+      return [];
+    }
+  }
+
+  // Return list of all fund tickers
+  async listFundTickers() {
+    try {
+      const { data, error } = await supabase
+        .from(TABLES.FUNDS)
+        .select('ticker');
+      if (error) throw error;
+      return (data || []).map((r) => r.ticker?.toUpperCase()).filter(Boolean);
+    } catch (error) {
+      handleSupabaseError(error, 'listFundTickers');
+      return [];
+    }
+  }
+
+  // Return list of benchmark tickers and names
+  async listBenchmarkTickers() {
+    try {
+      const { data, error } = await supabase
+        .from(TABLES.BENCHMARKS)
+        .select('ticker,name');
+      if (error) throw error;
+      return (data || []).map((r) => ({ ticker: r.ticker?.toUpperCase(), name: r.name }));
+    } catch (error) {
+      handleSupabaseError(error, 'listBenchmarkTickers');
       return [];
     }
   }

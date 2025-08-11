@@ -6,13 +6,13 @@ import { invalidateReferenceCaches } from '../../services/resolvers';
 const FLAG_ENABLE_MANUAL_ADD = (process.env.REACT_APP_ENABLE_ADMIN_MANUAL_ADD || 'true') === 'true';
 
 const ManualAddFund = () => {
-  const [enabled, setEnabled] = useState(FLAG_ENABLE_MANUAL_ADD);
+  const [enabled] = useState(FLAG_ENABLE_MANUAL_ADD);
   const [assetClasses, setAssetClasses] = useState([]);
   const [form, setForm] = useState({ ticker: '', name: '', asset_class_id: '', ytd: '', y1: '', y3: '', y5: '', y10: '', sharpe: '', stdev: '', exp: '', alpha: '', beta: '' });
   const [overwriteMissing, setOverwriteMissing] = useState(false);
   const [todayRowMeta, setTodayRowMeta] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [errorMsg, setErrorState] = useState('');
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
@@ -28,7 +28,7 @@ const ManualAddFund = () => {
     const fetchMeta = async () => {
       const t = (form.ticker || '').toUpperCase().trim();
       if (!t) { setTodayRowMeta(null); return; }
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from(TABLES.FUND_PERFORMANCE)
         .select('fund_ticker, date, created_at')
         .eq('fund_ticker', t)
@@ -46,11 +46,11 @@ const ManualAddFund = () => {
   const onSave = async () => {
     try {
       setSaving(true);
-      setError('');
+      setErrorState('');
       setSuccess('');
       const ticker = (form.ticker || '').toUpperCase().trim();
       if (!ticker || !form.name || !form.asset_class_id) {
-        setError('Ticker, Name, and Asset Class are required');
+        setErrorState('Ticker, Name, and Asset Class are required');
         setSaving(false);
         return;
       }
@@ -109,7 +109,7 @@ const ManualAddFund = () => {
       setForm({ ticker: '', name: '', asset_class_id: '', ytd: '', y1: '', y3: '', y5: '', y10: '', sharpe: '', stdev: '', exp: '', alpha: '', beta: '' });
       setTodayRowMeta(null);
     } catch (e) {
-      setError(e.message);
+      setErrorState(e.message);
     } finally {
       setSaving(false);
     }
@@ -150,7 +150,7 @@ const ManualAddFund = () => {
           Overwrite missing fields for today (set unspecified to NULL)
         </label>
         <button className="btn btn-primary" onClick={onSave} disabled={saving}>Save</button>
-        {error && <div className="alert alert-error" style={{ marginTop: 8 }}>{error}</div>}
+        {errorMsg && <div className="alert alert-error" style={{ marginTop: 8 }}>{errorMsg}</div>}
         {success && <div className="alert alert-success" style={{ marginTop: 8 }}>{success}</div>}
       </div>
     </div>

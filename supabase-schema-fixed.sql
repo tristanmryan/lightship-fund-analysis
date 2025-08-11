@@ -59,6 +59,8 @@ CREATE TABLE IF NOT EXISTS fund_performance (
     ten_year_return DECIMAL(10,4),
     sharpe_ratio DECIMAL(10,4),
     standard_deviation DECIMAL(10,4),
+    standard_deviation_3y DECIMAL(10,4),
+    standard_deviation_5y DECIMAL(10,4),
     expense_ratio DECIMAL(10,4),
     alpha DECIMAL(10,4),
     beta DECIMAL(10,4),

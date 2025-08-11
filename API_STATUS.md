@@ -88,6 +88,17 @@ When YCharts API access is enabled:
  - Research Notes (flagged): enable `REACT_APP_ENABLE_NOTES`, add a note in Drilldown, refresh; confirm note appears newest-first with author and timestamp
  - Compare Sets: in Compare view, select funds, name and Save the set, reload and Load it, then Delete; verify missing ticker handling notice appears when applicable
   - CSV Export: open exported CSVs in Excel on Windows. Confirm UTF-8 BOM (no garbled characters), CRLF line endings, and that numbers are raw numerics (no thousands separators). Percent-like values are decimals (e.g., 0.1234 = 12.34%).
+  - Monthly Snapshot Upload (CSV): enable `REACT_APP_ENABLE_IMPORT`, upload a CSV with Ticker/AsOfMonth and metrics, verify preview counts, EOM warnings, unknown tickers skipped; import should upsert rows; re-import same month updates without duplicates. Use the "Download CSV Template" button on the importer to get a correctly formatted header.
+  - As-of selector: verify distinct months appear, switching month updates all values and clamps sparklines to <= selected month.
+ - Runtime Scoring (flagged): enable `REACT_APP_ENABLE_RUNTIME_SCORING`
+   - With July 2025 snapshot present, verify non-zero Score values appear per asset class in Table and Compare when the flag is ON.
+   - Change “As of …” month and confirm scores change accordingly (recomputed per peer set; no cross-month mixing).
+   - Modify capture ratios for a test fund; confirm score direction responds (higher up-capture and lower down-capture improve score).
+   - Set `REACT_APP_ENABLE_RUNTIME_SCORING=false` and confirm previous behavior returns (no runtime re-score; UI remains stable).
+ - Std Dev Horizons (Scoring Quality):
+   - CSV Template includes `standard_deviation_3y` and `standard_deviation_5y` columns; importer maps legacy `standard_deviation` to 3Y when only that exists.
+   - Drilldown Risk section shows both Std Dev (3Y) and Std Dev (5Y); if one missing, em dash displays.
+   - Runtime scoring responds independently to changes in 3Y vs 5Y std dev (per weights); missing metrics cause proportional reweighting, not silent double-use.
 
 ## 📞 Next Steps
 

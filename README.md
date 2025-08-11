@@ -90,3 +90,20 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/t
 ## Admin Options
 
 The **Admin** page allows management of fund lists and benchmark mappings. It also provides controls for adjusting the scoring weights used by the ranking engine. Navigate to the **scoring** tab inside the Admin page to view all metrics and their current weightings. Enter new numeric weights, click **Save** to persist them, or **Reset** to return to the defaults.
+
+### Monthly Snapshot Upload (CSV)
+- Behind flag `REACT_APP_ENABLE_IMPORT=true`.
+- CSV columns:
+  - Required: `Ticker`, `AsOfMonth` (YYYY-MM-DD, end-of-month recommended; non-EOM will warn but can proceed)
+  - Supported metrics (upsert into `fund_performance`): `ytd_return, one_year_return, three_year_return, five_year_return, ten_year_return, sharpe_ratio, standard_deviation, expense_ratio, alpha, beta, manager_tenure, up_capture_ratio, down_capture_ratio`
+- Units normalization: accepts `12.34`, `12.34%`, or `0.1234` as-is; `expense_ratio` `0.65` means 0.65%.
+- Unknown tickers are skipped.
+- Import is idempotent on (`fund_ticker`,`date`).
+
+Example CSV:
+
+```
+Ticker,AsOfMonth,ytd_return,one_year_return,three_year_return,five_year_return,ten_year_return,sharpe_ratio,standard_deviation,expense_ratio,alpha,beta,manager_tenure,up_capture_ratio,down_capture_ratio
+PRWCX,2025-05-31,8.12,15.34,9.21,10.05,8.45,0.98,12.40,0.65,1.23,0.95,6.5,105.2,92.6
+IWF,2025-05-31,10.11,18.90,11.45,12.30,10.02,1.05,14.10,0.19,0.00,1.00,0.0,100.0,100.0
+```

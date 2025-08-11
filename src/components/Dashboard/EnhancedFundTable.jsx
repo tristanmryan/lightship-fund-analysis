@@ -2,11 +2,10 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   ArrowUp, ArrowDown, ArrowUpDown, Eye, Star, TrendingUp, 
-  TrendingDown, Shield, DollarSign, Calendar, MoreHorizontal,
-  ExternalLink, Info
+  TrendingDown, Shield, DollarSign, Calendar, MoreHorizontal
 } from 'lucide-react';
-import { getScoreColor, getScoreLabel } from '../../services/scoring';
-import { computeBenchmarkDelta, resolveAssetClass, getBenchmarkConfigForFund } from './benchmarkUtils';
+import { getScoreColor } from '../../services/scoring';
+import { computeBenchmarkDelta } from './benchmarkUtils';
 import Sparkline from './Sparkline';
 import fundService from '../../services/fundService';
 import { exportTableCSV, downloadFile, shouldConfirmLargeExport } from '../../services/exportService';
@@ -28,13 +27,17 @@ const EnhancedFundTable = ({
   const [sortConfig, setSortConfig] = useState(() => initialSortConfig || [
     { key: 'score', direction: 'desc' }
   ]);
+  const DEFAULT_TABLE_COLUMNS = useMemo(() => ([
+    'symbol', 'name', 'assetClass', 'score', 'ytdReturn', 'oneYearReturn', 
+    'threeYearReturn', 'expenseRatio', 'sharpeRatio', 'recommended'
+  ]), []);
   const [selectedColumns, setSelectedColumns] = useState(() => initialSelectedColumns || [
     'symbol', 'name', 'assetClass', 'score', 'ytdReturn', 'oneYearReturn', 
     'threeYearReturn', 'expenseRatio', 'sharpeRatio', 'recommended'
   ]);
-  const [columnWidths, setColumnWidths] = useState({});
+  // const [columnWidths, setColumnWidths] = useState({});
   const [hoveredFund, setHoveredFund] = useState(null);
-  const [historyCache, setHistoryCache] = useState({});
+  const [historyCache, setHistoryCache] = useState({}); // stores sorted history rows per symbol
 
   // Emit state changes to parent for persistence
   useEffect(() => {
@@ -42,6 +45,21 @@ const EnhancedFundTable = ({
       onStateChange({ sortConfig, selectedColumns });
     }
   }, [sortConfig, selectedColumns, onStateChange]);
+
+  // Preload sparkline history rows for visible funds when the sparkline column is selected
+  const preloadSparklineData = useCallback(async (currentSortedFunds, currentHistoryCache) => {
+    const needed = new Set((currentSortedFunds || []).map(f => (f.ticker || f.Symbol)).filter(Boolean));
+    const toLoad = Array.from(needed).filter(sym => !(sym in currentHistoryCache));
+    for (const sym of toLoad) {
+      try {
+        const rows = await fundService.getFundPerformanceHistory(sym, null, (window.__AS_OF_MONTH__ || null));
+        const sorted = (rows || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+        setHistoryCache(prev => ({ ...prev, [sym]: sorted }));
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
 
   // Column definitions
   const columnDefinitions = useMemo(() => ({
@@ -209,45 +227,24 @@ const EnhancedFundTable = ({
       width: '180px',
       render: (_, fund) => {
         const key = fund.ticker || fund.Symbol;
-        const hist = historyCache[key];
-        useEffect(() => {
-          let alive = true;
-          (async () => {
-            if (!key || historyCache[key]) return;
-            const rows = await fundService.getFundPerformanceHistory(key);
-            if (!alive) return;
-            const sorted = (rows || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
-            let picked = sorted;
-            const clamp = (arr, n) => arr.slice(Math.max(0, arr.length - n));
-            switch (chartPeriod) {
-              case '1M': picked = clamp(sorted, 21); break; // ~21 trading days
-              case '3M': picked = clamp(sorted, 63); break;
-              case '6M': picked = clamp(sorted, 126); break;
-              case 'YTD': {
-                const year = new Date().getFullYear();
-                picked = sorted.filter(r => new Date(r.date).getFullYear() === year);
-                break;
-              }
-              case '1Y':
-              default: picked = clamp(sorted, 252); break; // ~252 trading days
-            }
-            const values = picked.map(r => r.one_year_return ?? r.ytd_return ?? null);
-            setHistoryCache(prev => ({ ...prev, [key]: values }));
-          })();
-          return () => { alive = false; };
-        }, [key, chartPeriod]);
-        return <Sparkline values={hist || []} />;
+        const rows = historyCache[key] || [];
+        let picked = rows;
+        const clamp = (arr, n) => arr.slice(Math.max(0, arr.length - n));
+        switch (chartPeriod) {
+          case '1M': picked = clamp(rows, 21); break; // ~21 trading days
+          case '3M': picked = clamp(rows, 63); break;
+          case '6M': picked = clamp(rows, 126); break;
+          case 'YTD': {
+            const year = new Date().getFullYear();
+            picked = rows.filter(r => new Date(r.date).getFullYear() === year);
+            break;
+          }
+          case '1Y':
+          default: picked = clamp(rows, 252); break; // ~252 trading days
+        }
+        const values = picked.map(r => r.one_year_return ?? r.ytd_return ?? null);
+        return <Sparkline values={values} />;
       }
-    },
-    sparkline: {
-      label: 'Trend',
-      key: 'sparkline',
-      getValue: () => null,
-      sortable: false,
-      width: '180px',
-      render: (_, fund) => (
-        <AsyncSpark fund={fund} />
-      )
     },
     expenseRatio: {
       label: 'Expense Ratio',
@@ -302,15 +299,27 @@ const EnhancedFundTable = ({
         </div>
       )
     },
-    standardDeviation: {
-      label: 'Std Dev',
-      key: 'standardDeviation',
-      getValue: (fund) => fund['Standard Deviation - 5 Year'] || fund.standard_deviation || 0,
+    stdDev3Y: {
+      label: 'Std Dev (3Y)',
+      key: 'stdDev3Y',
+      getValue: (fund) => fund.standard_deviation_3y ?? null,
       sortable: true,
-      width: '90px',
+      width: '100px',
       render: (value) => (
         <div style={{ textAlign: 'center' }}>
-          {value?.toFixed(2)}%
+          {value == null ? '—' : `${value.toFixed(2)}%`}
+        </div>
+      )
+    },
+    stdDev5Y: {
+      label: 'Std Dev (5Y)',
+      key: 'stdDev5Y',
+      getValue: (fund) => fund.standard_deviation_5y ?? null,
+      sortable: true,
+      width: '100px',
+      render: (value) => (
+        <div style={{ textAlign: 'center' }}>
+          {value == null ? '—' : `${value.toFixed(2)}%`}
         </div>
       )
     },
@@ -382,9 +391,21 @@ const EnhancedFundTable = ({
         </div>
       )
     }
-  }), []);
+  }), [historyCache, chartPeriod]);
+
+  // Table-side safety: if selectedColumns is empty or contains unknown keys, fall back to defaults
+  React.useEffect(() => {
+    const validKeys = Object.keys(columnDefinitions);
+    const filtered = (selectedColumns || []).filter(k => validKeys.includes(k));
+    if (filtered.length === 0) {
+      setSelectedColumns(DEFAULT_TABLE_COLUMNS.filter(k => validKeys.includes(k)));
+    } else if (filtered.length !== (selectedColumns || []).length) {
+      setSelectedColumns(filtered);
+    }
+  }, [selectedColumns, columnDefinitions, DEFAULT_TABLE_COLUMNS]);
 
   // Multi-column sorting
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const sortedFunds = useMemo(() => {
     if (!funds || funds.length === 0 || sortConfig.length === 0) return funds || [];
 
@@ -407,6 +428,13 @@ const EnhancedFundTable = ({
       return 0;
     });
   }, [funds, sortConfig, columnDefinitions]);
+
+  // Kick off preload when sparkline column is visible
+  useEffect(() => {
+    if (!selectedColumns.includes('sparkline')) return;
+    preloadSparklineData(sortedFunds, historyCache);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedColumns, sortedFunds]);
 
   // Handle column sorting
   const handleSort = useCallback((columnKey) => {
@@ -463,20 +491,20 @@ const EnhancedFundTable = ({
   };
 
   // Column visibility toggle
-  const toggleColumn = useCallback((columnKey) => {
-    setSelectedColumns(prev => 
-      prev.includes(columnKey) 
-        ? prev.filter(col => col !== columnKey)
-        : [...prev, columnKey]
-    );
-  }, []);
+  // const toggleColumn = useCallback((columnKey) => {
+  //   setSelectedColumns(prev => 
+  //     prev.includes(columnKey) 
+  //       ? prev.filter(col => col !== columnKey)
+  //       : [...prev, columnKey]
+  //   );
+  // }, []);
 
-  const percentColumnKeys = new Set([
+  const percentColumnKeys = useMemo(() => new Set([
     'ytdReturn', 'oneYearReturn', 'threeYearReturn', 'fiveYearReturn',
     'expenseRatio', 'standardDeviation', 'upCaptureRatio', 'downCaptureRatio'
-  ]);
+  ]), []);
 
-  const buildExportColumns = () => {
+  const buildExportColumns = useCallback(() => {
     return selectedColumns
       .filter((key) => key !== 'sparkline')
       .map((key) => {
@@ -490,7 +518,7 @@ const EnhancedFundTable = ({
         };
       })
       .filter(Boolean);
-  };
+  }, [selectedColumns, columnDefinitions, percentColumnKeys]);
 
   const exportCSV = useCallback(() => {
     const rowsCount = sortedFunds?.length || 0;
@@ -516,7 +544,7 @@ const EnhancedFundTable = ({
     const now = new Date();
     const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
     downloadFile(blob, `table_export_${ts}.csv`, 'text/csv;charset=utf-8');
-  }, [sortedFunds, sortConfig, selectedColumns, chartPeriod, columnDefinitions]);
+  }, [sortedFunds, sortConfig, chartPeriod, columnDefinitions, buildExportColumns]);
 
   useEffect(() => {
     if (typeof registerExportHandler === 'function') {

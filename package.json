@@ -25,6 +25,7 @@
     "start": "react-scripts start",
     "build": "set GENERATE_SOURCEMAP=false && set CI=false && set DISABLE_ESLINT_PLUGIN=true && react-scripts build",
     "test": "react-scripts test",
+    "test:ci": "cross-env CI=true react-scripts test --watchAll=false --runInBand --silent",
     "eject": "react-scripts eject",
     "process-data": "node scripts/buildData.mjs",
     "setup": "node scripts/setup.js"
@@ -46,5 +47,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "cross-env": "^10.0.0"
   }
 }

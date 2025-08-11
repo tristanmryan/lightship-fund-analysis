@@ -45,13 +45,11 @@ const App = () => {
   const {
     funds,
     loading: fundsLoading,
-    error: fundsError,
+    // error: fundsError,
     refreshData,
-    addFund,
-    removeFund,
     assetClasses,
-    fundCount,
-    recommendedCount
+    asOfMonth,
+    setAsOfMonth
   } = useFundData();
 
   // Legacy state for backwards compatibility
@@ -539,6 +537,8 @@ const App = () => {
             funds={funds}
             onRefresh={refreshData}
             isLoading={fundsLoading}
+            asOfMonth={asOfMonth}
+            onAsOfMonthChange={(val) => setAsOfMonth(val)}
           />
         </div>
       )}

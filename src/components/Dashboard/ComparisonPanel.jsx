@@ -12,6 +12,8 @@ const metricDefs = [
   { key: '3y', label: '3-Year Return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
   { key: '5y', label: '5-Year Return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
   { key: 'sharpe', label: 'Sharpe Ratio', fmt: (v) => (v == null ? '—' : formatNumber(v, 2)) },
+  { key: 'stdDev3Y', label: 'Std Dev (3Y)', tooltip: 'Standard deviation over the last 3 years.', fmt: (v) => (v == null ? '—' : formatPercent(v, 2)) },
+  { key: 'stdDev5Y', label: 'Std Dev (5Y)', tooltip: 'Standard deviation over the last 5 years.', fmt: (v) => (v == null ? '—' : formatPercent(v, 2)) },
   { key: 'expense', label: 'Expense Ratio', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
   { key: 'beta', label: 'Beta', fmt: (v) => (v == null ? '—' : formatNumber(v, 2)) },
   { key: 'upCapture', label: 'Up Capture (3Y)', fmt: (v) => (v == null ? '—' : formatPercent(v, 1)) },
@@ -27,6 +29,8 @@ function getValue(fund, key) {
     case '5y': return fund?.five_year_return ?? null;
     case 'sharpe': return fund?.sharpe_ratio ?? null;
     case 'expense': return fund?.expense_ratio ?? null;
+    case 'stdDev3Y': return fund?.standard_deviation_3y ?? fund?.standard_deviation ?? null;
+    case 'stdDev5Y': return fund?.standard_deviation_5y ?? null;
     case 'beta': return fund?.beta ?? null;
     case 'upCapture': return fund?.up_capture_ratio ?? null;
     case 'downCapture': return fund?.down_capture_ratio ?? null;

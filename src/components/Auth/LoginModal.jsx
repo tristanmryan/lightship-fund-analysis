@@ -53,11 +53,17 @@ const LoginModal = ({ isOpen, onLogin, onClose }) => {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="login-modal-title"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
           <div className="modal-title">
             <Lock className="modal-icon" />
-            <h2>Login Required</h2>
+            <h2 id="login-modal-title">Login Required</h2>
           </div>
           <button className="btn-close" onClick={onClose}>
             ×

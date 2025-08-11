@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { 
   TrendingUp, BarChart3, Grid, Table, RefreshCw, Download,
-  Filter, Eye, Target, AlertCircle, Info
+  Filter, Target, AlertCircle, Info
 } from 'lucide-react';
 import AdvancedFilters from './AdvancedFilters';
 import EnhancedFundTable from './EnhancedFundTable';
@@ -13,12 +13,46 @@ import FundDetailsModal from '../FundDetailsModal';
 import ComparisonPanel from './ComparisonPanel';
 import DrilldownCards from './DrilldownCards';
 import preferencesService from '../../services/preferencesService';
+import fundService from '../../services/fundService';
+
+const DEFAULT_FILTERS = {
+  search: '',
+  assetClasses: [],
+  performanceRank: null,
+  expenseRatioMax: null,
+  sharpeRatioMin: null,
+  betaMax: null,
+  timePerformance: { period: null, minReturn: null, maxReturn: null },
+  scoreRange: { min: null, max: null },
+  isRecommended: null
+};
+
+function sanitizeViewDefaults(view) {
+  if (!view || typeof view !== 'object') return { filters: { ...DEFAULT_FILTERS } };
+  const safeFilters = {
+    ...DEFAULT_FILTERS,
+    ...(view.filters || {}),
+    assetClasses: Array.isArray(view?.filters?.assetClasses) ? view.filters.assetClasses : [],
+    timePerformance: { ...DEFAULT_FILTERS.timePerformance, ...(view?.filters?.timePerformance || {}) },
+    scoreRange: { ...DEFAULT_FILTERS.scoreRange, ...(view?.filters?.scoreRange || {}) }
+  };
+  return { ...view, filters: safeFilters };
+}
+
+function sanitizeTableState(saved, validColumnKeys, defaultSelected) {
+  const selected = Array.isArray(saved?.selectedColumns) ? saved.selectedColumns : defaultSelected;
+  const filteredSelected = (selected || []).filter((k) => validColumnKeys.includes(k));
+  const safeSelected = filteredSelected.length ? filteredSelected : defaultSelected;
+  const sort = Array.isArray(saved?.sortConfig) ? saved.sortConfig : [];
+  const safeSort = sort.filter((s) => s && validColumnKeys.includes(s.key) && (s.direction === 'asc' || s.direction === 'desc'));
+  return { selectedColumns: safeSelected, sortConfig: safeSort };
+}
 
 /**
  * Enhanced Performance Dashboard
  * Comprehensive dashboard with advanced filtering and multiple view modes
  */
-const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) => {
+const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asOfMonth: asOfMonthProp = '', onAsOfMonthChange = null }) => {
   // State management
   const [filteredFunds, setFilteredFunds] = useState(funds || []);
   const [activeFilters, setActiveFilters] = useState({});
@@ -31,13 +65,15 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
   const [initialTableState, setInitialTableState] = useState({ sortConfig: null, selectedColumns: null });
   const [tableState, setTableState] = useState({ sortConfig: null, selectedColumns: null });
   const tableExportRef = React.useRef(null);
+  const [availableMonths, setAvailableMonths] = useState([]);
 
   // Load saved view defaults on mount
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const defaults = await preferencesService.getViewDefaults();
+        const defaults = sanitizeViewDefaults(await preferencesService.getViewDefaults());
+        const months = await fundService.listSnapshotMonths();
         if (cancelled) return;
         if (defaults) {
           setInitialFilters(defaults.filters || null);
@@ -48,12 +84,18 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
           if (defaults.chartPeriod && ['1M','3M','6M','1Y','YTD'].includes(defaults.chartPeriod)) {
             setChartPeriod(defaults.chartPeriod);
           }
+          if (defaults.asOfMonth && typeof defaults.asOfMonth === 'string' && typeof onAsOfMonthChange === 'function') {
+            onAsOfMonthChange(defaults.asOfMonth);
+          }
         }
+        setAvailableMonths(months || []);
+        // Initialize global endDate for sparklines
+        window.__AS_OF_MONTH__ = (asOfMonthProp || '') || null;
       } catch {}
       if (!cancelled) setInitialized(true);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [asOfMonthProp, onAsOfMonthChange]);
 
   // Handle filter changes
   const handleFilterChange = useCallback((filtered, filters) => {
@@ -71,10 +113,11 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
           sortConfig: state.sortConfig,
           selectedColumns: state.selectedColumns
         },
-        chartPeriod
+        chartPeriod,
+        asOfMonth: asOfMonthProp
       });
     } catch {}
-  }, [activeFilters, chartPeriod]);
+  }, [activeFilters, chartPeriod, asOfMonthProp]);
 
   // Persist when filters change too
   React.useEffect(() => {
@@ -87,11 +130,12 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
             sortConfig: tableState.sortConfig,
             selectedColumns: tableState.selectedColumns
           },
-          chartPeriod
+          chartPeriod,
+          asOfMonth: asOfMonthProp
         });
       } catch {}
     })();
-  }, [activeFilters, initialized, tableState.sortConfig, tableState.selectedColumns, chartPeriod]);
+  }, [activeFilters, initialized, tableState, chartPeriod, asOfMonthProp]);
 
   // Persist when chartPeriod changes independently
   React.useEffect(() => {
@@ -104,11 +148,12 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
             sortConfig: tableState.sortConfig,
             selectedColumns: tableState.selectedColumns
           },
-          chartPeriod
+          chartPeriod,
+          asOfMonth: asOfMonthProp
         });
       } catch {}
     })();
-  }, [chartPeriod, initialized]);
+  }, [chartPeriod, initialized, activeFilters, tableState, asOfMonthProp]);
 
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
@@ -154,17 +199,36 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
     setViewMode('details');
   }, []);
 
+  // Valid table column keys and defaults (must match EnhancedFundTable)
+  const DEFAULT_TABLE_COLUMNS = [
+    'symbol', 'name', 'assetClass', 'score', 'ytdReturn', 'oneYearReturn',
+    'threeYearReturn', 'expenseRatio', 'sharpeRatio', 'recommended'
+  ];
+
+  // This list should align with EnhancedFundTable's definitions
+  const VALID_COLUMN_KEYS = [
+    'symbol','name','assetClass','score','ytdReturn','oneYearReturn','threeYearReturn','fiveYearReturn',
+    'sparkline','expenseRatio','sharpeRatio','beta','standardDeviation','upCaptureRatio','downCaptureRatio',
+    'managerTenure','recommended'
+  ];
+
   // Render view mode content
   const renderViewContent = () => {
     switch (viewMode) {
       case 'table':
+        // Sanitize any saved/initial table state before passing to table
+        const sanitized = sanitizeTableState(
+          { sortConfig: initialTableState.sortConfig, selectedColumns: initialTableState.selectedColumns },
+          VALID_COLUMN_KEYS,
+          DEFAULT_TABLE_COLUMNS
+        );
         return (
           <EnhancedFundTable 
             funds={filteredFunds}
             onFundSelect={handleFundSelect}
             chartPeriod={chartPeriod}
-            initialSortConfig={initialTableState.sortConfig}
-            initialSelectedColumns={initialTableState.selectedColumns}
+            initialSortConfig={sanitized.sortConfig}
+            initialSelectedColumns={sanitized.selectedColumns}
             onStateChange={handleTableStateChange}
             registerExportHandler={(fn) => { tableExportRef.current = fn; }}
           />
@@ -213,14 +277,14 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
     }
   };
 
-  // Get active filter summary
+  // Get active filter summary (null-safe)
   const getFilterSummary = () => {
-    const activeCount = Object.values(activeFilters).filter(value => {
+    const obj = activeFilters ?? {};
+    const activeCount = Object.values(obj).filter(value => {
       if (Array.isArray(value)) return value.length > 0;
-      if (typeof value === 'object') return Object.values(value).some(v => v !== '' && v !== 'all');
+      if (value && typeof value === 'object') return Object.values(value ?? {}).some(v => v !== '' && v !== 'all');
       return value !== '' && value !== 'all';
     }).length;
-
     return activeCount;
   };
 
@@ -273,6 +337,38 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
           </div>
           
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            {/* As-of month selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>As of</label>
+              <select
+                value={asOfMonthProp || ''}
+                onChange={async (e) => {
+                  const val = e.target.value || '';
+                  if (typeof onAsOfMonthChange === 'function') {
+                    onAsOfMonthChange(val);
+                  }
+                  window.__AS_OF_MONTH__ = val || null;
+                  try {
+                    await preferencesService.saveViewDefaults({
+                      filters: activeFilters,
+                      table: {
+                        sortConfig: tableState.sortConfig,
+                        selectedColumns: tableState.selectedColumns
+                      },
+                      chartPeriod,
+                      asOfMonth: val
+                    });
+                  } catch {}
+                }}
+                style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6 }}
+                title="Switch dataset to a specific month snapshot"
+              >
+                <option value="">Latest</option>
+                {availableMonths.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
             <button
               onClick={onRefresh}
               disabled={isLoading}

@@ -4,7 +4,7 @@ import { supabase, TABLES } from '../../services/supabase';
 import { invalidateReferenceCaches } from '../../services/resolvers';
 
 const FundOverridesAdmin = () => {
-  const [funds, setFunds] = useState([]);
+  const [, setFunds] = useState([]);
   const [assetClasses, setAssetClasses] = useState([]);
   const [benchmarks, setBenchmarks] = useState([]);
   const [overrides, setOverrides] = useState([]);
