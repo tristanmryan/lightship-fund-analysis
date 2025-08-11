@@ -4,6 +4,7 @@ import { useFundData } from '../../hooks/useFundData';
 import DictionaryAdmin from './DictionaryAdmin';
 import ManualAddFund from './ManualAddFund';
 import FundOverridesAdmin from './FundOverridesAdmin';
+import MonthlySnapshotUpload from './MonthlySnapshotUpload';
 
 const FundManagement = () => {
   const { 
@@ -181,6 +182,9 @@ const FundManagement = () => {
 
       {/* Fund Overrides Admin */}
       <FundOverridesAdmin />
+
+      {/* Monthly Snapshot Upload (CSV) - admin only, behind flag */}
+      <MonthlySnapshotUpload />
 
       {/* Fund List Section */}
       <div className="fund-list-section">

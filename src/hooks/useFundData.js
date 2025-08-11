@@ -9,25 +9,26 @@ export function useFundData() {
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [asOfMonth, setAsOfMonth] = useState(null); // YYYY-MM-DD or null for latest
 
   // Load funds from database
-  const loadFunds = useCallback(async () => {
+  const loadFunds = useCallback(async (asOf = asOfMonth) => {
     try {
       setLoading(true);
       setError(null);
       
-      const fundData = await fundService.getAllFunds();
+      const fundData = await fundService.getAllFunds(asOf);
       setFunds(fundData);
       setLastUpdated(new Date());
       
-      console.log(`Loaded ${fundData.length} funds from database`);
+      console.log(`Loaded ${fundData.length} funds from database${asOf ? ` as of ${asOf}` : ''}`);
     } catch (error) {
       console.error('Failed to load funds:', error);
       setError('Failed to load funds from database');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [asOfMonth]);
 
   // Refresh data from Ycharts API
   const refreshData = useCallback(async (tickers = null) => {
@@ -231,6 +232,14 @@ export function useFundData() {
     loadFunds();
   }, [loadFunds]);
 
+  // Reload funds when asOfMonth changes
+  useEffect(() => {
+    // Skip initial double-trigger; loadFunds already ran on mount
+    if (asOfMonth !== undefined) {
+      loadFunds(asOfMonth);
+    }
+  }, [asOfMonth, loadFunds]);
+
   // Memoized computed values
   const assetClasses = useMemo(() => {
     const classes = new Set(funds.map(fund => fund.asset_class).filter(Boolean));
@@ -247,6 +256,7 @@ export function useFundData() {
     error,
     lastUpdated,
     isUpdating,
+    asOfMonth,
     
     // Actions
     loadFunds,
@@ -255,6 +265,7 @@ export function useFundData() {
     removeFund,
     updateFundRecommendation,
     searchFunds,
+    setAsOfMonth,
     
     // Computed values
     assetClasses,

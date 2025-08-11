@@ -52,7 +52,7 @@ const EnhancedFundTable = ({
     const toLoad = Array.from(needed).filter(sym => !(sym in currentHistoryCache));
     for (const sym of toLoad) {
       try {
-        const rows = await fundService.getFundPerformanceHistory(sym);
+        const rows = await fundService.getFundPerformanceHistory(sym, null, (window.__AS_OF_MONTH__ || null));
         const sorted = (rows || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
         setHistoryCache(prev => ({ ...prev, [sym]: sorted }));
       } catch {

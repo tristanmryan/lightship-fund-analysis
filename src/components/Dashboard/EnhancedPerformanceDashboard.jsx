@@ -13,6 +13,7 @@ import FundDetailsModal from '../FundDetailsModal';
 import ComparisonPanel from './ComparisonPanel';
 import DrilldownCards from './DrilldownCards';
 import preferencesService from '../../services/preferencesService';
+import fundService from '../../services/fundService';
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -51,7 +52,7 @@ function sanitizeTableState(saved, validColumnKeys, defaultSelected) {
  * Enhanced Performance Dashboard
  * Comprehensive dashboard with advanced filtering and multiple view modes
  */
-const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) => {
+const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asOfMonth: asOfMonthProp = '', onAsOfMonthChange = null }) => {
   // State management
   const [filteredFunds, setFilteredFunds] = useState(funds || []);
   const [activeFilters, setActiveFilters] = useState({});
@@ -64,6 +65,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
   const [initialTableState, setInitialTableState] = useState({ sortConfig: null, selectedColumns: null });
   const [tableState, setTableState] = useState({ sortConfig: null, selectedColumns: null });
   const tableExportRef = React.useRef(null);
+  const [availableMonths, setAvailableMonths] = useState([]);
 
   // Load saved view defaults on mount
   React.useEffect(() => {
@@ -71,6 +73,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
     (async () => {
       try {
         const defaults = sanitizeViewDefaults(await preferencesService.getViewDefaults());
+        const months = await fundService.listSnapshotMonths();
         if (cancelled) return;
         if (defaults) {
           setInitialFilters(defaults.filters || null);
@@ -81,7 +84,13 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
           if (defaults.chartPeriod && ['1M','3M','6M','1Y','YTD'].includes(defaults.chartPeriod)) {
             setChartPeriod(defaults.chartPeriod);
           }
+          if (defaults.asOfMonth && typeof defaults.asOfMonth === 'string' && typeof onAsOfMonthChange === 'function') {
+            onAsOfMonthChange(defaults.asOfMonth);
+          }
         }
+        setAvailableMonths(months || []);
+        // Initialize global endDate for sparklines
+        window.__AS_OF_MONTH__ = (asOfMonthProp || '') || null;
       } catch {}
       if (!cancelled) setInitialized(true);
     })();
@@ -104,10 +113,11 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
           sortConfig: state.sortConfig,
           selectedColumns: state.selectedColumns
         },
-        chartPeriod
+        chartPeriod,
+        asOfMonth: asOfMonthProp
       });
     } catch {}
-  }, [activeFilters, chartPeriod]);
+  }, [activeFilters, chartPeriod, asOfMonthProp]);
 
   // Persist when filters change too
   React.useEffect(() => {
@@ -120,11 +130,12 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
             sortConfig: tableState.sortConfig,
             selectedColumns: tableState.selectedColumns
           },
-          chartPeriod
+          chartPeriod,
+          asOfMonth: asOfMonthProp
         });
       } catch {}
     })();
-  }, [activeFilters, initialized, tableState, chartPeriod]);
+  }, [activeFilters, initialized, tableState, chartPeriod, asOfMonthProp]);
 
   // Persist when chartPeriod changes independently
   React.useEffect(() => {
@@ -137,11 +148,12 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
             sortConfig: tableState.sortConfig,
             selectedColumns: tableState.selectedColumns
           },
-          chartPeriod
+          chartPeriod,
+          asOfMonth: asOfMonthProp
         });
       } catch {}
     })();
-  }, [chartPeriod, initialized, activeFilters, tableState]);
+  }, [chartPeriod, initialized, activeFilters, tableState, asOfMonthProp]);
 
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
@@ -325,6 +337,38 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false }) =
           </div>
           
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            {/* As-of month selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>As of</label>
+              <select
+                value={asOfMonthProp || ''}
+                onChange={async (e) => {
+                  const val = e.target.value || '';
+                  if (typeof onAsOfMonthChange === 'function') {
+                    onAsOfMonthChange(val);
+                  }
+                  window.__AS_OF_MONTH__ = val || null;
+                  try {
+                    await preferencesService.saveViewDefaults({
+                      filters: activeFilters,
+                      table: {
+                        sortConfig: tableState.sortConfig,
+                        selectedColumns: tableState.selectedColumns
+                      },
+                      chartPeriod,
+                      asOfMonth: val
+                    });
+                  } catch {}
+                }}
+                style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6 }}
+                title="Switch dataset to a specific month snapshot"
+              >
+                <option value="">Latest</option>
+                {availableMonths.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
             <button
               onClick={onRefresh}
               disabled={isLoading}

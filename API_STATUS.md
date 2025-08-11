@@ -88,6 +88,8 @@ When YCharts API access is enabled:
  - Research Notes (flagged): enable `REACT_APP_ENABLE_NOTES`, add a note in Drilldown, refresh; confirm note appears newest-first with author and timestamp
  - Compare Sets: in Compare view, select funds, name and Save the set, reload and Load it, then Delete; verify missing ticker handling notice appears when applicable
   - CSV Export: open exported CSVs in Excel on Windows. Confirm UTF-8 BOM (no garbled characters), CRLF line endings, and that numbers are raw numerics (no thousands separators). Percent-like values are decimals (e.g., 0.1234 = 12.34%).
+  - Monthly Snapshot Upload (CSV): enable `REACT_APP_ENABLE_IMPORT`, upload a CSV with Ticker/AsOfMonth and metrics, verify preview counts, EOM warnings, unknown tickers skipped; import should upsert rows; re-import same month updates without duplicates. Use the "Download CSV Template" button on the importer to get a correctly formatted header.
+  - As-of selector: verify distinct months appear, switching month updates all values and clamps sparklines to <= selected month.
 
 ## 📞 Next Steps
 
