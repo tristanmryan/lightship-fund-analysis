@@ -185,3 +185,12 @@ Follow these steps to seed a new environment safely.
         and asset_class_benchmarks.kind = 'primary'
         and ac.name in ('Class A','Class B',...);`
 
+#### Data Diagnostics & Backfill
+- Admin → Fund Management → Utilities → Data Diagnostics:
+  - Shows quick counts (total, recommended, missing asset_class_id, unmapped U.S. Equity, snapshot months)
+  - Export CSV of funds missing asset_class_id
+  - Backfill asset_class_id from legacy name match (case-insensitive):
+    - Validate only (no writes): preview how many would update
+    - Live backfill: updates rows and refreshes counts
+  - Production guard: set `REACT_APP_ALLOW_ADMIN_WRITES=true` to enable live writes when `NODE_ENV=production`. Otherwise, the backfill button is disabled.
+

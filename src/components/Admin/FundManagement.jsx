@@ -9,6 +9,7 @@ import MonthlySnapshotUpload from './MonthlySnapshotUpload';
 import SnapshotManager from './SnapshotManager';
 import SeedRecommendedFunds from './SeedRecommendedFunds';
 import SeedBenchmarks from './SeedBenchmarks';
+import DataDiagnostics from './DataDiagnostics';
 import { useAssetClassOptions } from '../../hooks/useAssetClassOptions';
 
 const FundManagement = () => {
@@ -326,7 +327,8 @@ const FundManagement = () => {
         {activeTab === 'utilities' && (
           <div className="card" style={{ padding: 16, marginTop: 16 }}>
             <h3 style={{ marginTop: 0 }}>Utilities</h3>
-            <p style={{ color: '#6b7280' }}>Template download, Export and Diagnostics are available in their respective panels.</p>
+            <p style={{ color: '#6b7280' }}>Template download, Export and Diagnostics.</p>
+            <DataDiagnostics />
           </div>
         )}
       </div>
