@@ -192,6 +192,8 @@ CREATE POLICY "Authenticated users can view benchmarks" ON benchmarks
 CREATE POLICY "Admins can manage benchmarks" ON benchmarks
     FOR ALL USING (auth.uid() IN (SELECT id FROM users WHERE role = 'admin'));
 
+-- TODO: Enable RLS and replace anon policies with authenticated once Supabase Auth is in place (Phase 4).
+
 -- Insert default admin user (password: lightship2024)
 INSERT INTO users (id, email, password_hash, role, name, created_at)
 VALUES (
@@ -225,6 +227,9 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- RPC execution grants
+grant execute on function public.list_snapshot_counts() to anon, authenticated;
 
 -- List snapshot months with row counts (RPC)
 create or replace function public.list_snapshot_counts()

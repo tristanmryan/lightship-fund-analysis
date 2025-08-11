@@ -127,3 +127,60 @@
 - Unit tests cover Saved View Defaults v1 (including `chartPeriod`).
 - Manual QA: toggle `chartPeriod`, adjust filters/columns/sort, refresh, verify state restoration and no UI regressions.
 
+### Operational Runbooks
+
+#### Data Onboarding Runbook
+
+Follow these steps to seed a new environment safely.
+
+1) Verify readiness in Admin Overview
+- Open Admin → Fund Management. Review “Admin Overview” at the top:
+  - Asset Classes count
+  - Benchmark Mapping coverage (X/Y, unmapped)
+  - Recommended Funds count (and any without asset_class_id)
+  - Snapshots latest month
+
+2) Seed Recommended Funds
+- Prepare CSV with headers: `Ticker,AssetClass,Name`
+- In “Seed Recommended Funds”:
+  - Click “Download Template” to confirm headers
+  - Upload CSV → click “Parse”
+  - Check “Validate only (no writes)” → click “Import” to review summary
+  - Uncheck “Validate only” → click “Import” to apply
+
+3) Seed Benchmarks (Primary mapping)
+- Prepare CSV with headers: `AssetClass,BenchmarkTicker,Name`
+- In “Seed Benchmarks”:
+  - “Download Template” → upload CSV → “Parse”
+  - “Validate only (no writes)” → “Import” to review
+  - Uncheck “Validate only” → “Import” to apply
+
+4) Upload Monthly Snapshot
+- Use “Monthly Snapshot Upload (CSV)”
+- Month/Year picker is required; it overrides any CSV dates
+- Use the default template (no `AsOfMonth` column)
+- Parse → review preview (EOM warnings, skipped rows) → Import
+
+5) Verify
+- Admin Overview shows updated counts and coverage
+- Snapshot Manager lists the new month with row count
+- Compare and Drilldown views load with the selected As-of month
+
+6) Rollback tips
+- Undo a snapshot month:
+  - Admin → Snapshot Manager → Delete for that YYYY-MM-DD
+- Undo Recommended Funds import:
+  - Use your CSV tickers; either toggle off or clear mapping:
+    - Set not recommended: 
+      `update public.funds set is_recommended = false where ticker in ('TICK1','TICK2',...);`
+    - Clear asset class link if needed:
+      `update public.funds set asset_class_id = null where ticker in ('TICK1','TICK2',...);`
+    - Optionally delete funds created only by the seed (if known by timestamp):
+      `delete from public.funds where ticker in ('TICK1','TICK2',...) and created_at >= 'YYYY-MM-DD';`
+- Undo primary benchmark mappings:
+  - Remove primary mappings for specific classes (by name list):
+    `delete from public.asset_class_benchmarks using public.asset_classes ac
+      where asset_class_benchmarks.asset_class_id = ac.id
+        and asset_class_benchmarks.kind = 'primary'
+        and ac.name in ('Class A','Class B',...);`
+

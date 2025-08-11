@@ -162,6 +162,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- RPC execution grants
+grant execute on function public.list_snapshot_counts() to anon, authenticated;
+
 -- List snapshot months with row counts (RPC)
 create or replace function public.list_snapshot_counts()
 returns table("date" date, rows bigint)
