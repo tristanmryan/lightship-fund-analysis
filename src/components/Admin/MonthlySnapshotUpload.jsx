@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import Papa from 'papaparse';
 import fundService from '../../services/fundService';
 import { dbUtils } from '../../services/supabase';
+import { createMonthlyTemplateCSV } from '../../services/csvTemplate';
 
 const FLAG_ENABLE_IMPORT = (process.env.REACT_APP_ENABLE_IMPORT || 'false') === 'true';
 
@@ -91,37 +92,14 @@ export default function MonthlySnapshotUpload() {
     setResult(null);
   };
 
-  // Template CSV download
-  const TEMPLATE_COLUMNS = useMemo(() => [
-    'Ticker','AsOfMonth','ytd_return','one_year_return','three_year_return','five_year_return','ten_year_return','sharpe_ratio','standard_deviation','expense_ratio','alpha','beta','manager_tenure','up_capture_ratio','down_capture_ratio','name','asset_class','is_recommended'
-  ], []);
-
-  const buildHeaderLineQuoted = useCallback(() => {
-    return TEMPLATE_COLUMNS.map((c) => `"${c}"`).join(',');
-  }, [TEMPLATE_COLUMNS]);
-
-  const buildTemplateCsvContent = useCallback(() => {
-    // CRLF ending, quoted header, no data rows
-    return buildHeaderLineQuoted() + '\r\n';
-  }, [buildHeaderLineQuoted]);
-
-  export function createMonthlyTemplateBlob() {
-    // UTF-8 BOM + content; type csv
-    const bom = '\ufeff';
-    const content = bom + '"Ticker","AsOfMonth","ytd_return","one_year_return","three_year_return","five_year_return","ten_year_return","sharpe_ratio","standard_deviation","expense_ratio","alpha","beta","manager_tenure","up_capture_ratio","down_capture_ratio","name","asset_class","is_recommended"\r\n';
-    return new Blob([content], { type: 'text/csv;charset=utf-8' });
-  }
-
   const handleDownloadTemplate = useCallback(() => {
     try {
-      const blob = createMonthlyTemplateBlob();
+      const blob = createMonthlyTemplateCSV();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = 'fund-monthly-template.csv';
-      document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {}
   }, []);

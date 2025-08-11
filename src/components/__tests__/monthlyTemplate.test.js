@@ -1,8 +1,8 @@
 // Lightweight test to verify template CSV header
 import { describe, it, expect } from '@jest/globals';
 
-// Import the function from the component module
-import { createMonthlyTemplateBlob } from '../Admin/MonthlySnapshotUpload.jsx';
+// Import the function from the csv template service
+import { createMonthlyTemplateCSV } from '../../services/csvTemplate';
 
 function blobToText(blob) {
   return new Promise((resolve, reject) => {
@@ -15,7 +15,7 @@ function blobToText(blob) {
 
 describe('Monthly CSV Template', () => {
   it('produces a BOM-prefixed CSV with the expected header and CRLF', async () => {
-    const blob = createMonthlyTemplateBlob();
+    const blob = createMonthlyTemplateCSV();
     const text = await blobToText(blob);
     // Expect BOM at start
     expect(text.charCodeAt(0)).toBe(0xFEFF);
