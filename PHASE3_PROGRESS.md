@@ -33,6 +33,7 @@
  - Compare view shows Std Dev (3Y) and Std Dev (5Y). Both Table CSV and Compare CSV exports include “Std Dev (3Y)” and “Std Dev (5Y)”. Legacy import triggers a console warning when mapping `standard_deviation` → `standard_deviation_3y`.
  - Admin IA tabs: Data Uploads, Catalogs, Mappings, Scoring (placeholder), Utilities.
  - Snapshot Manager: lists distinct `fund_performance.date` with row counts, supports delete with confirm, and per-month template download.
+  - Snapshot Manager: now uses a Postgres RPC (`list_snapshot_counts`) for grouped counts with a JS fallback; function added to schema files.
  - Monthly Snapshot Upload: Month/Year picker added (required). Picker overrides CSV `AsOfMonth`; non-EOM dates auto-corrected to EOM. Legacy CSV still supported.
  - Bulk seeders: Seed Recommended Funds and Seed Benchmarks (CSV). Headers:
    - Recommended: `Ticker,AssetClass,Name`

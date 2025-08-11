@@ -162,6 +162,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- List snapshot months with row counts (RPC)
+create or replace function public.list_snapshot_counts()
+returns table("date" date, rows bigint)
+language sql
+stable
+as $$
+  select fp.date as "date", count(*)::bigint as rows
+  from public.fund_performance fp
+  group by fp.date
+  order by fp.date desc;
+$$;
+
 -- ===============================
 -- New dictionary & mapping tables
 -- ===============================

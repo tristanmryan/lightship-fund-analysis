@@ -443,12 +443,25 @@ class FundService {
   // List snapshot dates with counts
   async listSnapshotsWithCounts() {
     try {
-      const { data, error } = await supabase
+      // Prefer RPC for robust grouping across drivers
+      const { data: rpcData, error: rpcError } = await supabase.rpc('list_snapshot_counts');
+      if (!rpcError && Array.isArray(rpcData)) {
+        return (rpcData || []).map((r) => ({ date: dbUtils.formatDateOnly(r.date), rows: Number(r.rows) || 0 }));
+      }
+
+      // Fallback: client-side reduction over minimal selection
+      const { data: rowsData, error: selError } = await supabase
         .from(TABLES.FUND_PERFORMANCE)
-        .select('date, rows:count(*)')
-        .order('date', { ascending: false });
-      if (error) throw error;
-      return (data ?? []).map(({ date, rows }) => ({ date: dbUtils.formatDateOnly(date), rows }));
+        .select('date');
+      if (selError) throw selError;
+      const counts = new Map();
+      for (const r of rowsData || []) {
+        const d = dbUtils.formatDateOnly(r.date);
+        counts.set(d, (counts.get(d) || 0) + 1);
+      }
+      return Array.from(counts.entries())
+        .map(([date, rows]) => ({ date, rows }))
+        .sort((a, b) => b.date.localeCompare(a.date));
     } catch (error) {
       handleSupabaseError(error, 'listSnapshotsWithCounts');
       return [];

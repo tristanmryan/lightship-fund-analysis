@@ -30,6 +30,7 @@
 - Admin IA tabs in Fund Management: Data Uploads, Catalogs, Mappings, Scoring (placeholder), Utilities
 - Snapshot Manager (Admin → Data Uploads)
   - Lists distinct `fund_performance.date` with row counts, newest first
+  - Uses Postgres RPC `list_snapshot_counts()` with JS fallback when RPC unavailable
   - Delete month (confirm) cascades removal of that month’s rows only
   - Download monthly CSV template
 - Monthly Snapshot Upload
