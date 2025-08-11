@@ -41,6 +41,7 @@
  - CSV template: default template excludes `AsOfMonth`; legacy template available.
   - Admin Overview (setup checklist) added with export buttons; shows asset classes, mapping coverage, recommended funds, and snapshots summary.
   - Seeders now support "Validate only (no writes)" dry-run mode.
+  - Catalogs: added canonical asset class "Mid-Cap Blend" (code `MID_CAP_BLEND`, U.S. Equity, sort_order 220) with default primary benchmark mapping to `IWR` (iShares Russell Mid-Cap ETF).
 
 ### In Progress
 - Research workflow: schema and UI spec (notes + decision log; audited; linked to overrides).

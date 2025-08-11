@@ -8,6 +8,7 @@ VALUES
  ('LARGE_CAP_VALUE','Large Cap Value',NULL,'U.S. Equity',1,120),
  ('LARGE_CAP_BLEND','Large Cap Blend',NULL,'U.S. Equity',1,130),
  ('MID_CAP_GROWTH','Mid-Cap Growth',NULL,'U.S. Equity',1,210),
+  ('MID_CAP_BLEND','Mid-Cap Blend','US Mid-Cap Core/Blend equity','U.S. Equity',1,220),
  ('MID_CAP_VALUE','Mid-Cap Value',NULL,'U.S. Equity',1,230),
  ('SMALL_CAP_GROWTH','Small Cap Growth',NULL,'U.S. Equity',1,310),
  ('SMALL_CAP_VALUE','Small Cap Value',NULL,'U.S. Equity',1,330),
@@ -45,7 +46,8 @@ ON CONFLICT (label) DO NOTHING;
 -- Additional specific synonyms
 INSERT INTO asset_class_synonyms (code, label) VALUES
  ('INTERNATIONAL_LARGE','International (Large Cap)'),
- ('INTERNATIONAL_SMCAP','International (Small/Mid Cap)')
+  ('INTERNATIONAL_SMCAP','International (Small/Mid Cap)'),
+  ('MID_CAP_BLEND','Mid Cap Blend')
 ON CONFLICT (label) DO NOTHING;
 
 -- 3) Ensure benchmark definitions exist with proxy_type/source
@@ -78,6 +80,11 @@ VALUES
  ('QAI','IQ Hedge Multi-Strat Index','ETF','seed'),
  ('AOR','iShares Core Growth Allocation ETF','ETF','seed')
 ON CONFLICT (ticker) DO NOTHING;
+
+-- Ensure IWR exists for Mid-Cap Blend/Core mapping
+insert into public.benchmarks (ticker, name, is_active, proxy_type, source)
+values ('IWR','iShares Russell Mid-Cap ETF', true, 'ETF','ycharts')
+on conflict (ticker) do nothing;
 
 -- 4) Map asset classes to primary benchmarks (kind='primary')
 -- Uses labels from src/data/config.js as of current app
@@ -121,6 +128,14 @@ JOIN LATERAL (
   ) LIMIT 1
 ) b ON TRUE
 ON CONFLICT DO NOTHING;
+
+-- Explicitly set/refresh primary mapping for Mid-Cap Blend to IWR
+insert into public.asset_class_benchmarks (asset_class_id, benchmark_id, kind, rank)
+select ac.id, b.id, 'primary', 1
+from public.asset_classes ac
+join public.benchmarks b on b.ticker='IWR'
+where ac.code='MID_CAP_BLEND'
+on conflict (asset_class_id, kind, rank) do update set benchmark_id = excluded.benchmark_id;
 
 -- 5) Backfill funds.asset_class_id from funds.asset_class via synonyms/name
 UPDATE funds f
