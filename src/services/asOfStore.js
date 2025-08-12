@@ -49,11 +49,9 @@ class AsOfStore {
     if (this.__testDates && Array.isArray(this.__testDates) && this.__testDates.length > 0) {
       const sorted = [...this.__testDates].sort((a,b)=>b.localeCompare(a));
       this.latestMonthInDb = sorted[0];
-      const hasActive = this.activeMonth && this.__testDates.includes(this.activeMonth);
-      if (!hasActive) {
-        this.activeMonth = this.latestMonthInDb;
-        try { localStorage.setItem('AS_OF_MONTH', this.activeMonth); } catch {}
-      }
+      // For post-import behavior in tests, always switch active to latest
+      this.activeMonth = this.latestMonthInDb;
+      try { localStorage.setItem('AS_OF_MONTH', this.activeMonth); } catch {}
       this.notify();
       return { active: this.activeMonth, latest: this.latestMonthInDb };
     }

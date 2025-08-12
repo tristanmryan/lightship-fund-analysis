@@ -53,6 +53,15 @@ Importer guardrails
 - Wired into all performance writes (single and bulk) to `public.fund_performance`.
 - Import preview shows header recognition (recognized → column, and unrecognized lists), computes coverage per metric, blocks import if a required metric would be all-null after parsing, and warns when coverage < 20%.
 
+Importer diagnostics
+- Preview header now surfaces two chips: `Funds to import: N` and `Benchmarks to import: M`.
+- Added a diagnostic-only box “Skipped rows by reason” listing counts and first 10 tickers for each reason. Console logs mirror this summary.
+- Benchmarks are recognized in preview and skipped for fund import (stored separately; see below).
+
+Benchmark performance (store only)
+- New table `public.benchmark_performance` mirrors `fund_performance` and is keyed by `unique(benchmark_ticker, date)`. Idempotent migration added under `supabase/migrations/20250813_benchmark_performance.sql`.
+- Importer routes rows: if ticker is a benchmark, writes to `benchmark_performance`; if ticker is a fund, writes to `fund_performance`; if neither, lists under skipped unknowns. Read paths unchanged.
+
 Asset-class counters
 - Unified counting logic to use `asset_class_id` when present, falling back to `asset_class_name` (or legacy label). "Unknown" is strictly when both id is null and name is empty. Applied to dashboard summary and heatmap grouping to match the table.
 
