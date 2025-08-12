@@ -23,10 +23,10 @@ export default function DataHealth() {
         if (cancelled) return;
         setAsOf(eom);
 
-        // Counts
+        const fundCols = 'fund_ticker,ytd_return,one_year_return,three_year_return,five_year_return,ten_year_return,sharpe_ratio,standard_deviation,standard_deviation_3y,standard_deviation_5y,expense_ratio,alpha,beta,manager_tenure,up_capture_ratio,down_capture_ratio';
         const [{ data: fRows }, { data: bRows }] = await Promise.all([
-          supabase.from(TABLES.FUND_PERFORMANCE).select('fund_ticker').eq('date', eom),
-          supabase.from(TABLES.BENCHMARK_PERFORMANCE).select('benchmark_ticker').eq('date', eom)
+          supabase.from(TABLES.FUND_PERFORMANCE).select(fundCols).eq('date', eom),
+          supabase.from(TABLES.BENCHMARK_PERFORMANCE).select('benchmark_ticker,' + fundCols.replace('fund_ticker,','')).eq('date', eom)
         ]);
         if (cancelled) return;
         setFundCount((fRows || []).length);

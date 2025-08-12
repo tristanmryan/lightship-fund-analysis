@@ -488,12 +488,13 @@ export default function MonthlySnapshotUpload() {
       {preview.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-            <div><strong>Parsed:</strong> {counts.parsed}</div>
-            <div><strong>Will import:</strong> {counts.willImport}</div>
-            <div><strong>Skipped:</strong> {counts.skipped}</div>
+            <div>Parsed: {counts.parsed}</div>
+            <div><strong>Funds to import:</strong> {preview.filter(r => r.willImport && r.kind === 'fund').length}</div>
+            <div><strong>Benchmarks to import:</strong> {preview.filter(r => r.kind === 'benchmark').length}</div>
+            <div>Unknown tickers: {preview.filter(r => !r.willImport && (r.reason||'').toLowerCase().includes('unknown ticker')).length}</div>
             <div title="Rows with non end-of-month AsOfMonth; you can proceed but recommended to fix."><strong>EOM warnings:</strong> {counts.eomWarnings}</div>
             <div><strong>AsOfMonth column detected:</strong> {hasAsOfColumn ? 'Yes' : 'No'}</div>
-            <div><strong>Active mode:</strong> {mode === 'picker' ? 'Picker' : 'CSV'}</div>
+            <div><strong>Active mode:</strong> {mode === 'picker' ? 'Picker (CSV AsOfMonth ignored)' : 'CSV'}</div>
             <div><strong>AsOfMonth in file:</strong> {monthsInFile.length === 1 ? monthsInFile[0] : monthsInFile.join(', ')}</div>
             <div style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }} onClick={() => {
               const el = document.getElementById('skip-reasons-box');
@@ -594,7 +595,7 @@ export default function MonthlySnapshotUpload() {
               </div>
             );
           })()}
-          {/* Skipped rows by reason (diagnostic) */}
+          {/* Skipped rows by reason (diagnostic). Note: Benchmarks will be written to benchmark_performance. */}
           <div id="skip-reasons-box" style={{ padding: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', borderRadius: 6, margin: '8px 0' }}>
             <div style={{ fontWeight: 600, marginBottom: 6 }}>Skipped rows by reason</div>
             {Object.keys(skipReasons || {}).length === 0 ? (

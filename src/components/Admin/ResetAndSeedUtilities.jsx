@@ -177,6 +177,12 @@ export default function ResetAndSeedUtilities() {
       {tab === 'health' && (
         <DataHealth />
       )}
+      {tab === 'health' && (
+        <div className="card" style={{ padding:12, marginTop:12 }}>
+          <div style={{ fontWeight:600, marginBottom:8 }}>Inspect row (dev)</div>
+          <RowInspector />
+        </div>
+      )}
       {tab === 'seed' && (
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         {/* Reset Funds */}
@@ -272,6 +278,36 @@ export default function ResetAndSeedUtilities() {
           </div>
         )}
       </div>
+      )}
+    </div>
+  );
+}
+
+function RowInspector() {
+  const [ticker, setTicker] = React.useState('');
+  const [date, setDate] = React.useState('');
+  const [json, setJson] = React.useState(null);
+  async function inspect(table) {
+    try {
+      const col = table === TABLES.FUND_PERFORMANCE ? 'fund_ticker' : 'benchmark_ticker';
+      const { data } = await supabase.from(table).select('*').eq(col, ticker.toUpperCase()).eq('date', date).limit(1);
+      // eslint-disable-next-line no-console
+      console.log(`[Inspect] ${table} ${ticker} ${date}`, data?.[0] || null);
+      setJson(data?.[0] || null);
+    } catch (e) {
+      setJson({ error: e.message || String(e) });
+    }
+  }
+  return (
+    <div>
+      <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', marginBottom:8 }}>
+        <label>Ticker <input value={ticker} onChange={(e)=>setTicker(e.target.value)} placeholder="CMNIX" style={{ width:120 }} /></label>
+        <label>Date <input value={date} onChange={(e)=>setDate(e.target.value)} placeholder="2025-07-31" style={{ width:120 }} /></label>
+        <button className="btn btn-secondary" onClick={()=>inspect(TABLES.FUND_PERFORMANCE)}>Inspect fund_performance</button>
+        <button className="btn btn-secondary" onClick={()=>inspect(TABLES.BENCHMARK_PERFORMANCE)}>Inspect benchmark_performance</button>
+      </div>
+      {json && (
+        <pre style={{ background:'#f3f4f6', padding:8, borderRadius:6, maxHeight:180, overflow:'auto' }}>{JSON.stringify(json, null, 2)}</pre>
       )}
     </div>
   );

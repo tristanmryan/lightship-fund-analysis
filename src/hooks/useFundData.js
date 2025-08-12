@@ -39,6 +39,11 @@ export function useFundData() {
       setLastUpdated(new Date());
       
       console.log(`Loaded ${fundData.length} funds from database${asOf ? ` as of ${asOf}` : ''}${ENABLE_RUNTIME_SCORING ? ' (runtime scoring enabled)' : ''}`);
+      if (enriched && enriched.length > 0) {
+        // Instrumentation
+        // eslint-disable-next-line no-console
+        console.log('Sample fund row', enriched[0]);
+      }
       // Count rows for guardrails
       try {
         const d = asOf || asOfStore.getActiveMonth();
