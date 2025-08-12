@@ -52,6 +52,20 @@ class FundService {
     }
   }
 
+  async upsertMinimalFunds(tickers = []) {
+    try {
+      const unique = Array.from(new Set((tickers || []).map(t => dbUtils.cleanSymbol(t)).filter(Boolean)));
+      if (unique.length === 0) return { count: 0 };
+      const records = unique.map(ticker => ({ ticker, name: ticker, is_recommended: false }));
+      const { error } = await supabase.from(TABLES.FUNDS).upsert(records, { onConflict: 'ticker', returning: 'minimal' });
+      if (error) throw error;
+      return { count: unique.length };
+    } catch (error) {
+      handleSupabaseError(error, 'upsertMinimalFunds');
+      return { count: 0 };
+    }
+  }
+
   // Get fund by ticker
   async getFund(ticker) {
     try {
@@ -397,8 +411,123 @@ class FundService {
     }
   }
 
-  // Bulk upsert performance rows: funds go to fund_performance; benchmarks to benchmark_performance
+  // Bulk upsert performance rows
   async bulkUpsertFundPerformance(rows = [], chunkSize = 500) {
+    const USE_FAST = (process.env.REACT_APP_IMPORT_FAST || 'false') === 'true';
+    if (!Array.isArray(rows) || rows.length === 0) return { success: 0, failed: 0 };
+
+    // JSON upsert path (default) with dedupe and validation
+    if (!USE_FAST) {
+      try {
+        // Map inbound rows to fund/benchmark payloads and coerce types
+        const pmn = dbUtils.parseMetricNumber;
+        const fundPayloadRaw = [];
+        const benchPayloadRaw = [];
+        for (const r of rows) {
+          const cleanTicker = dbUtils.cleanSymbol(r.ticker || r.fund_ticker || '');
+          const benchTicker = dbUtils.cleanSymbol(r.benchmark_ticker || '');
+          const dateOnly = dbUtils.formatDateOnly(r.date || r.AsOfMonth || r.as_of_month);
+          const base = {
+            date: dateOnly,
+            ytd_return: pmn(r.ytd_return ?? r['YTD']),
+            one_year_return: pmn(r.one_year_return ?? r['1 Year']),
+            three_year_return: pmn(r.three_year_return ?? r['3 Year']),
+            five_year_return: pmn(r.five_year_return ?? r['5 Year']),
+            ten_year_return: pmn(r.ten_year_return ?? r['10 Year']),
+            sharpe_ratio: pmn(r.sharpe_ratio ?? r['Sharpe Ratio']),
+            standard_deviation: pmn(r.standard_deviation ?? r['Standard Deviation']),
+            standard_deviation_3y: pmn(
+              r.standard_deviation_3y ?? r['standard_deviation_3y'] ?? r['Standard Deviation 3Y'] ?? r.standard_deviation ?? r['Standard Deviation']
+            ),
+            standard_deviation_5y: pmn(
+              r.standard_deviation_5y ?? r['standard_deviation_5y'] ?? r['Standard Deviation 5Y']
+            ),
+            expense_ratio: pmn(r.expense_ratio ?? r['Net Expense Ratio']),
+            alpha: pmn(r.alpha ?? r.alpha_5y ?? r['Alpha']),
+            beta: pmn(r.beta ?? r.beta_3y ?? r['Beta']),
+            manager_tenure: pmn(r.manager_tenure ?? r['Manager Tenure']),
+            up_capture_ratio: pmn(
+              r.up_capture_ratio ?? r.up_capture_ratio_3y ?? r['Up Capture Ratio'] ?? r['Up Capture Ratio (Morningstar Standard) - 3 Year']
+            ),
+            down_capture_ratio: pmn(
+              r.down_capture_ratio ?? r.down_capture_ratio_3y ?? r['Down Capture Ratio'] ?? r['Down Capture Ratio (Morningstar Standard) - 3 Year']
+            )
+          };
+          // Prefer fund on collision
+          const kind = (r.kind === 'benchmark' && !cleanTicker) || (!r.kind && benchTicker && !cleanTicker)
+            ? 'benchmark'
+            : 'fund';
+          if (kind === 'benchmark') {
+            benchPayloadRaw.push({ benchmark_ticker: benchTicker || cleanTicker, ...base });
+          } else {
+            fundPayloadRaw.push({ fund_ticker: cleanTicker, ...base });
+          }
+        }
+
+        // Validate and dedupe helpers
+        function dedupeAndValidate(list, keyFields) {
+          const seen = new Map();
+          let dropped = 0;
+          for (const item of list) {
+            const t = keyFields[0];
+            const d = keyFields[1];
+            const ticker = String(item[t] || '').toUpperCase();
+            const date = String(item[d] || '');
+            if (!ticker || !date) { dropped++; continue; }
+            const key = `${ticker}::${date}`;
+            seen.set(key, { ...item, [t]: ticker, [d]: date }); // keep last occurrence
+          }
+          return { rows: Array.from(seen.values()), dropped };
+        }
+
+        const fundValidated = dedupeAndValidate(fundPayloadRaw, ['fund_ticker', 'date']);
+        const benchValidated = dedupeAndValidate(benchPayloadRaw, ['benchmark_ticker', 'date']);
+
+        let success = 0;
+        let failed = 0;
+        const errors = [];
+
+        async function upsertChunks(table, payload, conflict) {
+          for (let i = 0; i < payload.length; i += 50) {
+            const chunk = payload.slice(i, i + 50);
+            const { error } = await supabase
+              .from(table)
+              .upsert(chunk, { onConflict: conflict, returning: 'minimal' });
+            if (error) {
+              failed += chunk.length;
+              errors.push({
+                table,
+                indexStart: i,
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code
+              });
+            } else {
+              success += chunk.length;
+            }
+          }
+        }
+
+        await upsertChunks(TABLES.FUND_PERFORMANCE, fundValidated.rows, 'fund_ticker,date');
+        await upsertChunks(TABLES.BENCHMARK_PERFORMANCE, benchValidated.rows, 'benchmark_ticker,date');
+
+        if (errors.length > 0) {
+          // Aggregate and throw for UI to surface
+          const head = errors[0];
+          const err = new Error(`Import errors: ${errors.length}. First: ${head.message || ''} | ${head.details || ''} | ${head.hint || ''} | ${head.code || ''}`);
+          // @ts-ignore attach for UI/debug
+          err._importErrors = errors;
+          throw err;
+        }
+        return { success, failed: failed + fundValidated.dropped + benchValidated.dropped };
+      } catch (e) {
+        handleSupabaseError(e, 'bulkUpsertFundPerformance(json)');
+        throw e;
+      }
+    }
+
+    // FAST path (legacy column-mapped upsert)
     const toBatches = [];
     for (let i = 0; i < rows.length; i += chunkSize) {
       toBatches.push(rows.slice(i, i + chunkSize));

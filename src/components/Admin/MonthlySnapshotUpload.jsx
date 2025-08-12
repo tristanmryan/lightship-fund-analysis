@@ -336,7 +336,25 @@ export default function MonthlySnapshotUpload() {
     setImporting(true);
     setResult(null);
     try {
-      const rowsToImport = preview.filter(r => r.willImport || r.kind === 'benchmark').map((r) => {
+      // Preflight: duplicates and missing funds
+      const pickerDate = computePickerDate();
+      const willRows = preview.filter(r => r.willImport || r.kind === 'benchmark');
+      const dupKeys = new Set();
+      let dupCount = 0;
+      for (const r of willRows) {
+        if (r.kind === 'benchmark') continue;
+        const key = `${r.ticker}::${pickerDate}`;
+        if (dupKeys.has(key)) dupCount++; else dupKeys.add(key);
+      }
+      if (dupCount > 0) {
+        console.warn(`[Import] Removed ${dupCount} duplicate fund rows before import.`);
+      }
+      const missingTickers = Array.from(new Set(willRows.filter(r => r.kind !== 'benchmark').map(r => r.ticker))).filter(t => !knownTickers.has(t));
+      if (missingTickers.length > 0) {
+        console.warn(`[Import] Missing ${missingTickers.length} tickers in funds. Use the 'Seed missing funds' button to insert minimal rows before retry.`);
+      }
+
+      const rowsToImport = willRows.map((r) => {
         const original = parsedRows.find(pr => pr.__ticker === r.ticker && pr.__asOf === r.asOf) || {};
           // Picker overrides CSV AsOfMonth
           return {
@@ -395,7 +413,17 @@ export default function MonthlySnapshotUpload() {
         }
       } catch {}
     } catch (error) {
-      setResult({ error: error.message || String(error) });
+      // Surface PostgREST error body details and first offending keys if present
+      // @ts-ignore
+      const parts = [error?.message, error?.details, error?.hint, error?.code].filter(Boolean);
+      // @ts-ignore
+      if (error?._importErrors?.length) {
+        // @ts-ignore
+        const sample = error._importErrors.slice(0, 3).map(e => `${e.table}@${e.indexStart}`);
+        parts.push(`rows: ${sample.join(', ')}`);
+      }
+      console.error('[Import] Error:', error);
+      setResult({ error: parts.join(' | ') || String(error) });
     } finally {
       setImporting(false);
     }
