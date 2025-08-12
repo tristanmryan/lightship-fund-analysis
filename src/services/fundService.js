@@ -137,8 +137,11 @@ class FundService {
         .eq('fund_ticker', dbUtils.cleanSymbol(ticker));
 
       if (date) {
-        // Query by date-only equality against DATE column
-        query = query.eq('date', dbUtils.formatDateOnly(date));
+        // Fallback to latest row on or before the specified date
+        query = query
+          .lte('date', dbUtils.formatDateOnly(date))
+          .order('date', { ascending: false })
+          .limit(1);
       } else {
         query = query.order('date', { ascending: false }).limit(1);
       }
@@ -419,40 +422,21 @@ class FundService {
     // JSON upsert path (default) with dedupe and validation
     if (!USE_FAST) {
       try {
-        // Map inbound rows to fund/benchmark payloads and coerce types
+        // Map inbound rows to fund/benchmark payloads using normalized keys only
         const pmn = dbUtils.parseMetricNumber;
+        const METRIC_KEYS = [
+          'ytd_return','one_year_return','three_year_return','five_year_return','ten_year_return',
+          'sharpe_ratio','standard_deviation_3y','standard_deviation_5y',
+          'expense_ratio','alpha','beta','manager_tenure','up_capture_ratio','down_capture_ratio'
+        ];
         const fundPayloadRaw = [];
         const benchPayloadRaw = [];
         for (const r of rows) {
           const cleanTicker = dbUtils.cleanSymbol(r.ticker || r.fund_ticker || '');
           const benchTicker = dbUtils.cleanSymbol(r.benchmark_ticker || '');
           const dateOnly = dbUtils.formatDateOnly(r.date || r.AsOfMonth || r.as_of_month);
-          const base = {
-            date: dateOnly,
-            ytd_return: pmn(r.ytd_return ?? r['YTD']),
-            one_year_return: pmn(r.one_year_return ?? r['1 Year']),
-            three_year_return: pmn(r.three_year_return ?? r['3 Year']),
-            five_year_return: pmn(r.five_year_return ?? r['5 Year']),
-            ten_year_return: pmn(r.ten_year_return ?? r['10 Year']),
-            sharpe_ratio: pmn(r.sharpe_ratio ?? r['Sharpe Ratio']),
-            standard_deviation: pmn(r.standard_deviation ?? r['Standard Deviation']),
-            standard_deviation_3y: pmn(
-              r.standard_deviation_3y ?? r['standard_deviation_3y'] ?? r['Standard Deviation 3Y'] ?? r.standard_deviation ?? r['Standard Deviation']
-            ),
-            standard_deviation_5y: pmn(
-              r.standard_deviation_5y ?? r['standard_deviation_5y'] ?? r['Standard Deviation 5Y']
-            ),
-            expense_ratio: pmn(r.expense_ratio ?? r['Net Expense Ratio']),
-            alpha: pmn(r.alpha ?? r.alpha_5y ?? r['Alpha']),
-            beta: pmn(r.beta ?? r.beta_3y ?? r['Beta']),
-            manager_tenure: pmn(r.manager_tenure ?? r['Manager Tenure']),
-            up_capture_ratio: pmn(
-              r.up_capture_ratio ?? r.up_capture_ratio_3y ?? r['Up Capture Ratio'] ?? r['Up Capture Ratio (Morningstar Standard) - 3 Year']
-            ),
-            down_capture_ratio: pmn(
-              r.down_capture_ratio ?? r.down_capture_ratio_3y ?? r['Down Capture Ratio'] ?? r['Down Capture Ratio (Morningstar Standard) - 3 Year']
-            )
-          };
+          const base = { date: dateOnly };
+          for (const k of METRIC_KEYS) base[k] = pmn(r[k]);
           // Prefer fund on collision
           const kind = (r.kind === 'benchmark' && !cleanTicker) || (!r.kind && benchTicker && !cleanTicker)
             ? 'benchmark'
@@ -520,6 +504,26 @@ class FundService {
           err._importErrors = errors;
           throw err;
         }
+        // Post-import sanity probe for the active import date
+        try {
+          const importDate = dbUtils.formatDateOnly(rows[0]?.date || rows[0]?.AsOfMonth || rows[0]?.as_of_month);
+          const fields = 'fund_ticker,ytd_return,one_year_return,sharpe_ratio';
+          const { data: probe } = await supabase
+            .from(TABLES.FUND_PERFORMANCE)
+            .select(fields)
+            .eq('date', importDate)
+            .limit(5);
+          // eslint-disable-next-line no-console
+          console.log('[Import probe]', probe);
+          const metrics = ['ytd_return','one_year_return','sharpe_ratio'];
+          const allNull = Array.isArray(probe) && probe.length > 0 && probe.every(row => metrics.every(m => row?.[m] == null));
+          if (allNull) {
+            return { success, failed: failed + fundValidated.dropped + benchValidated.dropped, warning: `All fund metrics null for ${importDate} — check mapping` };
+          }
+        } catch (_) {
+          // non-fatal
+        }
+
         return { success, failed: failed + fundValidated.dropped + benchValidated.dropped };
       } catch (e) {
         handleSupabaseError(e, 'bulkUpsertFundPerformance(json)');
