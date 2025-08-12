@@ -531,6 +531,54 @@ class FundService {
     }
   }
 
+  // Convert a non-EOM snapshot to EOM date, merging if target exists
+  async convertSnapshotToEom(sourceDate) {
+    try {
+      const src = dbUtils.formatDateOnly(sourceDate);
+      const d = new Date(src + 'T00:00:00Z');
+      const target = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).toISOString().slice(0,10);
+      if (src === target) return { merged: false, moved: 0 };
+
+      // Check if target exists
+      const { data: existing } = await supabase
+        .from(TABLES.FUND_PERFORMANCE)
+        .select('fund_ticker')
+        .eq('date', target)
+        .limit(1);
+      const targetExists = Array.isArray(existing) && existing.length > 0;
+
+      // Move rows: select all from source
+      const { data: rows, error: selErr } = await supabase
+        .from(TABLES.FUND_PERFORMANCE)
+        .select('*')
+        .eq('date', src);
+      if (selErr) throw selErr;
+
+      if (!rows || rows.length === 0) return { merged: targetExists, moved: 0 };
+
+      // Re-insert at target with upsert conflict on (fund_ticker,date)
+      const payload = rows.map((r) => ({ ...r, date: target }));
+      // Strip PK/created_at to allow upsert
+      payload.forEach(p => { delete p.id; delete p.created_at; });
+      const { error: upErr } = await supabase
+        .from(TABLES.FUND_PERFORMANCE)
+        .upsert(payload, { onConflict: 'fund_ticker,date' });
+      if (upErr) throw upErr;
+
+      // Delete source rows
+      const { error: delErr } = await supabase
+        .from(TABLES.FUND_PERFORMANCE)
+        .delete()
+        .eq('date', src);
+      if (delErr) throw delErr;
+
+      return { merged: targetExists, moved: rows.length };
+    } catch (error) {
+      handleSupabaseError(error, 'convertSnapshotToEom');
+      throw error;
+    }
+  }
+
   // Return list of all fund tickers
   async listFundTickers() {
     try {

@@ -1,5 +1,6 @@
 // src/components/Admin/ResetAndSeedUtilities.jsx
 import React, { useMemo, useState } from 'react';
+import DataHealth from './DataHealth';
 import Papa from 'papaparse';
 import { supabase, TABLES } from '../../services/supabase';
 import { buildCSV, downloadFile } from '../../services/exportService';
@@ -160,13 +161,21 @@ export default function ResetAndSeedUtilities() {
     }
   }
 
+  const [tab, setTab] = useState('seed');
   return (
     <div className="card" style={{ padding: 16, marginTop: 16 }}>
       <div className="card-header">
-        <h3 className="card-title">Reset and Seed Utilities</h3>
-        <p className="card-subtitle">Dangerous operations are disabled in production.</p>
+        <h3 className="card-title">Utilities</h3>
+        <p className="card-subtitle">Dangerous operations are disabled in production. Data Health is for dev-only diagnostics.</p>
       </div>
-
+      <div style={{ display:'flex', gap:8, margin:'8px 0' }}>
+        <button className={`btn ${tab==='seed'?'btn-primary':'btn-secondary'}`} onClick={()=>setTab('seed')}>Seed</button>
+        <button className={`btn ${tab==='health'?'btn-primary':'btn-secondary'}`} onClick={()=>setTab('health')}>Data Health</button>
+      </div>
+      {tab === 'health' && (
+        <DataHealth />
+      )}
+      {tab === 'seed' && (
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         {/* Reset Funds */}
         <div className="card" style={{ padding:12 }}>
@@ -188,8 +197,9 @@ export default function ResetAndSeedUtilities() {
           </div>
         </div>
       </div>
+      )}
 
-      {/* Seed All */}
+      {tab === 'seed' && (
       <div className="card" style={{ padding:12, marginTop:12 }}>
         <div style={{ fontWeight:600, marginBottom:8 }}>Seed All (Benchmarks → Recommended Funds)</div>
         <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', marginBottom:8 }}>
@@ -204,6 +214,7 @@ export default function ResetAndSeedUtilities() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

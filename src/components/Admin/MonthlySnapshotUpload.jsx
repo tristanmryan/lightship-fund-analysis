@@ -370,6 +370,14 @@ export default function MonthlySnapshotUpload() {
       const uniqueMonths = new Set(rowsToImport.map(r => r.date));
       const monthsArr = Array.from(uniqueMonths).sort((a,b) => b.localeCompare(a));
       setResult({ success, failed, months: monthsArr });
+      // Post-import summary log
+      try {
+        const fundsInserted = rowsToImport.filter(r => r.kind !== 'benchmark').length;
+        const benchInserted = rowsToImport.filter(r => r.kind === 'benchmark').length;
+        const pmn = (k) => (k && coverage[k]?.total > 0 && (coverage[k].nonNull / coverage[k].total) < 0.2);
+        const lowCov = Object.keys(coverage || {}).filter(pmn);
+        console.log(`[Import] Funds: ${fundsInserted}, Benchmarks: ${benchInserted}, Low coverage: ${lowCov.join(', ')}`);
+      } catch {}
       // Post-import: sync and switch active month to the imported month (picker date)
       try {
         await asOfStore.syncWithDb();

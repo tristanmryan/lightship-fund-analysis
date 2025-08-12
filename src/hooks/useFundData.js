@@ -14,6 +14,7 @@ export function useFundData() {
   const [asOfMonth, setAsOfMonth] = useState(null); // YYYY-MM-DD or null for latest
   // Feature flag: runtime scoring for live as-of month data
   const ENABLE_RUNTIME_SCORING = (process.env.REACT_APP_ENABLE_RUNTIME_SCORING || 'false') === 'true';
+  const ENABLE_REFRESH = (process.env.REACT_APP_ENABLE_REFRESH || 'false') === 'true';
 
   // Load funds from database
   const loadFunds = useCallback(async (asOf = asOfMonth) => {
@@ -61,6 +62,12 @@ export function useFundData() {
   // Refresh data from Ycharts API
   const refreshData = useCallback(async (tickers = null) => {
     try {
+      if (!ENABLE_REFRESH) {
+        // Block writes and snapshot creation in production
+        console.warn('Refresh is disabled in production');
+        setError('Refresh is disabled in production');
+        return;
+      }
       setIsUpdating(true);
       setError(null);
 
@@ -140,7 +147,7 @@ export function useFundData() {
     } finally {
       setIsUpdating(false);
     }
-  }, [funds, loadFunds]);
+  }, [funds, loadFunds, ENABLE_REFRESH]);
 
   // Add new fund
   const addFund = useCallback(async (ticker, assetClass = null) => {
