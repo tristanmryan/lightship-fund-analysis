@@ -23,10 +23,16 @@ export default function DataHealth() {
         if (cancelled) return;
         setAsOf(eom);
 
-        const fundCols = 'fund_ticker,ytd_return,one_year_return,three_year_return,five_year_return,ten_year_return,sharpe_ratio,standard_deviation,standard_deviation_3y,standard_deviation_5y,expense_ratio,alpha,beta,manager_tenure,up_capture_ratio,down_capture_ratio';
+        const METRICS = [
+          'ytd_return','one_year_return','three_year_return','five_year_return','ten_year_return',
+          'sharpe_ratio','standard_deviation_3y','standard_deviation_5y','expense_ratio','alpha','beta','manager_tenure',
+          'up_capture_ratio','down_capture_ratio'
+        ];
+        const fundCols = 'fund_ticker,' + METRICS.join(',');
+        const benchCols = 'benchmark_ticker,' + METRICS.join(',');
         const [{ data: fRows }, { data: bRows }] = await Promise.all([
           supabase.from(TABLES.FUND_PERFORMANCE).select(fundCols).eq('date', eom),
-          supabase.from(TABLES.BENCHMARK_PERFORMANCE).select('benchmark_ticker,' + fundCols.replace('fund_ticker,','')).eq('date', eom)
+          supabase.from(TABLES.BENCHMARK_PERFORMANCE).select(benchCols).eq('date', eom)
         ]);
         if (cancelled) return;
         setFundCount((fRows || []).length);
@@ -39,20 +45,17 @@ export default function DataHealth() {
         setOrphans(orphanCount);
 
         // Coverage per metric
-        const metrics = [
-          'ytd_return','one_year_return','three_year_return','five_year_return','ten_year_return',
-          'sharpe_ratio','standard_deviation_3y','standard_deviation_5y','expense_ratio','alpha','beta','manager_tenure',
-          'up_capture_ratio','down_capture_ratio'
-        ];
         const cov = {};
-        for (const m of metrics) cov[m] = { nonNull: 0, total: 0 };
+        for (const m of METRICS) cov[m] = { nonNull: 0, total: 0 };
         for (const r of (fRows || [])) {
-          for (const m of metrics) {
+          for (const m of METRICS) {
             cov[m].total += 1;
             if (r[m] != null) cov[m].nonNull += 1;
           }
         }
         setCoverage(cov);
+        setFundCount((fRows || []).length);
+        setBenchCount((bRows || []).length);
       } catch {}
     })();
     return () => { cancelled = true; };

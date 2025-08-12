@@ -9,15 +9,32 @@ test('JSON upsert uses normalized keys and includes ytd_return in payload', asyn
       FUND_PERFORMANCE: 'fund_performance',
       BENCHMARK_PERFORMANCE: 'benchmark_performance'
     },
+    toNumberStrict: (v) => {
+      if (v === null || v === undefined) return null;
+      if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+      const s = String(v).trim();
+      if (s === '' || /^(-|n\/a|na|null|—|–)$/i.test(s)) return null;
+      const isParenNegative = /^\(.*\)$/.test(s);
+      let t = s.replace(/^\(|\)$/g, '');
+      t = t.replace(/%/g, '').replace(/,/g, '');
+      const n = Number(t);
+      if (!Number.isFinite(n)) return null;
+      return isParenNegative ? -n : n;
+    },
     dbUtils: {
       cleanSymbol: (s) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''),
       formatDateOnly: (d) => (typeof d === 'string' ? d : '2025-07-31'),
       parseMetricNumber: (v) => {
-        if (v === null || v === undefined || v === '') return null;
-        if (typeof v === 'number') return v;
-        const s = String(v).replace(/[%,$]/g, '').trim();
-        const n = parseFloat(s);
-        return Number.isFinite(n) ? n : null;
+        if (v === null || v === undefined) return null;
+        if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+        const s = String(v).trim();
+        if (s === '' || /^(-|n\/a|na|null|—|–)$/i.test(s)) return null;
+        const isParenNegative = /^\(.*\)$/.test(s);
+        let t = s.replace(/^\(|\)$/g, '');
+        t = t.replace(/%/g, '').replace(/,/g, '');
+        const n = Number(t);
+        if (!Number.isFinite(n)) return null;
+        return isParenNegative ? -n : n;
       }
     },
     supabase: {

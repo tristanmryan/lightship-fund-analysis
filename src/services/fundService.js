@@ -1,5 +1,5 @@
 // src/services/fundService.js
-import { supabase, TABLES, dbUtils, handleSupabaseError } from './supabase';
+import { supabase, TABLES, dbUtils, handleSupabaseError, toNumberStrict } from './supabase';
 import { resolveAssetClassForTicker } from './resolvers/assetClassResolver';
 import ychartsAPI from './ychartsAPI';
 
@@ -435,7 +435,7 @@ class FundService {
           const cleanTicker = dbUtils.cleanSymbol(r.ticker || r.fund_ticker || '');
           const dateOnly = dbUtils.formatDateOnly(r.date || r.AsOfMonth || r.as_of_month);
           const base = { date: dateOnly };
-          for (const k of METRIC_KEYS) base[k] = pmn(r[k]);
+          for (const k of METRIC_KEYS) base[k] = toNumberStrict(r[k]);
           // TRUST r.kind from UI for routing
           if (String(r.kind).toLowerCase() === 'benchmark') {
             benchPayloadRaw.push({ benchmark_ticker: cleanTicker, ...base });
@@ -487,6 +487,15 @@ class FundService {
               success += chunk.length;
             }
           }
+        }
+
+        if (fundPayloadRaw.length) {
+          // eslint-disable-next-line no-console
+          console.log('[Import about to upsert] sample fund row', fundPayloadRaw[0]);
+        }
+        if (benchPayloadRaw.length) {
+          // eslint-disable-next-line no-console
+          console.log('[Import about to upsert] sample benchmark row', benchPayloadRaw[0]);
         }
 
         await upsertChunks(TABLES.FUND_PERFORMANCE, fundValidated.rows, 'fund_ticker,date');

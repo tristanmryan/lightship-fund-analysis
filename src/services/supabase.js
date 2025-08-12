@@ -72,6 +72,20 @@ function createStubClient() {
 // Create Supabase client or stub
 export const supabase = shouldStub ? createStubClient() : createClient(supabaseUrl, supabaseAnonKey);
 
+// Strict numeric parser for importer paths
+export function toNumberStrict(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const s = String(v).trim();
+  if (s === '' || /^(-|n\/a|na|null|—|–)$/i.test(s)) return null;
+  const isParenNegative = /^\(.*\)$/.test(s);
+  let t = s.replace(/^\(|\)$/g, '');
+  t = t.replace(/%/g, '').replace(/,/g, '');
+  const n = Number(t);
+  if (!Number.isFinite(n)) return null;
+  return isParenNegative ? -n : n;
+}
+
 // Database table names
 export const TABLES = {
   FUNDS: 'funds',
