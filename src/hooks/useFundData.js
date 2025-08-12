@@ -14,6 +14,7 @@ export function useFundData() {
   const [asOfMonth, setAsOfMonth] = useState(null); // YYYY-MM-DD or null for latest
   // Feature flag: runtime scoring for live as-of month data
   const ENABLE_RUNTIME_SCORING = (process.env.REACT_APP_ENABLE_RUNTIME_SCORING || 'false') === 'true';
+  const ENABLE_REFRESH = (process.env.REACT_APP_ENABLE_REFRESH || 'false') === 'true';
 
   // Load funds from database
   const loadFunds = useCallback(async (asOf = asOfMonth) => {
@@ -61,12 +62,56 @@ export function useFundData() {
   // Refresh data from Ycharts API
   const refreshData = useCallback(async (tickers = null) => {
     try {
+      if (!ENABLE_REFRESH) {
+        // Block writes and snapshot creation in production
+        console.warn('Refresh is disabled in production');
+        setError('Refresh is disabled in production');
+        return;
+      }
       setIsUpdating(true);
       setError(null);
 
-      let fundsToUpdate = funds;
-      if (tickers) {
-        fundsToUpdate = funds.filter(fund => tickers.includes(fund.ticker));
+      const normalizeSymbol = (s) => (s == null ? '' : String(s).toUpperCase().trim());
+      let fundsToUpdate = Array.isArray(funds) ? funds : [];
+
+      // Defensive selection logic: accept arrays, strings (search), or filter objects
+      if (tickers != null) {
+        // Case 1: Array of tickers
+        if (Array.isArray(tickers)) {
+          const want = new Set(tickers.filter(Boolean).map(normalizeSymbol));
+          if (want.size > 0) {
+            fundsToUpdate = fundsToUpdate.filter((fund) => want.has(normalizeSymbol(fund.ticker)));
+          }
+        }
+        // Case 2: String query -> match ticker/name/asset class
+        else if (typeof tickers === 'string') {
+          const q = tickers.trim();
+          if (q.length > 0) {
+            const qLower = q.toLowerCase();
+            fundsToUpdate = fundsToUpdate.filter((fund) => {
+              const t = String(fund.ticker || fund.symbol || '').toLowerCase();
+              const n = String(fund.name || fund.displayName || '').toLowerCase();
+              const ac = String(fund.asset_class_name || fund.asset_class || '').toLowerCase();
+              return t.includes(qLower) || n.includes(qLower) || ac.includes(qLower);
+            });
+          }
+        }
+        // Case 3: Object with common filter fields
+        else if (typeof tickers === 'object') {
+          const selected = Array.isArray(tickers.selectedTickers) ? tickers.selectedTickers.map(normalizeSymbol) : [];
+          const assetClass = typeof tickers.assetClass === 'string' ? tickers.assetClass.trim().toLowerCase() : '';
+          const search = typeof tickers.search === 'string' ? tickers.search.trim().toLowerCase() : '';
+
+          fundsToUpdate = fundsToUpdate.filter((fund) => {
+            const t = normalizeSymbol(fund.ticker);
+            const n = String(fund.name || fund.displayName || '').toLowerCase();
+            const ac = String(fund.asset_class_name || fund.asset_class || '').toLowerCase();
+            const matchesSelected = selected.length > 0 ? selected.includes(t) : true;
+            const matchesClass = assetClass ? ac === assetClass : true;
+            const matchesSearch = search ? (t.toLowerCase().includes(search) || n.includes(search) || ac.includes(search)) : true;
+            return matchesSelected && matchesClass && matchesSearch;
+          });
+        }
       }
 
       if (fundsToUpdate.length === 0) {
@@ -102,7 +147,7 @@ export function useFundData() {
     } finally {
       setIsUpdating(false);
     }
-  }, [funds, loadFunds]);
+  }, [funds, loadFunds, ENABLE_REFRESH]);
 
   // Add new fund
   const addFund = useCallback(async (ticker, assetClass = null) => {

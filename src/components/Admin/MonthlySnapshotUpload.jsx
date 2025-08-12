@@ -75,6 +75,7 @@ export default function MonthlySnapshotUpload() {
   const [headerMap, setHeaderMap] = useState({ recognized: [], unrecognized: [] });
   const [coverage, setCoverage] = useState({}); // metricKey -> { nonNull, total }
   const [blockers, setBlockers] = useState([]); // strings
+  const [skipReasons, setSkipReasons] = useState({}); // reason -> { count, tickers: [] }
 
   useEffect(() => {
     let mounted = true;
@@ -225,8 +226,13 @@ export default function MonthlySnapshotUpload() {
       }
       const isBenchmark = ticker && benchmarkMap.has(ticker);
       const isKnownFund = ticker && knownTickers.has(ticker);
-      // Only import if ticker exists in funds (FK). Benchmarks are labeled but must also exist in funds to import.
-      if (ticker && !isKnownFund) { willImport = false; reason = reason ? reason + '; unknown ticker' : 'Unknown ticker'; }
+      // Only import if ticker exists in funds (FK). Benchmarks are labeled but currently skipped.
+      if (ticker && isBenchmark && !isKnownFund) {
+        // Explicitly mark as benchmark-only row (skipped for now)
+        willImport = false;
+        reason = reason ? reason + '; benchmark row (stored separately)' : 'Benchmark row (stored separately)';
+      }
+      if (ticker && !isKnownFund && !isBenchmark) { willImport = false; reason = reason ? reason + '; unknown ticker' : 'Unknown ticker'; }
       const kind = isBenchmark ? 'benchmark' : 'fund';
       return { ticker, asOf, kind, willImport, reason, eom };
     });
@@ -237,6 +243,27 @@ export default function MonthlySnapshotUpload() {
     setMonthsInFile(Array.from(seenMonths).sort((a,b) => b.localeCompare(a)));
     setPreview(rows);
     setCounts({ parsed, willImport, skipped, eomWarnings });
+
+    // Build skip reasons map (diagnostic)
+    const byReason = new Map();
+    for (const r of rows) {
+      if (!r.willImport) {
+        const key = r.reason || 'Unknown reason';
+        const entry = byReason.get(key) || { count: 0, tickers: [] };
+        entry.count += 1;
+        if (r.ticker && entry.tickers.length < 10) entry.tickers.push(r.ticker);
+        byReason.set(key, entry);
+      }
+    }
+    const reasonObj = {};
+    for (const [k, v] of byReason.entries()) {
+      reasonObj[k] = v;
+    }
+    setSkipReasons(reasonObj);
+    // Mirror to console for diagnostics
+    try {
+      console.log('[Importer] Skipped rows by reason:', reasonObj);
+    } catch {}
 
     // Compute metric coverage and blockers using parseMetricNumber
     const pmn = dbUtils.parseMetricNumber;
@@ -304,11 +331,12 @@ export default function MonthlySnapshotUpload() {
     setImporting(true);
     setResult(null);
     try {
-      const rowsToImport = preview.filter(r => r.willImport).map((r) => {
+      const rowsToImport = preview.filter(r => r.willImport || r.kind === 'benchmark').map((r) => {
         const original = parsedRows.find(pr => pr.__ticker === r.ticker && pr.__asOf === r.asOf) || {};
           // Picker overrides CSV AsOfMonth
           return {
           ticker: r.ticker,
+          kind: r.kind,
           date: pickerDate,
           ytd_return: original.ytd_return ?? original.YTD,
           one_year_return: original.one_year_return ?? original['1 Year'],
@@ -342,6 +370,14 @@ export default function MonthlySnapshotUpload() {
       const uniqueMonths = new Set(rowsToImport.map(r => r.date));
       const monthsArr = Array.from(uniqueMonths).sort((a,b) => b.localeCompare(a));
       setResult({ success, failed, months: monthsArr });
+      // Post-import summary log
+      try {
+        const fundsInserted = rowsToImport.filter(r => r.kind !== 'benchmark').length;
+        const benchInserted = rowsToImport.filter(r => r.kind === 'benchmark').length;
+        const pmn = (k) => (k && coverage[k]?.total > 0 && (coverage[k].nonNull / coverage[k].total) < 0.2);
+        const lowCov = Object.keys(coverage || {}).filter(pmn);
+        console.log(`[Import] Funds: ${fundsInserted}, Benchmarks: ${benchInserted}, Low coverage: ${lowCov.join(', ')}`);
+      } catch {}
       // Post-import: sync and switch active month to the imported month (picker date)
       try {
         await asOfStore.syncWithDb();
@@ -398,8 +434,20 @@ export default function MonthlySnapshotUpload() {
         </div>
         <div style={{ color: '#6b7280', fontSize: 12 }}>Picker overrides CSV dates.</div>
         {preview.length > 0 && (
-          <div style={{ fontSize: 12, background:'#f3f4f6', border:'1px solid #e5e7eb', padding:'2px 6px', borderRadius:12 }}>
-            Mode: {mode === 'picker' ? `Picker (${String(month).padStart(2,'0')}/${year})` : 'CSV date'}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12 }}>
+            <div style={{ background:'#f3f4f6', border:'1px solid #e5e7eb', padding:'2px 6px', borderRadius:12 }}>
+              Mode: {mode === 'picker' ? `Picker (${String(month).padStart(2,'0')}/${year})` : 'CSV date'}
+            </div>
+            {preview.length > 0 && (
+              <div style={{ background:'#eef2ff', border:'1px solid #c7d2fe', padding:'2px 6px', borderRadius:12 }}>
+                Funds to import: {preview.filter(r => r.willImport && r.kind === 'fund').length}
+              </div>
+            )}
+            {preview.length > 0 && (
+              <div style={{ background:'#ecfeff', border:'1px solid #a5f3fc', padding:'2px 6px', borderRadius:12 }}>
+                Benchmarks to import: {preview.filter(r => r.kind === 'benchmark').length}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -414,6 +462,10 @@ export default function MonthlySnapshotUpload() {
             <div><strong>AsOfMonth column detected:</strong> {hasAsOfColumn ? 'Yes' : 'No'}</div>
             <div><strong>Active mode:</strong> {mode === 'picker' ? 'Picker' : 'CSV'}</div>
             <div><strong>AsOfMonth in file:</strong> {monthsInFile.length === 1 ? monthsInFile[0] : monthsInFile.join(', ')}</div>
+            <div style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }} onClick={() => {
+              const el = document.getElementById('skip-reasons-box');
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}>Why skipped?</div>
           </div>
           {/* Header recognition */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
@@ -509,6 +561,26 @@ export default function MonthlySnapshotUpload() {
               </div>
             );
           })()}
+          {/* Skipped rows by reason (diagnostic) */}
+          <div id="skip-reasons-box" style={{ padding: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', borderRadius: 6, margin: '8px 0' }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>Skipped rows by reason</div>
+            {Object.keys(skipReasons || {}).length === 0 ? (
+              <div style={{ color: '#6b7280' }}>None</div>
+            ) : (
+              <div style={{ display: 'grid', gap: 8 }}>
+                {Object.entries(skipReasons).map(([reason, info]) => (
+                  <div key={reason} style={{ padding: 6, background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+                    <div><strong>{reason}</strong> — {info.count}</div>
+                    {info.tickers?.length > 0 && (
+                      <div style={{ marginTop: 4, color: '#1f2937', fontSize: 12 }}>
+                        First 10 tickers: {info.tickers.join(', ')}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           {counts.eomWarnings > 0 && (
             <div style={{ padding: 8, background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', borderRadius: 6, marginBottom: 8 }}>
               Some CSV rows are not end-of-month. The picker will auto-correct to end-of-month.

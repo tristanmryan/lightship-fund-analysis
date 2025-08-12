@@ -3,6 +3,7 @@ import { RefreshCw, Clock, CheckCircle, AlertCircle, Wifi, WifiOff } from 'lucid
 
 const RealTimeUpdates = ({ onRefresh, lastUpdated, isConnected, isLoading }) => {
   const [timeSinceUpdate, setTimeSinceUpdate] = useState('');
+  const ENABLE_REFRESH = (process.env.REACT_APP_ENABLE_REFRESH || 'false') === 'true';
 
   // Calculate time since last update
   useEffect(() => {
@@ -63,8 +64,9 @@ const RealTimeUpdates = ({ onRefresh, lastUpdated, isConnected, isLoading }) => 
       <div className="update-actions">
         <button 
           onClick={onRefresh}
-          disabled={isLoading}
-          className={`btn btn-primary ${isLoading ? 'loading' : ''}`}
+          disabled={isLoading || !ENABLE_REFRESH}
+          className={`btn ${ENABLE_REFRESH ? 'btn-primary' : 'btn-danger'} ${isLoading ? 'loading' : ''}`}
+          title={ENABLE_REFRESH ? 'Refresh data' : 'Refresh disabled in production'}
         >
           {isLoading ? (
             <>
@@ -74,7 +76,7 @@ const RealTimeUpdates = ({ onRefresh, lastUpdated, isConnected, isLoading }) => 
           ) : (
             <>
               <RefreshCw size={16} />
-              Refresh Data
+              {ENABLE_REFRESH ? 'Refresh Data' : 'Refresh Disabled'}
             </>
           )}
         </button>

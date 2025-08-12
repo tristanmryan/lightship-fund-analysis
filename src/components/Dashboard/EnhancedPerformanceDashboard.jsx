@@ -66,6 +66,10 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
   const [tableState, setTableState] = useState({ sortConfig: null, selectedColumns: null });
   const tableExportRef = React.useRef(null);
   const [availableMonths, setAvailableMonths] = useState([]);
+  const [showNonEom, setShowNonEom] = useState(false);
+  const [allMonths, setAllMonths] = useState([]);
+  const [nonEomSample, setNonEomSample] = useState(null);
+  const ENABLE_REFRESH = (process.env.REACT_APP_ENABLE_REFRESH || 'false') === 'true';
 
   // Load saved view defaults on mount
   React.useEffect(() => {
@@ -88,7 +92,24 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
             onAsOfMonthChange(defaults.asOfMonth);
           }
         }
-        setAvailableMonths(months || []);
+        // Filter EOM by default
+        const onlyEom = (months || []).filter((d) => {
+          try {
+            const dt = new Date(d + 'T00:00:00Z');
+            const end = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0));
+            return dt.getUTCDate() === end.getUTCDate();
+          } catch { return false; }
+        });
+        setAllMonths(months || []);
+        setAvailableMonths(onlyEom);
+        const firstNonEom = (months || []).find((d) => {
+          try {
+            const dt = new Date(d + 'T00:00:00Z');
+            const end = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0));
+            return dt.getUTCDate() !== end.getUTCDate();
+          } catch { return false; }
+        });
+        setNonEomSample(firstNonEom || null);
         // Initialize global endDate for sparklines
         window.__AS_OF_MONTH__ = (asOfMonthProp || '') || null;
       } catch {}
@@ -369,14 +390,25 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
                 title="Switch dataset to a specific month snapshot"
               >
                 <option value="">Latest</option>
-                {availableMonths.map((d) => (
+                {(showNonEom ? allMonths : availableMonths).map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
             </div>
+            {/* Non-EOM pill and toggle */}
+            {nonEomSample && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', padding: '2px 6px', borderRadius: 9999 }}>
+                  Non-EOM month detected ({new Date(nonEomSample).toLocaleDateString('en-US')})
+                </span>
+                <label style={{ fontSize: 12, color: '#374151' }}>
+                  <input type="checkbox" checked={showNonEom} onChange={(e) => setShowNonEom(e.target.checked)} /> Show non-EOM
+                </label>
+              </div>
+            )}
             <button
               onClick={onRefresh}
-              disabled={isLoading}
+              disabled={isLoading || (process.env.REACT_APP_ENABLE_REFRESH || 'false') !== 'true'}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -384,16 +416,21 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
                 padding: '0.5rem 1rem',
                 border: '1px solid #d1d5db',
                 borderRadius: '0.375rem',
-                backgroundColor: 'white',
-                color: '#374151',
+                backgroundColor: (process.env.REACT_APP_ENABLE_REFRESH || 'false') === 'true' ? 'white' : '#fee2e2',
+                color: (process.env.REACT_APP_ENABLE_REFRESH || 'false') === 'true' ? '#374151' : '#991b1b',
                 fontSize: '0.875rem',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-                opacity: isLoading ? 0.5 : 1
+                cursor: (isLoading || (process.env.REACT_APP_ENABLE_REFRESH || 'false') !== 'true') ? 'not-allowed' : 'pointer',
+                opacity: (isLoading || (process.env.REACT_APP_ENABLE_REFRESH || 'false') !== 'true') ? 0.6 : 1
               }}
             >
               <RefreshCw size={16} style={{ animation: isLoading ? 'spin 1s linear infinite' : 'none' }} />
-              Refresh Data
+              {(process.env.REACT_APP_ENABLE_REFRESH || 'false') === 'true' ? 'Refresh Data' : 'Refresh Disabled'}
             </button>
+            {(process.env.REACT_APP_ENABLE_REFRESH || 'false') !== 'true' && (
+              <div style={{ color:'#991b1b', background:'#fee2e2', border:'1px solid #fecaca', borderRadius:6, padding:'2px 6px', fontSize:12 }}>
+                Refresh is disabled in production
+              </div>
+            )}
             
             <button
               style={{

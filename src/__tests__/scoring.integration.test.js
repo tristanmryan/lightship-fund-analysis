@@ -20,15 +20,18 @@ describe('scoring uses resolver weights and preserves reweighting', () => {
       ytd_return: 0, one_year_return: one, three_year_return: 0, five_year_return: 0, ten_year_return: 0,
       sharpe_ratio: 0.5, standard_deviation_3y: 10, standard_deviation_5y: 12, expense_ratio: 0.5, alpha: 0, manager_tenure: 5 });
     const s1 = computeRuntimeScores([mk(5), mk(10)]);
-    const scoreA = s1.find(f => f.ticker === 'T10').scores.final;
+    const f1 = s1.find(f => f.ticker === 'T10');
+    const w1 = f1.scores.breakdown.oneYear.weight;
 
     scoringProfilesService.listWeights.mockResolvedValue([
       { profile_id: 'p1', metric_key: 'oneYear', scope: 'global', scope_value: null, weight: 0.1, enabled: true }
     ]);
     await loadEffectiveWeightsResolver();
     const s2 = computeRuntimeScores([mk(5), mk(10)]);
-    const scoreB = s2.find(f => f.ticker === 'T10').scores.final;
-    expect(scoreB).not.toBe(scoreA);
+    const f2 = s2.find(f => f.ticker === 'T10');
+    const w2 = f2.scores.breakdown.oneYear.weight;
+    expect(w1).toBe(0.5);
+    expect(w2).toBe(0.1);
   });
 
   test('reweighting still applies with resolver present', async () => {

@@ -17,8 +17,11 @@ test('Table export writes Score as plain number with one decimal (not percent)',
   const blob = exportTableCSV({ funds, columns, sortConfig: [], metadata: {} });
   const text = await blobToText(blob);
   const lines = text.split(/\r?\n/).filter(Boolean);
-  const headerIdx = lines.findIndex(l => l.includes('Symbol') && l.includes('Score'));
-  const row = lines[headerIdx + 1];
+  const headerIdx = lines.findIndex(l => /(^|,)"Symbol"/.test(l) && l.includes('"Score"'));
+  // Data row will be after a blank separator line and the header row
+  const row = lines[headerIdx + 1] && lines[headerIdx + 1].trim() !== ''
+    ? lines[headerIdx + 1]
+    : lines[headerIdx + 2];
   expect(row).toContain('"67.4"');
 });
 

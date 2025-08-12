@@ -394,7 +394,7 @@ class FundService {
     }
   }
 
-  // Bulk upsert fund performance rows in chunks
+  // Bulk upsert performance rows: funds go to fund_performance; benchmarks to benchmark_performance
   async bulkUpsertFundPerformance(rows = [], chunkSize = 500) {
     const toBatches = [];
     for (let i = 0; i < rows.length; i += chunkSize) {
@@ -404,41 +404,59 @@ class FundService {
     let failed = 0;
     for (const batch of toBatches) {
       const pmn = dbUtils.parseMetricNumber;
-      const payload = batch.map((r) => ({
-        fund_ticker: dbUtils.cleanSymbol(r.ticker || r.fund_ticker),
-        date: dbUtils.formatDateOnly(r.date || r.AsOfMonth || r.as_of_month),
-        ytd_return: pmn(r.ytd_return ?? r['YTD']),
-        one_year_return: pmn(r.one_year_return ?? r['1 Year']),
-        three_year_return: pmn(r.three_year_return ?? r['3 Year']),
-        five_year_return: pmn(r.five_year_return ?? r['5 Year']),
-        ten_year_return: pmn(r.ten_year_return ?? r['10 Year']),
-        sharpe_ratio: pmn(r.sharpe_ratio ?? r['Sharpe Ratio']),
-        standard_deviation: pmn(r.standard_deviation ?? r['Standard Deviation']),
-        standard_deviation_3y: pmn(
-          r.standard_deviation_3y ?? r['standard_deviation_3y'] ?? r['Standard Deviation 3Y'] ?? r.standard_deviation ?? r['Standard Deviation']
-        ),
-        standard_deviation_5y: pmn(
-          r.standard_deviation_5y ?? r['standard_deviation_5y'] ?? r['Standard Deviation 5Y']
-        ),
-        expense_ratio: pmn(r.expense_ratio ?? r['Net Expense Ratio']),
-        alpha: pmn(r.alpha ?? r.alpha_5y ?? r['Alpha']),
-        beta: pmn(r.beta ?? r.beta_3y ?? r['Beta']),
-        manager_tenure: pmn(r.manager_tenure ?? r['Manager Tenure']),
-        up_capture_ratio: pmn(
-          r.up_capture_ratio ?? r.up_capture_ratio_3y ?? r['Up Capture Ratio'] ?? r['Up Capture Ratio (Morningstar Standard) - 3 Year']
-        ),
-        down_capture_ratio: pmn(
-          r.down_capture_ratio ?? r.down_capture_ratio_3y ?? r['Down Capture Ratio'] ?? r['Down Capture Ratio (Morningstar Standard) - 3 Year']
-        )
-      }));
+      // Build two payloads
+      const fundPayload = [];
+      const benchmarkPayload = [];
+      for (const r of batch) {
+        const clean = dbUtils.cleanSymbol(r.ticker || r.fund_ticker || r.benchmark_ticker);
+        const base = {
+          date: dbUtils.formatDateOnly(r.date || r.AsOfMonth || r.as_of_month),
+          ytd_return: pmn(r.ytd_return ?? r['YTD']),
+          one_year_return: pmn(r.one_year_return ?? r['1 Year']),
+          three_year_return: pmn(r.three_year_return ?? r['3 Year']),
+          five_year_return: pmn(r.five_year_return ?? r['5 Year']),
+          ten_year_return: pmn(r.ten_year_return ?? r['10 Year']),
+          sharpe_ratio: pmn(r.sharpe_ratio ?? r['Sharpe Ratio']),
+          standard_deviation: pmn(r.standard_deviation ?? r['Standard Deviation']),
+          standard_deviation_3y: pmn(
+            r.standard_deviation_3y ?? r['standard_deviation_3y'] ?? r['Standard Deviation 3Y'] ?? r.standard_deviation ?? r['Standard Deviation']
+          ),
+          standard_deviation_5y: pmn(
+            r.standard_deviation_5y ?? r['standard_deviation_5y'] ?? r['Standard Deviation 5Y']
+          ),
+          expense_ratio: pmn(r.expense_ratio ?? r['Net Expense Ratio']),
+          alpha: pmn(r.alpha ?? r.alpha_5y ?? r['Alpha']),
+          beta: pmn(r.beta ?? r.beta_3y ?? r['Beta']),
+          manager_tenure: pmn(r.manager_tenure ?? r['Manager Tenure']),
+          up_capture_ratio: pmn(
+            r.up_capture_ratio ?? r.up_capture_ratio_3y ?? r['Up Capture Ratio'] ?? r['Up Capture Ratio (Morningstar Standard) - 3 Year']
+          ),
+          down_capture_ratio: pmn(
+            r.down_capture_ratio ?? r.down_capture_ratio_3y ?? r['Down Capture Ratio'] ?? r['Down Capture Ratio (Morningstar Standard) - 3 Year']
+          )
+        };
 
-      const { error } = await supabase
-        .from(TABLES.FUND_PERFORMANCE)
-        .upsert(payload, { onConflict: 'fund_ticker,date' });
-      if (error) {
-        failed += payload.length;
-      } else {
-        success += payload.length;
+        // Heuristic: if row.flagKind says benchmark or if explicit benchmark_ticker provided, treat as benchmark
+        const kind = r.kind || (r.benchmark_ticker ? 'benchmark' : 'fund');
+        if (kind === 'benchmark') {
+          benchmarkPayload.push({ benchmark_ticker: clean, ...base });
+        } else {
+          fundPayload.push({ fund_ticker: clean, ...base });
+        }
+      }
+
+      // Upserts
+      if (fundPayload.length > 0) {
+        const { error: fundErr } = await supabase
+          .from(TABLES.FUND_PERFORMANCE)
+          .upsert(fundPayload, { onConflict: 'fund_ticker,date' });
+        if (fundErr) failed += fundPayload.length; else success += fundPayload.length;
+      }
+      if (benchmarkPayload.length > 0) {
+        const { error: benchErr } = await supabase
+          .from(TABLES.BENCHMARK_PERFORMANCE)
+          .upsert(benchmarkPayload, { onConflict: 'benchmark_ticker,date' });
+        if (benchErr) failed += benchmarkPayload.length; else success += benchmarkPayload.length;
       }
     }
     return { success, failed };
@@ -510,6 +528,54 @@ class FundService {
     } catch (error) {
       handleSupabaseError(error, 'listSnapshotMonths');
       return [];
+    }
+  }
+
+  // Convert a non-EOM snapshot to EOM date, merging if target exists
+  async convertSnapshotToEom(sourceDate) {
+    try {
+      const src = dbUtils.formatDateOnly(sourceDate);
+      const d = new Date(src + 'T00:00:00Z');
+      const target = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).toISOString().slice(0,10);
+      if (src === target) return { merged: false, moved: 0 };
+
+      // Check if target exists
+      const { data: existing } = await supabase
+        .from(TABLES.FUND_PERFORMANCE)
+        .select('fund_ticker')
+        .eq('date', target)
+        .limit(1);
+      const targetExists = Array.isArray(existing) && existing.length > 0;
+
+      // Move rows: select all from source
+      const { data: rows, error: selErr } = await supabase
+        .from(TABLES.FUND_PERFORMANCE)
+        .select('*')
+        .eq('date', src);
+      if (selErr) throw selErr;
+
+      if (!rows || rows.length === 0) return { merged: targetExists, moved: 0 };
+
+      // Re-insert at target with upsert conflict on (fund_ticker,date)
+      const payload = rows.map((r) => ({ ...r, date: target }));
+      // Strip PK/created_at to allow upsert
+      payload.forEach(p => { delete p.id; delete p.created_at; });
+      const { error: upErr } = await supabase
+        .from(TABLES.FUND_PERFORMANCE)
+        .upsert(payload, { onConflict: 'fund_ticker,date' });
+      if (upErr) throw upErr;
+
+      // Delete source rows
+      const { error: delErr } = await supabase
+        .from(TABLES.FUND_PERFORMANCE)
+        .delete()
+        .eq('date', src);
+      if (delErr) throw delErr;
+
+      return { merged: targetExists, moved: rows.length };
+    } catch (error) {
+      handleSupabaseError(error, 'convertSnapshotToEom');
+      throw error;
     }
   }
 

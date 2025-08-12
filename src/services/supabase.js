@@ -87,6 +87,7 @@ export const TABLES = {
   FUND_OVERRIDES: 'fund_overrides',
   BENCHMARK_HISTORY: 'benchmark_history',
   FUND_RESEARCH_NOTES: 'fund_research_notes',
+  BENCHMARK_PERFORMANCE: 'benchmark_performance',
   // Phase 4 Scoring governance tables
   SCORING_PROFILES: 'scoring_profiles',
   SCORING_WEIGHTS: 'scoring_weights',

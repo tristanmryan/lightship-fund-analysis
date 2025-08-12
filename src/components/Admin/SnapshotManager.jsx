@@ -6,6 +6,7 @@ export default function SnapshotManager() {
   const [snapshots, setSnapshots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [convertBusy, setConvertBusy] = useState(null);
 
   async function load() {
     try {
@@ -21,6 +22,36 @@ export default function SnapshotManager() {
   }
 
   useEffect(() => { load(); }, []);
+  function isEom(dateStr) {
+    try {
+      const dt = new Date(dateStr + 'T00:00:00Z');
+      const end = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0));
+      return dt.getUTCDate() === end.getUTCDate();
+    } catch { return false; }
+  }
+
+  async function convertToEom(dateStr) {
+    const dt = new Date(dateStr + 'T00:00:00Z');
+    const target = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0)).toISOString().slice(0,10);
+    if (target === dateStr) return;
+    const confirmText = `${dateStr} -> ${target}`;
+    const input = window.prompt(`Type to confirm conversion (SET date = last_day_of_month):\n${confirmText}`);
+    if (!input || input.trim() !== confirmText) return;
+    setConvertBusy(dateStr);
+    try {
+      const res = await fundService.convertSnapshotToEom(dateStr);
+      if (res?.merged) {
+        alert(`Converted ${dateStr} to ${target} and merged ${res.moved} rows into existing EOM.`);
+      } else {
+        alert(`Converted ${dateStr} to ${target}.`);
+      }
+      await load();
+    } catch (e) {
+      alert(e.message || String(e));
+    } finally {
+      setConvertBusy(null);
+    }
+  }
 
   const handleDelete = async (date) => {
     if (!window.confirm(`Delete all performance rows for ${date}? This cannot be undone.`)) return;
@@ -67,10 +98,23 @@ export default function SnapshotManager() {
             <tbody>
               {(snapshots || []).map((s) => (
                 <tr key={s.date}>
-                  <td>{s.date}</td>
+                  <td>
+                    {s.date}
+                    <span style={{ marginLeft: 8, fontSize: 12, padding: '2px 6px', borderRadius: 9999, border: '1px solid',
+                      borderColor: isEom(s.date) ? '#86efac' : '#fde68a',
+                      background: isEom(s.date) ? '#ecfdf5' : '#fffbeb',
+                      color: isEom(s.date) ? '#166534' : '#92400e' }}>
+                      {isEom(s.date) ? 'EOM' : 'Non-EOM'}
+                    </span>
+                  </td>
                   <td>{s.rows}</td>
                   <td style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-secondary" onClick={() => handleDownloadTemplate(s.date)}>Download Template</button>
+                    {!isEom(s.date) && (
+                      <button className="btn btn-warning" disabled={convertBusy === s.date} onClick={() => convertToEom(s.date)}>
+                        {convertBusy === s.date ? 'Converting…' : 'Convert to EOM…'}
+                      </button>
+                    )}
                     <button className="btn btn-danger" onClick={() => handleDelete(s.date)}>Delete</button>
                   </td>
                 </tr>
