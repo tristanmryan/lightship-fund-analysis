@@ -65,6 +65,8 @@ export default function MonthlySnapshotUpload() {
   const [preview, setPreview] = useState([]);
   const [counts, setCounts] = useState({ parsed: 0, willImport: 0, skipped: 0, eomWarnings: 0 });
   const [monthsInFile, setMonthsInFile] = useState([]);
+  const [mode, setMode] = useState('csv'); // 'csv' | 'picker'
+  const [hasAsOfColumn, setHasAsOfColumn] = useState(false);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState(null);
   const [month, setMonth] = useState(''); // 1-12 as string
@@ -92,6 +94,9 @@ export default function MonthlySnapshotUpload() {
     setPreview([]);
     setCounts({ parsed: 0, willImport: 0, skipped: 0, eomWarnings: 0 });
     setResult(null);
+    setMonthsInFile([]);
+    setMode('csv');
+    setHasAsOfColumn(false);
   };
 
   const handleDownloadTemplate = useCallback(() => {
@@ -125,10 +130,28 @@ export default function MonthlySnapshotUpload() {
       header: true,
       skipEmptyLines: true,
       complete: (res) => {
+        const headers = (res.meta && res.meta.fields) || [];
+        const hasAsOf = headers.some(h => String(h).toLowerCase() === 'asofmonth' || String(h).toLowerCase() === 'as_of_month');
+        setHasAsOfColumn(hasAsOf);
+        // Deterministic mode: if picker has values, picker wins; else if AsOfMonth exists, csv; else picker if picker values present later
+        setMode((() => {
+          const pickerDate = computePickerDate();
+          if (pickerDate) return 'picker';
+          return hasAsOf ? 'csv' : 'picker';
+        })());
         const rows = (res.data || []).map((r) => {
           // Normalize keys to our expectations but keep original
           const ticker = dbUtils.cleanSymbol(r.Ticker || r.ticker || r.SYMBOL);
-          const asOf = String(r.AsOfMonth || r.as_of_month || '').trim();
+          let a = String(r.AsOfMonth || r.as_of_month || '').trim();
+          // Accept YYYY-MM or YYYY-MM-DD; expand YYYY-MM to last day
+          if (/^\d{4}-\d{2}$/.test(a)) {
+            try {
+              const [yy, mm] = a.split('-').map(n => Number(n));
+              const eom = new Date(Date.UTC(yy, mm, 0));
+              a = eom.toISOString().slice(0,10);
+            } catch {}
+          }
+          const asOf = a;
           return { ...r, __ticker: ticker, __asOf: asOf };
         });
         setParsedRows(rows);
@@ -146,9 +169,13 @@ export default function MonthlySnapshotUpload() {
       return;
     }
     const seenMonths = new Set();
+    const pickerDate = computePickerDate();
+    // Picker always wins if present
+    const activeMode = pickerDate ? 'picker' : (hasAsOfColumn ? 'csv' : 'picker');
+    setMode(activeMode);
     const rows = parsedRows.map((r) => {
       const ticker = r.__ticker;
-      const asOf = r.__asOf;
+      const asOf = activeMode === 'picker' ? pickerDate : r.__asOf;
       let reason = '';
       let willImport = true;
       if (!ticker) { willImport = false; reason = 'Missing Ticker'; }
@@ -274,9 +301,12 @@ export default function MonthlySnapshotUpload() {
           <label style={{ display: 'block', fontSize: 12, color: '#6b7280' }}>Year *</label>
           <input value={year} onChange={(e) => setYear(e.target.value)} placeholder="YYYY" style={{ width: 100 }} />
         </div>
-        <div style={{ color: '#6b7280', fontSize: 12 }}>
-          Picker overrides CSV dates.
-        </div>
+        <div style={{ color: '#6b7280', fontSize: 12 }}>Picker overrides CSV dates.</div>
+        {preview.length > 0 && (
+          <div style={{ fontSize: 12, background:'#f3f4f6', border:'1px solid #e5e7eb', padding:'2px 6px', borderRadius:12 }}>
+            Mode: {mode === 'picker' ? `Picker (${String(month).padStart(2,'0')}/${year})` : 'CSV date'}
+          </div>
+        )}
       </div>
 
       {preview.length > 0 && (
@@ -286,6 +316,8 @@ export default function MonthlySnapshotUpload() {
             <div><strong>Will import:</strong> {counts.willImport}</div>
             <div><strong>Skipped:</strong> {counts.skipped}</div>
             <div title="Rows with non end-of-month AsOfMonth; you can proceed but recommended to fix."><strong>EOM warnings:</strong> {counts.eomWarnings}</div>
+            <div><strong>AsOfMonth column detected:</strong> {hasAsOfColumn ? 'Yes' : 'No'}</div>
+            <div><strong>Active mode:</strong> {mode === 'picker' ? 'Picker' : 'CSV'}</div>
             <div><strong>AsOfMonth in file:</strong> {monthsInFile.length === 1 ? monthsInFile[0] : monthsInFile.join(', ')}</div>
           </div>
           {counts.eomWarnings > 0 && (
