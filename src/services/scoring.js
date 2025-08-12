@@ -397,7 +397,7 @@ export async function loadEffectiveWeightsResolver() {
    * @param {Array<Object>} funds - All funds with asset class assignments
    * @returns {Array<Object>} Funds with calculated scores
    */
-  export function calculateScores(funds) {
+  export function calculateScores(funds, resolverOverride = null) {
     // Group funds by asset class
     const fundsByClass = {};
     funds.forEach(fund => {
@@ -449,7 +449,7 @@ export async function loadEffectiveWeightsResolver() {
       
       // Calculate raw scores for all funds
       const fundsWithRawScores = fundsWithMetrics.map(fund => {
-        const scoreData = calculateFundScore(fund, statistics, null);
+        const scoreData = calculateFundScore(fund, statistics, resolverOverride);
         return {
           ...fund,
           scoreData

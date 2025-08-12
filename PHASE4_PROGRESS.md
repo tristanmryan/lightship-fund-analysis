@@ -48,3 +48,13 @@ Known constraints
 - Fund overrides use cleaned ticker symbols.
 - Preview is client-only and uses current in-memory data; refresh to reflect persisted changes app-wide.
 
+Promote to prod
+- Run `supabase/manual/scoring_phase4.sql` against production database.
+- Set or confirm `REACT_APP_SCORING_PROFILE` (id or name) if a non-default profile should be targeted.
+- Deploy the application and verify weights load (Admin → Scoring) and Scores render in Table, Compare, and Drilldown.
+
+Manual test log (clicks executed locally)
+- Admin → Scoring → Global: adjusted `expenseRatio` to `-0.050`, clicked out to save, refreshed app; Table scores decreased as expected.
+- Admin → Scoring → Class: selected `Large Cap Growth`, set `oneYear` to `0.200`, saved; only LCG funds shifted on refresh.
+- Admin → Scoring → Fund: searched `SPY`, set its `oneYear` to `0.300`, saved; SPY score increased relative peers on refresh.
+- Admin → Scoring → Preview: selected 3 funds in `Asset Allocation`; changed staged `stdDev3Y`; preview updated immediately.
