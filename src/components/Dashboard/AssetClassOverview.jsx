@@ -23,7 +23,9 @@ const AssetClassOverview = ({ funds, classSummaries = {}, benchmarkData = {} }) 
     const keyProp = groupBy === 'assetGroup' ? 'assetGroup' : 'Asset Class';
     const fundsByClass = {};
     funds.forEach(fund => {
-      const key = fund[keyProp] || fund.asset_class || 'Unknown';
+      const labelCandidate = fund[keyProp] || fund.asset_class_name || fund.asset_class || fund['Asset Class'] || '';
+      // Unknown when both id is null and name is empty
+      const key = (!fund.asset_class_id && !labelCandidate) ? 'Unknown' : labelCandidate;
       if (!fundsByClass[key]) {
         fundsByClass[key] = [];
       }

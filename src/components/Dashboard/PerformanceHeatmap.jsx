@@ -16,13 +16,17 @@ const PerformanceHeatmap = ({ funds }) => {
     const grouped = {};
     if (Array.isArray(funds)) {
       funds.forEach(fund => {
-        const assetClass = fund['Asset Class'] || fund.asset_class || 'Unknown';
-        if (!grouped[assetClass]) {
-          grouped[assetClass] = [];
+        // Count by asset_class_id when present, fallback to asset_class_name; Unknown when both missing
+        const key = (fund.asset_class_id ? (fund.asset_class_name || fund.asset_class || fund['Asset Class']) : (fund.asset_class_name || fund.asset_class || fund['Asset Class'])) || 'Unknown';
+        if (!fund.asset_class_id && !(fund.asset_class_name || fund.asset_class || fund['Asset Class'])) {
+          // ensure true Unknown bucket when both id and label missing
+          grouped['Unknown'] = grouped['Unknown'] || [];
+          grouped['Unknown'].push(fund);
+          return;
         }
-        grouped[assetClass].push(fund);
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(fund);
       });
-      // Sort funds within each class by score
       Object.keys(grouped).forEach(assetClass => {
         grouped[assetClass].sort((a, b) => (b.scores?.final || 0) - (a.scores?.final || 0));
       });

@@ -1,6 +1,7 @@
 // src/services/exportService.js
 import * as XLSX from 'xlsx';
 import { toISODateTime } from '../utils/formatters';
+import { supabase, TABLES } from './supabase';
 // Avoid importing jsPDF/pdf generation in test/node by lazy-loading pdfReportService inside the function
 
 /**
@@ -434,6 +435,82 @@ export function buildCSV(rows) {
   };
   const content = rows.map(row => row.map(escapeCell).join(',')).join('\r\n');
   return `${BOM}${content}`;
+}
+
+/**
+ * Export Recommended Funds as CSV
+ * Headers: "Ticker","Name","Asset Class","Asset Class ID"
+ */
+export async function exportRecommendedFundsCSV() {
+  const { data: funds } = await supabase
+    .from(TABLES.FUNDS)
+    .select('ticker,name,asset_class_id,asset_class')
+    .eq('is_recommended', true)
+    .order('ticker');
+  const acIds = Array.from(new Set((funds || []).map(f => f.asset_class_id).filter(Boolean)));
+  const acMap = new Map();
+  if (acIds.length > 0) {
+    const { data: acList } = await supabase
+      .from(TABLES.ASSET_CLASSES)
+      .select('id,name')
+      .in('id', acIds);
+    for (const ac of acList || []) acMap.set(ac.id, ac.name);
+  }
+  const rows = [
+    ['Ticker','Name','Asset Class','Asset Class ID'],
+    ...((funds || []).map(f => [
+      f.ticker || '',
+      f.name || '',
+      acMap.get(f.asset_class_id) || f.asset_class || '',
+      f.asset_class_id || ''
+    ]))
+  ];
+  const csv = buildCSV(rows);
+  return downloadBlob(csv, 'recommended_funds.csv');
+}
+
+/**
+ * Export Asset Class -> Primary Benchmark mapping as CSV
+ * Headers: "Asset Class Code","Asset Class Name","Primary Benchmark Ticker"
+ */
+export async function exportPrimaryBenchmarkMappingCSV() {
+  const { data: acs } = await supabase
+    .from(TABLES.ASSET_CLASSES)
+    .select('id,code,name');
+  const { data: maps } = await supabase
+    .from(TABLES.ASSET_CLASS_BENCHMARKS)
+    .select('asset_class_id,benchmark_id,kind,rank');
+  const primaryByAc = new Map();
+  for (const m of maps || []) {
+    if (m?.kind === 'primary' || m?.rank === 1) primaryByAc.set(m.asset_class_id, m.benchmark_id);
+  }
+  const bmIds = Array.from(new Set(Array.from(primaryByAc.values()).filter(Boolean)));
+  const { data: bms } = await supabase
+    .from(TABLES.BENCHMARKS)
+    .select('id,ticker');
+  const bmTicker = new Map((bms || []).map(b => [b.id, b.ticker]));
+  const rows = [
+    ['Asset Class Code','Asset Class Name','Primary Benchmark Ticker'],
+    ...((acs || []).map(ac => [
+      ac.code || '',
+      ac.name || '',
+      bmTicker.get(primaryByAc.get(ac.id)) || ''
+    ]))
+  ];
+  const csv = buildCSV(rows);
+  return downloadBlob(csv, 'primary_benchmark_mapping.csv');
+}
+
+function downloadBlob(csvString, filename) {
+  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 /**

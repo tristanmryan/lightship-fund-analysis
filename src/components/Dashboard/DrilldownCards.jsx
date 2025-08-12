@@ -42,6 +42,8 @@ export default function DrilldownCards({ fund, funds }) {
 
   const benchFund = benchmark?.fund;
 
+  const scoreValue = fund?.scores?.final;
+
   // Compute deltas where meaningful
   const diff = (fVal, bVal) => {
     if (fVal == null || bVal == null || isNaN(fVal) || isNaN(bVal)) return null;
@@ -77,6 +79,10 @@ export default function DrilldownCards({ fund, funds }) {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+      <div className="card" style={{ padding: 12 }}>
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>Overview</div>
+        <MetricRow label="Score" value={scoreValue == null ? '—' : formatNumber(scoreValue, 1)} />
+      </div>
       {sections.map(sec => (
         <div key={sec.title} className="card" style={{ padding: 12 }}>
           <div style={{ fontWeight: 600, marginBottom: 8 }}>{sec.title}</div>

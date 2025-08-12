@@ -2,8 +2,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Papa from 'papaparse';
 import fundService from '../../services/fundService';
+import asOfStore from '../../services/asOfStore';
 import { dbUtils } from '../../services/supabase';
-import { createMonthlyTemplateCSV } from '../../services/csvTemplate';
+import { createMonthlyTemplateCSV, createLegacyMonthlyTemplateCSV } from '../../services/csvTemplate';
 
 const FLAG_ENABLE_IMPORT = (process.env.REACT_APP_ENABLE_IMPORT || 'false') === 'true';
 
@@ -65,8 +66,15 @@ export default function MonthlySnapshotUpload() {
   const [preview, setPreview] = useState([]);
   const [counts, setCounts] = useState({ parsed: 0, willImport: 0, skipped: 0, eomWarnings: 0 });
   const [monthsInFile, setMonthsInFile] = useState([]);
+  const [mode, setMode] = useState('csv'); // 'csv' | 'picker'
+  const [hasAsOfColumn, setHasAsOfColumn] = useState(false);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState(null);
+  const [month, setMonth] = useState(''); // 1-12 as string
+  const [year, setYear] = useState(''); // YYYY as string
+  const [headerMap, setHeaderMap] = useState({ recognized: [], unrecognized: [] });
+  const [coverage, setCoverage] = useState({}); // metricKey -> { nonNull, total }
+  const [blockers, setBlockers] = useState([]); // strings
 
   useEffect(() => {
     let mounted = true;
@@ -90,6 +98,9 @@ export default function MonthlySnapshotUpload() {
     setPreview([]);
     setCounts({ parsed: 0, willImport: 0, skipped: 0, eomWarnings: 0 });
     setResult(null);
+    setMonthsInFile([]);
+    setMode('csv');
+    setHasAsOfColumn(false);
   };
 
   const handleDownloadTemplate = useCallback(() => {
@@ -104,6 +115,18 @@ export default function MonthlySnapshotUpload() {
     } catch {}
   }, []);
 
+  const handleDownloadLegacyTemplate = useCallback(() => {
+    try {
+      const blob = createLegacyMonthlyTemplateCSV();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'fund-monthly-template-legacy.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
+  }, []);
+
   const parseCsv = useCallback(() => {
     if (!file) return;
     setParsing(true);
@@ -111,13 +134,65 @@ export default function MonthlySnapshotUpload() {
       header: true,
       skipEmptyLines: true,
       complete: (res) => {
+        const headers = (res.meta && res.meta.fields) || [];
+        const hasAsOf = headers.some(h => String(h).toLowerCase() === 'asofmonth' || String(h).toLowerCase() === 'as_of_month');
+        setHasAsOfColumn(hasAsOf);
+        // Deterministic mode: if picker has values, picker wins; else if AsOfMonth exists, csv; else picker if picker values present later
+        setMode((() => {
+          const pickerDate = computePickerDate();
+          if (pickerDate) return 'picker';
+          return hasAsOf ? 'csv' : 'picker';
+        })());
         const rows = (res.data || []).map((r) => {
           // Normalize keys to our expectations but keep original
           const ticker = dbUtils.cleanSymbol(r.Ticker || r.ticker || r.SYMBOL);
-          const asOf = String(r.AsOfMonth || r.as_of_month || '').trim();
+          let a = String(r.AsOfMonth || r.as_of_month || '').trim();
+          // Accept YYYY-MM or YYYY-MM-DD; expand YYYY-MM to last day
+          if (/^\d{4}-\d{2}$/.test(a)) {
+            try {
+              const [yy, mm] = a.split('-').map(n => Number(n));
+              const eom = new Date(Date.UTC(yy, mm, 0));
+              a = eom.toISOString().slice(0,10);
+            } catch {}
+          }
+          const asOf = a;
           return { ...r, __ticker: ticker, __asOf: asOf };
         });
         setParsedRows(rows);
+        // Build header recognition map with column mapping
+        const metricDefs = [
+          { key: 'ticker', aliases: ['Ticker','ticker','SYMBOL'] },
+          { key: 'date', aliases: ['AsOfMonth','as_of_month'] },
+          { key: 'ytd_return', aliases: ['YTD','ytd_return'] },
+          { key: 'one_year_return', aliases: ['1 Year','one_year_return'] },
+          { key: 'three_year_return', aliases: ['3 Year','three_year_return'] },
+          { key: 'five_year_return', aliases: ['5 Year','five_year_return'] },
+          { key: 'ten_year_return', aliases: ['10 Year','ten_year_return'] },
+          { key: 'sharpe_ratio', aliases: ['Sharpe Ratio','sharpe_ratio'] },
+          { key: 'standard_deviation', aliases: ['Standard Deviation','standard_deviation'] },
+          { key: 'standard_deviation_3y', aliases: ['Standard Deviation 3Y','standard_deviation_3y'] },
+          { key: 'standard_deviation_5y', aliases: ['Standard Deviation 5Y','standard_deviation_5y'] },
+          { key: 'expense_ratio', aliases: ['Net Expense Ratio','expense_ratio'] },
+          { key: 'alpha', aliases: ['Alpha','alpha','alpha_5y'] },
+          { key: 'beta', aliases: ['Beta','beta','beta_3y'] },
+          { key: 'manager_tenure', aliases: ['Manager Tenure','manager_tenure'] },
+          { key: 'up_capture_ratio', aliases: ['Up Capture Ratio','up_capture_ratio','up_capture_ratio_3y','Up Capture Ratio (Morningstar Standard) - 3 Year'] },
+          { key: 'down_capture_ratio', aliases: ['Down Capture Ratio','down_capture_ratio','down_capture_ratio_3y','Down Capture Ratio (Morningstar Standard) - 3 Year'] },
+        ];
+        const headerSet = new Set(headers);
+        const recognizedPairs = [];
+        const recognizedSet = new Set();
+        for (const h of headers) {
+          for (const def of metricDefs) {
+            if (def.aliases.includes(h)) {
+              recognizedPairs.push({ header: h, key: def.key });
+              recognizedSet.add(h);
+              break;
+            }
+          }
+        }
+        const unrecognized = headers.filter(h => !recognizedSet.has(h));
+        setHeaderMap({ recognizedPairs, unrecognized, headerSet });
         setParsing(false);
       },
       error: () => setParsing(false)
@@ -132,9 +207,13 @@ export default function MonthlySnapshotUpload() {
       return;
     }
     const seenMonths = new Set();
+    const pickerDate = computePickerDate();
+    // Picker always wins if present
+    const activeMode = pickerDate ? 'picker' : (hasAsOfColumn ? 'csv' : 'picker');
+    setMode(activeMode);
     const rows = parsedRows.map((r) => {
       const ticker = r.__ticker;
-      const asOf = r.__asOf;
+      const asOf = activeMode === 'picker' ? pickerDate : r.__asOf;
       let reason = '';
       let willImport = true;
       if (!ticker) { willImport = false; reason = 'Missing Ticker'; }
@@ -158,18 +237,79 @@ export default function MonthlySnapshotUpload() {
     setMonthsInFile(Array.from(seenMonths).sort((a,b) => b.localeCompare(a)));
     setPreview(rows);
     setCounts({ parsed, willImport, skipped, eomWarnings });
+
+    // Compute metric coverage and blockers using parseMetricNumber
+    const pmn = dbUtils.parseMetricNumber;
+    const metrics = [
+      { key: 'ytd_return', aliases: ['YTD'] },
+      { key: 'one_year_return', aliases: ['1 Year'] },
+      { key: 'three_year_return', aliases: ['3 Year'] },
+      { key: 'five_year_return', aliases: ['5 Year'] },
+      { key: 'ten_year_return', aliases: ['10 Year'] },
+      { key: 'sharpe_ratio', aliases: ['Sharpe Ratio'] },
+      { key: 'standard_deviation_3y', aliases: ['standard_deviation_3y','Standard Deviation 3Y','standard_deviation','Standard Deviation'] },
+      { key: 'standard_deviation_5y', aliases: ['standard_deviation_5y','Standard Deviation 5Y'] },
+      { key: 'expense_ratio', aliases: ['Net Expense Ratio'] },
+      { key: 'alpha', aliases: ['Alpha','alpha_5y'] },
+      { key: 'beta', aliases: ['Beta','beta_3y'] },
+      { key: 'manager_tenure', aliases: ['Manager Tenure'] },
+      { key: 'up_capture_ratio', aliases: ['Up Capture Ratio','up_capture_ratio_3y','Up Capture Ratio (Morningstar Standard) - 3 Year'] },
+      { key: 'down_capture_ratio', aliases: ['Down Capture Ratio','down_capture_ratio_3y','Down Capture Ratio (Morningstar Standard) - 3 Year'] },
+    ];
+    const cov = {};
+    const blockList = [];
+    for (const m of metrics) {
+      let nonNull = 0;
+      let total = 0;
+      for (const r of parsedRows) {
+        const raw = r[m.key] ?? m.aliases.reduce((acc, a) => acc ?? r[a], undefined);
+        // Only count rows marked willImport for coverage
+        const prev = rows.find(x => x.ticker === r.__ticker && (x.asOf === (computePickerDate() || r.__asOf)));
+        if (!prev || !prev.willImport) continue;
+        total += 1;
+        if (pmn(raw) != null) nonNull += 1;
+      }
+      cov[m.key] = { nonNull, total };
+      if (total > 0 && nonNull === 0) {
+        // Hard block if a required metric would be entirely null
+        blockList.push({ key: m.key, reason: 'All values null after parsing' });
+      }
+    }
+    setCoverage(cov);
+    setBlockers(blockList);
   }, [parsedRows, knownTickers, benchmarkMap]);
+
+  function computePickerDate() {
+    if (!year || !month) return null;
+    const y = Number(String(year).trim());
+    const m = Number(String(month).trim());
+    if (!y || !m || m < 1 || m > 12) return null;
+    // Compute end-of-month in UTC
+    const eom = new Date(Date.UTC(y, m, 0));
+    return eom.toISOString().slice(0, 10);
+  }
 
   const handleImport = async () => {
     if (preview.length === 0) return;
+    // Block on any all-null metric
+    if (blockers.length > 0) {
+      alert('Import blocked: One or more required metrics would be all null after parsing. See warnings above.');
+      return;
+    }
+    const pickerDate = computePickerDate();
+    if (!pickerDate) {
+      alert('Please select Month and Year. The picker is required and overrides CSV dates.');
+      return;
+    }
     setImporting(true);
     setResult(null);
     try {
       const rowsToImport = preview.filter(r => r.willImport).map((r) => {
         const original = parsedRows.find(pr => pr.__ticker === r.ticker && pr.__asOf === r.asOf) || {};
+          // Picker overrides CSV AsOfMonth
           return {
           ticker: r.ticker,
-          date: r.asOf,
+          date: pickerDate,
           ytd_return: original.ytd_return ?? original.YTD,
           one_year_return: original.one_year_return ?? original['1 Year'],
           three_year_return: original.three_year_return ?? original['3 Year'],
@@ -200,7 +340,19 @@ export default function MonthlySnapshotUpload() {
       });
       const { success, failed } = await fundService.bulkUpsertFundPerformance(rowsToImport, 500);
       const uniqueMonths = new Set(rowsToImport.map(r => r.date));
-      setResult({ success, failed, months: Array.from(uniqueMonths).sort((a,b) => b.localeCompare(a)) });
+      const monthsArr = Array.from(uniqueMonths).sort((a,b) => b.localeCompare(a));
+      setResult({ success, failed, months: monthsArr });
+      // Post-import: sync and switch active month to the imported month (picker date)
+      try {
+        await asOfStore.syncWithDb();
+        const importedMonth = monthsArr[0];
+        if (importedMonth) {
+          asOfStore.setActiveMonth(importedMonth);
+          // Tiny toast
+          // eslint-disable-next-line no-alert
+          console.log(`Switched to ${new Date(importedMonth).toLocaleString('en-US', { month: 'short', year: 'numeric' })}`);
+        }
+      } catch {}
     } catch (error) {
       setResult({ error: error.message || String(error) });
     } finally {
@@ -215,16 +367,41 @@ export default function MonthlySnapshotUpload() {
   return (
     <div className="card" style={{ padding: 16, marginTop: 16 }}>
       <h3 style={{ marginTop: 0 }}>Monthly Snapshot Upload (CSV)</h3>
-      <p style={{ color: '#6b7280', marginTop: 4 }}>Upload → Preview → Import. One CSV per month. Required columns: <code>Ticker</code>, <code>AsOfMonth</code> (YYYY-MM-DD, end-of-month).</p>
+      <p style={{ color: '#6b7280', marginTop: 4 }}>Upload → Preview → Import. One CSV per month. Month/Year picker is required; it overrides any CSV dates.</p>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
         <button onClick={handleDownloadTemplate} className="btn btn-secondary" title="Download a blank monthly snapshot CSV template">
           Download CSV Template
         </button>
+        <button onClick={handleDownloadLegacyTemplate} className="btn btn-link" title="Download legacy CSV template that includes AsOfMonth">
+          Legacy template (includes AsOfMonth)
+        </button>
         <input type="file" accept=".csv,text/csv" onChange={handleFileChange} />
         <button onClick={parseCsv} disabled={!file || parsing} className="btn btn-primary">
           {parsing ? 'Parsing…' : 'Parse CSV'}
         </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+        <div>
+          <label style={{ display: 'block', fontSize: 12, color: '#6b7280' }}>Month *</label>
+          <select value={month} onChange={(e) => setMonth(e.target.value)}>
+            <option value="">Select…</option>
+            {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(m => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 12, color: '#6b7280' }}>Year *</label>
+          <input value={year} onChange={(e) => setYear(e.target.value)} placeholder="YYYY" style={{ width: 100 }} />
+        </div>
+        <div style={{ color: '#6b7280', fontSize: 12 }}>Picker overrides CSV dates.</div>
+        {preview.length > 0 && (
+          <div style={{ fontSize: 12, background:'#f3f4f6', border:'1px solid #e5e7eb', padding:'2px 6px', borderRadius:12 }}>
+            Mode: {mode === 'picker' ? `Picker (${String(month).padStart(2,'0')}/${year})` : 'CSV date'}
+          </div>
+        )}
       </div>
 
       {preview.length > 0 && (
@@ -234,11 +411,107 @@ export default function MonthlySnapshotUpload() {
             <div><strong>Will import:</strong> {counts.willImport}</div>
             <div><strong>Skipped:</strong> {counts.skipped}</div>
             <div title="Rows with non end-of-month AsOfMonth; you can proceed but recommended to fix."><strong>EOM warnings:</strong> {counts.eomWarnings}</div>
+            <div><strong>AsOfMonth column detected:</strong> {hasAsOfColumn ? 'Yes' : 'No'}</div>
+            <div><strong>Active mode:</strong> {mode === 'picker' ? 'Picker' : 'CSV'}</div>
             <div><strong>AsOfMonth in file:</strong> {monthsInFile.length === 1 ? monthsInFile[0] : monthsInFile.join(', ')}</div>
           </div>
+          {/* Header recognition */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
+            <div style={{ padding: 8, background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Recognized headers → column</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '4px 6px' }}>Header</th>
+                    <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '4px 6px' }}>Column</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(headerMap.recognizedPairs || []).map(({ header, key }) => (
+                    <tr key={header}>
+                      <td style={{ padding: '2px 6px' }}>{header}</td>
+                      <td style={{ padding: '2px 6px', color: '#1e40af' }}>{key}</td>
+                    </tr>
+                  ))}
+                  {(!headerMap.recognizedPairs || headerMap.recognizedPairs.length === 0) && (
+                    <tr><td colSpan={2} style={{ color: '#6b7280', padding: '4px 6px' }}>None</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ padding: 8, background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6 }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Unrecognized headers</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {(headerMap.unrecognized || []).map((h) => (
+                  <span key={h} style={{ fontSize: 12, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: 9999, padding: '2px 6px' }}>{h}</span>
+                ))}
+                {(headerMap.unrecognized || []).length === 0 && <span style={{ color: '#6b7280', fontSize: 12 }}>None</span>}
+              </div>
+            </div>
+          </div>
+
+          {/* Coverage warnings and blockers */}
+          {(() => {
+            const entries = Object.entries(coverage || {});
+            const warn = entries.filter(([, v]) => v.total > 0 && v.nonNull / v.total < 0.2);
+            const hasBlock = (blockers || []).length > 0;
+            const sampleFor = (metricKey) => {
+              const aliasesByKey = {
+                ytd_return: ['YTD'],
+                one_year_return: ['1 Year'],
+                three_year_return: ['3 Year'],
+                five_year_return: ['5 Year'],
+                ten_year_return: ['10 Year'],
+                sharpe_ratio: ['Sharpe Ratio'],
+                standard_deviation_3y: ['standard_deviation_3y','Standard Deviation 3Y','standard_deviation','Standard Deviation'],
+                standard_deviation_5y: ['standard_deviation_5y','Standard Deviation 5Y'],
+                expense_ratio: ['Net Expense Ratio'],
+                alpha: ['Alpha','alpha_5y'],
+                beta: ['Beta','beta_3y'],
+                manager_tenure: ['Manager Tenure'],
+                up_capture_ratio: ['Up Capture Ratio','up_capture_ratio_3y','Up Capture Ratio (Morningstar Standard) - 3 Year'],
+                down_capture_ratio: ['Down Capture Ratio','down_capture_ratio_3y','Down Capture Ratio (Morningstar Standard) - 3 Year']
+              };
+              const aliases = aliasesByKey[metricKey] || [];
+              const vals = [];
+              for (const r of parsedRows) {
+                const raw = r[metricKey] ?? aliases.reduce((acc, a) => acc ?? r[a], undefined);
+                if (raw !== undefined) vals.push(raw);
+                if (vals.length >= 3) break;
+              }
+              return vals;
+            };
+            return (
+              <div style={{ display: 'grid', gap: 8, marginBottom: 8 }}>
+                {warn.length > 0 && (
+                  <div style={{ padding: 8, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: 6 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Low coverage warnings (&lt; 20%)</div>
+                    <ul style={{ margin: 0, paddingLeft: 16 }}>
+                      {warn.map(([k, v]) => (
+                        <li key={k}>{k}: {(v.nonNull)}/{v.total} ({Math.round((v.nonNull / (v.total || 1)) * 100)}%)</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {hasBlock && (
+                  <div style={{ padding: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#7f1d1d', borderRadius: 6 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Import blocked</div>
+                    <div>One or more required metrics would be all null after parsing. Review samples below:</div>
+                    <ul style={{ margin: 0, paddingLeft: 16 }}>
+                      {blockers.map((b) => (
+                        <li key={b.key}>
+                          {b.key}: samples {JSON.stringify(sampleFor(b.key))}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {counts.eomWarnings > 0 && (
             <div style={{ padding: 8, background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', borderRadius: 6, marginBottom: 8 }}>
-              Some rows are not end-of-month. You can proceed, but it is recommended to correct them.
+              Some CSV rows are not end-of-month. The picker will auto-correct to end-of-month.
             </div>
           )}
           <PreviewTable rows={preview} />

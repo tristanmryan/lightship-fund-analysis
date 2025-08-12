@@ -119,3 +119,7 @@ When YCharts API access is enabled:
 **Last Updated**: January 8, 2025 (updated with Priority 2: Dictionary, resolver, and Supabase-first mode)  
 **Next Review**: Upon YCharts sales team response  
 **Contact**: YCharts Sales Rep (escalated case)
+
+## Permissions
+- RLS posture: RLS is currently disabled for `funds`, `benchmarks`, `asset_class_benchmarks`, and `fund_performance` to allow client writes until Supabase Auth is added. This will be revisited in Phase 4 to enable RLS and move writes under authenticated policies.
+- RPC: `public.list_snapshot_counts()` requires EXECUTE for `anon` and `authenticated` roles; the schema includes `grant execute on function public.list_snapshot_counts() to anon, authenticated;`.

@@ -27,3 +27,14 @@ test('neither present leaves nulls', () => {
   expect(out.standard_deviation_5y).toBeNull();
 });
 
+test('parseMetricNumber coverage/blocking basics', () => {
+  const { dbUtils } = require('../../services/supabase');
+  const p = dbUtils.parseMetricNumber;
+  expect(p('(2.1%)')).toBeCloseTo(-2.1);
+  expect(p('1,234.56')).toBeCloseTo(1234.56);
+  expect(p('-')).toBeNull();
+  expect(p('—')).toBeNull();
+  expect(p('NA')).toBeNull();
+  expect(p('N/A')).toBeNull();
+});
+

@@ -3,11 +3,28 @@ import { createClient } from '@supabase/supabase-js';
 
 // Environment variables for Supabase configuration
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+// Harden: Support legacy alias REACT_APP_SUPABASE_ANON
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || process.env.REACT_APP_SUPABASE_ANON;
+
+// Dev-only init log (sanitized)
+(() => {
+  try {
+    if (process.env.NODE_ENV !== 'production') {
+      const host = (() => {
+        try { return new URL(supabaseUrl || '').hostname || (supabaseUrl || ''); } catch { return supabaseUrl || ''; }
+      })();
+      const hasKey = Boolean(supabaseAnonKey && String(supabaseAnonKey).length > 0);
+      // Log once on module init
+      // eslint-disable-next-line no-console
+      console.log(`[Init] Supabase host: ${host || 'n/a'} (anon key present: ${hasKey ? 'yes' : 'no'})`);
+    }
+  } catch {}
+})();
 
 if (!supabaseUrl || !supabaseAnonKey) {
   if (process.env.NODE_ENV !== 'test') {
-    console.error('Missing Supabase environment variables. Please set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY');
+    // eslint-disable-next-line no-console
+    console.error('Missing Supabase environment variables. Please set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY (or REACT_APP_SUPABASE_ANON)');
   }
 }
 
@@ -69,7 +86,11 @@ export const TABLES = {
   ASSET_CLASS_BENCHMARKS: 'asset_class_benchmarks',
   FUND_OVERRIDES: 'fund_overrides',
   BENCHMARK_HISTORY: 'benchmark_history',
-  FUND_RESEARCH_NOTES: 'fund_research_notes'
+  FUND_RESEARCH_NOTES: 'fund_research_notes',
+  // Phase 4 Scoring governance tables
+  SCORING_PROFILES: 'scoring_profiles',
+  SCORING_WEIGHTS: 'scoring_weights',
+  SCORING_WEIGHTS_AUDIT: 'scoring_weights_audit'
 };
 
 // Utility functions for database operations
@@ -87,6 +108,42 @@ export const dbUtils = {
       return isNaN(parsed) ? null : parsed;
     }
     return null;
+  },
+
+  /**
+   * Robust parser for metric numbers coming from CSVs or user input.
+   * - Trims whitespace
+   * - Removes commas
+   * - Strips trailing %
+   * - Treats parentheses as negative (e.g., (2.1%) => -2.1)
+   * - Recognizes '-', '—', '', 'N/A', 'NA' as null (case-insensitive)
+   * - Returns number or null; never coerces non-numeric to 0
+   */
+  parseMetricNumber: (raw) => {
+    if (raw === null || raw === undefined) return null;
+    if (typeof raw === 'number') {
+      // Preserve numeric, including 0
+      return Number.isFinite(raw) ? raw : null;
+    }
+    let s = String(raw).trim();
+    if (s === '') return null;
+    const nullSentinels = new Set(['-', '—', 'n/a', 'na']);
+    if (nullSentinels.has(s.toLowerCase())) return null;
+
+    // Detect parentheses indicating negative
+    let isParenNegative = false;
+    if (s.startsWith('(') && s.endsWith(')')) {
+      isParenNegative = true;
+      s = s.slice(1, -1).trim();
+    }
+
+    // Remove percent and commas, optional leading +
+    s = s.replace(/,/g, '').replace(/%/g, '').replace(/^\+/, '').trim();
+    if (s === '') return null;
+
+    const n = parseFloat(s);
+    if (!Number.isFinite(n)) return null;
+    return isParenNegative ? -n : n;
   },
   
   // Format date for database
