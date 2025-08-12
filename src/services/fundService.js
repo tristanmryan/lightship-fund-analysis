@@ -433,16 +433,12 @@ class FundService {
         const benchPayloadRaw = [];
         for (const r of rows) {
           const cleanTicker = dbUtils.cleanSymbol(r.ticker || r.fund_ticker || '');
-          const benchTicker = dbUtils.cleanSymbol(r.benchmark_ticker || '');
           const dateOnly = dbUtils.formatDateOnly(r.date || r.AsOfMonth || r.as_of_month);
           const base = { date: dateOnly };
           for (const k of METRIC_KEYS) base[k] = pmn(r[k]);
-          // Prefer fund on collision
-          const kind = (r.kind === 'benchmark' && !cleanTicker) || (!r.kind && benchTicker && !cleanTicker)
-            ? 'benchmark'
-            : 'fund';
-          if (kind === 'benchmark') {
-            benchPayloadRaw.push({ benchmark_ticker: benchTicker || cleanTicker, ...base });
+          // TRUST r.kind from UI for routing
+          if (String(r.kind).toLowerCase() === 'benchmark') {
+            benchPayloadRaw.push({ benchmark_ticker: cleanTicker, ...base });
           } else {
             fundPayloadRaw.push({ fund_ticker: cleanTicker, ...base });
           }
@@ -531,7 +527,7 @@ class FundService {
       }
     }
 
-    // FAST path (legacy column-mapped upsert)
+        // FAST path (legacy column-mapped upsert)
     const toBatches = [];
     for (let i = 0; i < rows.length; i += chunkSize) {
       toBatches.push(rows.slice(i, i + chunkSize));
@@ -543,7 +539,7 @@ class FundService {
       // Build two payloads
       const fundPayload = [];
       const benchmarkPayload = [];
-      for (const r of batch) {
+        for (const r of batch) {
         const clean = dbUtils.cleanSymbol(r.ticker || r.fund_ticker || r.benchmark_ticker);
         const base = {
           date: dbUtils.formatDateOnly(r.date || r.AsOfMonth || r.as_of_month),
@@ -572,14 +568,8 @@ class FundService {
           )
         };
 
-        // Heuristic: keep r.kind if provided; if explicit benchmark_ticker provided treat as benchmark
-        // Prefer fund on collision when both appear plausible
-        let kind = r.kind || (r.benchmark_ticker ? 'benchmark' : 'fund');
-        if (kind === 'benchmark' && r.ticker) {
-          // If caller passes a ticker that is a known fund, prefer fund to avoid misclassification
-          // (UI already gates this, this is only a safety net)
-          kind = 'fund';
-        }
+        // TRUST r.kind from UI for routing (no service-side reinterpretation)
+        let kind = String(r.kind || '').toLowerCase();
         if (kind === 'benchmark') {
           benchmarkPayload.push({ benchmark_ticker: clean, ...base });
         } else {
