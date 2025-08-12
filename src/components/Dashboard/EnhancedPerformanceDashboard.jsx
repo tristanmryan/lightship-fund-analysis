@@ -70,6 +70,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
   const [allMonths, setAllMonths] = useState([]);
   const [nonEomSample, setNonEomSample] = useState(null);
   const ENABLE_REFRESH = (process.env.REACT_APP_ENABLE_REFRESH || 'false') === 'true';
+  const [guard, setGuard] = useState({ fund: null, bench: null });
 
   // Load saved view defaults on mount
   React.useEffect(() => {
@@ -117,6 +118,24 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
     })();
     return () => { cancelled = true; };
   }, [asOfMonthProp, onAsOfMonthChange]);
+
+  // Guardrails: when month changes, refresh counts (dev-only hint; safe if fails)
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!asOfMonthProp) return;
+        const d = asOfMonthProp;
+        const { supabase, TABLES } = await import('../../services/supabase');
+        const [{ data: fRows }, { data: bRows }] = await Promise.all([
+          supabase.from(TABLES.FUND_PERFORMANCE).select('fund_ticker').eq('date', d),
+          supabase.from(TABLES.BENCHMARK_PERFORMANCE).select('benchmark_ticker').eq('date', d)
+        ]);
+        if (!cancelled) setGuard({ fund: (fRows || []).length, bench: (bRows || []).length });
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [asOfMonthProp]);
 
   // Handle filter changes
   const handleFilterChange = useCallback((filtered, filters) => {
@@ -262,9 +281,25 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
       
       case 'heatmap':
         return (
-          <div className="card">
-            <PerformanceHeatmap funds={filteredFunds} />
-          </div>
+          <>
+            <div className="card">
+              <PerformanceHeatmap funds={filteredFunds} />
+            </div>
+            {asOfMonthProp && (guard.fund === 0 || guard.fund === null) && (guard.bench > 0) && (
+              <div style={{ background:'#fffbeb', border:'1px solid #fde68a', color:'#92400e', borderRadius:6, padding:'8px 12px', marginTop: 8 }}>
+                No fund rows for this month. Benchmarks exist for {asOfMonthProp}. Import fund rows or adjust classification. View Data Health.
+                <div style={{ marginTop:6, display:'flex', gap:8 }}>
+                  <a className="btn btn-secondary" href="#" onClick={(e)=>{ e.preventDefault(); document.querySelector('.card-title')?.scrollIntoView({ behavior:'smooth' }); }}>Open Data Health</a>
+                  <a className="btn btn-secondary" href="#" onClick={(e)=>{ e.preventDefault(); }}>Go to Import</a>
+                </div>
+              </div>
+            )}
+            {asOfMonthProp && guard.fund === 0 && guard.bench === 0 && (
+              <div style={{ background:'#f3f4f6', border:'1px solid #e5e7eb', color:'#374151', borderRadius:6, padding:'8px 12px', marginTop: 8 }}>
+                No data for {asOfMonthProp}.
+              </div>
+            )}
+          </>
         );
       
       case 'overview':
@@ -455,6 +490,17 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
           </div>
         </div>
       </div>
+      {/* Empty-month guardrail banners (table/overview views) */}
+      {viewMode !== 'heatmap' && asOfMonthProp && (guard.fund === 0 || guard.fund === null) && (guard.bench > 0) && (
+        <div style={{ background:'#fffbeb', border:'1px solid #fde68a', color:'#92400e', borderRadius:6, padding:'8px 12px', margin:'8px 16px' }}>
+          No fund rows for this month. Benchmarks exist for {asOfMonthProp}. Import fund rows or adjust classification. View Data Health.
+        </div>
+      )}
+      {viewMode !== 'heatmap' && asOfMonthProp && guard.fund === 0 && guard.bench === 0 && (
+        <div style={{ background:'#f3f4f6', border:'1px solid #e5e7eb', color:'#374151', borderRadius:6, padding:'8px 12px', margin:'8px 16px' }}>
+          No data for {asOfMonthProp}.
+        </div>
+      )}
 
       <div style={{ padding: '2rem' }}>
         {/* Summary Statistics Cards */}

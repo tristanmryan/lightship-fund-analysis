@@ -162,6 +162,8 @@ export default function ResetAndSeedUtilities() {
   }
 
   const [tab, setTab] = useState('seed');
+  const [rcDate, setRcDate] = useState('');
+  const [rcDry, setRcDry] = useState(null);
   return (
     <div className="card" style={{ padding: 16, marginTop: 16 }}>
       <div className="card-header">
@@ -197,6 +199,62 @@ export default function ResetAndSeedUtilities() {
           </div>
         </div>
       </div>
+      )}
+
+      {tab === 'health' && (
+        <div className="card" style={{ padding:12, marginTop:12 }}>
+          <div style={{ fontWeight:600, marginBottom:8 }}>Reclassify Misfiled Benchmarks (dev-only)</div>
+          <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', marginBottom:8 }}>
+            <label>Date (YYYY-MM-DD): <input value={rcDate} onChange={(e)=>setRcDate(e.target.value)} placeholder="2025-07-31" style={{ width:140 }} /></label>
+            <button className="btn btn-secondary" onClick={async ()=>{
+              if (!rcDate) return;
+              const { data: funds } = await supabase.from(TABLES.FUNDS).select('ticker');
+              const setFunds = new Set((funds||[]).map(f=>String(f.ticker||'').toUpperCase()));
+              const { data: bench } = await supabase.from(TABLES.BENCHMARK_PERFORMANCE).select('benchmark_ticker,date').eq('date', rcDate);
+              const { data: perf } = await supabase.from(TABLES.FUND_PERFORMANCE).select('fund_ticker,date').eq('date', rcDate);
+              const setPerf = new Set((perf||[]).map(p=>`${p.fund_ticker}::${p.date}`));
+              const candidates = (bench||[]).filter(b=> setFunds.has(String(b.benchmark_ticker||'').toUpperCase()) && !setPerf.has(`${String(b.benchmark_ticker||'').toUpperCase()}::${rcDate}`));
+              setRcDry({ count: candidates.length, sample: candidates.slice(0,10).map(c=>c.benchmark_ticker) });
+            }}>Dry Run</button>
+            <button className="btn btn-primary" disabled={!rcDry || (rcDry?.count||0)===0} onClick={async ()=>{
+              if (!rcDate || !rcDry) return;
+              const { data: benchRows } = await supabase.from(TABLES.BENCHMARK_PERFORMANCE).select('*').eq('date', rcDate);
+              const { data: funds } = await supabase.from(TABLES.FUNDS).select('ticker');
+              const setFunds = new Set((funds||[]).map(f=>String(f.ticker||'').toUpperCase()));
+              const toMove = (benchRows||[]).filter(b=> setFunds.has(String(b.benchmark_ticker||'').toUpperCase()));
+              if (toMove.length === 0) { alert('Nothing to reclassify.'); return; }
+              const payload = toMove.map(b=>({
+                fund_ticker: String(b.benchmark_ticker||'').toUpperCase(),
+                date: rcDate,
+                ytd_return: b.ytd_return,
+                one_year_return: b.one_year_return,
+                three_year_return: b.three_year_return,
+                five_year_return: b.five_year_return,
+                ten_year_return: b.ten_year_return,
+                sharpe_ratio: b.sharpe_ratio,
+                standard_deviation: b.standard_deviation,
+                standard_deviation_3y: b.standard_deviation_3y,
+                standard_deviation_5y: b.standard_deviation_5y,
+                expense_ratio: b.expense_ratio,
+                alpha: b.alpha,
+                beta: b.beta,
+                manager_tenure: b.manager_tenure,
+                up_capture_ratio: b.up_capture_ratio,
+                down_capture_ratio: b.down_capture_ratio
+              }));
+              await supabase.from(TABLES.FUND_PERFORMANCE).upsert(payload, { onConflict: 'fund_ticker,date' });
+              // Delete originals
+              for (const row of toMove) {
+                await supabase.from(TABLES.BENCHMARK_PERFORMANCE).delete().eq('benchmark_ticker', row.benchmark_ticker).eq('date', rcDate);
+              }
+              alert(`Reclassified ${toMove.length} rows.`);
+              setRcDry(null);
+            }}>Apply</button>
+          </div>
+          {rcDry && (
+            <div className="alert alert-warning">Candidates: {rcDry.count}. Sample: {rcDry.sample.join(', ')}</div>
+          )}
+        </div>
       )}
 
       {tab === 'seed' && (

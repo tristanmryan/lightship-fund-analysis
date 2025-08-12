@@ -30,7 +30,7 @@ test('fund vs benchmark rows route to respective tables', async () => {
 
   const rows = [
     { ticker: 'ABCX', date: '2025-07-31', ytd_return: '10%' , kind: 'fund' },
-    { ticker: 'IWF', date: '2025-07-31', ytd_return: '12%', kind: 'benchmark' }
+    { benchmark_ticker: 'IWF', date: '2025-07-31', ytd_return: '12%' }
   ];
 
   const res = await fundService.bulkUpsertFundPerformance(rows, 100);
