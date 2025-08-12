@@ -1,6 +1,7 @@
 // src/hooks/useFundData.js
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import fundService from '../services/fundService';
+import asOfStore from '../services/asOfStore';
 import ychartsAPI from '../services/ychartsAPI';
 import { computeRuntimeScores, loadEffectiveWeightsResolver } from '../services/scoring';
 
@@ -20,6 +21,12 @@ export function useFundData() {
       setLoading(true);
       setError(null);
       
+      // Ensure we have a validated active month from store
+      if (!asOf) {
+        const res = await asOfStore.syncWithDb();
+        asOf = res?.active || null;
+        setAsOfMonth(asOf);
+      }
       const fundData = await fundService.getAllFunds(asOf);
       // Load effective weights once per refresh (resolver caches in module)
       if (ENABLE_RUNTIME_SCORING) {
@@ -248,9 +255,13 @@ export function useFundData() {
     return () => clearInterval(interval);
   }, [funds.length, refreshData]);
 
-  // Load funds on mount
+  // Load funds on mount (and sync as-of with DB)
   useEffect(() => {
-    loadFunds();
+    (async () => {
+      await asOfStore.syncWithDb();
+      setAsOfMonth(asOfStore.getActiveMonth());
+      await loadFunds(asOfStore.getActiveMonth());
+    })();
   }, [loadFunds]);
 
   // Reload funds when asOfMonth changes
@@ -260,6 +271,12 @@ export function useFundData() {
       loadFunds(asOfMonth);
     }
   }, [asOfMonth, loadFunds]);
+
+  // External setter should update store too
+  const setAsOfMonthAndStore = useCallback((m) => {
+    asOfStore.setActiveMonth(m);
+    setAsOfMonth(m);
+  }, []);
 
   // Memoized computed values
   const assetClasses = useMemo(() => {
@@ -286,7 +303,7 @@ export function useFundData() {
     removeFund,
     updateFundRecommendation,
     searchFunds,
-    setAsOfMonth,
+    setAsOfMonth: setAsOfMonthAndStore,
     
     // Computed values
     assetClasses,

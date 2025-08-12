@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import asOfStore from '../../services/asOfStore';
 import { supabase, TABLES } from '../../services/supabase';
 import fundService from '../../services/fundService';
 import { buildCSV, downloadFile } from '../../services/exportService';
@@ -138,6 +139,18 @@ export default function DataDiagnostics() {
       <div className="card-header">
         <h3 className="card-title">Data Diagnostics</h3>
         <p className="card-subtitle">Quick counts and safe backfill</p>
+        <div style={{ fontSize: 12, color: '#6b7280', display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
+          <span style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 12, padding: '2px 8px' }}>
+            Data mode: {(process.env.NODE_ENV === 'production' && (process.env.REACT_APP_ALLOW_MOCK_FALLBACK || 'false') !== 'true') ? 'Supabase' : 'Mock'}
+          </span>
+          <span style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 12, padding: '2px 8px' }}>
+            Active: {asOfStore.getActiveMonth() || '—'}
+          </span>
+          <span style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 12, padding: '2px 8px' }}>
+            Latest: {asOfStore.getLatestMonth() || '—'}
+          </span>
+          <button className="btn btn-link" onClick={() => asOfStore.setActiveMonth(asOfStore.getLatestMonth())} disabled={!asOfStore.getLatestMonth()}>Use Latest</button>
+        </div>
       </div>
       {loading ? (
         <div>Loading…</div>

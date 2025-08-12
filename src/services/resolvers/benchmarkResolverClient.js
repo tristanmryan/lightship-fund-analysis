@@ -7,6 +7,7 @@ import { assetClassBenchmarks as fallbackMap } from '../../data/config';
 
 const FLAG_SUPABASE_FIRST = (process.env.REACT_APP_RESOLVER_SUPABASE_FIRST || 'true') === 'true';
 const FLAG_CONFIG_FALLBACK = (process.env.REACT_APP_ENABLE_CONFIG_BENCHMARK_FALLBACK || 'true') === 'true';
+const ALLOW_MOCK_IN_PROD = (process.env.REACT_APP_ALLOW_MOCK_FALLBACK || 'false') === 'true';
 
 // Cache maps
 const primaryBenchmarkByAssetClassId = new Map(); // id -> { ticker, name, id }
@@ -19,6 +20,12 @@ export function resolveAssetClass(fund) {
 export function getPrimaryBenchmarkSyncByLabel(label) {
   if (!label) return null;
   if (!FLAG_CONFIG_FALLBACK) return null;
+  if (process.env.NODE_ENV === 'production' && !ALLOW_MOCK_IN_PROD) {
+    // Disallow mock/config fallback in production unless explicitly allowed
+    // eslint-disable-next-line no-console
+    console.error('[Resolver] Mock fallback blocked in production');
+    return null;
+  }
   const cfg = fallbackMap[label];
   if (!cfg) return null;
   return { ticker: cfg.ticker, name: cfg.name };

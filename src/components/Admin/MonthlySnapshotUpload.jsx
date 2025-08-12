@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Papa from 'papaparse';
 import fundService from '../../services/fundService';
+import asOfStore from '../../services/asOfStore';
 import { dbUtils } from '../../services/supabase';
 import { createMonthlyTemplateCSV, createLegacyMonthlyTemplateCSV } from '../../services/csvTemplate';
 
@@ -339,7 +340,19 @@ export default function MonthlySnapshotUpload() {
       });
       const { success, failed } = await fundService.bulkUpsertFundPerformance(rowsToImport, 500);
       const uniqueMonths = new Set(rowsToImport.map(r => r.date));
-      setResult({ success, failed, months: Array.from(uniqueMonths).sort((a,b) => b.localeCompare(a)) });
+      const monthsArr = Array.from(uniqueMonths).sort((a,b) => b.localeCompare(a));
+      setResult({ success, failed, months: monthsArr });
+      // Post-import: sync and switch active month to the imported month (picker date)
+      try {
+        await asOfStore.syncWithDb();
+        const importedMonth = monthsArr[0];
+        if (importedMonth) {
+          asOfStore.setActiveMonth(importedMonth);
+          // Tiny toast
+          // eslint-disable-next-line no-alert
+          console.log(`Switched to ${new Date(importedMonth).toLocaleString('en-US', { month: 'short', year: 'numeric' })}`);
+        }
+      } catch {}
     } catch (error) {
       setResult({ error: error.message || String(error) });
     } finally {

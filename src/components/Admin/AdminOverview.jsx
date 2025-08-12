@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import asOfStore from '../../services/asOfStore';
 import { supabase, TABLES } from '../../services/supabase';
 import fundService from '../../services/fundService';
 import { exportRecommendedFundsCSV, exportPrimaryBenchmarkMappingCSV } from '../../services/exportService';
@@ -96,6 +97,20 @@ export default function AdminOverview({ onNavigate = () => {} }) {
       <div className="card-header">
         <h3 className="card-title">Admin Overview</h3>
         <p className="card-subtitle">Setup checklist and quick exports</p>
+        <div style={{ fontSize: 12, color: '#6b7280', display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
+          <span style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 12, padding: '2px 8px' }}>
+            Supabase: {(() => { try { return new URL(process.env.REACT_APP_SUPABASE_URL || '').hostname.slice(-12); } catch { return 'n/a'; } })()}
+          </span>
+          <span style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 12, padding: '2px 8px' }}>
+            Active: {asOfStore.getActiveMonth() || '—'}
+          </span>
+          <span style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 12, padding: '2px 8px' }}>
+            Latest: {asOfStore.getLatestMonth() || '—'}
+          </span>
+          <button className="btn btn-link" onClick={() => asOfStore.setActiveMonth(asOfStore.getLatestMonth())} disabled={!asOfStore.getLatestMonth()}>
+            Use Latest
+          </button>
+        </div>
       </div>
       {loading ? (
         <div>Loading…</div>
