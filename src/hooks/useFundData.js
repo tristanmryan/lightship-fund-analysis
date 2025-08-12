@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import fundService from '../services/fundService';
 import ychartsAPI from '../services/ychartsAPI';
-import { computeRuntimeScores } from '../services/scoring';
+import { computeRuntimeScores, loadEffectiveWeightsResolver } from '../services/scoring';
 
 export function useFundData() {
   const [funds, setFunds] = useState([]);
@@ -21,6 +21,10 @@ export function useFundData() {
       setError(null);
       
       const fundData = await fundService.getAllFunds(asOf);
+      // Load effective weights once per refresh (resolver caches in module)
+      if (ENABLE_RUNTIME_SCORING) {
+        await loadEffectiveWeightsResolver();
+      }
       const enriched = ENABLE_RUNTIME_SCORING ? computeRuntimeScores(fundData) : fundData;
       setFunds(enriched);
       setLastUpdated(new Date());

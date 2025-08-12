@@ -10,6 +10,7 @@ import SnapshotManager from './SnapshotManager';
 import SeedRecommendedFunds from './SeedRecommendedFunds';
 import SeedBenchmarks from './SeedBenchmarks';
 import DataDiagnostics from './DataDiagnostics';
+import ScoringWeights from './ScoringWeights';
 import { useAssetClassOptions } from '../../hooks/useAssetClassOptions';
 
 const FundManagement = () => {
@@ -318,10 +319,7 @@ const FundManagement = () => {
         )}
 
         {activeTab === 'scoring' && (
-          <div className="card" style={{ padding: 16, marginTop: 16 }}>
-            <h3 style={{ marginTop: 0 }}>Scoring (placeholder)</h3>
-            <p style={{ color: '#6b7280' }}>Weights editor coming in a subsequent phase.</p>
-          </div>
+          <ScoringWeights funds={funds} />
         )}
 
         {activeTab === 'utilities' && (

@@ -63,3 +63,13 @@
 - Admin Overview (setup checklist) with quick links and two exports.
 - Seeder “Validate only” mode for Recommended Funds and Benchmarks.
 
+## 2025-08-12
+
+### Phase 4: Scoring UX and Governance
+- Schema: `scoring_profiles`, `scoring_weights`, `scoring_weights_audit`; partial unique index `one_default_scoring_profile`; seeded `Default` profile with weights matching `DEFAULT_WEIGHTS`.
+- Resolver: precedence-based effective weights (fund → asset class → global → defaults) with optional `REACT_APP_SCORING_PROFILE` selection.
+- Admin: new “Scoring” tab with Global, Class, Fund editors and Preview panel.
+- Runtime: scoring pipeline now sources weights from resolver (math unchanged, reweighting preserved).
+- UI: Drilldown shows Score; Table/Compare already include Score.
+- Exports: Compare CSV includes Score; Table export includes Score when visible.
+

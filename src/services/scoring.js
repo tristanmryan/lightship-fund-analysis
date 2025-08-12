@@ -1,6 +1,7 @@
 // src/services/scoring.js
 import { getConfig, saveConfig } from './dataStore.js';
 import { CONFIG_KEYS } from '../data/storage.js';
+import { buildWeightsResolver } from './resolvers/scoringWeightsResolver';
 
 /**
  * Core Scoring Engine for Lightship Fund Analysis
@@ -39,8 +40,12 @@ export const DEFAULT_WEIGHTS = {
     managerTenure: 0.025
   };
 
-// Mutable weights used during scoring
+// Mutable weights used during scoring (legacy/local storage fallback only)
 let METRIC_WEIGHTS = { ...DEFAULT_WEIGHTS };
+// Canonical metric keys ordered for iteration
+const METRIC_KEYS = Object.keys(DEFAULT_WEIGHTS);
+// Active resolver loaded from Supabase (null means fallback to METRIC_WEIGHTS)
+let CURRENT_WEIGHTS_RESOLVER = null;
   
   // Metric display names for reporting
   const METRIC_LABELS = {
@@ -105,6 +110,21 @@ export async function setMetricWeights(weights) {
     await saveConfig(CONFIG_KEYS.SCORING_WEIGHTS, METRIC_WEIGHTS);
   } catch (err) {
     console.error('Failed to save metric weights', err);
+  }
+}
+
+/**
+ * Load effective weights resolver from Supabase with precedence rules.
+ * Falls back to defaults if DB empty/unavailable.
+ */
+export async function loadEffectiveWeightsResolver() {
+  try {
+    CURRENT_WEIGHTS_RESOLVER = await buildWeightsResolver();
+    return CURRENT_WEIGHTS_RESOLVER;
+  } catch (e) {
+    // keep resolver null to use METRIC_WEIGHTS
+    CURRENT_WEIGHTS_RESOLVER = null;
+    return null;
   }
 }
   
@@ -246,7 +266,7 @@ export async function setMetricWeights(weights) {
   function calculateMetricStatistics(funds) {
     const stats = {};
     
-    Object.keys(METRIC_WEIGHTS).forEach(metric => {
+    METRIC_KEYS.forEach(metric => {
       const values = funds.map(fund => fund.metrics?.[metric]).filter(v => v != null);
       const mean = calculateMean(values);
       const stdDev = calculateStdDev(values, mean);
@@ -269,11 +289,14 @@ export async function setMetricWeights(weights) {
    * @param {Object} statistics - Metric statistics for the asset class
    * @returns {Object} Score details including breakdown
    */
-  function calculateFundScore(fund, statistics) {
+  function calculateFundScore(fund, statistics, resolverOverride = null) {
     const scoreBreakdown = {};
     let weightedSum = 0;
+    const resolver = resolverOverride || CURRENT_WEIGHTS_RESOLVER;
     
-    Object.entries(METRIC_WEIGHTS).forEach(([metric, weight]) => {
+    METRIC_KEYS.forEach((metric) => {
+      const weight = resolver ? resolver.getWeightFor(fund, metric) : (METRIC_WEIGHTS[metric]);
+      if (!Number.isFinite(weight) || weight === 0) return; // skip zero/invalid weights
       const value = fund.metrics?.[metric];
       const stats = statistics[metric];
       
@@ -300,9 +323,9 @@ export async function setMetricWeights(weights) {
     const present = Object.keys(scoreBreakdown);
     let reweightedSum = 0;
     if (present.length > 0) {
-      const totalAbs = present.reduce((s, m) => s + Math.abs(METRIC_WEIGHTS[m] || 0), 0);
+      const totalAbs = present.reduce((s, m) => s + Math.abs(scoreBreakdown[m]?.weight || 0), 0);
       present.forEach((m) => {
-        const w = METRIC_WEIGHTS[m] || 0;
+        const w = scoreBreakdown[m]?.weight || 0;
         const z = scoreBreakdown[m].zScore;
         const proportional = (Math.abs(w) / totalAbs) * Math.sign(w);
         const contrib = z * proportional;
@@ -322,7 +345,7 @@ export async function setMetricWeights(weights) {
       rawReweighted: Math.round(reweightedSum * 1000) / 1000,
       breakdown: scoreBreakdown,
       metricsUsed: Object.keys(scoreBreakdown).length,
-      totalPossibleMetrics: Object.keys(METRIC_WEIGHTS).length
+      totalPossibleMetrics: METRIC_KEYS.length
     };
   }
   
@@ -426,7 +449,7 @@ export async function setMetricWeights(weights) {
       
       // Calculate raw scores for all funds
       const fundsWithRawScores = fundsWithMetrics.map(fund => {
-        const scoreData = calculateFundScore(fund, statistics);
+        const scoreData = calculateFundScore(fund, statistics, null);
         return {
           ...fund,
           scoreData
@@ -453,7 +476,7 @@ export async function setMetricWeights(weights) {
             percentile,
             breakdown: fund.scoreData.breakdown,
             metricsUsed: fund.scoreData.metricsUsed,
-            totalPossibleMetrics: fund.scoreData.totalPossibleMetrics,
+          totalPossibleMetrics: fund.scoreData.totalPossibleMetrics,
             assetClassSize: classFunds.length // Add for transparency
           }
         });

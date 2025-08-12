@@ -1,4 +1,4 @@
-import { computeRuntimeScores } from '../services/scoring';
+import { computeRuntimeScores, loadEffectiveWeightsResolver } from '../services/scoring';
 
 function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
@@ -67,5 +67,10 @@ describe('Runtime Scoring flag OFF (smoke)', () => {
   test('computeRuntimeScores is pure and does not throw with empty', () => {
     expect(computeRuntimeScores([])).toEqual([]);
   });
+});
+
+// Ensure resolver load does not throw in tests (stubbed service)
+test('loadEffectiveWeightsResolver returns without throwing', async () => {
+  await expect(loadEffectiveWeightsResolver()).resolves.not.toThrow;
 });
 

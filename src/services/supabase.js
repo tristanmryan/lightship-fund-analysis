@@ -86,7 +86,11 @@ export const TABLES = {
   ASSET_CLASS_BENCHMARKS: 'asset_class_benchmarks',
   FUND_OVERRIDES: 'fund_overrides',
   BENCHMARK_HISTORY: 'benchmark_history',
-  FUND_RESEARCH_NOTES: 'fund_research_notes'
+  FUND_RESEARCH_NOTES: 'fund_research_notes',
+  // Phase 4 Scoring governance tables
+  SCORING_PROFILES: 'scoring_profiles',
+  SCORING_WEIGHTS: 'scoring_weights',
+  SCORING_WEIGHTS_AUDIT: 'scoring_weights_audit'
 };
 
 // Utility functions for database operations
