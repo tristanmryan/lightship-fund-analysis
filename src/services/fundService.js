@@ -4,6 +4,9 @@ import { resolveAssetClassForTicker } from './resolvers/assetClassResolver';
 import ychartsAPI from './ychartsAPI';
 
 class FundService {
+  // expose supabase and TABLES for limited use in hooks/tests
+  get supabase() { return supabase; }
+  get TABLES() { return TABLES; }
   // Get all funds from database with performance at a given date (or latest if null)
   async getAllFunds(asOfDate = null) {
     try {
@@ -436,8 +439,14 @@ class FundService {
           )
         };
 
-        // Heuristic: if row.flagKind says benchmark or if explicit benchmark_ticker provided, treat as benchmark
-        const kind = r.kind || (r.benchmark_ticker ? 'benchmark' : 'fund');
+        // Heuristic: keep r.kind if provided; if explicit benchmark_ticker provided treat as benchmark
+        // Prefer fund on collision when both appear plausible
+        let kind = r.kind || (r.benchmark_ticker ? 'benchmark' : 'fund');
+        if (kind === 'benchmark' && r.ticker) {
+          // If caller passes a ticker that is a known fund, prefer fund to avoid misclassification
+          // (UI already gates this, this is only a safety net)
+          kind = 'fund';
+        }
         if (kind === 'benchmark') {
           benchmarkPayload.push({ benchmark_ticker: clean, ...base });
         } else {

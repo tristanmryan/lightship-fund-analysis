@@ -226,14 +226,19 @@ export default function MonthlySnapshotUpload() {
       }
       const isBenchmark = ticker && benchmarkMap.has(ticker);
       const isKnownFund = ticker && knownTickers.has(ticker);
-      // Only import if ticker exists in funds (FK). Benchmarks are labeled but currently skipped.
-      if (ticker && isBenchmark && !isKnownFund) {
+      // CSV explicit Type column can request Benchmark; allow only when not a known fund
+      const explicitType = String(r.Type || r.type || '').trim().toLowerCase();
+      const explicitBenchmark = explicitType === 'benchmark';
+
+      // Only import if ticker exists in funds (FK). Benchmarks are labeled but stored separately when not known fund.
+      if (ticker && (isBenchmark || explicitBenchmark) && !isKnownFund) {
         // Explicitly mark as benchmark-only row (skipped for now)
         willImport = false;
         reason = reason ? reason + '; benchmark row (stored separately)' : 'Benchmark row (stored separately)';
       }
-      if (ticker && !isKnownFund && !isBenchmark) { willImport = false; reason = reason ? reason + '; unknown ticker' : 'Unknown ticker'; }
-      const kind = isBenchmark ? 'benchmark' : 'fund';
+      if (ticker && !isKnownFund && !isBenchmark && !explicitBenchmark) { willImport = false; reason = reason ? reason + '; unknown ticker' : 'Unknown ticker'; }
+      // Harden kind: prefer fund on collision
+      const kind = (isBenchmark && !isKnownFund) || (explicitBenchmark && !isKnownFund) ? 'benchmark' : 'fund';
       return { ticker, asOf, kind, willImport, reason, eom };
     });
     const parsed = rows.length;

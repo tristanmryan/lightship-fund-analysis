@@ -12,6 +12,7 @@ export function useFundData() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [asOfMonth, setAsOfMonth] = useState(null); // YYYY-MM-DD or null for latest
+  const [activeMonthCounts, setActiveMonthCounts] = useState({ fund: null, bench: null });
   // Feature flag: runtime scoring for live as-of month data
   const ENABLE_RUNTIME_SCORING = (process.env.REACT_APP_ENABLE_RUNTIME_SCORING || 'false') === 'true';
   const ENABLE_REFRESH = (process.env.REACT_APP_ENABLE_REFRESH || 'false') === 'true';
@@ -38,6 +39,17 @@ export function useFundData() {
       setLastUpdated(new Date());
       
       console.log(`Loaded ${fundData.length} funds from database${asOf ? ` as of ${asOf}` : ''}${ENABLE_RUNTIME_SCORING ? ' (runtime scoring enabled)' : ''}`);
+      // Count rows for guardrails
+      try {
+        const d = asOf || asOfStore.getActiveMonth();
+        if (d) {
+          const [{ data: fRows }, { data: bRows }] = await Promise.all([
+            fundService.supabase?.from?.(fundService.TABLES?.FUND_PERFORMANCE || 'fund_performance')?.select?.('fund_ticker')?.eq?.('date', d) ?? Promise.resolve({ data: [] }),
+            fundService.supabase?.from?.(fundService.TABLES?.BENCHMARK_PERFORMANCE || 'benchmark_performance')?.select?.('benchmark_ticker')?.eq?.('date', d) ?? Promise.resolve({ data: [] })
+          ]);
+          setActiveMonthCounts({ fund: (fRows || []).length, bench: (bRows || []).length });
+        }
+      } catch {}
     } catch (error) {
       console.error('Failed to load funds:', error);
       setError('Failed to load funds from database');
