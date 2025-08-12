@@ -58,3 +58,14 @@ Manual test log (clicks executed locally)
 - Admin → Scoring → Class: selected `Large Cap Growth`, set `oneYear` to `0.200`, saved; only LCG funds shifted on refresh.
 - Admin → Scoring → Fund: searched `SPY`, set its `oneYear` to `0.300`, saved; SPY score increased relative peers on refresh.
 - Admin → Scoring → Preview: selected 3 funds in `Asset Allocation`; changed staged `stdDev3Y`; preview updated immediately.
+
+Reset and Reseed
+- Reset Fund Catalog: deletes ALL rows in `public.funds`. Snapshots in `public.fund_performance` are not touched.
+- Reset Benchmarks Catalog: deletes ALL rows in `public.benchmarks` and ALL mappings in `public.asset_class_benchmarks`.
+- Manual SQL used (idempotent):
+  - Schema/migrations in `supabase/manual/scoring_phase4.sql` and `supabase/migrations/20250812_phase4_scoring.sql`.
+- Verify checklist:
+  1) Export both catalogs (buttons provided) before destructive actions.
+  2) Run Reset Benchmarks; confirm `benchmarks` and `asset_class_benchmarks` are empty.
+  3) Run Seed All: Dry-run first, then Import (Benchmarks → Recommended Funds).
+  4) Refresh app; counts reflect reseeded catalogs; Scores render without errors.

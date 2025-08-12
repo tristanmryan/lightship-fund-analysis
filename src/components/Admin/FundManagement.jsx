@@ -10,6 +10,7 @@ import SnapshotManager from './SnapshotManager';
 import SeedRecommendedFunds from './SeedRecommendedFunds';
 import SeedBenchmarks from './SeedBenchmarks';
 import DataDiagnostics from './DataDiagnostics';
+import ResetAndSeedUtilities from './ResetAndSeedUtilities';
 import ScoringWeights from './ScoringWeights';
 import { useAssetClassOptions } from '../../hooks/useAssetClassOptions';
 
@@ -327,6 +328,7 @@ const FundManagement = () => {
             <h3 style={{ marginTop: 0 }}>Utilities</h3>
             <p style={{ color: '#6b7280' }}>Template download, Export and Diagnostics.</p>
             <DataDiagnostics />
+            <ResetAndSeedUtilities />
           </div>
         )}
       </div>
