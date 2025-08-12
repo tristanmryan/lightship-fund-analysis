@@ -71,6 +71,9 @@ export default function MonthlySnapshotUpload() {
   const [result, setResult] = useState(null);
   const [month, setMonth] = useState(''); // 1-12 as string
   const [year, setYear] = useState(''); // YYYY as string
+  const [headerMap, setHeaderMap] = useState({ recognized: [], unrecognized: [] });
+  const [coverage, setCoverage] = useState({}); // metricKey -> { nonNull, total }
+  const [blockers, setBlockers] = useState([]); // strings
 
   useEffect(() => {
     let mounted = true;
@@ -155,6 +158,40 @@ export default function MonthlySnapshotUpload() {
           return { ...r, __ticker: ticker, __asOf: asOf };
         });
         setParsedRows(rows);
+        // Build header recognition map with column mapping
+        const metricDefs = [
+          { key: 'ticker', aliases: ['Ticker','ticker','SYMBOL'] },
+          { key: 'date', aliases: ['AsOfMonth','as_of_month'] },
+          { key: 'ytd_return', aliases: ['YTD','ytd_return'] },
+          { key: 'one_year_return', aliases: ['1 Year','one_year_return'] },
+          { key: 'three_year_return', aliases: ['3 Year','three_year_return'] },
+          { key: 'five_year_return', aliases: ['5 Year','five_year_return'] },
+          { key: 'ten_year_return', aliases: ['10 Year','ten_year_return'] },
+          { key: 'sharpe_ratio', aliases: ['Sharpe Ratio','sharpe_ratio'] },
+          { key: 'standard_deviation', aliases: ['Standard Deviation','standard_deviation'] },
+          { key: 'standard_deviation_3y', aliases: ['Standard Deviation 3Y','standard_deviation_3y'] },
+          { key: 'standard_deviation_5y', aliases: ['Standard Deviation 5Y','standard_deviation_5y'] },
+          { key: 'expense_ratio', aliases: ['Net Expense Ratio','expense_ratio'] },
+          { key: 'alpha', aliases: ['Alpha','alpha','alpha_5y'] },
+          { key: 'beta', aliases: ['Beta','beta','beta_3y'] },
+          { key: 'manager_tenure', aliases: ['Manager Tenure','manager_tenure'] },
+          { key: 'up_capture_ratio', aliases: ['Up Capture Ratio','up_capture_ratio','up_capture_ratio_3y','Up Capture Ratio (Morningstar Standard) - 3 Year'] },
+          { key: 'down_capture_ratio', aliases: ['Down Capture Ratio','down_capture_ratio','down_capture_ratio_3y','Down Capture Ratio (Morningstar Standard) - 3 Year'] },
+        ];
+        const headerSet = new Set(headers);
+        const recognizedPairs = [];
+        const recognizedSet = new Set();
+        for (const h of headers) {
+          for (const def of metricDefs) {
+            if (def.aliases.includes(h)) {
+              recognizedPairs.push({ header: h, key: def.key });
+              recognizedSet.add(h);
+              break;
+            }
+          }
+        }
+        const unrecognized = headers.filter(h => !recognizedSet.has(h));
+        setHeaderMap({ recognizedPairs, unrecognized, headerSet });
         setParsing(false);
       },
       error: () => setParsing(false)
@@ -199,6 +236,46 @@ export default function MonthlySnapshotUpload() {
     setMonthsInFile(Array.from(seenMonths).sort((a,b) => b.localeCompare(a)));
     setPreview(rows);
     setCounts({ parsed, willImport, skipped, eomWarnings });
+
+    // Compute metric coverage and blockers using parseMetricNumber
+    const pmn = dbUtils.parseMetricNumber;
+    const metrics = [
+      { key: 'ytd_return', aliases: ['YTD'] },
+      { key: 'one_year_return', aliases: ['1 Year'] },
+      { key: 'three_year_return', aliases: ['3 Year'] },
+      { key: 'five_year_return', aliases: ['5 Year'] },
+      { key: 'ten_year_return', aliases: ['10 Year'] },
+      { key: 'sharpe_ratio', aliases: ['Sharpe Ratio'] },
+      { key: 'standard_deviation_3y', aliases: ['standard_deviation_3y','Standard Deviation 3Y','standard_deviation','Standard Deviation'] },
+      { key: 'standard_deviation_5y', aliases: ['standard_deviation_5y','Standard Deviation 5Y'] },
+      { key: 'expense_ratio', aliases: ['Net Expense Ratio'] },
+      { key: 'alpha', aliases: ['Alpha','alpha_5y'] },
+      { key: 'beta', aliases: ['Beta','beta_3y'] },
+      { key: 'manager_tenure', aliases: ['Manager Tenure'] },
+      { key: 'up_capture_ratio', aliases: ['Up Capture Ratio','up_capture_ratio_3y','Up Capture Ratio (Morningstar Standard) - 3 Year'] },
+      { key: 'down_capture_ratio', aliases: ['Down Capture Ratio','down_capture_ratio_3y','Down Capture Ratio (Morningstar Standard) - 3 Year'] },
+    ];
+    const cov = {};
+    const blockList = [];
+    for (const m of metrics) {
+      let nonNull = 0;
+      let total = 0;
+      for (const r of parsedRows) {
+        const raw = r[m.key] ?? m.aliases.reduce((acc, a) => acc ?? r[a], undefined);
+        // Only count rows marked willImport for coverage
+        const prev = rows.find(x => x.ticker === r.__ticker && (x.asOf === (computePickerDate() || r.__asOf)));
+        if (!prev || !prev.willImport) continue;
+        total += 1;
+        if (pmn(raw) != null) nonNull += 1;
+      }
+      cov[m.key] = { nonNull, total };
+      if (total > 0 && nonNull === 0) {
+        // Hard block if a required metric would be entirely null
+        blockList.push({ key: m.key, reason: 'All values null after parsing' });
+      }
+    }
+    setCoverage(cov);
+    setBlockers(blockList);
   }, [parsedRows, knownTickers, benchmarkMap]);
 
   function computePickerDate() {
@@ -213,6 +290,11 @@ export default function MonthlySnapshotUpload() {
 
   const handleImport = async () => {
     if (preview.length === 0) return;
+    // Block on any all-null metric
+    if (blockers.length > 0) {
+      alert('Import blocked: One or more required metrics would be all null after parsing. See warnings above.');
+      return;
+    }
     const pickerDate = computePickerDate();
     if (!pickerDate) {
       alert('Please select Month and Year. The picker is required and overrides CSV dates.');
@@ -320,6 +402,100 @@ export default function MonthlySnapshotUpload() {
             <div><strong>Active mode:</strong> {mode === 'picker' ? 'Picker' : 'CSV'}</div>
             <div><strong>AsOfMonth in file:</strong> {monthsInFile.length === 1 ? monthsInFile[0] : monthsInFile.join(', ')}</div>
           </div>
+          {/* Header recognition */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
+            <div style={{ padding: 8, background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Recognized headers → column</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '4px 6px' }}>Header</th>
+                    <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '4px 6px' }}>Column</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(headerMap.recognizedPairs || []).map(({ header, key }) => (
+                    <tr key={header}>
+                      <td style={{ padding: '2px 6px' }}>{header}</td>
+                      <td style={{ padding: '2px 6px', color: '#1e40af' }}>{key}</td>
+                    </tr>
+                  ))}
+                  {(!headerMap.recognizedPairs || headerMap.recognizedPairs.length === 0) && (
+                    <tr><td colSpan={2} style={{ color: '#6b7280', padding: '4px 6px' }}>None</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ padding: 8, background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6 }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Unrecognized headers</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {(headerMap.unrecognized || []).map((h) => (
+                  <span key={h} style={{ fontSize: 12, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: 9999, padding: '2px 6px' }}>{h}</span>
+                ))}
+                {(headerMap.unrecognized || []).length === 0 && <span style={{ color: '#6b7280', fontSize: 12 }}>None</span>}
+              </div>
+            </div>
+          </div>
+
+          {/* Coverage warnings and blockers */}
+          {(() => {
+            const entries = Object.entries(coverage || {});
+            const warn = entries.filter(([, v]) => v.total > 0 && v.nonNull / v.total < 0.2);
+            const hasBlock = (blockers || []).length > 0;
+            const sampleFor = (metricKey) => {
+              const aliasesByKey = {
+                ytd_return: ['YTD'],
+                one_year_return: ['1 Year'],
+                three_year_return: ['3 Year'],
+                five_year_return: ['5 Year'],
+                ten_year_return: ['10 Year'],
+                sharpe_ratio: ['Sharpe Ratio'],
+                standard_deviation_3y: ['standard_deviation_3y','Standard Deviation 3Y','standard_deviation','Standard Deviation'],
+                standard_deviation_5y: ['standard_deviation_5y','Standard Deviation 5Y'],
+                expense_ratio: ['Net Expense Ratio'],
+                alpha: ['Alpha','alpha_5y'],
+                beta: ['Beta','beta_3y'],
+                manager_tenure: ['Manager Tenure'],
+                up_capture_ratio: ['Up Capture Ratio','up_capture_ratio_3y','Up Capture Ratio (Morningstar Standard) - 3 Year'],
+                down_capture_ratio: ['Down Capture Ratio','down_capture_ratio_3y','Down Capture Ratio (Morningstar Standard) - 3 Year']
+              };
+              const aliases = aliasesByKey[metricKey] || [];
+              const vals = [];
+              for (const r of parsedRows) {
+                const raw = r[metricKey] ?? aliases.reduce((acc, a) => acc ?? r[a], undefined);
+                if (raw !== undefined) vals.push(raw);
+                if (vals.length >= 3) break;
+              }
+              return vals;
+            };
+            return (
+              <div style={{ display: 'grid', gap: 8, marginBottom: 8 }}>
+                {warn.length > 0 && (
+                  <div style={{ padding: 8, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: 6 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Low coverage warnings (&lt; 20%)</div>
+                    <ul style={{ margin: 0, paddingLeft: 16 }}>
+                      {warn.map(([k, v]) => (
+                        <li key={k}>{k}: {(v.nonNull)}/{v.total} ({Math.round((v.nonNull / (v.total || 1)) * 100)}%)</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {hasBlock && (
+                  <div style={{ padding: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#7f1d1d', borderRadius: 6 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Import blocked</div>
+                    <div>One or more required metrics would be all null after parsing. Review samples below:</div>
+                    <ul style={{ margin: 0, paddingLeft: 16 }}>
+                      {blockers.map((b) => (
+                        <li key={b.key}>
+                          {b.key}: samples {JSON.stringify(sampleFor(b.key))}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {counts.eomWarnings > 0 && (
             <div style={{ padding: 8, background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', borderRadius: 6, marginBottom: 8 }}>
               Some CSV rows are not end-of-month. The picker will auto-correct to end-of-month.

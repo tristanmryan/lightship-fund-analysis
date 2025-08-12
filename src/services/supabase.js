@@ -109,6 +109,42 @@ export const dbUtils = {
     }
     return null;
   },
+
+  /**
+   * Robust parser for metric numbers coming from CSVs or user input.
+   * - Trims whitespace
+   * - Removes commas
+   * - Strips trailing %
+   * - Treats parentheses as negative (e.g., (2.1%) => -2.1)
+   * - Recognizes '-', '—', '', 'N/A', 'NA' as null (case-insensitive)
+   * - Returns number or null; never coerces non-numeric to 0
+   */
+  parseMetricNumber: (raw) => {
+    if (raw === null || raw === undefined) return null;
+    if (typeof raw === 'number') {
+      // Preserve numeric, including 0
+      return Number.isFinite(raw) ? raw : null;
+    }
+    let s = String(raw).trim();
+    if (s === '') return null;
+    const nullSentinels = new Set(['-', '—', 'n/a', 'na']);
+    if (nullSentinels.has(s.toLowerCase())) return null;
+
+    // Detect parentheses indicating negative
+    let isParenNegative = false;
+    if (s.startsWith('(') && s.endsWith(')')) {
+      isParenNegative = true;
+      s = s.slice(1, -1).trim();
+    }
+
+    // Remove percent and commas, optional leading +
+    s = s.replace(/,/g, '').replace(/%/g, '').replace(/^\+/, '').trim();
+    if (s === '') return null;
+
+    const n = parseFloat(s);
+    if (!Number.isFinite(n)) return null;
+    return isParenNegative ? -n : n;
+  },
   
   // Format date for database
   formatDate: (date) => {

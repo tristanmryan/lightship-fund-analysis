@@ -28,6 +28,20 @@ test('picker overrides CSV even if AsOfMonth exists', () => {
   expect(mode).toBe('picker');
 });
 
+  test('parseMetricNumber handles common cases', () => {
+    const { dbUtils } = require('../../services/supabase');
+    const p = dbUtils.parseMetricNumber;
+    expect(p('1.2%')).toBeCloseTo(1.2);
+    expect(p('(2.1%)')).toBeCloseTo(-2.1);
+    expect(p('-1.5%')).toBeCloseTo(-1.5);
+    expect(p('1,234.56')).toBeCloseTo(1234.56);
+    expect(p('—')).toBeNull();
+    expect(p('N/A')).toBeNull();
+    expect(p('NA')).toBeNull();
+    expect(p('')).toBeNull();
+    expect(p(0)).toBe(0);
+  });
+
 test('CSV mode accepts YYYY-MM and expands to EOM', () => {
   const s = expandYearMonth('2025-07');
   expect(s).toBe('2025-07-31');

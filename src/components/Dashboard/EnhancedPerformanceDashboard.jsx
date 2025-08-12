@@ -173,7 +173,12 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
     const ytdReturns = filteredFunds.map(f => f['Total Return - YTD (%)'] || f.ytd_return || 0);
     const expenseRatios = filteredFunds.map(f => f['Net Exp Ratio (%)'] || f.expense_ratio || 0);
     const recommendedCount = filteredFunds.filter(f => f.is_recommended || f.recommended).length;
-    const assetClasses = new Set(filteredFunds.map(f => f['Asset Class'] || f.asset_class).filter(Boolean));
+    const assetClasses = new Set(
+      filteredFunds.map(f => {
+        const label = f.asset_class_name || f.asset_class || f['Asset Class'] || '';
+        return (!f.asset_class_id && !label) ? 'Unknown' : label;
+      }).filter(Boolean)
+    );
     
     const topPerformer = filteredFunds.reduce((top, fund) => {
       const score = fund.scores?.final || fund.score || 0;

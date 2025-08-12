@@ -181,48 +181,51 @@ class FundService {
   // Save fund performance data
   async saveFundPerformance(performanceData) {
     try {
+      const p = performanceData;
+      const pmn = dbUtils.parseMetricNumber;
       const performance = {
-        fund_ticker: dbUtils.cleanSymbol(performanceData.ticker),
-        date: dbUtils.formatDateOnly(performanceData.date || new Date()),
-        ytd_return: dbUtils.parseNumeric(performanceData.ytd_return || performanceData.YTD),
-        one_year_return: dbUtils.parseNumeric(performanceData.one_year_return || performanceData['1 Year']),
-        three_year_return: dbUtils.parseNumeric(performanceData.three_year_return || performanceData['3 Year']),
-        five_year_return: dbUtils.parseNumeric(performanceData.five_year_return || performanceData['5 Year']),
-        ten_year_return: dbUtils.parseNumeric(performanceData.ten_year_return || performanceData['10 Year']),
-        sharpe_ratio: dbUtils.parseNumeric(performanceData.sharpe_ratio || performanceData['Sharpe Ratio']),
-        standard_deviation: dbUtils.parseNumeric(performanceData.standard_deviation || performanceData['Standard Deviation']),
-        standard_deviation_3y: dbUtils.parseNumeric(
-          performanceData.standard_deviation_3y
-          ?? performanceData['standard_deviation_3y']
-          ?? performanceData['Standard Deviation 3Y']
-          ?? performanceData.standard_deviation // legacy fallback: map to 3Y
-          ?? performanceData['Standard Deviation']
+        fund_ticker: dbUtils.cleanSymbol(p.ticker),
+        date: dbUtils.formatDateOnly(p.date || new Date()),
+        ytd_return: pmn(p.ytd_return ?? p.YTD),
+        one_year_return: pmn(p.one_year_return ?? p['1 Year']),
+        three_year_return: pmn(p.three_year_return ?? p['3 Year']),
+        five_year_return: pmn(p.five_year_return ?? p['5 Year']),
+        ten_year_return: pmn(p.ten_year_return ?? p['10 Year']),
+        sharpe_ratio: pmn(p.sharpe_ratio ?? p['Sharpe Ratio']),
+        // legacy standard_deviation used as raw historical single metric; keep stored for back-compat if present
+        standard_deviation: pmn(p.standard_deviation ?? p['Standard Deviation']),
+        standard_deviation_3y: pmn(
+          p.standard_deviation_3y
+          ?? p['standard_deviation_3y']
+          ?? p['Standard Deviation 3Y']
+          ?? p.standard_deviation
+          ?? p['Standard Deviation']
         ),
-        standard_deviation_5y: dbUtils.parseNumeric(
-          performanceData.standard_deviation_5y
-          ?? performanceData['standard_deviation_5y']
-          ?? performanceData['Standard Deviation 5Y']
+        standard_deviation_5y: pmn(
+          p.standard_deviation_5y
+          ?? p['standard_deviation_5y']
+          ?? p['Standard Deviation 5Y']
         ),
-        expense_ratio: dbUtils.parseNumeric(performanceData.expense_ratio || performanceData['Net Expense Ratio']),
-        alpha: dbUtils.parseNumeric(performanceData.alpha || performanceData.alpha_5y || performanceData.Alpha),
-        beta: dbUtils.parseNumeric(performanceData.beta || performanceData.beta_3y || performanceData.Beta),
-        manager_tenure: dbUtils.parseNumeric(performanceData.manager_tenure || performanceData['Manager Tenure']),
+        expense_ratio: pmn(p.expense_ratio ?? p['Net Expense Ratio']),
+        alpha: pmn(p.alpha ?? p.alpha_5y ?? p.Alpha),
+        beta: pmn(p.beta ?? p.beta_3y ?? p.Beta),
+        manager_tenure: pmn(p.manager_tenure ?? p['Manager Tenure']),
         // NEW FIELDS - Capture ratios and additional data
-        up_capture_ratio: dbUtils.parseNumeric(
-          performanceData.up_capture_ratio
-          ?? performanceData.up_capture_ratio_3y
-          ?? performanceData['Up Capture Ratio']
-          ?? performanceData['Up Capture Ratio (Morningstar Standard) - 3 Year']
+        up_capture_ratio: pmn(
+          p.up_capture_ratio
+          ?? p.up_capture_ratio_3y
+          ?? p['Up Capture Ratio']
+          ?? p['Up Capture Ratio (Morningstar Standard) - 3 Year']
         ),
-        down_capture_ratio: dbUtils.parseNumeric(
-          performanceData.down_capture_ratio
-          ?? performanceData.down_capture_ratio_3y
-          ?? performanceData['Down Capture Ratio']
-          ?? performanceData['Down Capture Ratio (Morningstar Standard) - 3 Year']
+        down_capture_ratio: pmn(
+          p.down_capture_ratio
+          ?? p.down_capture_ratio_3y
+          ?? p['Down Capture Ratio']
+          ?? p['Down Capture Ratio (Morningstar Standard) - 3 Year']
         ),
-        category_rank: dbUtils.parseNumeric(performanceData.category_rank || performanceData['Category Rank']),
-        sec_yield: dbUtils.parseNumeric(performanceData.sec_yield || performanceData['SEC Yield']),
-        fund_family: performanceData.fund_family || performanceData['Fund Family'] || null
+        category_rank: pmn(p.category_rank ?? p['Category Rank']),
+        sec_yield: pmn(p.sec_yield ?? p['SEC Yield']),
+        fund_family: p.fund_family ?? p['Fund Family'] ?? null
       };
 
       const { data, error } = await supabase
@@ -400,30 +403,31 @@ class FundService {
     let success = 0;
     let failed = 0;
     for (const batch of toBatches) {
+      const pmn = dbUtils.parseMetricNumber;
       const payload = batch.map((r) => ({
         fund_ticker: dbUtils.cleanSymbol(r.ticker || r.fund_ticker),
         date: dbUtils.formatDateOnly(r.date || r.AsOfMonth || r.as_of_month),
-        ytd_return: dbUtils.parseNumeric(r.ytd_return ?? r['YTD']),
-        one_year_return: dbUtils.parseNumeric(r.one_year_return ?? r['1 Year']),
-        three_year_return: dbUtils.parseNumeric(r.three_year_return ?? r['3 Year']),
-        five_year_return: dbUtils.parseNumeric(r.five_year_return ?? r['5 Year']),
-        ten_year_return: dbUtils.parseNumeric(r.ten_year_return ?? r['10 Year']),
-        sharpe_ratio: dbUtils.parseNumeric(r.sharpe_ratio ?? r['Sharpe Ratio']),
-        standard_deviation: dbUtils.parseNumeric(r.standard_deviation ?? r['Standard Deviation']),
-        standard_deviation_3y: dbUtils.parseNumeric(
+        ytd_return: pmn(r.ytd_return ?? r['YTD']),
+        one_year_return: pmn(r.one_year_return ?? r['1 Year']),
+        three_year_return: pmn(r.three_year_return ?? r['3 Year']),
+        five_year_return: pmn(r.five_year_return ?? r['5 Year']),
+        ten_year_return: pmn(r.ten_year_return ?? r['10 Year']),
+        sharpe_ratio: pmn(r.sharpe_ratio ?? r['Sharpe Ratio']),
+        standard_deviation: pmn(r.standard_deviation ?? r['Standard Deviation']),
+        standard_deviation_3y: pmn(
           r.standard_deviation_3y ?? r['standard_deviation_3y'] ?? r['Standard Deviation 3Y'] ?? r.standard_deviation ?? r['Standard Deviation']
         ),
-        standard_deviation_5y: dbUtils.parseNumeric(
+        standard_deviation_5y: pmn(
           r.standard_deviation_5y ?? r['standard_deviation_5y'] ?? r['Standard Deviation 5Y']
         ),
-        expense_ratio: dbUtils.parseNumeric(r.expense_ratio ?? r['Net Expense Ratio']),
-        alpha: dbUtils.parseNumeric(r.alpha ?? r.alpha_5y ?? r['Alpha']),
-        beta: dbUtils.parseNumeric(r.beta ?? r.beta_3y ?? r['Beta']),
-        manager_tenure: dbUtils.parseNumeric(r.manager_tenure ?? r['Manager Tenure']),
-        up_capture_ratio: dbUtils.parseNumeric(
+        expense_ratio: pmn(r.expense_ratio ?? r['Net Expense Ratio']),
+        alpha: pmn(r.alpha ?? r.alpha_5y ?? r['Alpha']),
+        beta: pmn(r.beta ?? r.beta_3y ?? r['Beta']),
+        manager_tenure: pmn(r.manager_tenure ?? r['Manager Tenure']),
+        up_capture_ratio: pmn(
           r.up_capture_ratio ?? r.up_capture_ratio_3y ?? r['Up Capture Ratio'] ?? r['Up Capture Ratio (Morningstar Standard) - 3 Year']
         ),
-        down_capture_ratio: dbUtils.parseNumeric(
+        down_capture_ratio: pmn(
           r.down_capture_ratio ?? r.down_capture_ratio_3y ?? r['Down Capture Ratio'] ?? r['Down Capture Ratio (Morningstar Standard) - 3 Year']
         )
       }));
