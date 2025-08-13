@@ -450,7 +450,8 @@ export default function MonthlySnapshotUpload() {
         return null;
       };
       const rowsToImport = willRows.map((r) => {
-        const original = parsedRows.find(pr => pr.__ticker === r.ticker && pr.__asOf === r.asOf) || {};
+        let original = parsedRows.find(pr => pr.__ticker === r.ticker && pr.__asOf === r.asOf);
+        if (!original) original = parsedRows.find(pr => pr.__ticker === r.ticker) || {};
           // Picker overrides CSV AsOfMonth
           return {
           ticker: r.ticker,
