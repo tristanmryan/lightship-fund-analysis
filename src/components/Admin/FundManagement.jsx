@@ -327,6 +327,23 @@ const FundManagement = () => {
           </>
         )}
 
+        {/* Focus specific sub-sections inside catalogs based on event */}
+        {React.useEffect(() => {
+          const handler = (ev) => {
+            try {
+              const focus = ev?.detail?.focus;
+              if (activeTab !== 'catalogs') return;
+              if (focus === 'benchmarks') {
+                // scroll primary benchmark column into view
+                const ths = document.querySelectorAll('.dictionary-admin table thead th');
+                if (ths && ths.length >= 4) ths[3].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+              }
+            } catch {}
+          };
+          window.addEventListener('NAVIGATE_ADMIN', handler);
+          return () => window.removeEventListener('NAVIGATE_ADMIN', handler);
+        }, [activeTab])}
+
         {activeTab === 'mappings' && (
           <>
             <FundOverridesAdmin />

@@ -683,12 +683,18 @@ const EnhancedFundTable = ({
         <p style={{ color: '#6b7280' }} title="Empty state guidance">
           No funds match your current filter criteria. Adjust filters, clear them, or seed missing funds via Admin.
         </p>
-        <div style={{ marginTop: '0.75rem' }}>
+        <div style={{ marginTop: '0.75rem', display:'flex', gap:8, justifyContent:'center', flexWrap:'wrap' }}>
           <button
             onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}
             style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: '0.375rem', backgroundColor: 'white', color: '#3b82f6', fontSize: '0.875rem', cursor: 'pointer' }}
           >
             Go to Importer
+          </button>
+          <button
+            onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}
+            style={{ padding: '0.5rem 1rem', border: '1px solid #6b7280', borderRadius: '0.375rem', backgroundColor: 'white', color: '#374151', fontSize: '0.875rem', cursor: 'pointer' }}
+          >
+            Use sample data
           </button>
         </div>
       </div>
@@ -835,6 +841,16 @@ const EnhancedFundTable = ({
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       {column.label}
+                      {['score','sharpeRatio','standardDeviation','expenseRatio','upCaptureRatio','downCaptureRatio'].includes(columnKey) && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }}
+                          title="What is this metric?"
+                          style={{ border:'none', background:'transparent', cursor:'pointer', color:'#6b7280' }}
+                        >
+                          i
+                        </button>
+                      )}
                       {column.sortable && getSortIndicator(columnKey)}
                     </div>
                   </th>

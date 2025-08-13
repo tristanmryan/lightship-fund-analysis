@@ -71,6 +71,30 @@ const HealthCheck = () => {
   if (loading) return <div>Health Check: loading…</div>;
   if (error) return <div>Health Check error: {error}</div>;
 
+  const triage = useMemo(() => {
+    const items = [];
+    // Critical: no EOM row counts or zero rows for month
+    if ((asOfMonth && (monthStats.fundRows === 0 || monthStats.benchRows === 0))) {
+      items.push({ severity: 'critical', title: 'Missing rows for active month', detail: `Funds: ${monthStats.fundRows}, Benchmarks: ${monthStats.benchRows}`, action: { label: 'Open Importer', ev: { tab: 'admin', subtab: 'data' } } });
+    }
+    // Critical: classes missing primary benchmark
+    if (summary.classesMissingBench.length > 0) {
+      items.push({ severity: 'critical', title: 'Classes missing benchmarks', detail: `${summary.classesMissingBench.length} classes`, action: { label: 'Open Benchmarks', ev: { tab: 'admin', subtab: 'catalogs', focus: 'benchmarks' } } });
+    }
+    // Warning: low metric coverage
+    const low = Object.entries(coverage).filter(([,v]) => v > 0 && v < 50);
+    if (low.length > 0) {
+      items.push({ severity: 'warning', title: 'Low metric coverage', detail: low.map(([k,v]) => `${k}: ${v}%`).join(', '), action: { label: 'View Importer', ev: { tab: 'admin', subtab: 'data' } } });
+    }
+    // Info: unresolved funds
+    if (summary.unresolvedFunds.length > 0) {
+      items.push({ severity: 'info', title: 'Unresolved funds', detail: `${summary.unresolvedFunds.length} funds missing asset class`, action: { label: 'Open Catalogs', ev: { tab: 'admin', subtab: 'catalogs', focus: 'classes' } } });
+    }
+    return items;
+  }, [asOfMonth, monthStats, summary, coverage]);
+
+  const severityOrder = { critical: 0, warning: 1, info: 2 };
+
   return (
     <div className="card">
       <div className="card-header">
@@ -92,6 +116,31 @@ const HealthCheck = () => {
             <div style={{ fontSize: 12, color: '#6b7280' }}>Funds in view</div>
             <div style={{ fontWeight: 700, fontSize: '1.25rem' }}>{(funds || []).length}</div>
           </div>
+        </div>
+
+        {/* Triage board */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
+          {['critical','warning','info'].map((sev) => (
+            <div key={sev} style={{ border:'1px solid #e5e7eb', borderRadius:8, padding:12, background:'#fff' }}>
+              <div style={{ fontWeight:600, marginBottom:8, color: sev==='critical' ? '#7f1d1d' : sev==='warning' ? '#92400e' : '#1e3a8a' }}>
+                {sev === 'critical' ? 'Critical' : sev === 'warning' ? 'Warnings' : 'Info'}
+              </div>
+              <div style={{ display:'grid', gap:8 }}>
+                {triage.filter(t => t.severity === sev).sort((a,b)=>severityOrder[a.severity]-severityOrder[b.severity]).map((t,i) => (
+                  <div key={i} style={{ border:'1px solid #e5e7eb', borderRadius:8, padding:8, background: sev==='critical' ? '#fef2f2' : sev==='warning' ? '#fffbeb' : '#eff6ff' }}>
+                    <div style={{ fontWeight:600 }}>{t.title}</div>
+                    <div style={{ fontSize:12, color:'#374151', margin:'4px 0' }}>{t.detail}</div>
+                    {t.action && (
+                      <button className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: t.action.ev.tab } })); if (t.action.ev.subtab) window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: t.action.ev.subtab, focus: t.action.ev.focus } })); }}> {t.action.label} </button>
+                    )}
+                  </div>
+                ))}
+                {triage.filter(t => t.severity === sev).length === 0 && (
+                  <div style={{ fontSize:12, color:'#6b7280' }}>None</div>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Coverage bars */}

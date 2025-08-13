@@ -114,6 +114,7 @@ This document logs the plan and ongoing progress to enhance the scoring model im
 - 2025-08-13: Setup guard; Funds table normalization + tooltips + Export Recommended; Drilldown rationale/tooltips; Data Health/Admin deep links
  - 2025-08-13: Standardized empty states (Funds/Drilldown) with concise guidance; added inline “Why this fund” badges in Funds (top positive score contributors with tooltips)
  - 2025-08-14: Phase 2 started — winsorization and tiny-class fallback scaffolds (flags OFF); negative contributor badge for low-score funds; Comparison tooltips aligned; Data Health guidance/thresholds tightened; tests added.
+ - 2025-08-13: Sprint 1 started — added Router, URL-synced tabs, header toolbar (As-of, Refresh, Export, Help); fixed conditional hook in DrilldownCards; CI build verified
 
 ## Decisions
 - Supabase is the live source; legacy history remains read-only for now

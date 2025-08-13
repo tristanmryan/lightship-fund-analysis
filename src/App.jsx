@@ -1,5 +1,6 @@
 // App.jsx
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import './App.css'; // Import the CSS file
 import LoginModal from './components/Auth/LoginModal';
 import {
@@ -23,6 +24,7 @@ import AssetClassOverview from './components/Dashboard/AssetClassOverview';
 import CorrelationMatrix from './components/Analytics/CorrelationMatrix';
 import RiskReturnScatter from './components/Analytics/RiskReturnScatter';
 import EnhancedPerformanceDashboard from './components/Dashboard/EnhancedPerformanceDashboard';
+import MethodologyDrawer from './components/Dashboard/MethodologyDrawer';
 import FundManagement from './components/Admin/FundManagement';
 import HealthCheck from './components/Dashboard/HealthCheck';
 import { 
@@ -95,6 +97,58 @@ const App = () => {
 
   // Help modal state
   const [showHelp, setShowHelp] = useState(false);
+
+  // Router integration: sync activeTab with URL
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const tabToPath = {
+    dashboard: '/dashboard',
+    performance: '/performance',
+    class: '/class',
+    analysis: '/analysis',
+    analytics: '/analytics',
+    history: '/history',
+    admin: '/admin',
+    health: '/health'
+  };
+  const pathToTab = (pathname) => {
+    if (pathname.startsWith('/performance')) return 'performance';
+    if (pathname.startsWith('/class')) return 'class';
+    if (pathname.startsWith('/analysis')) return 'analysis';
+    if (pathname.startsWith('/analytics')) return 'analytics';
+    if (pathname.startsWith('/history')) return 'history';
+    if (pathname.startsWith('/admin')) return 'admin';
+    if (pathname.startsWith('/health')) return 'health';
+    return 'dashboard';
+  };
+
+  // Redirect root to /dashboard on first load
+  useEffect(() => {
+    // Alias redirects
+    const aliasMap = {
+      '/funds': '/performance',
+      '/scores': '/performance'
+    };
+    if (aliasMap[location.pathname]) {
+      navigate(aliasMap[location.pathname], { replace: true });
+      return;
+    }
+    if (location.pathname === '/') {
+      const last = localStorage.getItem('lastTab');
+      const target = tabToPath[last] || '/dashboard';
+      navigate(target, { replace: true });
+    }
+    setActiveTab(pathToTab(location.pathname));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  // Persist last tab
+  useEffect(() => {
+    if (activeTab) {
+      localStorage.setItem('lastTab', activeTab);
+    }
+  }, [activeTab]);
 
   // Check authentication on app load
   useEffect(() => {
@@ -193,12 +247,16 @@ const App = () => {
     const onNav = (ev) => {
       try {
         const tab = ev?.detail?.tab;
-        if (typeof tab === 'string') setActiveTab(tab);
+        if (typeof tab === 'string') {
+          setActiveTab(tab);
+          const to = tabToPath[tab] || '/dashboard';
+          navigate(to);
+        }
       } catch {}
     };
     window.addEventListener('NAVIGATE_APP', onNav);
     return () => window.removeEventListener('NAVIGATE_APP', onNav);
-  }, []);
+  }, [navigate]);
 
   // Initialize fund registry and load data (legacy - will be replaced)
   useEffect(() => {
@@ -241,17 +299,32 @@ const App = () => {
       }
       // Number keys for tab navigation
       if (e.key >= '1' && e.key <= '6' && !e.ctrlKey && !e.metaKey) {
-        const tabs = ['dashboard', 'funds', 'class', 'analysis', 'analytics', 'history'];
+        const tabs = ['dashboard', 'performance', 'class', 'analysis', 'analytics', 'history'];
         const tabIndex = parseInt(e.key) - 1;
         if (tabIndex < tabs.length) {
-          setActiveTab(tabs[tabIndex]);
+          const t = tabs[tabIndex];
+          setActiveTab(t);
+          const to = tabToPath[t] || '/dashboard';
+          navigate(to);
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [funds, classSummaries, currentSnapshotDate]);
+  }, [funds, classSummaries, currentSnapshotDate, navigate]);
+
+  const handleExport = () => {
+    if ((funds?.length || 0) === 0) return;
+    const data = {
+      funds,
+      classSummaries,
+      reviewCandidates: identifyReviewCandidates(funds || []),
+      metadata: { date: currentSnapshotDate }
+    };
+    const blob = exportToExcel(data);
+    downloadFile(blob, `fund_analysis_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
 
 
 
@@ -414,13 +487,30 @@ const App = () => {
       <aside className="sidebar">
         <div className="sidebar-logo">Raymond James</div>
         <nav className="sidebar-nav">
-          <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => setActiveTab('dashboard')}>Overview</button>
-          <button className={activeTab === 'performance' ? 'active' : ''} onClick={() => setActiveTab('performance')}>Funds</button>
-          <button className={activeTab === 'class' ? 'active' : ''} onClick={() => setActiveTab('class')}>Asset Classes</button>
-          <button className={activeTab === 'health' ? 'active' : ''} onClick={() => setActiveTab('health')}>Data Health</button>
-          <button className={activeTab === 'admin' ? 'active' : ''} onClick={() => setActiveTab('admin')}>Admin</button>
+          <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => { setActiveTab('dashboard'); navigate('/dashboard'); }}>Overview</button>
+          <button className={activeTab === 'performance' ? 'active' : ''} onClick={() => { setActiveTab('performance'); navigate('/performance'); }}>Funds</button>
+          <button className={activeTab === 'class' ? 'active' : ''} onClick={() => { setActiveTab('class'); navigate('/class'); }}>Asset Classes</button>
+          <button className={activeTab === 'health' ? 'active' : ''} onClick={() => { setActiveTab('health'); navigate('/health'); }}>
+            Data Health
+            {(() => {
+              try {
+                const total = (funds || []).length;
+                const nz = (arr) => arr.filter(v => v != null && !Number.isNaN(v)).length;
+                const ytdOk = nz((funds || []).map(f => f.ytd_return));
+                const oneYOk = nz((funds || []).map(f => f.one_year_return));
+                const sharpeOk = nz((funds || []).map(f => f.sharpe_ratio));
+                const sd3Ok = nz((funds || []).map(f => (f.standard_deviation_3y ?? f.standard_deviation)));
+                const covs = [ytdOk, oneYOk, sharpeOk, sd3Ok].map(n => total ? Math.round((n / total) * 100) : 0);
+                const minCov = covs.length ? Math.min(...covs) : 0;
+                const color = minCov >= 80 ? '#16a34a' : minCov >= 50 ? '#f59e0b' : '#dc2626';
+                return <span style={{ marginLeft: 8, background: color, width: 10, height: 10, display:'inline-block', borderRadius: 9999 }} title={`Minimum coverage: ${minCov}%`} />;
+              } catch { return null; }
+            })()}
+          </button>
+          <button className={activeTab === 'admin' ? 'active' : ''} onClick={() => { setActiveTab('admin'); navigate('/admin'); }}>Admin</button>
         </nav>
         <div className="sidebar-footer">
+          <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.85)', marginBottom: '0.75rem' }}>Tip: Press Ctrl+H for help</div>
           <div className="user-info">
             <span>Welcome, {currentUser?.name || 'User'}</span>
           </div>
@@ -453,6 +543,20 @@ const App = () => {
               </select>
             </div>
             <button 
+              onClick={() => refreshData()}
+              className="btn btn-secondary"
+              title="Refresh data"
+            >
+              Refresh
+            </button>
+            <button 
+              onClick={handleExport}
+              className="btn"
+              title="Export (Ctrl+E)"
+            >
+              Export
+            </button>
+            <button 
               onClick={() => setShowHelp(true)}
               style={{ 
                 padding: '0.5rem 1rem',
@@ -466,6 +570,13 @@ const App = () => {
               title="Help (Ctrl+H)"
             >
               Help
+            </button>
+            <button
+              onClick={() => { try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }}
+              className="btn btn-secondary"
+              title="Open methodology"
+            >
+              Methodology
             </button>
           </div>
       </div>
@@ -490,7 +601,7 @@ const App = () => {
                   fontSize: '0.875rem'
                 }}>
                   💡 <strong>New:</strong> Try the <button 
-                    onClick={() => setActiveTab('performance')} 
+                    onClick={() => { setActiveTab('performance'); navigate('/performance'); }} 
                     style={{ 
                       color: '#3b82f6', 
                       textDecoration: 'underline', 
@@ -548,7 +659,7 @@ const App = () => {
                 } catch { return null; }
               })()}
               
-          {funds.length > 0 ? (
+              {funds.length > 0 ? (
                 <div>
                   {/* Summary Cards */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 'var(--spacing-lg)', marginBottom: 'var(--spacing-lg)' }}>
@@ -616,13 +727,17 @@ const App = () => {
                   </div>
                 </div>
               ) : (
-                <div className="card">
+                <div className="card" style={{ display:'grid', gap:12 }}>
                   <div className="card-header">
-                    <h3 className="card-title">No Data Available</h3>
-                    <p className="card-subtitle">Upload fund data to see the dashboard</p>
+                    <h3 className="card-title">No Data Yet</h3>
+                    <p className="card-subtitle">Import a monthly CSV or try sample data to explore the app.</p>
                   </div>
-            </div>
-          )}
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    <button className="btn" onClick={() => { setActiveTab('admin'); navigate('/admin'); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); }}>Go to Importer</button>
+                    <button className="btn btn-secondary" onClick={() => { setActiveTab('admin'); navigate('/admin'); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { const ev = new CustomEvent('LOAD_SAMPLE_DATA'); window.dispatchEvent(ev); } catch {} }, 300);} }>Use sample data</button>
+                  </div>
+                </div>
+              )}
         </div>
       )}
 
@@ -831,13 +946,17 @@ const App = () => {
                   </div>
               </div>
               ) : (
-                <div className="card">
+                <div className="card" style={{ display:'grid', gap:12 }}>
                   <div className="card-header">
-                    <h3 className="card-title">No Data Available</h3>
-                    <p className="card-subtitle">Upload fund data to see analysis</p>
+                    <h3 className="card-title">No Data Yet</h3>
+                    <p className="card-subtitle">Import a monthly CSV or try sample data to explore this analysis.</p>
                   </div>
-            </div>
-          )}
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    <button className="btn" onClick={() => { setActiveTab('admin'); navigate('/admin'); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); }}>Go to Importer</button>
+                    <button className="btn btn-secondary" onClick={() => { setActiveTab('admin'); navigate('/admin'); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}>Use sample data</button>
+                  </div>
+                </div>
+              )}
         </div>
       )}
 
@@ -1126,6 +1245,7 @@ const App = () => {
 
         </div>
       </main>
+      <MethodologyDrawer />
       {/* Footer */}
       <footer className="footer">
         &copy; {new Date().getFullYear()} Raymond James (Demo) | Lightship Fund Analysis

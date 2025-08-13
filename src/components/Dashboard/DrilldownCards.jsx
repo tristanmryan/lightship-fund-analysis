@@ -27,15 +27,8 @@ function MetricRow({ label, value, delta, benchTicker, tooltip }) {
 }
 
 export default function DrilldownCards({ fund, funds }) {
-  if (!fund) {
-    return (
-      <div className="card" style={{ padding: 16, border: '1px solid #e5e7eb', background: '#f9fafb', borderRadius: 8, textAlign: 'center' }}>
-        <div style={{ fontWeight: 600, marginBottom: 6 }}>No fund selected</div>
-        <div style={{ fontSize: 12, color: '#6b7280' }}>Choose a fund from the table to view details and score breakdown.</div>
-      </div>
-    );
-  }
   const benchmark = useMemo(() => {
+    if (!fund) return null;
     try {
       const cfg = getPrimaryBenchmark(fund);
       if (!cfg) return null;
@@ -54,6 +47,7 @@ export default function DrilldownCards({ fund, funds }) {
   const scoreValue = fund?.scores?.final;
 
   const topReasons = useMemo(() => {
+    if (!fund) return [];
     try {
       const breakdown = fund?.scores?.breakdown || {};
       const rows = Object.keys(breakdown).map((k) => {
@@ -65,6 +59,15 @@ export default function DrilldownCards({ fund, funds }) {
       return rows.slice(0, 3);
     } catch { return []; }
   }, [fund]);
+
+  if (!fund) {
+    return (
+      <div className="card" style={{ padding: 16, border: '1px solid #e5e7eb', background: '#f9fafb', borderRadius: 8, textAlign: 'center' }}>
+        <div style={{ fontWeight: 600, marginBottom: 6 }}>No fund selected</div>
+        <div style={{ fontSize: 12, color: '#6b7280' }}>Choose a fund from the table to view details and score breakdown.</div>
+      </div>
+    );
+  }
 
   // Compute deltas where meaningful
   const diff = (fVal, bVal) => {

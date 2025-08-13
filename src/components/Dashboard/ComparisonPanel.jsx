@@ -85,6 +85,20 @@ const ComparisonPanel = ({ funds = [], initialSavedSets = null }) => {
     });
   }, [funds, search]);
 
+  // Allow external deep-link to seed selection via event { tickers: [] }
+  useEffect(() => {
+    const handler = (ev) => {
+      try {
+        const tickers = Array.isArray(ev?.detail?.tickers) ? ev.detail.tickers.map(t => String(t).toUpperCase()) : [];
+        if (tickers.length === 0) return;
+        const found = (funds || []).filter(f => tickers.includes(getTicker(f))).slice(0, 4);
+        if (found.length > 0) setSelected(found);
+      } catch {}
+    };
+    window.addEventListener('LOAD_COMPARE_SELECTION', handler);
+    return () => window.removeEventListener('LOAD_COMPARE_SELECTION', handler);
+  }, [funds]);
+
   const addFund = (fund) => {
     if (!fund) return;
     if (selected.find(s => (s.Symbol || s.ticker) === (fund.Symbol || fund.ticker))) return;

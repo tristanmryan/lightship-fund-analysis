@@ -419,6 +419,52 @@ export function generateHTMLReport(data) {
 }
 
 /**
+ * Capture a DOM element to PNG using html2canvas
+ * @param {HTMLElement} node
+ * @param {string} filename
+ */
+export async function exportElementToPNG(node, filename = 'chart.png') {
+  if (!node) return;
+  const html2canvas = (await import('html2canvas')).default;
+  const canvas = await html2canvas(node, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
+  const dataUrl = canvas.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  a.click();
+}
+
+/**
+ * Copy a DOM element as PNG to clipboard (best-effort)
+ * Requires ClipboardItem support and secure context
+ * @param {HTMLElement} node
+ */
+export async function copyElementPNGToClipboard(node) {
+  if (!node) return false;
+  try {
+    const html2canvas = (await import('html2canvas')).default;
+    const canvas = await html2canvas(node, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(async (blob) => {
+        try {
+          if (!blob || !navigator.clipboard || typeof window.ClipboardItem !== 'function') {
+            resolve(false);
+            return;
+          }
+          const item = new window.ClipboardItem({ 'image/png': blob });
+          await navigator.clipboard.write([item]);
+          resolve(true);
+        } catch (e) {
+          resolve(false);
+        }
+      }, 'image/png');
+    });
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
  * Generate a standardized filename for exports
  * Example: lightship_table_20250131_142530.csv or lightship_pdf_all_latest_20250131_142530.pdf
  */

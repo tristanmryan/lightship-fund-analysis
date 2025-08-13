@@ -78,6 +78,9 @@ export default function MonthlySnapshotUpload() {
   const [blockers, setBlockers] = useState([]); // strings
   const [skipReasons, setSkipReasons] = useState({}); // reason -> { count, tickers: [] }
   const [missingTickers, setMissingTickers] = useState([]);
+  const [customMap, setCustomMap] = useState({}); // header -> key
+  const [isDragging, setIsDragging] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -95,6 +98,15 @@ export default function MonthlySnapshotUpload() {
     return () => { mounted = false; };
   }, []);
 
+  // Handle global request to load sample data (from Dashboard empty state CTA)
+  useEffect(() => {
+    const handler = async () => {
+      await loadSampleData();
+    };
+    window.addEventListener('LOAD_SAMPLE_DATA', handler);
+    return () => window.removeEventListener('LOAD_SAMPLE_DATA', handler);
+  }, [loadSampleData]);
+
   const handleFileChange = (e) => {
     setFile(e.target.files?.[0] || null);
     setParsedRows([]);
@@ -104,6 +116,38 @@ export default function MonthlySnapshotUpload() {
     setMonthsInFile([]);
     setMode('csv');
     setHasAsOfColumn(false);
+    setCustomMap({});
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const f = e.dataTransfer?.files?.[0];
+    if (f) {
+      setFile(f);
+      setParsedRows([]);
+      setPreview([]);
+      setCounts({ parsed: 0, willImport: 0, skipped: 0, eomWarnings: 0 });
+      setResult(null);
+      setMonthsInFile([]);
+      setMode('csv');
+      setHasAsOfColumn(false);
+      setCustomMap({});
+      setTimeout(() => parseCsv(), 0);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
   };
 
   const handleDownloadTemplate = useCallback(() => {
@@ -201,6 +245,29 @@ export default function MonthlySnapshotUpload() {
       error: () => setParsing(false)
     });
   }, [file]);
+
+  // Helper: load sample CSV
+  const loadSampleData = useCallback(async () => {
+    try {
+      const res = await fetch('/sample-data/monthly_example.csv');
+      const text = await res.text();
+      const blob = new Blob([text], { type: 'text/csv' });
+      const sampleFile = new File([blob], 'monthly_example.csv', { type: 'text/csv' });
+      setFile(sampleFile);
+      // Auto-pick a recent EOM month if empty
+      if (!year || !month) {
+        const now = new Date();
+        const y = now.getUTCFullYear();
+        const m = String(now.getUTCMonth() + 1).padStart(2, '0');
+        setYear(String(y));
+        setMonth(m);
+      }
+      setTimeout(() => parseCsv(), 0);
+    } catch (e) {
+      console.error('Failed to load sample data', e);
+      alert('Could not load sample CSV.');
+    }
+  }, [month, parseCsv, year]);
 
   useEffect(() => {
     if (!parsedRows || parsedRows.length === 0) {
@@ -331,7 +398,7 @@ export default function MonthlySnapshotUpload() {
     return eom.toISOString().slice(0, 10);
   }
 
-  const handleImport = async () => {
+  const performImport = async () => {
     if (preview.length === 0) return;
     // Block on any all-null metric
     if (blockers.length > 0) {
@@ -364,6 +431,22 @@ export default function MonthlySnapshotUpload() {
         console.warn(`[Import] Missing ${missingTickers.length} tickers in funds. Use the 'Seed missing funds' button to insert minimal rows before retry.`);
       }
 
+      const keyToHeader = (() => {
+        const map = {};
+        for (const [h, k] of Object.entries(customMap || {})) {
+          if (k) map[k] = h;
+        }
+        return map;
+      })();
+      const valueFor = (original, key, aliases = []) => {
+        const mappedHeader = keyToHeader[key];
+        if (mappedHeader && original.hasOwnProperty(mappedHeader)) return original[mappedHeader];
+        if (original[key] != null) return original[key];
+        for (const a of aliases) {
+          if (original[a] != null) return original[a];
+        }
+        return null;
+      };
       const rowsToImport = willRows.map((r) => {
         const original = parsedRows.find(pr => pr.__ticker === r.ticker && pr.__asOf === r.asOf) || {};
           // Picker overrides CSV AsOfMonth
@@ -371,17 +454,17 @@ export default function MonthlySnapshotUpload() {
           ticker: r.ticker,
           kind: r.kind,
           date: pickerDate,
-          ytd_return: original.ytd_return ?? original.YTD,
-          one_year_return: original.one_year_return ?? original['1 Year'],
-          three_year_return: original.three_year_return ?? original['3 Year'],
-          five_year_return: original.five_year_return ?? original['5 Year'],
-          ten_year_return: original.ten_year_return ?? original['10 Year'],
-          sharpe_ratio: original.sharpe_ratio ?? original['Sharpe Ratio'],
-            standard_deviation: original.standard_deviation ?? original['Standard Deviation'],
+          ytd_return: valueFor(original, 'ytd_return', ['YTD']),
+          one_year_return: valueFor(original, 'one_year_return', ['1 Year']),
+          three_year_return: valueFor(original, 'three_year_return', ['3 Year']),
+          five_year_return: valueFor(original, 'five_year_return', ['5 Year']),
+          ten_year_return: valueFor(original, 'ten_year_return', ['10 Year']),
+          sharpe_ratio: valueFor(original, 'sharpe_ratio', ['Sharpe Ratio']),
+            standard_deviation: valueFor(original, 'standard_deviation', ['Standard Deviation']),
             standard_deviation_3y: (() => {
-              const v = original.standard_deviation_3y ?? original['standard_deviation_3y'] ?? original['Standard Deviation 3Y'];
+              const v = valueFor(original, 'standard_deviation_3y', ['standard_deviation_3y','Standard Deviation 3Y']);
               if (v != null) return v;
-              const legacy = original.standard_deviation ?? original['Standard Deviation'];
+              const legacy = valueFor(original, 'standard_deviation', ['Standard Deviation']);
               if (legacy != null) {
                 // legacy fallback mapping notice
                 // eslint-disable-next-line no-console
@@ -390,13 +473,13 @@ export default function MonthlySnapshotUpload() {
               }
               return null;
             })(),
-            standard_deviation_5y: original.standard_deviation_5y ?? original['standard_deviation_5y'] ?? original['Standard Deviation 5Y'],
-          expense_ratio: original.expense_ratio ?? original['Net Expense Ratio'],
-            alpha: original.alpha ?? original.alpha_5y ?? original['Alpha'],
-            beta: original.beta ?? original.beta_3y ?? original['Beta'],
-            manager_tenure: original.manager_tenure ?? original['Manager Tenure'],
-            up_capture_ratio: original.up_capture_ratio ?? original.up_capture_ratio_3y ?? original['Up Capture Ratio'] ?? original['Up Capture Ratio (Morningstar Standard) - 3 Year'],
-            down_capture_ratio: original.down_capture_ratio ?? original.down_capture_ratio_3y ?? original['Down Capture Ratio'] ?? original['Down Capture Ratio (Morningstar Standard) - 3 Year']
+            standard_deviation_5y: valueFor(original, 'standard_deviation_5y', ['standard_deviation_5y','Standard Deviation 5Y']),
+          expense_ratio: valueFor(original, 'expense_ratio', ['Net Expense Ratio']),
+            alpha: valueFor(original, 'alpha', ['alpha_5y','Alpha']),
+            beta: valueFor(original, 'beta', ['beta_3y','Beta']),
+            manager_tenure: valueFor(original, 'manager_tenure', ['Manager Tenure']),
+            up_capture_ratio: valueFor(original, 'up_capture_ratio', ['up_capture_ratio_3y','Up Capture Ratio','Up Capture Ratio (Morningstar Standard) - 3 Year']),
+            down_capture_ratio: valueFor(original, 'down_capture_ratio', ['down_capture_ratio_3y','Down Capture Ratio','Down Capture Ratio (Morningstar Standard) - 3 Year'])
         };
       });
       const { success, failed } = await fundService.bulkUpsertFundPerformance(rowsToImport, 500);
@@ -442,12 +525,33 @@ export default function MonthlySnapshotUpload() {
     }
   };
 
+  const handleImportClick = () => {
+    if (preview.length === 0) return;
+    setShowConfirm(true);
+  };
+
   if (!FLAG_ENABLE_IMPORT) {
     return null;
   }
 
   return (
     <div className="card" style={{ padding: 16, marginTop: 16 }}>
+      {/* Stepper */}
+      <div style={{ display:'flex', gap:8, marginBottom:8, alignItems:'center', flexWrap:'wrap' }}>
+        {[
+          { idx: 1, label: 'Month' },
+          { idx: 2, label: 'Upload & preview' },
+          { idx: 3, label: 'Import' }
+        ].map((s) => {
+          const active = (s.idx === 1 && !file) || (s.idx === 2 && !!file && preview.length === 0) || (s.idx === 3 && preview.length > 0);
+          return (
+            <div key={s.idx} style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <div style={{ width:22, height:22, borderRadius:9999, background: active ? '#005EB8' : '#E5E7EB', color: active ? '#fff' : '#374151', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:600 }}>{s.idx}</div>
+              <div style={{ fontWeight: active ? 600 : 500, color: active ? '#005EB8' : '#374151' }}>{s.label}</div>
+            </div>
+          );
+        })}
+      </div>
       {toast && (
         <div style={{
           marginBottom: 8,
@@ -486,7 +590,25 @@ export default function MonthlySnapshotUpload() {
 
       {/* Step 2 */}
       <div style={{ marginTop: 8, borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>2. Upload & preview</div>
+        <div style={{ fontWeight: 600, marginBottom: 8, display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
+          <span>2. Upload & preview</span>
+          <details>
+            <summary style={{ cursor:'pointer', color:'#1e40af' }}>Required/recommended columns</summary>
+            <div style={{ background:'#f8fafc', border:'1px solid #e5e7eb', borderRadius:6, padding:8, marginTop:8, fontSize:12 }}>
+              <div style={{ fontWeight:600, marginBottom:4 }}>Minimum</div>
+              <ul style={{ margin:0, paddingLeft:16 }}>
+                <li>Ticker</li>
+                <li>AsOfMonth is optional; Month/Year picker overrides dates</li>
+              </ul>
+              <div style={{ fontWeight:600, margin:'8px 0 4px' }}>Recommended metrics</div>
+              <ul style={{ margin:0, paddingLeft:16 }}>
+                <li>YTD, 1 Year, 3 Year, 5 Year (returns %)</li>
+                <li>Sharpe Ratio, Standard Deviation 3Y (risk)</li>
+                <li>Net Expense Ratio, Manager Tenure</li>
+              </ul>
+            </div>
+          </details>
+        </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
         <button onClick={handleDownloadTemplate} className="btn btn-secondary" title="Download a blank monthly snapshot CSV template">
           Download CSV Template
@@ -497,6 +619,15 @@ export default function MonthlySnapshotUpload() {
         <input type="file" accept=".csv,text/csv" onChange={handleFileChange} />
         <button onClick={parseCsv} disabled={!file || parsing} className="btn btn-primary">
           {parsing ? 'Parsing…' : 'Parse CSV'}
+        </button>
+        <button
+          onClick={async () => {
+            await loadSampleData();
+          }}
+          className="btn btn-secondary"
+          title="Load a small sample CSV to try the importer quickly"
+        >
+          Use sample data
         </button>
         {missingTickers.length > 0 && (
           <button
@@ -525,6 +656,27 @@ export default function MonthlySnapshotUpload() {
             Seed missing funds ({missingTickers.length})
           </button>
         )}
+        </div>
+
+        {/* Drag & drop zone */}
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          style={{
+            marginTop: 8,
+            padding: '16px',
+            border: '2px dashed ' + (isDragging ? '#005EB8' : '#CBD5E1'),
+            background: isDragging ? '#EFF6FF' : '#F8FAFC',
+            borderRadius: 8,
+            color: '#334155',
+            textAlign: 'center'
+          }}
+        >
+          Drag & drop a CSV here, or use the file picker above
+          {file && (
+            <div style={{ marginTop: 6, fontSize: 12, color:'#64748b' }}>Selected: {file.name}</div>
+          )}
         </div>
       </div>
 
@@ -566,7 +718,7 @@ export default function MonthlySnapshotUpload() {
               if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }}>Why skipped?</div>
           </div>
-          {/* Header recognition (collapsed by default) */}
+          {/* Header recognition and manual mapping (collapsed by default) */}
           <details style={{ marginBottom: 8 }}>
             <summary style={{ cursor: 'pointer' }}>Header mapping</summary>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 8 }}>
@@ -593,13 +745,31 @@ export default function MonthlySnapshotUpload() {
                 </table>
               </div>
               <div style={{ padding: 8, background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6 }}>
-                <div style={{ fontWeight: 600, marginBottom: 6 }}>Unrecognized headers</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {(headerMap.unrecognized || []).map((h) => (
-                    <span key={h} style={{ fontSize: 12, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: 9999, padding: '2px 6px' }}>{h}</span>
-                  ))}
-                  {(headerMap.unrecognized || []).length === 0 && <span style={{ color: '#6b7280', fontSize: 12 }}>None</span>}
-                </div>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>Unrecognized headers — map manually</div>
+                {(headerMap.unrecognized || []).length === 0 ? (
+                  <div style={{ color: '#6b7280', fontSize: 12 }}>None</div>
+                ) : (
+                  <div style={{ display:'grid', gap:8 }}>
+                    {(headerMap.unrecognized || []).map((h) => (
+                      <div key={h} style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, alignItems:'center' }}>
+                        <span style={{ fontSize: 12, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: 9999, padding: '2px 6px', justifySelf:'start' }}>{h}</span>
+                        <select
+                          value={customMap[h] || ''}
+                          onChange={(e) => setCustomMap((prev) => ({ ...prev, [h]: e.target.value }))}
+                          className="select-field"
+                        >
+                          <option value="">Ignore</option>
+                          {['ytd_return','one_year_return','three_year_return','five_year_return','ten_year_return','sharpe_ratio','standard_deviation','standard_deviation_3y','standard_deviation_5y','expense_ratio','alpha','beta','manager_tenure','up_capture_ratio','down_capture_ratio'].map((k) => (
+                            <option key={k} value={k}>{k}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div style={{ gridColumn: '1 / -1', padding: 8, background: '#ecfeff', border: '1px solid #a5f3fc', borderRadius: 6 }}>
+                <div style={{ fontSize:12, color:'#0c4a6e' }}>Manual mappings are applied during import and override auto-recognized headers.</div>
               </div>
             </div>
           </details>
@@ -695,7 +865,7 @@ export default function MonthlySnapshotUpload() {
           )}
           <PreviewTable rows={preview} />
           <div style={{ marginTop: 12 }}>
-            <button onClick={handleImport} disabled={importing || counts.willImport === 0} className="btn btn-primary">
+            <button onClick={handleImportClick} disabled={importing || counts.willImport === 0} className="btn btn-primary">
               {importing ? 'Importing…' : 'Import'}
             </button>
           </div>
@@ -738,6 +908,33 @@ export default function MonthlySnapshotUpload() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {showConfirm && (
+        <div className="modal-overlay" onClick={() => setShowConfirm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Confirm Import</h3>
+              <button className="btn-close" onClick={() => setShowConfirm(false)} aria-label="Close">×</button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display:'grid', gap:8 }}>
+                <div><strong>Funds to import:</strong> {preview.filter(r => r.willImport && r.kind === 'fund').length}</div>
+                <div><strong>Benchmarks to import:</strong> {preview.filter(r => r.kind === 'benchmark').length}</div>
+                <div><strong>Unknown tickers:</strong> {preview.filter(r => !r.willImport && (r.reason||'').toLowerCase().includes('unknown ticker')).length}</div>
+                <div><strong>EOM warnings:</strong> {counts.eomWarnings}</div>
+                <div><strong>AsOfMonth:</strong> {computePickerDate() || '(not set)'}</div>
+                {monthsInFile.length > 0 && (
+                  <div><strong>AsOfMonth in file:</strong> {monthsInFile.length === 1 ? monthsInFile[0] : monthsInFile.join(', ')}</div>
+                )}
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setShowConfirm(false)}>Cancel</button>
+              <button className="btn" onClick={async () => { setShowConfirm(false); await performImport(); }}>Confirm Import</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

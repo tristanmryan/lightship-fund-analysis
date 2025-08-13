@@ -1,5 +1,6 @@
 // src/components/Dashboard/AssetClassOverview.jsx
 import React, { useState, useMemo } from 'react';
+import { tooltipBoxStyle, tooltipTitleStyle } from '../common/tooltipStyles';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { getScoreColor, generateClassSummary } from '../../services/scoring';
 

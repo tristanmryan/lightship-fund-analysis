@@ -149,8 +149,8 @@ const TopBottomPerformers = ({ funds }) => {
         transition: 'transform 0.1s',
         cursor: 'pointer'
       }}
-      onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(4px)'}
-      onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}
+      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateX(4px)'; try { window.dispatchEvent(new CustomEvent('HIGHLIGHT_FUND', { detail: { symbol: (fund.Symbol || fund.ticker) } })); } catch {} }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateX(0)'; }}
       >
         <div style={{
           width: '32px',

@@ -1,5 +1,6 @@
 // src/components/Dashboard/PerformanceHeatmap.jsx
 import React, { useState, useMemo } from 'react';
+import { tooltipBoxStyle, tooltipTitleStyle } from '../common/tooltipStyles';
 import { Info } from 'lucide-react';
 import { getScoreColor } from '../../services/scoring';
 
@@ -10,6 +11,23 @@ import { getScoreColor } from '../../services/scoring';
 const PerformanceHeatmap = ({ funds }) => {
   const [selectedMetric, setSelectedMetric] = useState('score');
   const [hoveredFund, setHoveredFund] = useState(null);
+
+  // Respond to cross-highlight events from other panels
+  React.useEffect(() => {
+    const handler = (ev) => {
+      try {
+        const symbol = ev?.detail?.symbol;
+        if (!symbol) return;
+        const f = (funds || []).find(x => (x.Symbol || x.ticker) === symbol);
+        if (f) {
+          setHoveredFund(f);
+          setTimeout(()=> setHoveredFund(null), 1500);
+        }
+      } catch {}
+    };
+    window.addEventListener('HIGHLIGHT_FUND', handler);
+    return () => window.removeEventListener('HIGHLIGHT_FUND', handler);
+  }, [funds]);
 
   // Group funds by asset class
   const fundsByClass = useMemo(() => {
@@ -212,7 +230,7 @@ const PerformanceHeatmap = ({ funds }) => {
                       transition: 'transform 0.1s',
                       transform: hoveredFund === fund ? 'scale(1.05)' : 'scale(1)'
                     }}
-                    onMouseEnter={() => setHoveredFund(fund)}
+                    onMouseEnter={() => { setHoveredFund(fund); try { window.dispatchEvent(new CustomEvent('HIGHLIGHT_FUND', { detail: { symbol: (fund.Symbol || fund.ticker) } })); } catch {} }}
                     onMouseLeave={() => setHoveredFund(null)}
                   >
                     <div style={{ 
@@ -261,20 +279,8 @@ const PerformanceHeatmap = ({ funds }) => {
 
       {/* Hover tooltip */}
       {hoveredFund && (
-        <div style={{
-          position: 'fixed',
-          bottom: '2rem',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          backgroundColor: 'white',
-          border: '1px solid #e5e7eb',
-          borderRadius: '0.5rem',
-          padding: '1rem',
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-          zIndex: 1000,
-          maxWidth: '400px'
-        }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
+        <div style={{ ...tooltipBoxStyle, bottom: '2rem', left: '50%', transform: 'translateX(-50%)' }}>
+          <div style={tooltipTitleStyle}>
             {hoveredFund.displayName}
           </div>
           <div style={{ 

@@ -14,7 +14,7 @@ import ComparisonPanel from './ComparisonPanel';
 import DrilldownCards from './DrilldownCards';
 import preferencesService from '../../services/preferencesService';
 import fundService from '../../services/fundService';
-import { generatePDFReport, downloadFile, exportToExcel, formatExportFilename } from '../../services/exportService';
+import { generatePDFReport, downloadFile, exportToExcel, formatExportFilename, exportElementToPNG, copyElementPNGToClipboard } from '../../services/exportService';
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -133,6 +133,38 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
     })();
     return () => { cancelled = true; };
   }, [asOfMonthProp, onAsOfMonthChange]);
+
+  // Skeleton loading states for key sections
+  const isLoadingAny = isLoading || !initialized;
+  const Skeleton = ({ height = 140 }) => (
+    <div style={{ background:'#f3f4f6', borderRadius:8, height, width:'100%', animation:'pulse 1.2s ease-in-out infinite' }} />
+  );
+  const SectionSkeleton = () => (
+    <div className="card">
+      <div className="card-header">
+        <div className="card-title" style={{ opacity: 0.6 }}>Loading…</div>
+      </div>
+      <Skeleton height={180} />
+    </div>
+  );
+
+  if (isLoadingAny) {
+    return (
+      <div className="enhanced-performance-dashboard">
+        <div className="dashboard-header">
+          <div className="header-left">
+            <h2>Performance</h2>
+            <p className="subtitle">Preparing your view…</p>
+          </div>
+        </div>
+        <div style={{ display:'grid', gap: 'var(--spacing-lg)' }}>
+          <SectionSkeleton />
+          <SectionSkeleton />
+          <SectionSkeleton />
+        </div>
+      </div>
+    );
+  }
 
   // Guardrails: when month changes, refresh counts (dev-only hint; safe if fails)
   React.useEffect(() => {
@@ -295,9 +327,28 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         );
       
       case 'heatmap':
+        if (!filteredFunds || filteredFunds.length === 0) {
+          return (
+            <div className="card" style={{ padding: 16 }}>
+              <div style={{ color: '#6b7280', marginBottom: 8 }}>No data to display yet. Import a CSV or try sample data.</div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                <a className="btn" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}>Go to Importer</a>
+                <a className="btn btn-secondary" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}>Use sample data</a>
+              </div>
+            </div>
+          );
+        }
         return (
           <>
-            <div className="card">
+            <div className="card" ref={(el)=>{ window.__HEATMAP_NODE__ = el; }}>
+              <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <h3 className="card-title" style={{ margin:0 }}>Performance Heatmap</h3>
+                <div style={{ display:'flex', gap:8 }}>
+                  <button className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }} title="How to read the heatmap">i</button>
+                  <button className="btn" onClick={async (e)=>{ e.preventDefault(); const node = window.__HEATMAP_NODE__; await exportElementToPNG(node, 'heatmap.png'); }} title="Export heatmap as PNG">Export PNG</button>
+                  <button className="btn btn-secondary" onClick={async (e)=>{ e.preventDefault(); const node = window.__HEATMAP_NODE__; const ok = await copyElementPNGToClipboard(node); if (!ok) alert('Copy not supported in this browser.'); }} title="Copy heatmap to clipboard">Copy</button>
+                </div>
+              </div>
               <PerformanceHeatmap funds={filteredFunds} />
             </div>
             {asOfMonthProp && (guard.fund === 0 || guard.fund === null) && (guard.bench > 0) && (
@@ -318,22 +369,79 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         );
       
       case 'overview':
+        if (!filteredFunds || filteredFunds.length === 0) {
+          return (
+            <div className="card" style={{ padding: 16 }}>
+              <div style={{ color: '#6b7280', marginBottom: 8 }}>No data to display yet. Import a CSV or try sample data.</div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                <a className="btn" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}>Go to Importer</a>
+                <a className="btn btn-secondary" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}>Use sample data</a>
+              </div>
+            </div>
+          );
+        }
         return (
-          <div className="card">
+          <div className="card" ref={(el)=>{ window.__OVERVIEW_NODE__ = el; }}>
+            <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <h3 className="card-title" style={{ margin:0 }}>Asset Class Overview</h3>
+              <div style={{ display:'flex', gap:8 }}>
+                <button className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }} title="How class metrics are computed">i</button>
+                <button className="btn" onClick={async (e)=>{ e.preventDefault(); const node = window.__OVERVIEW_NODE__; await exportElementToPNG(node, 'class-overview.png'); }} title="Export overview as PNG">Export PNG</button>
+                <button className="btn btn-secondary" onClick={async (e)=>{ e.preventDefault(); const node = window.__OVERVIEW_NODE__; const ok = await copyElementPNGToClipboard(node); if (!ok) alert('Copy not supported in this browser.'); }} title="Copy overview to clipboard">Copy</button>
+              </div>
+            </div>
             <AssetClassOverview funds={filteredFunds} />
           </div>
         );
       
       case 'performers':
+        if (!filteredFunds || filteredFunds.length === 0) {
+          return (
+            <div className="card" style={{ padding: 16 }}>
+              <div style={{ color: '#6b7280', marginBottom: 8 }}>No data to display yet. Import a CSV or try sample data.</div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                <a className="btn" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}>Go to Importer</a>
+                <a className="btn btn-secondary" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}>Use sample data</a>
+              </div>
+            </div>
+          );
+        }
         return (
-          <div className="card">
+          <div className="card" ref={(el)=>{ window.__PERFORMERS_NODE__ = el; }}>
+            <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <h3 className="card-title" style={{ margin:0 }}>Top & Bottom Performers</h3>
+              <div style={{ display:'flex', gap:8 }}>
+                <button className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }} title="How performers are ranked">i</button>
+                <button className="btn" onClick={async (e)=>{ e.preventDefault(); const node = window.__PERFORMERS_NODE__; await exportElementToPNG(node, 'performers.png'); }} title="Export performers as PNG">Export PNG</button>
+                <button className="btn btn-secondary" onClick={async (e)=>{ e.preventDefault(); const node = window.__PERFORMERS_NODE__; const ok = await copyElementPNGToClipboard(node); if (!ok) alert('Copy not supported in this browser.'); }} title="Copy performers to clipboard">Copy</button>
+              </div>
+            </div>
             <TopBottomPerformers funds={filteredFunds} />
           </div>
         );
       
       case 'compare':
+        if (!filteredFunds || filteredFunds.length === 0) {
+          return (
+            <div className="card" style={{ padding: 16 }}>
+              <div style={{ color: '#6b7280', marginBottom: 8 }}>No data to display yet. Import a CSV or try sample data.</div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                <a className="btn" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}>Go to Importer</a>
+                <a className="btn btn-secondary" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}>Use sample data</a>
+              </div>
+            </div>
+          );
+        }
         return (
-          <div className="card">
+          <div className="card" ref={(el)=>{ window.__COMPARE_NODE__ = el; }}>
+            <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <h3 className="card-title" style={{ margin:0 }}>Compare Funds</h3>
+              <div style={{ display:'flex', gap:8 }}>
+                <button className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }} title="How comparison works">i</button>
+                <button className="btn" onClick={async (e)=>{ e.preventDefault(); const node = window.__COMPARE_NODE__; await exportElementToPNG(node, 'compare.png'); }} title="Export compare as PNG">Export PNG</button>
+                <button className="btn btn-secondary" onClick={async (e)=>{ e.preventDefault(); const node = window.__COMPARE_NODE__; const ok = await copyElementPNGToClipboard(node); if (!ok) alert('Copy not supported in this browser.'); }} title="Copy compare to clipboard">Copy</button>
+              </div>
+            </div>
             <ComparisonPanel funds={filteredFunds} />
           </div>
         );
@@ -364,6 +472,48 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
     return activeCount;
   };
   const clearAllFiltersRef = React.useRef(null);
+
+  // Copy link to current view (share filters + asOf month via hash)
+  const copyShareLink = React.useCallback(async () => {
+    try {
+      const data = {
+        asOf: asOfMonthProp || null,
+        viewMode,
+        filters: activeFilters || null,
+        // Compare selection tickers via event query (best-effort)
+        compareTickers: (() => {
+          try {
+            const cells = document.querySelectorAll('[data-compare-export] th div span');
+            const syms = Array.from(cells).slice(0, 8).map(n => (n?.textContent || '').trim()).filter(Boolean);
+            return syms.length ? syms : null;
+          } catch { return null; }
+        })()
+      };
+      const hash = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(data)))));
+      const url = `${window.location.origin}${window.location.pathname}#s=${hash}`;
+      await navigator.clipboard.writeText(url);
+      alert('Link copied to clipboard');
+    } catch (e) {
+      console.error('Failed to copy link', e);
+    }
+  }, [asOfMonthProp, viewMode, activeFilters]);
+
+  // On load, parse share hash if present
+  React.useEffect(() => {
+    try {
+      const m = window.location.hash.match(/#s=(.+)$/);
+      if (!m) return;
+      const parsed = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1])))));
+      if (parsed?.asOf && typeof onAsOfMonthChange === 'function') onAsOfMonthChange(parsed.asOf);
+      if (parsed?.viewMode && ['table','heatmap','overview','performers','compare','details'].includes(parsed.viewMode)) setViewMode(parsed.viewMode);
+      if (parsed?.filters && typeof parsed.filters === 'object') setActiveFilters(parsed.filters);
+      if (Array.isArray(parsed?.compareTickers) && parsed.compareTickers.length > 0) {
+        setViewMode('compare');
+        setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_COMPARE_SELECTION', { detail: { tickers: parsed.compareTickers } })); } catch {} }, 0);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (isLoading) {
     return (
@@ -446,6 +596,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
                 ))}
               </select>
             </div>
+            <button className="btn" onClick={copyShareLink} title="Copy link to this view">Share</button>
             {/* Non-EOM pill and toggle */}
             {nonEomSample && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
