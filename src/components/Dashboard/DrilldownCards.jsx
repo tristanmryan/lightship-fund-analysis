@@ -142,6 +142,43 @@ export default function DrilldownCards({ fund, funds }) {
           ))}
         </div>
       ))}
+      <div className="card" style={{ padding: 12, gridColumn: '1 / -1' }}>
+        <details>
+          <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Weights & coverage</summary>
+          <div style={{ marginTop: 8, overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid #e5e7eb' }}>Metric</th>
+                  <th style={{ textAlign: 'right', padding: '6px 8px', borderBottom: '1px solid #e5e7eb' }}>Weight</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid #e5e7eb' }}>Source</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(fund?.scores?.breakdown || {}).map(([key, info]) => {
+                  const label = METRICS_CONFIG.labels[key] || key;
+                  const notes = [];
+                  if (info?.excludedForCoverage) notes.push('excluded: low coverage');
+                  if (typeof info?.zShrinkFactor === 'number' && info.zShrinkFactor < 1) notes.push(`z-shrink x${info.zShrinkFactor}`);
+                  if (typeof info?.coverage === 'number') notes.push(`coverage ${(info.coverage*100).toFixed(0)}%`);
+                  return (
+                    <tr key={key}>
+                      <td style={{ padding: '6px 8px', borderBottom: '1px solid #f3f4f6' }}>{label}</td>
+                      <td style={{ padding: '6px 8px', textAlign: 'right', borderBottom: '1px solid #f3f4f6' }}>{Number.isFinite(info?.weight) ? info.weight : '-'}</td>
+                      <td style={{ padding: '6px 8px', borderBottom: '1px solid #f3f4f6' }}>{info?.weightSource || '—'}</td>
+                      <td style={{ padding: '6px 8px', color: '#6b7280', borderBottom: '1px solid #f3f4f6' }}>{notes.join(' • ') || '—'}</td>
+                    </tr>
+                  );
+                })}
+                {Object.keys(fund?.scores?.breakdown || {}).length === 0 && (
+                  <tr><td colSpan={4} style={{ padding: '6px 8px', color:'#6b7280' }}>No scoring metrics available.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </div>
       <div style={{ gridColumn: '1 / -1' }}>
         <NotesPanel fundId={fund?.id || null} fundTicker={fund?.ticker || fund?.Symbol || null} />
       </div>

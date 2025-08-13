@@ -51,8 +51,8 @@ describe('AdminOverview', () => {
     const onNavigate = jest.fn();
     render(<AdminOverview onNavigate={onNavigate} />);
 
-    // wait for exports/buttons (loaded state)
-    await waitFor(() => expect(screen.getByText('Export Recommended Funds')).toBeInTheDocument());
+    // wait for Exports menu (loaded state)
+    await waitFor(() => expect(screen.getByText('Exports')).toBeInTheDocument());
 
     // Buttons present
     expect(screen.getAllByText('Go to Catalogs').length).toBeGreaterThan(0);
@@ -62,8 +62,11 @@ describe('AdminOverview', () => {
     fireEvent.click(screen.getAllByText('Go to Catalogs')[0]);
     expect(onNavigate).toHaveBeenCalled();
 
-    fireEvent.click(screen.getByText('Export Recommended Funds'));
-    fireEvent.click(screen.getByText('Export Primary Benchmark Mapping'));
+    // Open Exports menu and trigger export actions
+    fireEvent.click(screen.getByText('Exports'));
+    fireEvent.click(screen.getByText('Recommended funds (CSV)'));
+    fireEvent.click(screen.getByText('Exports'));
+    fireEvent.click(screen.getByText('Primary benchmark mapping (CSV)'));
   });
 });
 

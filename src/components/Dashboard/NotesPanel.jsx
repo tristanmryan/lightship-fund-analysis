@@ -13,6 +13,7 @@ export default function NotesPanel({ fundId = null, fundTicker = null }) {
   const [decision, setDecision] = useState('');
   const [overrideId, setOverrideId] = useState('');
   const [overrides, setOverrides] = useState([]);
+  const [announce, setAnnounce] = useState('');
 
   const cleanTicker = useMemo(() => (fundTicker || '').toUpperCase(), [fundTicker]);
 
@@ -51,6 +52,7 @@ export default function NotesPanel({ fundId = null, fundTicker = null }) {
       setBody('');
       setDecision('');
       setOverrideId('');
+      try { setAnnounce('Note added'); setTimeout(()=> setAnnounce(''), 1500); } catch {}
     } catch (e) { alert(e.message); }
   }
 
@@ -60,12 +62,14 @@ export default function NotesPanel({ fundId = null, fundTicker = null }) {
 
   return (
     <div className="card" style={{ padding: 12 }} data-testid="notes-panel">
-      <div style={{ fontWeight: 600, marginBottom: 8 }}>Notes</div>
+      <div style={{ fontWeight: 600, marginBottom: 8 }}>Research notes</div>
+      <div aria-live="polite" style={{ position:'absolute', width:1, height:1, overflow:'hidden', clip:'rect(1px, 1px, 1px, 1px)' }}>{announce}</div>
       <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
         <textarea
           placeholder="Add a research note…"
           value={body}
           onChange={(e) => setBody(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); onAdd(); } }}
           style={{ width: '100%', minHeight: 70, padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }}
         />
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -89,21 +93,29 @@ export default function NotesPanel({ fundId = null, fundTicker = null }) {
         <div style={{ color: '#6b7280' }}>No notes yet.</div>
       ) : (
         <div style={{ display: 'grid', gap: 8 }}>
-          {(Array.isArray(notes) ? notes : []).filter(Boolean).map(n => (
-            <div key={n.id || Math.random()} style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }} data-testid="note-item">
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6b7280' }}>
-                <span>{n?.created_at ? new Date(n.created_at).toLocaleString() : '—'}</span>
-                <span>by {n?.created_by || '—'}</span>
+          {(Array.isArray(notes) ? notes : []).filter(Boolean).map(n => {
+            const bodyText = String(n?.body || '');
+            const tooLong = bodyText.length > 400;
+            const short = tooLong ? bodyText.slice(0, 400) + '…' : bodyText;
+            return (
+              <div key={n.id || Math.random()} style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }} data-testid="note-item">
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6b7280' }}>
+                  <span>{n?.created_at ? new Date(n.created_at).toLocaleString() : '—'}</span>
+                  <span>by {n?.created_by || '—'}</span>
+                </div>
+                {n?.decision && (
+                  <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }} data-testid="note-decision">Decision: <strong>{n.decision}</strong></div>
+                )}
+                {n?.override_id && (
+                  <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Linked to override</div>
+                )}
+                <div style={{ marginTop: 4 }} data-testid="note-body">{short}</div>
+                {tooLong && (
+                  <a href="#" onClick={(e)=>{ e.preventDefault(); alert(bodyText); }} style={{ fontSize: 12 }}>Show more</a>
+                )}
               </div>
-              {n?.decision && (
-                <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }} data-testid="note-decision">Decision: <strong>{n.decision}</strong></div>
-              )}
-              {n?.override_id && (
-                <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Linked to override</div>
-              )}
-              <div style={{ marginTop: 4 }} data-testid="note-body">{n?.body}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -363,6 +363,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
     }).length;
     return activeCount;
   };
+  const clearAllFiltersRef = React.useRef(null);
 
   if (isLoading) {
     return (
@@ -518,9 +519,20 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
                 Export
               </button>
               <div role="menu" style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', background: 'white', border: '1px solid #e5e7eb', borderRadius: 6, minWidth: 200, boxShadow: '0 6px 18px rgba(0,0,0,0.08)', display: 'none', zIndex: 50 }}>
-                <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: 'pointer' }} onClick={() => { if (tableExportRef.current) tableExportRef.current(); }}>
-                  Table (CSV)
-                </button>
+                {viewMode === 'compare' ? (
+                  <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: 'pointer' }} onClick={() => {
+                    try {
+                      const panel = document.querySelector('[data-compare-export]');
+                      if (panel) panel.dispatchEvent(new CustomEvent('COMPARE_EXPORT', { bubbles: true }));
+                    } catch {}
+                  }}>
+                    Compare (CSV)
+                  </button>
+                ) : (
+                  <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: 'pointer' }} onClick={() => { if (tableExportRef.current) tableExportRef.current(); }}>
+                    Table (CSV)
+                  </button>
+                )}
                 <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: 'pointer' }} onClick={() => {
                   try {
                     const wbBlob = exportToExcel({ funds: filteredFunds });
@@ -653,12 +665,12 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         </div>
 
         {/* Advanced Filters */}
-        {initialized && (
-        <AdvancedFilters 
-          funds={funds}
-          onFilterChange={handleFilterChange}
-          initialFilters={initialFilters}
-        />)}
+          {initialized && (
+          <AdvancedFilters 
+            funds={funds}
+            onFilterChange={handleFilterChange}
+            initialFilters={initialFilters}
+          />)}
 
         {/* View Mode Selector */}
         <div style={{
@@ -732,6 +744,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
             }}>
               <Filter size={16} />
               {getFilterSummary()} filter{getFilterSummary() !== 1 ? 's' : ''} active
+              <button onClick={()=> window.location.reload()} style={{ marginLeft: 8, background: 'transparent', border: 'none', color: '#1d4ed8', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.875rem' }}>Clear all</button>
             </div>
           )}
         </div>

@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { computeBenchmarkDelta } from './benchmarkUtils';
 import { formatPercent, formatNumber } from '../../utils/formatters';
 import preferencesService from '../../services/preferencesService';
-import { exportCompareCSV, downloadFile, shouldConfirmLargeExport } from '../../services/exportService';
+import { exportCompareCSV, downloadFile, shouldConfirmLargeExport, formatExportFilename } from '../../services/exportService';
 
 const metricDefs = [
   { key: 'scores.final', label: 'Score', tooltip: '0–100 weighted Z-score within asset class', fmt: (v) => (v == null ? '—' : formatNumber(v, 1)) },
@@ -164,15 +164,17 @@ const ComparisonPanel = ({ funds = [], initialSavedSets = null }) => {
       funds: withBench,
       metadata: { exportedAt: new Date() }
     });
-    const now = new Date();
-    const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
-    downloadFile(blob, `compare_export_${ts}.csv`, 'text/csv;charset=utf-8');
+    const filename = formatExportFilename({ scope: 'compare', ext: 'csv' });
+    downloadFile(blob, filename, 'text/csv;charset=utf-8');
   }
 
   return (
-    <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-      <div style={{ padding: 16, borderBottom: '1px solid #e5e7eb', display: 'flex', gap: 8, alignItems: 'center' }}>
+    <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8 }} data-compare-export>
+      <div style={{ padding: 16, borderBottom: '1px solid #e5e7eb', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <strong>Compare Funds</strong>
+        {currentLoaded && (
+          <span style={{ color: '#6b7280' }}>Loaded set: <strong>{currentLoaded}</strong></span>
+        )}
         <input
           placeholder="Search symbol or name..."
           value={search}
@@ -216,10 +218,12 @@ const ComparisonPanel = ({ funds = [], initialSavedSets = null }) => {
             ))}
         </select>
         <button onClick={handleDelete} className="btn btn-secondary" disabled={!setName.trim() && !currentLoaded}>Delete</button>
+        <button onClick={() => { setSelected([]); setNotice('Selection cleared.'); }} className="btn btn-secondary" disabled={selected.length === 0}>Clear selection</button>
         <button
           onClick={handleExport}
           disabled={selected.length === 0}
           className="btn btn-primary"
+          style={{ display: 'none' }}
         >Export CSV</button>
       </div>
 

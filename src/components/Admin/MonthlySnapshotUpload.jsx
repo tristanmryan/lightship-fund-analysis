@@ -461,9 +461,33 @@ export default function MonthlySnapshotUpload() {
         </div>
       )}
       <h3 style={{ marginTop: 0 }}>Monthly Snapshot Upload (CSV)</h3>
-      <p style={{ color: '#6b7280', marginTop: 4 }}>Upload → Preview → Import. One CSV per month. Month/Year picker is required; it overrides any CSV dates.</p>
+      <p style={{ color: '#6b7280', marginTop: 4 }}>One CSV per month. Month/Year picker is required and overrides any CSV dates.</p>
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+      {/* Step 1 */}
+      <div style={{ marginTop: 8, borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>1. Month</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, color: '#6b7280' }}>Month *</label>
+            <select value={month} onChange={(e) => setMonth(e.target.value)}>
+              <option value="">Select…</option>
+              {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, color: '#6b7280' }}>Year *</label>
+            <input value={year} onChange={(e) => setYear(e.target.value)} placeholder="YYYY" style={{ width: 100 }} />
+          </div>
+          <div style={{ color: '#6b7280', fontSize: 12 }}>Picker overrides CSV dates.</div>
+        </div>
+      </div>
+
+      {/* Step 2 */}
+      <div style={{ marginTop: 8, borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>2. Upload & preview</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
         <button onClick={handleDownloadTemplate} className="btn btn-secondary" title="Download a blank monthly snapshot CSV template">
           Download CSV Template
         </button>
@@ -501,23 +525,12 @@ export default function MonthlySnapshotUpload() {
             Seed missing funds ({missingTickers.length})
           </button>
         )}
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
-        <div>
-          <label style={{ display: 'block', fontSize: 12, color: '#6b7280' }}>Month *</label>
-          <select value={month} onChange={(e) => setMonth(e.target.value)}>
-            <option value="">Select…</option>
-            {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(m => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 12, color: '#6b7280' }}>Year *</label>
-          <input value={year} onChange={(e) => setYear(e.target.value)} placeholder="YYYY" style={{ width: 100 }} />
-        </div>
-        <div style={{ color: '#6b7280', fontSize: 12 }}>Picker overrides CSV dates.</div>
+      {/* Step 3 */}
+      <div style={{ marginTop: 8, borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>3. Import</div>
         {preview.length > 0 && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12 }}>
             <div style={{ background:'#f3f4f6', border:'1px solid #e5e7eb', padding:'2px 6px', borderRadius:12 }}>
@@ -553,42 +566,45 @@ export default function MonthlySnapshotUpload() {
               if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }}>Why skipped?</div>
           </div>
-          {/* Header recognition */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
-            <div style={{ padding: 8, background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 6 }}>
-              <div style={{ fontWeight: 600, marginBottom: 6 }}>Recognized headers → column</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '4px 6px' }}>Header</th>
-                    <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '4px 6px' }}>Column</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(headerMap.recognizedPairs || []).map(({ header, key }) => (
-                    <tr key={header}>
-                      <td style={{ padding: '2px 6px' }}>{header}</td>
-                      <td style={{ padding: '2px 6px', color: '#1e40af' }}>{key}</td>
+          {/* Header recognition (collapsed by default) */}
+          <details style={{ marginBottom: 8 }}>
+            <summary style={{ cursor: 'pointer' }}>Header mapping</summary>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 8 }}>
+              <div style={{ padding: 8, background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>Recognized headers → column</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '4px 6px' }}>Header</th>
+                      <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '4px 6px' }}>Column</th>
                     </tr>
+                  </thead>
+                  <tbody>
+                    {(headerMap.recognizedPairs || []).map(({ header, key }) => (
+                      <tr key={header}>
+                        <td style={{ padding: '2px 6px' }}>{header}</td>
+                        <td style={{ padding: '2px 6px', color: '#1e40af' }}>{key}</td>
+                      </tr>
+                    ))}
+                    {(!headerMap.recognizedPairs || headerMap.recognizedPairs.length === 0) && (
+                      <tr><td colSpan={2} style={{ color: '#6b7280', padding: '4px 6px' }}>None</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ padding: 8, background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6 }}>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>Unrecognized headers</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {(headerMap.unrecognized || []).map((h) => (
+                    <span key={h} style={{ fontSize: 12, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: 9999, padding: '2px 6px' }}>{h}</span>
                   ))}
-                  {(!headerMap.recognizedPairs || headerMap.recognizedPairs.length === 0) && (
-                    <tr><td colSpan={2} style={{ color: '#6b7280', padding: '4px 6px' }}>None</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ padding: 8, background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6 }}>
-              <div style={{ fontWeight: 600, marginBottom: 6 }}>Unrecognized headers</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {(headerMap.unrecognized || []).map((h) => (
-                  <span key={h} style={{ fontSize: 12, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: 9999, padding: '2px 6px' }}>{h}</span>
-                ))}
-                {(headerMap.unrecognized || []).length === 0 && <span style={{ color: '#6b7280', fontSize: 12 }}>None</span>}
+                  {(headerMap.unrecognized || []).length === 0 && <span style={{ color: '#6b7280', fontSize: 12 }}>None</span>}
+                </div>
               </div>
             </div>
-          </div>
+          </details>
 
-          {/* Coverage warnings and blockers */}
+          {/* Coverage warnings and blockers (collapsed by default) */}
           {(() => {
             const entries = Object.entries(coverage || {});
             const warn = entries.filter(([, v]) => v.total > 0 && v.nonNull / v.total < 0.2);
@@ -620,53 +636,58 @@ export default function MonthlySnapshotUpload() {
               return vals;
             };
             return (
-              <div style={{ display: 'grid', gap: 8, marginBottom: 8 }}>
-                {warn.length > 0 && (
-                  <div style={{ padding: 8, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: 6 }}>
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Low coverage warnings (&lt; 20%)</div>
-                    <ul style={{ margin: 0, paddingLeft: 16 }}>
-                      {warn.map(([k, v]) => (
-                        <li key={k}>{k}: {(v.nonNull)}/{v.total} ({Math.round((v.nonNull / (v.total || 1)) * 100)}%)</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {hasBlock && (
-                  <div style={{ padding: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#7f1d1d', borderRadius: 6 }}>
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Import blocked</div>
-                    <div>One or more required metrics would be all null after parsing. Review samples below:</div>
-                    <ul style={{ margin: 0, paddingLeft: 16 }}>
-                      {blockers.map((b) => (
-                        <li key={b.key}>
-                          {b.key}: samples {JSON.stringify(sampleFor(b.key))}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+              <details style={{ marginBottom: 8 }}>
+                <summary style={{ cursor: 'pointer' }}>Warnings & blockers</summary>
+                <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+                  {warn.length > 0 && (
+                    <div style={{ padding: 8, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: 6 }}>
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>Low coverage warnings (&lt; 20%)</div>
+                      <ul style={{ margin: 0, paddingLeft: 16 }}>
+                        {warn.map(([k, v]) => (
+                          <li key={k}>{k}: {(v.nonNull)}/{v.total} ({Math.round((v.nonNull / (v.total || 1)) * 100)}%)</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {hasBlock && (
+                    <div style={{ padding: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#7f1d1d', borderRadius: 6 }}>
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>Import blocked</div>
+                      <div>One or more required metrics would be all null after parsing. Review samples below:</div>
+                      <ul style={{ margin: 0, paddingLeft: 16 }}>
+                        {blockers.map((b) => (
+                          <li key={b.key}>
+                            {b.key}: samples {JSON.stringify(sampleFor(b.key))}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </details>
             );
           })()}
           {/* Skipped rows by reason (diagnostic). Note: Benchmarks will be written to benchmark_performance. */}
-          <div id="skip-reasons-box" style={{ padding: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', borderRadius: 6, margin: '8px 0' }}>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>Skipped rows by reason</div>
-            {Object.keys(skipReasons || {}).length === 0 ? (
-              <div style={{ color: '#6b7280' }}>None</div>
-            ) : (
-              <div style={{ display: 'grid', gap: 8 }}>
-                {Object.entries(skipReasons).map(([reason, info]) => (
-                  <div key={reason} style={{ padding: 6, background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 6 }}>
-                    <div><strong>{reason}</strong> — {info.count}</div>
-                    {info.tickers?.length > 0 && (
-                      <div style={{ marginTop: 4, color: '#1f2937', fontSize: 12 }}>
-                        First 10 tickers: {info.tickers.join(', ')}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <details id="skip-reasons-box" style={{ padding: 8, background: '#f1f5f9', border: '1px solid #e5e7eb', borderRadius: 6, margin: '8px 0' }}>
+            <summary style={{ cursor: 'pointer' }}>Why skipped?</summary>
+            <div style={{ marginTop: 8 }}>
+              {Object.keys(skipReasons || {}).length === 0 ? (
+                <div style={{ color: '#6b7280' }}>None</div>
+              ) : (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {Object.entries(skipReasons).map(([reason, info]) => (
+                    <div key={reason} style={{ padding: 6, background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+                      <div><strong>{reason}</strong> — {info.count}</div>
+                      {info.tickers?.length > 0 && (
+                        <div style={{ marginTop: 4, color: '#1f2937', fontSize: 12 }}>
+                          First 10 tickers: {info.tickers.join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </details>
           {counts.eomWarnings > 0 && (
             <div style={{ padding: 8, background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', borderRadius: 6, marginBottom: 8 }}>
               Some CSV rows are not end-of-month. The picker will auto-correct to end-of-month.

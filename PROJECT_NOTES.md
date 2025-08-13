@@ -1,3 +1,45 @@
+# Scoring Model Enhancement Plan and Progress Notes
+
+This document logs the plan and ongoing progress to enhance the scoring model implementation.
+
+## Goals
+- Improve stability and fairness of scores across asset classes and time.
+- Make outlier handling and missing data behavior explicit and tunable.
+- Increase transparency (coverage, weight provenance, small-sample behavior).
+
+## Phased Plan
+
+### Sprint A (P0/P1)
+- Coverage-aware weighting: per asset class, metrics below a coverage threshold are excluded and remaining weights are reweighted proportionally; surface exclusions in breakdown.
+- Z-shrink for thin samples: when peer count for a metric is small, shrink Z by a factor λ(count) to reduce volatility; surface the shrink factor.
+
+### Sprint B (P1)
+- Adaptive winsorization: derive per-class quantile clamps for each metric (fallback to static clamps for small n).
+- Effective weights inspector: show profile, and effective weights by source (fund/class/global/default).
+
+### Sprint C (P2)
+- Robust scaling to 0–100 using per-class robust anchors (e.g., 5th/median/95th percentiles), behind a feature flag.
+- Optional benchmark-delta derived metric with small positive weight, gated by data presence.
+
+### Sprint D (P1)
+- Refactor scoring into math/policy/metrics modules with focused unit tests.
+
+## Feature Flags / Config (to add)
+- REACT_APP_SCORING_COVERAGE_THRESHOLD (default 0.4)
+- REACT_APP_SCORING_Z_SHRINK_K (default 10)
+- REACT_APP_ENABLE_ADAPTIVE_WINSOR (default false)
+- REACT_APP_WINSOR_Q_LO / REACT_APP_WINSOR_Q_HI (defaults 0.01 / 0.99)
+- REACT_APP_ENABLE_ROBUST_SCALING (default false)
+- REACT_APP_ENABLE_BENCH_DELTA (default false)
+
+## Progress Log
+
+- [Sprint A] Initialize notes and flags. Implement coverage-aware weighting (per-class) and Z-shrink for thin samples. Add breakdown fields `excludedForCoverage` and `zShrinkFactor`. Update unit tests.
+- [Sprint B] Implement adaptive winsorization (empirical per-class clamps) and weights inspector data (weight source per metric). Add tests.
+- [Sprint C] Implement robust scaling flag and optional benchmark delta metric. Add tests.
+- [Sprint C] Added robust scaling unit test and benchmark-delta unit test; integrated delta metric into defaults with 0 weight.
+- [Sprint D] Refactor scoring code and add pure-unit tests.
+
 # Lightship Balanced Redesign — Project Notes
 
 ## Vision

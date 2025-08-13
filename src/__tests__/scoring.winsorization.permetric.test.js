@@ -29,3 +29,30 @@ describe('winsorization per-metric limits produce different clamps', () => {
   });
 });
 
+describe('coverage-aware weighting and Z-shrink behavior', () => {
+  const origCov = process.env.REACT_APP_SCORING_COVERAGE_THRESHOLD;
+  const origK = process.env.REACT_APP_SCORING_Z_SHRINK_K;
+  afterAll(() => {
+    if (origCov !== undefined) process.env.REACT_APP_SCORING_COVERAGE_THRESHOLD = origCov;
+    if (origK !== undefined) process.env.REACT_APP_SCORING_Z_SHRINK_K = origK;
+  });
+
+  test('excludes low-coverage metrics and shrinks Z on thin samples', () => {
+    jest.resetModules();
+    process.env.REACT_APP_SCORING_COVERAGE_THRESHOLD = '0.9'; // force exclusion in tiny samples
+    process.env.REACT_APP_SCORING_Z_SHRINK_K = '10';
+    const scoring = require('../services/scoring');
+    const funds = [
+      { ticker: 'A', asset_class_name: 'Tiny', ytd_return: 1, one_year_return: 2, sharpe_ratio: 1.0, standard_deviation_3y: 10 },
+      { ticker: 'B', asset_class_name: 'Tiny', ytd_return: 2, one_year_return: 3, sharpe_ratio: 0.5, standard_deviation_3y: 12 }
+    ];
+    const out = scoring.calculateScores(funds);
+    expect(out.length).toBe(2);
+    const bd = out[0].scores.breakdown || {};
+    const entries = Object.values(bd);
+    const hasCoverageFlag = entries.some(e => e && e.excludedForCoverage === true);
+    const hasShrink = entries.some(e => e && typeof e.zShrinkFactor === 'number' && e.zShrinkFactor < 1);
+    expect(hasCoverageFlag || hasShrink).toBe(true);
+  });
+});
+

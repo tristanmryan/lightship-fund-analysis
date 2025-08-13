@@ -478,7 +478,8 @@ export async function exportRecommendedFundsCSV() {
     ]))
   ];
   const csv = buildCSV(rows);
-  return downloadBlob(csv, 'recommended_funds.csv');
+  const filename = formatExportFilename({ scope: 'recommended_funds', ext: 'csv' });
+  return downloadBlob(csv, filename);
 }
 
 /**
@@ -510,7 +511,8 @@ export async function exportPrimaryBenchmarkMappingCSV() {
     ]))
   ];
   const csv = buildCSV(rows);
-  return downloadBlob(csv, 'primary_benchmark_mapping.csv');
+  const filename = formatExportFilename({ scope: 'primary_benchmark_mapping', ext: 'csv' });
+  return downloadBlob(csv, filename);
 }
 
 function downloadBlob(csvString, filename) {
