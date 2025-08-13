@@ -1,6 +1,6 @@
 // App.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Home, Table as TableIcon, BarChart3 as BarChartIcon, ShieldCheck, Settings, Download, RefreshCw, HelpCircle, Share2 } from 'lucide-react';
+import { Home as HomeIcon, Table as TableIcon, BarChart3 as BarChartIcon, ShieldCheck, Settings, Download, RefreshCw, HelpCircle, Share2, Info } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './App.css'; // Import the CSS file
 import LoginModal from './components/Auth/LoginModal';
@@ -491,7 +491,7 @@ const App = () => {
         <nav className="sidebar-nav">
           <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => { setActiveTab('dashboard'); navigate('/dashboard'); }}>
             <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-              <Home size={16} aria-hidden />
+              <HomeIcon size={16} aria-hidden />
               <span>Home</span>
             </span>
           </button>
