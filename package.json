@@ -21,7 +21,8 @@
     "react-scripts": "5.0.1",
     "string-similarity": "^4.0.4",
     "web-vitals": "^2.1.4",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "cross-env": "^10.0.0"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -50,7 +51,5 @@
       "last 1 safari version"
     ]
   },
-  "devDependencies": {
-    "cross-env": "^10.0.0"
-  }
+  "devDependencies": {}
 }
