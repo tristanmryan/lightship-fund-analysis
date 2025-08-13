@@ -25,6 +25,7 @@
  - `chartPeriod` is persisted and restored as part of the saved view.
  - Minimal unit tests added; all tests pass locally.
  - Research Notes v1 (append-only) behind `REACT_APP_ENABLE_NOTES` flag; interim author = `authService.getCurrentUser()?.id || 'guest'`.
+ - Research Workflow MVP (decision log per fund): UI supports adding a note with optional Decision and Override link; newest-first list shows author and timestamp; append-only enforced; tests added; screenshot placeholder `docs/screenshots/phase3/research_notes.png`.
  - Saved Compare Sets v1 in `ComparisonPanel` using `preferencesService` (`compare_sets_v1`), with Save/Load/Delete, 4-fund limit, case-insensitive names, and missing-ticker notice.
  - Runtime scoring per As-of month (flagged): `REACT_APP_ENABLE_RUNTIME_SCORING`
    - Computes Z-score–based scores at runtime for the current As-of month peer set (per asset class; benchmarks excluded), wiring added in `useFundData`.
@@ -44,7 +45,8 @@
   - Catalogs: added canonical asset class "Mid-Cap Blend" (code `MID_CAP_BLEND`, U.S. Equity, sort_order 220) with default primary benchmark mapping to `IWR` (iShares Russell Mid-Cap ETF).
 
 ### In Progress
-- Research workflow: schema and UI spec (notes + decision log; audited; linked to overrides).
+
+// none
 - PDF exports: Dashboard PDF (all filtered) and Recommended-only PDF complete.
 - CSV-only ingestion: Monthly Snapshot Upload + As-of selector complete; Seeders complete.
  - Monthly Snapshot Upload (CSV): Admin-only page for upload→preview→import (idempotent upsert on (fund_ticker,date)), unknown tickers skipped with seeding CTA, non-EOM warns; dashboard selector lists distinct months and clamps sparklines. Template and legacy template available.
@@ -54,11 +56,10 @@ Planned near-term work:
 - HealthCheck: surface YCharts ingestion last-run time, last error (once scheduler lands).
 
 ### Next Steps (Prioritized)
-1) Research workflow MVP (notes/decision log per fund; audit trail; attach to overrides).
-2) Compare sets (local per-user first; design shared model).
-3) CSV/Excel/PDF exports: minor polish (file naming, recommended-only CSV).
+1) Compare sets (local per-user first; design shared model).
+2) CSV/Excel/PDF exports: minor polish (file naming, recommended-only CSV).
+3) Health surfacing: defer YCharts scheduler/errors until after MVP.
 4) Server-side Saved Views with Supabase RLS once Supabase Auth is in the UI; keep IndexedDB as offline cache.
-5) Defer YCharts ingestion until after MVP; omit Health surfacing.
 
 ### Technical Architecture
 

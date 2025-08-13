@@ -419,6 +419,18 @@ export function generateHTMLReport(data) {
 }
 
 /**
+ * Generate a standardized filename for exports
+ * Example: lightship_table_20250131_142530.csv or lightship_pdf_all_latest_20250131_142530.pdf
+ */
+export function formatExportFilename({ scope = 'export', asOf = null, ext = 'csv' }) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const now = new Date();
+  const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const asOfPart = (typeof asOf === 'string' && asOf.trim()) ? asOf.replace(/-/g, '') : 'latest';
+  return `lightship_${scope}_${asOfPart}_${ts}.${ext}`;
+}
+
+/**
  * Build CSV content string with BOM, CRLF line endings, and all fields quoted
  * Rows is an array of arrays of primitive values (string | number | null | undefined)
  * Returns a string starting with BOM for Excel compatibility

@@ -352,7 +352,7 @@ const FundManagement = () => {
         <h3>How It Works</h3>
         <ol>
           <li><strong>Add Funds:</strong> Enter a ticker symbol (e.g., VTSAX, SPY) and select an asset class</li>
-          <li><strong>Auto-Fetch Data:</strong> The app automatically fetches fund details from Ycharts API</li>
+          <li><strong>Import Performance (CSV-only MVP):</strong> Use Admin → Data Uploads → Monthly Snapshot Upload. The Month/Year picker is required and overrides CSV dates.</li>
           <li><strong>Manage Recommendations:</strong> Toggle the recommendation status for each fund</li>
           <li><strong>View Performance:</strong> Check the Performance tab to see your funds' data</li>
         </ol>

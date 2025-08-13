@@ -70,6 +70,7 @@ export default function MonthlySnapshotUpload() {
   const [hasAsOfColumn, setHasAsOfColumn] = useState(false);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState(null);
+  const [toast, setToast] = useState(null);
   const [month, setMonth] = useState(''); // 1-12 as string
   const [year, setYear] = useState(''); // YYYY as string
   const [headerMap, setHeaderMap] = useState({ recognized: [], unrecognized: [] });
@@ -416,9 +417,12 @@ export default function MonthlySnapshotUpload() {
         const importedMonth = monthsArr[0];
         if (importedMonth) {
           asOfStore.setActiveMonth(importedMonth);
-          // Tiny toast
-          // eslint-disable-next-line no-alert
-          console.log(`Switched to ${new Date(importedMonth).toLocaleString('en-US', { month: 'short', year: 'numeric' })}`);
+          // Tiny toast UI
+          try {
+            const msg = `Import successful — active month set to ${new Date(importedMonth).toLocaleString('en-US', { month: 'short', year: 'numeric' })}`;
+            setToast(msg);
+            setTimeout(() => setToast(null), 4000);
+          } catch {}
         }
       } catch {}
     } catch (error) {
@@ -444,6 +448,18 @@ export default function MonthlySnapshotUpload() {
 
   return (
     <div className="card" style={{ padding: 16, marginTop: 16 }}>
+      {toast && (
+        <div style={{
+          marginBottom: 8,
+          padding: 8,
+          background: '#ecfdf5',
+          border: '1px solid #a7f3d0',
+          color: '#065f46',
+          borderRadius: 6
+        }}>
+          {toast}
+        </div>
+      )}
       <h3 style={{ marginTop: 0 }}>Monthly Snapshot Upload (CSV)</h3>
       <p style={{ color: '#6b7280', marginTop: 4 }}>Upload → Preview → Import. One CSV per month. Month/Year picker is required; it overrides any CSV dates.</p>
 

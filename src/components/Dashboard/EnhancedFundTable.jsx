@@ -8,7 +8,7 @@ import { getScoreColor, METRICS_CONFIG } from '../../services/scoring';
 import { computeBenchmarkDelta } from './benchmarkUtils';
 import Sparkline from './Sparkline';
 import fundService from '../../services/fundService';
-import { exportTableCSV, downloadFile, shouldConfirmLargeExport } from '../../services/exportService';
+import { exportTableCSV, downloadFile, shouldConfirmLargeExport, formatExportFilename } from '../../services/exportService';
 
 /**
  * Enhanced Fund Table Component
@@ -657,9 +657,8 @@ const EnhancedFundTable = ({
         exportedAt: new Date()
       }
     });
-    const now = new Date();
-    const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
-    downloadFile(blob, `table_export_${ts}.csv`, 'text/csv;charset=utf-8');
+    const filename = formatExportFilename({ scope: 'table', asOf: (window.__AS_OF_MONTH__ || null), ext: 'csv' });
+    downloadFile(blob, filename, 'text/csv;charset=utf-8');
   }, [sortedFunds, sortConfig, chartPeriod, columnDefinitions, buildExportColumns]);
 
   useEffect(() => {
@@ -749,9 +748,8 @@ const EnhancedFundTable = ({
                 valueGetter: (fund) => columnDefinitions[k].getValue(fund)
               }));
               const blob = exportTableCSV({ funds: rec, columns: cols, sortConfig: [], metadata: { exportedAt: new Date(), kind: 'recommended_list' } });
-              const now = new Date();
-              const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
-              downloadFile(blob, `recommended_list_${ts}.csv`, 'text/csv;charset=utf-8');
+              const filename = formatExportFilename({ scope: 'table_recommended', asOf: (window.__AS_OF_MONTH__ || null), ext: 'csv' });
+              downloadFile(blob, filename, 'text/csv;charset=utf-8');
             }}
             disabled={sortedFunds.filter(f => f.is_recommended || f.recommended).length === 0}
             style={{

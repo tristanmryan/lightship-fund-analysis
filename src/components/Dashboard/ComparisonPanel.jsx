@@ -114,6 +114,7 @@ const ComparisonPanel = ({ funds = [], initialSavedSets = null }) => {
     setSavedSets(next);
     await preferencesService.saveCompareSets(next);
     setCurrentLoaded(name);
+    setNotice(existing ? `Updated set "${name}".` : `Saved set "${name}".`);
   }
 
   async function handleLoad(nameKey) {
@@ -138,6 +139,8 @@ const ComparisonPanel = ({ funds = [], initialSavedSets = null }) => {
     setSavedSets(next);
     await preferencesService.saveCompareSets(next);
     setCurrentLoaded('');
+    setSetName('');
+    setNotice(`Deleted set "${savedSets[name]?.name || name}".`);
   }
 
   function handleExport() {
@@ -203,7 +206,11 @@ const ComparisonPanel = ({ funds = [], initialSavedSets = null }) => {
         >
           <option value="">Load set…</option>
           {Object.entries(savedSets)
-            .sort((a,b) => (a[0].localeCompare(b[0])))
+            .sort((a,b) => {
+              const an = a[1]?.name || a[0];
+              const bn = b[1]?.name || b[0];
+              return an.localeCompare(bn);
+            })
             .map(([key, val]) => (
               <option key={key} value={key}>{val?.name || key}</option>
             ))}
