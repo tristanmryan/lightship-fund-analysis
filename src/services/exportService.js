@@ -22,7 +22,7 @@ export function exportToExcel(data) {
   // Create workbook
   const wb = XLSX.utils.book_new();
 
-  // Sheet 1: Overview
+  // Sheet 1: Summary
   const overviewData = [
     ['Raymond James - Lightship Fund Analysis Report'],
     ['Generated:', new Date().toLocaleString()],
@@ -48,7 +48,7 @@ export function exportToExcel(data) {
   });
 
   const ws_overview = XLSX.utils.aoa_to_sheet(overviewData);
-  XLSX.utils.book_append_sheet(wb, ws_overview, 'Overview');
+  XLSX.utils.book_append_sheet(wb, ws_overview, 'Summary');
 
   // Sheet 2: All Funds
   const fundHeaders = [

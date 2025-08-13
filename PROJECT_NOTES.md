@@ -70,7 +70,7 @@ This document logs the plan and ongoing progress to enhance the scoring model im
   - Project notes created; plan agreed
   - RPC `get_funds_as_of(date)` added; Supabase stub supports rpc
   - Importer: enabled in non‑prod; Seed missing funds button + re-parse
-  - App shell: simplified nav; global As-of selector; Overview trust meter
+  - App shell: simplified nav; global As-of selector; Home KPI row and triage
   - Data Health upgraded: counts, coverage bars, dictionary readiness, Admin quick actions
   - Admin Utilities: Convert Snapshot to EOM tool; non-EOM banner wired
   - Setup guard for missing Supabase env vars

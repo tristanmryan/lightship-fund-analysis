@@ -1,7 +1,7 @@
 # UX Spec (Phase 1)
 
 - Information Architecture
-  - Overview: KPI cards, global As-of selector (EOM), trust meter; quick links to issues
+  - Home: KPI cards, global As-of selector (EOM), triage; quick links to issues
   - Funds: RPC-backed table; normalized live fields; benchmark deltas; drilldown
   - Asset Classes: summaries; link to constituents
   - Data Health: counts, coverage, dictionary readiness; CTAs to Admin

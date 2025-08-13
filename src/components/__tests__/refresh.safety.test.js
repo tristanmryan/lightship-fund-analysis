@@ -14,7 +14,8 @@ jest.mock('../../services/asOfStore', () => ({
   default: {
     syncWithDb: async () => ({ active: null, latest: null }),
     getActiveMonth: () => null,
-    setActiveMonth: () => {}
+    setActiveMonth: () => {},
+    subscribe: () => () => {}
   }
 }));
 jest.mock('../../services/supabase', () => ({

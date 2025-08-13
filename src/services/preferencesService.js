@@ -24,6 +24,7 @@ function buildKey(suffix) {
 const VIEW_DEFAULTS_KEY_SUFFIX = 'view_defaults_v1';
 const FILTER_PRESETS_KEY_SUFFIX = 'filter_presets_v1';
 const COMPARE_SETS_KEY_SUFFIX = 'compare_sets_v1';
+const DASHBOARD_WIDGETS_KEY_SUFFIX = 'dashboard_widgets_v1';
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -105,6 +106,23 @@ export async function saveCompareSets(compareSets) {
   await savePreference(key, compareSets || {});
 }
 
+// Dashboard widgets visibility
+export async function getDashboardWidgets() {
+  if (!isEnabled()) return null;
+  const key = buildKey(DASHBOARD_WIDGETS_KEY_SUFFIX);
+  try {
+    return await getPreference(key);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveDashboardWidgets(config) {
+  if (!isEnabled()) return;
+  const key = buildKey(DASHBOARD_WIDGETS_KEY_SUFFIX);
+  await savePreference(key, config || {});
+}
+
 const preferencesApi = {
   getViewDefaults,
   saveViewDefaults,
@@ -112,7 +130,9 @@ const preferencesApi = {
   getFilterPresets,
   saveFilterPresets,
   getCompareSets,
-  saveCompareSets
+  saveCompareSets,
+  getDashboardWidgets,
+  saveDashboardWidgets
 };
 
 export default preferencesApi;

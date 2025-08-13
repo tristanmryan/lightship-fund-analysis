@@ -1,41 +1,36 @@
-# UX Improvement Sprints
+# Dashboard Redesign Project - Sprints
 
-## Sprint 1 – Routing + Toolbar + Shortcuts
-- [x] Add `react-router-dom@6` and wrap in `BrowserRouter` (`src/index.js`)
-- [x] URL-synced tabs and sidebar navigation (`src/App.jsx`)
-- [x] Number key shortcuts update to route-aware navigation
-- [x] Header toolbar: As-of Month, Refresh, Export, Help
-- [x] Export uses `exportService` and matches Ctrl+E
-- [x] Fix conditional hook in `DrilldownCards.jsx`
-- [x] Build passes with CI-safe script
-- [x] Persist last visited tab in `localStorage`
-- [x] Legacy route aliases (`/funds`, `/scores` → `/performance`)
-- [x] Keyboard shortcut hint in sidebar
+This file tracks the new Home dashboard project (replacing legacy overview). Previous sprint notes have been archived under `docs/projects/`.
 
-## Sprint 2 – Import Wizard + Empty/Loading/Error States (completed)
-- [x] “Use sample data” toggle for importer (loads `public/sample-data/monthly_example.csv`)
-- [x] Skeleton loaders framework in Performance dashboard
-- [x] CSV import: drag-and-drop support and manual header mapping
-- [x] Validate/confirm modal with summary prior to import
-- [x] Rich empty states with actions across Dashboard/Analytics
-  - [x] Dashboard empty state CTA to Importer + one-click sample load
-  - [x] Analytics empty/skeleton states
+## Sprint 1 – Foundation & Skeleton (current)
+- Create `src/components/Dashboard/Home.jsx` with modular grid layout (Top bar → KPIs → Triage → What Changed → Widgets row → Quick actions)
+- Add `src/services/dashboardService.js` with stubbed contracts:
+  - `getKpis(asOf)` → { funds, recommended, minCoverage, alertsCount, snapshotDate, freshnessDays }
+  - `getTriage(asOf)` → array of items { severity, title, detail, action }
+  - `getDeltas(currAsOf, prevAsOf)` → { moversUp[], moversDown[], newlyRecommended[], dropped[] }
+- Wire Home into navigation (replace any “Overview” entry with Home)
+- Render placeholders fed by service
+- Tests: smoke render + shape checks
 
-## Sprint 3 – Data Health Triage + Methodology (completed)
-- [x] Triage board (Critical/Warning/Info) with quick fixes in `HealthCheck`
-- [x] Health badge in sidebar (min coverage)
-- [x] Methodology drawer + global trigger in header
-- [x] Info buttons on key table metrics trigger Methodology
-- [x] Info buttons added to Analytics cards (Heatmap/Overview/Performers/Compare)
-- [x] Health triage quick actions deep-link to Admin sections
+## Sprint 2 – Triage & What Changed
+- Implement triage using existing data and `HealthCheck` logic: unresolved funds, classes missing benchmarks, low metric coverage, non‑EOM/zero rows
+- Implement deltas vs prior EOM snapshot (compare two dates via queries)
+- Action buttons: Importer, Catalogs, Data Health deep-links
+- Persist minimal widget visibility via `preferencesService`
 
-## Sprint 4 – Analytics polish + Sharing (planned)
- - [x] Consistent chart tooltips and cross-highlighting
-  - [x] Unified tooltip styles for Heatmap (shared styles)
-  - [x] Heatmap hover emits highlight; Performers and Heatmap cross-highlight
-- [x] Export cards as PNG (Heatmap/Overview/Performers/Compare)
-- [x] Copy charts to clipboard when supported
- - [x] Shareable URLs including filters (copy share link)
-  - [x] Cross-highlighting between Performers and Heatmap (hover)
-  - [x] Include Compare selection in shared link (best-effort)
+## Sprint 3 – Widgets & Polish
+- Add widgets: Mini Heatmap, Top/Bottom performers, Asset Class mini-overview (condensed)
+- Add quick actions: Import CSV, Compare, Export report, Open Data Health
+- Optional: Notes feed if `REACT_APP_ENABLE_NOTES` is true
+- Responsive layout, skeletons, and empty states
+
+## Sprint 4 – Docs & QA
+- Create `docs/dashboard_redesign.md` with screenshots and usage
+- E2E smoke: Import → Home updates without manual refresh; Triage links navigate to Admin; deltas reflect next snapshot
+- Retire legacy “overview” references
+
+Acceptance criteria
+- Home shows KPIs, triage, deltas for active as-of month
+- After import, Home updates automatically (store subscription)
+- Action buttons route correctly
 

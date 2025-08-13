@@ -36,17 +36,21 @@ function createStubClient() {
   const resolved = (data = null) => Promise.resolve({ data, error: null });
 
   const makeFilterBuilder = () => {
-    const fb = {
-      select: () => fb,
-      eq: () => fb,
-      is: () => fb,
-      or: () => fb,
-      order: () => resolved([]),
-      limit: () => resolved([]),
-      range: () => resolved([]),
-      single: () => resolved(null),
-      maybeSingle: () => resolved(null)
-    };
+    const fb = {};
+    // Chainable no-ops
+    fb.select = () => fb;
+    fb.eq = () => fb;
+    fb.is = () => fb;
+    fb.or = () => fb;
+    fb.lt = () => fb;
+    fb.like = () => fb;
+    fb.in = () => fb;
+    fb.order = () => fb;
+    // Terminal methods return a result-like object
+    fb.limit = () => resolved([]);
+    fb.range = () => resolved([]);
+    fb.single = () => resolved(null);
+    fb.maybeSingle = () => resolved(null);
     return fb;
   };
 
@@ -56,7 +60,7 @@ function createStubClient() {
     upsert: () => resolved(null),
     delete: () => resolved(null),
     update: () => resolved(null),
-    order: () => resolved([]),
+    order: () => fromBuilder,
     range: () => resolved([]),
     single: () => resolved(null),
     maybeSingle: () => resolved(null),

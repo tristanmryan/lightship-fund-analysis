@@ -21,6 +21,7 @@ import fundRegistry from './services/fundRegistry';
 import PerformanceHeatmap from './components/Dashboard/PerformanceHeatmap';
 import TopBottomPerformers from './components/Dashboard/TopBottomPerformers';
 import AssetClassOverview from './components/Dashboard/AssetClassOverview';
+import Home from './components/Dashboard/Home';
 import CorrelationMatrix from './components/Analytics/CorrelationMatrix';
 import RiskReturnScatter from './components/Analytics/RiskReturnScatter';
 import EnhancedPerformanceDashboard from './components/Dashboard/EnhancedPerformanceDashboard';
@@ -487,7 +488,7 @@ const App = () => {
       <aside className="sidebar">
         <div className="sidebar-logo">Raymond James</div>
         <nav className="sidebar-nav">
-          <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => { setActiveTab('dashboard'); navigate('/dashboard'); }}>Overview</button>
+          <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => { setActiveTab('dashboard'); navigate('/dashboard'); }}>Home</button>
           <button className={activeTab === 'performance' ? 'active' : ''} onClick={() => { setActiveTab('performance'); navigate('/performance'); }}>Funds</button>
           <button className={activeTab === 'class' ? 'active' : ''} onClick={() => { setActiveTab('class'); navigate('/class'); }}>Asset Classes</button>
           <button className={activeTab === 'health' ? 'active' : ''} onClick={() => { setActiveTab('health'); navigate('/health'); }}>
@@ -588,157 +589,7 @@ const App = () => {
 
       {/* Dashboard Tab */}
       {activeTab === 'dashboard' && (
-        <div>
-              <div className="card-header">
-                <h2 className="card-title">Fund Analysis Dashboard</h2>
-                <p className="card-subtitle">Comprehensive overview of fund performance and analysis</p>
-                <div style={{ 
-                  marginTop: '1rem', 
-                  padding: '0.75rem', 
-                  backgroundColor: '#eff6ff', 
-                  border: '1px solid #3b82f6', 
-                  borderRadius: '0.375rem',
-                  fontSize: '0.875rem'
-                }}>
-                  💡 <strong>New:</strong> Try the <button 
-                    onClick={() => { setActiveTab('performance'); navigate('/performance'); }} 
-                    style={{ 
-                      color: '#3b82f6', 
-                      textDecoration: 'underline', 
-                      background: 'none', 
-                      border: 'none', 
-                      cursor: 'pointer',
-                      fontWeight: '600'
-                    }}
-                  >Enhanced Performance Dashboard</button> with advanced filtering and sorting capabilities!
-                </div>
-              </div>
-              {/* Trust Meter */}
-              {(() => {
-                const total = (funds || []).length;
-                const nz = (arr) => arr.filter(v => v != null && !Number.isNaN(v)).length;
-                const ytdOk = nz((funds || []).map(f => f.ytd_return));
-                const oneYOk = nz((funds || []).map(f => f.one_year_return));
-                const sharpeOk = nz((funds || []).map(f => f.sharpe_ratio));
-                const sd3Ok = nz((funds || []).map(f => (f.standard_deviation_3y ?? f.standard_deviation)));
-                const covs = [ytdOk, oneYOk, sharpeOk, sd3Ok].map(n => total ? Math.round((n / total) * 100) : 0);
-                const minCov = covs.length ? Math.min(...covs) : 0;
-                const color = minCov >= 80 ? '#16a34a' : minCov >= 50 ? '#f59e0b' : '#dc2626';
-                const label = minCov >= 80 ? 'Good' : minCov >= 50 ? 'Fair' : 'Poor';
-                const tinyClassActive = (process.env.REACT_APP_ENABLE_TINY_CLASS_FALLBACK || 'false') === 'true';
-                return (
-                  <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Data Health</div>
-                    <div title={tinyClassActive ? 'Tiny-class fallback is active; scores are conservative in sparse classes' : ''} style={{ background: color, color: 'white', borderRadius: 9999, padding: '4px 10px', fontWeight: 600 }}>
-                      {label} • min coverage {minCov}%{tinyClassActive ? ' • tiny-class mode' : ''}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Non-EOM banner */}
-              {(() => {
-                if (!asOfMonth) return null;
-                try {
-                  const a = new Date(asOfMonth + 'T00:00:00Z');
-                  const end = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() + 1, 0));
-                  const isEom = a.getUTCDate() === end.getUTCDate();
-                  if (isEom) return null;
-                  return (
-                    <div style={{ marginTop: '0.75rem', background:'#fffbeb', border:'1px solid #fde68a', color:'#92400e', borderRadius:6, padding:'8px 12px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
-                      <div>
-                        Active month {asOfMonth} is not end-of-month. Data may be incomplete. Convert to EOM for consistency.
-                      </div>
-                      <button className="btn btn-secondary" onClick={(e)=>{
-                        e.preventDefault();
-                        window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } }));
-                        window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'utilities' } }));
-                      }}>Open Utilities</button>
-                    </div>
-                  );
-                } catch { return null; }
-              })()}
-              
-              {funds.length > 0 ? (
-                <div>
-                  {/* Summary Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 'var(--spacing-lg)', marginBottom: 'var(--spacing-lg)' }}>
-                    <div className="card">
-                      <div className="card-header">
-                        <h3 className="card-title">Total Funds</h3>
-                      </div>
-                      <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
-                        {funds.length}
-                      </div>
-                </div>
-                
-                    <div className="card">
-                      <div className="card-header">
-                        <h3 className="card-title">Asset Classes</h3>
-                      </div>
-                      <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
-                        {assetClasses.length}
-                      </div>
-                    </div>
-                    
-                    <div className="card">
-                      <div className="card-header">
-                        <h3 className="card-title">Top Performers</h3>
-                      </div>
-                      <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-success)' }}>
-                        {funds.filter(f => f.is_recommended || f.recommended).length}
-                      </div>
-                    </div>
-                    
-                    <div className="card">
-                      <div className="card-header">
-                        <h3 className="card-title">Review Candidates</h3>
-                      </div>
-                      <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-error)' }}>
-                        {reviewCandidates.length}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Performance Heatmap */}
-                  <div className="card">
-                    <div className="card-header">
-                      <h3 className="card-title">Performance Heatmap</h3>
-                      <p className="card-subtitle">Visual representation of fund performance across asset classes</p>
-                    </div>
-                    <PerformanceHeatmap funds={funds} />
-                  </div>
-
-                  {/* Top/Bottom Performers */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-lg)' }}>
-                    <div className="card">
-                      <div className="card-header">
-                        <h3 className="card-title">Top Performers</h3>
-                </div>
-                      <TopBottomPerformers funds={funds} />
-              </div>
-              
-                    <div className="card">
-                      <div className="card-header">
-                        <h3 className="card-title">Asset Class Overview</h3>
-                      </div>
-                      <AssetClassOverview funds={funds} />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="card" style={{ display:'grid', gap:12 }}>
-                  <div className="card-header">
-                    <h3 className="card-title">No Data Yet</h3>
-                    <p className="card-subtitle">Import a monthly CSV or try sample data to explore the app.</p>
-                  </div>
-                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                    <button className="btn" onClick={() => { setActiveTab('admin'); navigate('/admin'); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); }}>Go to Importer</button>
-                    <button className="btn btn-secondary" onClick={() => { setActiveTab('admin'); navigate('/admin'); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { const ev = new CustomEvent('LOAD_SAMPLE_DATA'); window.dispatchEvent(ev); } catch {} }, 300);} }>Use sample data</button>
-                  </div>
-                </div>
-              )}
-        </div>
+        <Home />
       )}
 
       {/* Funds Tab */}

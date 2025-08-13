@@ -398,24 +398,30 @@ export async function loadEffectiveWeightsResolver() {
           if (zScore < zLo) zScore = zLo;
           if (zScore > zHi) zScore = zHi;
         }
-        // Z-shrink for thin samples
-        if (Number.isFinite(Z_SHRINK_K) && Z_SHRINK_K > 1 && stats.count < Z_SHRINK_K) {
-          const lambda = Math.max(0, Math.min(1, (stats.count - 1) / (Z_SHRINK_K - 1)));
-          zScore = zScore * lambda;
-        }
+        // Fixed winsorization clamp (apply before z-shrink)
         if (ENABLE_WINSORIZATION && !(ENABLE_ADAPTIVE_WINSOR && stats.qLo != null && stats.qHi != null)) {
           zScore = winsorizeZ(zScore, metric);
+        }
+        // Z-shrink for thin samples (apply after winsor).
+        // Behavior:
+        // - When winsorization is OFF: always apply shrink for thin samples
+        // - When winsorization is ON: apply shrink only on very tiny samples (<=3) to avoid overwhelming clamps
+        const shouldShrink = (!ENABLE_WINSORIZATION && Number.isFinite(Z_SHRINK_K) && Z_SHRINK_K > 1 && stats.count < Z_SHRINK_K)
+          || (ENABLE_WINSORIZATION && stats.count <= 3 && Number.isFinite(Z_SHRINK_K) && Z_SHRINK_K > 1);
+        if (shouldShrink) {
+          const lambda = Math.max(0, Math.min(1, (stats.count - 1) / (Z_SHRINK_K - 1)));
+          zScore = zScore * lambda;
         }
         const weightedZScore = zScore * weight;
         
         const sourceInfo = resolver?.getWeightSource ? resolver.getWeightSource(fund, metric) : null;
         scoreBreakdown[metric] = {
           value,
-          zScore: Math.round(zScore * 100) / 100, // Round to 2 decimals
+          zScore: Math.round(zScore * 1000) / 1000, // Round to 3 decimals for fidelity
           weight,
           weightedZScore: Math.round(weightedZScore * 1000) / 1000, // Round to 3 decimals
           percentile: calculatePercentile(value, stats, metric, weight),
-          zShrinkFactor: (Number.isFinite(Z_SHRINK_K) && Z_SHRINK_K > 1 && stats.count < Z_SHRINK_K)
+          zShrinkFactor: (shouldShrink)
             ? Math.max(0, Math.min(1, (stats.count - 1) / (Z_SHRINK_K - 1)))
             : 1,
           weightSource: sourceInfo?.source || 'resolved',

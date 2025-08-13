@@ -23,7 +23,8 @@ test('refresh in production does not write or create snapshots', async () => {
     default: {
       syncWithDb: async () => ({ active: null, latest: null }),
       getActiveMonth: () => '2025-07-31',
-      setActiveMonth: () => {}
+      setActiveMonth: () => {},
+      subscribe: () => () => {}
     }
   }));
   // React already imported above

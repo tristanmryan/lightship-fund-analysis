@@ -65,6 +65,7 @@ To learn React, check out the [React documentation](https://reactjs.org/).
 
 - Scoring policy: [docs/SCORING_POLICY.md](./docs/SCORING_POLICY.md)
 - Advisor glossary: [docs/advisor_glossary.md](./docs/advisor_glossary.md)
+- Dashboard redesign (Home): [docs/dashboard_redesign.md](./docs/dashboard_redesign.md)
 
 ### CSV-only MVP (Phase 3)
 
