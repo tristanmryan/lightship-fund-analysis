@@ -66,6 +66,9 @@ export default function DataHealth() {
       <div className="card-header">
         <h4 className="card-title">Data Health</h4>
         <p className="card-subtitle">Active month: {asOf || '—'}</p>
+        <div style={{ fontSize:12, color:'#6b7280' }}>
+          Target ≥80% coverage for YTD/1Y/Sharpe/StdDev(3Y) before trusting scores. Use Importer to backfill.
+        </div>
       </div>
       <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:12 }}>
         <span className="badge">Fund rows: {fundCount}</span>
@@ -82,15 +85,22 @@ export default function DataHealth() {
             </tr>
           </thead>
           <tbody>
-            {Object.entries(coverage).map(([k,v]) => (
+            {Object.entries(coverage).map(([k,v]) => {
+              const pct = v.total > 0 ? Math.round((v.nonNull / v.total) * 100) : 0;
+              const ok = pct >= 80;
+              return (
               <tr key={k}>
                 <td>{k}</td>
-                <td>{v.total > 0 ? Math.round((v.nonNull / v.total) * 100) : 0}%</td>
+                <td style={{ color: ok ? '#065f46' : '#7f1d1d' }}>{pct}%</td>
                 <td>{v.nonNull}/{v.total}</td>
               </tr>
-            ))}
+            ); })}
           </tbody>
         </table>
+      </div>
+      <div style={{ marginTop:12, display:'flex', gap:8, flexWrap:'wrap' }}>
+        <a href="#" className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}>Open Importer</a>
+        <a href="#" className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'catalogs' } })); }}>Benchmarks Dictionary</a>
       </div>
     </div>
   );

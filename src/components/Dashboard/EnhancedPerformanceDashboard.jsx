@@ -14,6 +14,7 @@ import ComparisonPanel from './ComparisonPanel';
 import DrilldownCards from './DrilldownCards';
 import preferencesService from '../../services/preferencesService';
 import fundService from '../../services/fundService';
+import { generatePDFReport, downloadFile } from '../../services/exportService';
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -486,6 +487,88 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
             >
               <Download size={16} />
               Export Results
+            </button>
+            <button
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 1rem',
+                border: '1px solid #10b981',
+                borderRadius: '0.375rem',
+                backgroundColor: filteredFunds.length > 0 ? '#10b981' : '#a7f3d0',
+                color: 'white',
+                fontSize: '0.875rem',
+                cursor: filteredFunds.length > 0 ? 'pointer' : 'not-allowed',
+                opacity: filteredFunds.length > 0 ? 1 : 0.6
+              }}
+              title="Export a Raymond James–branded PDF report"
+              onClick={() => {
+                if (!filteredFunds || filteredFunds.length === 0) return;
+                try {
+                  const metadata = {
+                    date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+                    totalFunds: filteredFunds.length,
+                    recommendedFunds: filteredFunds.filter(f => f.is_recommended || f.recommended).length,
+                    assetClassCount: new Set(filteredFunds.map(f => f.asset_class_name || f.asset_class || f['Asset Class']).filter(Boolean)).size,
+                    averagePerformance: (() => {
+                      const vals = filteredFunds.map(f => f.ytd_return).filter(v => v != null && !Number.isNaN(v));
+                      return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
+                    })()
+                  };
+                  const pdf = generatePDFReport({ funds: filteredFunds, metadata });
+                  const dateStr = new Date().toISOString().slice(0,10);
+                  pdf.save(`Lightship_Report_${dateStr}.pdf`);
+                } catch (e) {
+                  // eslint-disable-next-line no-console
+                  console.error('PDF export failed', e);
+                }
+              }}
+              disabled={filteredFunds.length === 0}
+            >
+              <Download size={16} />
+              Export PDF
+            </button>
+            <button
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 1rem',
+                border: '1px solid #059669',
+                borderRadius: '0.375rem',
+                backgroundColor: filteredFunds.filter(f => f.is_recommended || f.recommended).length > 0 ? '#059669' : '#86efac',
+                color: 'white',
+                fontSize: '0.875rem',
+                cursor: (filteredFunds.filter(f => f.is_recommended || f.recommended).length > 0) ? 'pointer' : 'not-allowed',
+                opacity: (filteredFunds.filter(f => f.is_recommended || f.recommended).length > 0) ? 1 : 0.6
+              }}
+              title="Export Recommended-only PDF"
+              onClick={() => {
+                const rec = (filteredFunds || []).filter(f => f.is_recommended || f.recommended);
+                if (rec.length === 0) return;
+                try {
+                  const metadata = {
+                    date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+                    totalFunds: rec.length,
+                    recommendedFunds: rec.length,
+                    assetClassCount: new Set(rec.map(f => f.asset_class_name || f.asset_class || f['Asset Class']).filter(Boolean)).size,
+                    averagePerformance: (() => {
+                      const vals = rec.map(f => f.ytd_return).filter(v => v != null && !Number.isNaN(v));
+                      return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
+                    })()
+                  };
+                  const pdf = generatePDFReport({ funds: rec, metadata });
+                  const dateStr = new Date().toISOString().slice(0,10);
+                  pdf.save(`Lightship_Recommended_${dateStr}.pdf`);
+                } catch (e) {
+                  // eslint-disable-next-line no-console
+                  console.error('PDF export failed', e);
+                }
+              }}
+            >
+              <Download size={16} />
+              Export PDF (Rec.)
             </button>
           </div>
         </div>

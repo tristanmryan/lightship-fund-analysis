@@ -514,11 +514,12 @@ const App = () => {
                 const minCov = covs.length ? Math.min(...covs) : 0;
                 const color = minCov >= 80 ? '#16a34a' : minCov >= 50 ? '#f59e0b' : '#dc2626';
                 const label = minCov >= 80 ? 'Good' : minCov >= 50 ? 'Fair' : 'Poor';
+                const tinyClassActive = (process.env.REACT_APP_ENABLE_TINY_CLASS_FALLBACK || 'false') === 'true';
                 return (
                   <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Data Health</div>
-                    <div style={{ background: color, color: 'white', borderRadius: 9999, padding: '4px 10px', fontWeight: 600 }}>
-                      {label} • min coverage {minCov}%
+                    <div title={tinyClassActive ? 'Tiny-class fallback is active; scores are conservative in sparse classes' : ''} style={{ background: color, color: 'white', borderRadius: 9999, padding: '4px 10px', fontWeight: 600 }}>
+                      {label} • min coverage {minCov}%{tinyClassActive ? ' • tiny-class mode' : ''}
                     </div>
                   </div>
                 );

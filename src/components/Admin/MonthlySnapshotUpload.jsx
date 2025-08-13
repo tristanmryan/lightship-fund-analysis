@@ -669,11 +669,36 @@ export default function MonthlySnapshotUpload() {
         <div style={{ marginTop: 12 }}>
           {result.error ? (
             <div style={{ padding: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#7f1d1d', borderRadius: 6 }}>
-              Import failed: {result.error}
+              <div style={{ marginBottom: 6 }}>Import failed: {result.error}</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    try {
+                      navigator.clipboard?.writeText(String(result.error));
+                    } catch {}
+                  }}
+                  title="Copy error details"
+                >Copy details</button>
+              </div>
             </div>
           ) : (
             <div style={{ padding: 8, background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', borderRadius: 6 }}>
-              Imported: {result.success}, Failed: {result.failed}. AsOfMonth: {result.months?.length === 1 ? result.months[0] : (result.months || []).join(', ')}
+              <div style={{ marginBottom: 6 }}>
+                Imported: {result.success}, Failed: {result.failed}. AsOfMonth: {result.months?.length === 1 ? result.months[0] : (result.months || []).join(', ')}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'performance' } })); }}
+                  title="Go to Funds table"
+                >View in Funds</button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'health' } })); }}
+                  title="Open Data Health"
+                >Open Data Health</button>
+              </div>
             </div>
           )}
         </div>

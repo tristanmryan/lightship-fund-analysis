@@ -1,12 +1,12 @@
 ## Phase 3 Implementation Progress — Saved Views, Research Workflow, Compare Sets, Exports, YCharts Ingestion
 
 ### Title & Scope
-- Phase 3 covers:
+- Phase 3 (CSV-only MVP) covers:
   - Saved Views (per-user view defaults & presets)
   - Research Workflow (notes/decision log per fund, audited, attachable to overrides)
   - Compare Sets (save/load named comparison groups)
-  - Exports (CSV first; PDF later)
-  - YCharts production ingestion (schedule, retries, surfaced errors in Health)
+  - Exports (CSV, Excel, PDF)
+  - CSV-only ingestion and Admin tools (no YCharts priority in MVP)
 
 ---
 
@@ -45,16 +45,20 @@
 
 ### In Progress
 - Research workflow: schema and UI spec (notes + decision log; audited; linked to overrides).
-- PDF exports to follow.
-- YCharts ingestion: job schedule + retry policy + Health surfacing.
- - Monthly Snapshot Upload (CSV) + As-of selector: implemented behind `REACT_APP_ENABLE_IMPORT`; Admin-only page for upload→preview→import (idempotent upsert on (fund_ticker,date)), unknown tickers skipped, non-EOM warns; dashboard selector lists distinct months and clamps sparklines. Added "Download CSV Template" button on the importer.
+- PDF exports: Dashboard PDF (all filtered) and Recommended-only PDF complete.
+- CSV-only ingestion: Monthly Snapshot Upload + As-of selector complete; Seeders complete.
+ - Monthly Snapshot Upload (CSV): Admin-only page for upload→preview→import (idempotent upsert on (fund_ticker,date)), unknown tickers skipped with seeding CTA, non-EOM warns; dashboard selector lists distinct months and clamps sparklines. Template and legacy template available.
+
+Planned near-term work:
+- PDF Report polish: bring `pdfReportService` to parity with horizon fields (`standard_deviation_3y`/`_5y`) and live labels; add compare-set and recommended-only variants.
+- HealthCheck: surface YCharts ingestion last-run time, last error (once scheduler lands).
 
 ### Next Steps (Prioritized)
 1) Research workflow MVP (notes/decision log per fund; audit trail; attach to overrides).
 2) Compare sets (local per-user first; design shared model).
-3) CSV exports (table + compare) — Completed.
+3) CSV/Excel/PDF exports: minor polish (file naming, recommended-only CSV).
 4) Server-side Saved Views with Supabase RLS once Supabase Auth is in the UI; keep IndexedDB as offline cache.
-5) YCharts production ingestion (schedule, retries, error surfacing in Health).
+5) Defer YCharts ingestion until after MVP; omit Health surfacing.
 
 ### Technical Architecture
 

@@ -63,6 +63,19 @@ You can learn more in the [Create React App documentation](https://facebook.gith
 
 To learn React, check out the [React documentation](https://reactjs.org/).
 
+### Domain Docs
+
+- Scoring policy: [docs/SCORING_POLICY.md](./docs/SCORING_POLICY.md)
+- Advisor glossary: [docs/advisor_glossary.md](./docs/advisor_glossary.md)
+
+### CSV-only MVP (Phase 3)
+
+- Use Admin → Data Uploads → Monthly Snapshot Upload to import a month of performance via CSV. The Month/Year picker is required and overrides CSV dates.
+- Seed Recommended Funds and Benchmarks via Admin seeders (CSV templates provided).
+- Exports available:
+  - Dashboard: Table CSV, Compare CSV, PDF (all filtered or recommended-only)
+  - Admin Overview: Recommended-only CSV, Primary Benchmark Mapping CSV, PDF (all funds)
+
 ### Code Splitting
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)

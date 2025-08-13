@@ -90,6 +90,7 @@ const FundDetailsModal = ({ fund, onClose }) => {
             borderRadius: '0.25rem',
             cursor: 'pointer'
           }}
+          aria-label="Close fund details"
         >
           Close
         </button>

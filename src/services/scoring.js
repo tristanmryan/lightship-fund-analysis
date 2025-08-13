@@ -165,6 +165,51 @@ export async function loadEffectiveWeightsResolver() {
     const avgSquaredDiff = squaredDiffs.reduce((sum, val) => sum + val, 0) / validValues.length;
     return Math.sqrt(avgSquaredDiff);
   }
+
+  // Phase 2 scaffold: Winsorization (disabled by default)
+  const ENABLE_WINSORIZATION = (process.env.REACT_APP_ENABLE_WINSORIZATION || 'false') === 'true';
+  const WINSOR_LIMIT = 0.98; // global default clamp
+  const WINSOR_LIMITS_BY_METRIC = {
+    ytd: 0.99,
+    oneYear: 0.99,
+    threeYear: 0.985,
+    fiveYear: 0.985,
+    tenYear: 0.985,
+    sharpeRatio3Y: 0.98,
+    stdDev3Y: 0.975,
+    stdDev5Y: 0.975,
+    upCapture3Y: 0.98,
+    downCapture3Y: 0.98,
+    alpha5Y: 0.98,
+    expenseRatio: 0.98,
+    managerTenure: 0.99
+  };
+
+  function winsorizeZ(z, metric) {
+    // simple clamp equivalent; full percentile-based clamp can be added later
+    const p = (metric && WINSOR_LIMITS_BY_METRIC[metric]) || WINSOR_LIMIT;
+    const limit = Math.sqrt(2) * erfinv(2 * p - 1) || 2.326;
+    if (z > limit) return limit;
+    if (z < -limit) return -limit;
+    return z;
+  }
+
+  // Approximate inverse error function for winsorization clamp
+  function erfinv(x) {
+    // Numerical approximation by Winitzki; sufficient for clamp thresholds
+    const a = 0.147;
+    const ln = Math.log(1 - x * x);
+    const s = (2 / (Math.PI * a)) + (ln / 2);
+    const inside = (s * s) - (ln / a);
+    const sign = x < 0 ? -1 : 1;
+    return sign * Math.sqrt(Math.sqrt(inside) - s);
+  }
+
+  // Phase 2 scaffold: Tiny-class fallback rules (disabled by default)
+  const ENABLE_TINY_CLASS_FALLBACK = (process.env.REACT_APP_ENABLE_TINY_CLASS_FALLBACK || 'false') === 'true';
+  const TINY_CLASS_MIN_PEERS = Number.parseInt(process.env.REACT_APP_TINY_CLASS_MIN_PEERS || '5', 10);
+  const TINY_CLASS_NEUTRAL_THRESHOLD = Number.parseInt(process.env.REACT_APP_TINY_CLASS_NEUTRAL_THRESHOLD || '2', 10);
+  const TINY_CLASS_SHRINK = Number.parseFloat(process.env.REACT_APP_TINY_CLASS_SHRINK || '0.25');
   
   /**
    * Transform raw weighted Z-score sum to the final 0-100 range used in the UI.
@@ -292,6 +337,7 @@ export async function loadEffectiveWeightsResolver() {
   function calculateFundScore(fund, statistics, resolverOverride = null) {
     const scoreBreakdown = {};
     let weightedSum = 0;
+    let observedPeerCounts = [];
     const resolver = resolverOverride || CURRENT_WEIGHTS_RESOLVER;
     
     METRIC_KEYS.forEach((metric) => {
@@ -304,7 +350,11 @@ export async function loadEffectiveWeightsResolver() {
       // (two values). Previously required >2 which skipped small asset
       // classes entirely.
       if (value != null && stats && stats.stdDev > 0 && stats.count >= 2) {
-        const zScore = calculateZScore(value, stats.mean, stats.stdDev);
+        observedPeerCounts.push(stats.count);
+        let zScore = calculateZScore(value, stats.mean, stats.stdDev);
+        if (ENABLE_WINSORIZATION) {
+          zScore = winsorizeZ(zScore, metric);
+        }
         const weightedZScore = zScore * weight;
         
         scoreBreakdown[metric] = {
@@ -345,7 +395,8 @@ export async function loadEffectiveWeightsResolver() {
       rawReweighted: Math.round(reweightedSum * 1000) / 1000,
       breakdown: scoreBreakdown,
       metricsUsed: Object.keys(scoreBreakdown).length,
-      totalPossibleMetrics: METRIC_KEYS.length
+      totalPossibleMetrics: METRIC_KEYS.length,
+      peerCountMin: observedPeerCounts.length ? Math.min(...observedPeerCounts) : 0
     };
   }
   
@@ -461,7 +512,18 @@ export async function loadEffectiveWeightsResolver() {
 
       // Scale scores to 0-100 and calculate final percentiles
       fundsWithRawScores.forEach((fund, index) => {
-        const base = Number.isFinite(fund.scoreData.rawReweighted) ? fund.scoreData.rawReweighted : fund.scoreData.raw;
+        let base = Number.isFinite(fund.scoreData.rawReweighted) ? fund.scoreData.rawReweighted : fund.scoreData.raw;
+        // Tiny-class fallback: shrink extreme values and bias toward neutral when peer samples are thin
+        if (ENABLE_TINY_CLASS_FALLBACK) {
+          const minPeers = fund.scoreData.peerCountMin || 0;
+          if (minPeers > 0 && minPeers < TINY_CLASS_MIN_PEERS) {
+            if (minPeers <= TINY_CLASS_NEUTRAL_THRESHOLD) {
+              base = 0; // neutral contribution when peers are extremely few
+            } else {
+              base = base * TINY_CLASS_SHRINK; // shrink raw effect
+            }
+          }
+        }
         const finalScore = scaleScore(base);
         
         // Calculate percentile within asset class
@@ -628,7 +690,7 @@ export const METRICS_CONFIG = {
 };
 
 // Missing data policy scaffold
-export const SCORING_MISSING_POLICY = 'reweight'; // future: 'penalty'
-export const MISSING_METRIC_PENALTY = 0; // default 0 for no change
+export const SCORING_MISSING_POLICY = (process.env.REACT_APP_MISSING_POLICY || 'reweight'); // 'reweight' | 'penalty'
+export const MISSING_METRIC_PENALTY = Number.parseFloat(process.env.REACT_APP_MISSING_PENALTY || '0'); // default 0
 
  

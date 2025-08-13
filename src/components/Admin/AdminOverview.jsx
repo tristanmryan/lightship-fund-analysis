@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import asOfStore from '../../services/asOfStore';
 import { supabase, TABLES } from '../../services/supabase';
 import fundService from '../../services/fundService';
-import { exportRecommendedFundsCSV, exportPrimaryBenchmarkMappingCSV } from '../../services/exportService';
+import { exportRecommendedFundsCSV, exportPrimaryBenchmarkMappingCSV, exportTableCSV } from '../../services/exportService';
+import { generatePDFReport } from '../../services/exportService';
 
 export default function AdminOverview({ onNavigate = () => {} }) {
   const [loading, setLoading] = useState(true);
@@ -133,6 +134,47 @@ export default function AdminOverview({ onNavigate = () => {} }) {
           <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn btn-secondary" onClick={() => exportRecommendedFundsCSV()}>Export Recommended Funds</button>
             <button className="btn btn-secondary" onClick={() => exportPrimaryBenchmarkMappingCSV()}>Export Primary Benchmark Mapping</button>
+            <button className="btn btn-secondary" onClick={async () => {
+              try {
+                // Basic recommended-only CSV using exportService exportTableCSV helper
+                const { supabase, TABLES } = await import('../../services/supabase');
+                const { data: funds } = await supabase.from(TABLES.FUNDS).select('ticker,name,asset_class,is_recommended,ytd_return,one_year_return,sharpe_ratio,expense_ratio').eq('is_recommended', true).order('ticker');
+                const columns = [
+                  { label: 'Ticker', valueGetter: (f) => f.ticker },
+                  { label: 'Name', valueGetter: (f) => f.name },
+                  { label: 'Asset Class', valueGetter: (f) => f.asset_class },
+                  { label: 'YTD', isPercent: true, valueGetter: (f) => f.ytd_return },
+                  { label: '1Y', isPercent: true, valueGetter: (f) => f.one_year_return },
+                  { label: 'Sharpe', valueGetter: (f) => f.sharpe_ratio },
+                  { label: 'Expense Ratio', isPercent: true, valueGetter: (f) => f.expense_ratio }
+                ];
+                const blob = exportTableCSV({ funds: funds || [], columns, sortConfig: [], metadata: { exportedAt: new Date(), kind: 'recommended_only' } });
+                const now = new Date();
+                const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = `recommended_only_${ts}.csv`; a.click(); URL.revokeObjectURL(url);
+              } catch (e) { console.error('Export failed', e); }
+            }}>Export Recommended CSV</button>
+            <button className="btn btn-secondary" onClick={async () => {
+              try {
+                const { supabase, TABLES } = await import('../../services/supabase');
+                const { data: funds } = await supabase.from(TABLES.FUNDS).select('*').order('ticker');
+                const metadata = {
+                  date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+                  totalFunds: (funds || []).length,
+                  recommendedFunds: (funds || []).filter(f => f.is_recommended).length,
+                  assetClassCount: new Set((funds || []).map(f => f.asset_class).filter(Boolean)).size,
+                  averagePerformance: (() => {
+                    const vals = (funds || []).map(f => f.ytd_return).filter(v => v != null && !Number.isNaN(v));
+                    return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
+                  })()
+                };
+                const pdf = generatePDFReport({ funds: funds || [], metadata });
+                const dateStr = new Date().toISOString().slice(0,10);
+                pdf.save(`Admin_Report_${dateStr}.pdf`);
+              } catch (e) { console.error('PDF export failed', e); }
+            }}>Export PDF (All Funds)</button>
           </div>
         </>
       )}

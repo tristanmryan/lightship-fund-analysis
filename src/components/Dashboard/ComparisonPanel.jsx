@@ -6,18 +6,18 @@ import preferencesService from '../../services/preferencesService';
 import { exportCompareCSV, downloadFile, shouldConfirmLargeExport } from '../../services/exportService';
 
 const metricDefs = [
-  { key: 'scores.final', label: 'Score', fmt: (v) => (v == null ? '—' : formatNumber(v, 1)) },
-  { key: 'ytd', label: 'YTD Return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
-  { key: '1y', label: '1-Year Return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
-  { key: '3y', label: '3-Year Return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
-  { key: '5y', label: '5-Year Return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
-  { key: 'sharpe', label: 'Sharpe Ratio', fmt: (v) => (v == null ? '—' : formatNumber(v, 2)) },
-  { key: 'stdDev3Y', label: 'Std Dev (3Y)', tooltip: 'Standard deviation over the last 3 years.', fmt: (v) => (v == null ? '—' : formatPercent(v, 2)) },
-  { key: 'stdDev5Y', label: 'Std Dev (5Y)', tooltip: 'Standard deviation over the last 5 years.', fmt: (v) => (v == null ? '—' : formatPercent(v, 2)) },
-  { key: 'expense', label: 'Expense Ratio', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
-  { key: 'beta', label: 'Beta', fmt: (v) => (v == null ? '—' : formatNumber(v, 2)) },
-  { key: 'upCapture', label: 'Up Capture (3Y)', fmt: (v) => (v == null ? '—' : formatPercent(v, 1)) },
-  { key: 'downCapture', label: 'Down Capture (3Y)', fmt: (v) => (v == null ? '—' : formatPercent(v, 1)) }
+  { key: 'scores.final', label: 'Score', tooltip: '0–100 weighted Z-score within asset class', fmt: (v) => (v == null ? '—' : formatNumber(v, 1)) },
+  { key: 'ytd', label: 'YTD Return', tooltip: 'Year-to-date total return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
+  { key: '1y', label: '1-Year Return', tooltip: 'Total return over the last 12 months', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
+  { key: '3y', label: '3-Year Return', tooltip: 'Annualized return over the last 3 years', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
+  { key: '5y', label: '5-Year Return', tooltip: 'Annualized return over the last 5 years', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
+  { key: 'sharpe', label: 'Sharpe Ratio', tooltip: 'Risk-adjusted return: higher is better', fmt: (v) => (v == null ? '—' : formatNumber(v, 2)) },
+  { key: 'stdDev3Y', label: 'Std Dev (3Y)', tooltip: 'Volatility (3-year): lower is better', fmt: (v) => (v == null ? '—' : formatPercent(v, 2)) },
+  { key: 'stdDev5Y', label: 'Std Dev (5Y)', tooltip: 'Volatility (5-year): lower is better', fmt: (v) => (v == null ? '—' : formatPercent(v, 2)) },
+  { key: 'expense', label: 'Expense Ratio', tooltip: 'Annual fund costs: lower is better', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
+  { key: 'beta', label: 'Beta', tooltip: 'Market sensitivity: 1.0 ≈ market risk', fmt: (v) => (v == null ? '—' : formatNumber(v, 2)) },
+  { key: 'upCapture', label: 'Up Capture (3Y)', tooltip: 'Capture in up markets: higher is better', fmt: (v) => (v == null ? '—' : formatPercent(v, 1)) },
+  { key: 'downCapture', label: 'Down Capture (3Y)', tooltip: 'Capture in down markets: lower is better', fmt: (v) => (v == null ? '—' : formatPercent(v, 1)) }
 ];
 
 function getValue(fund, key) {

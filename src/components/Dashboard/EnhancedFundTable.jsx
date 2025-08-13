@@ -77,6 +77,38 @@ const EnhancedFundTable = ({
     }
   }, []);
 
+  const getTopNegativeReasons = useCallback((fund, limit = 1) => {
+    try {
+      const breakdown = fund?.scores?.breakdown || {};
+      const rows = Object.keys(breakdown).map((k) => {
+        const row = breakdown[k] || {};
+        const contrib = (typeof row.reweightedContribution === 'number') ? row.reweightedContribution : (row.weightedZScore || 0);
+        return { key: k, label: (METRICS_CONFIG?.labels?.[k] || k), contrib };
+      }).filter(r => Number.isFinite(r.contrib) && r.contrib < 0);
+      rows.sort((a, b) => a.contrib - b.contrib); // most negative first
+      return rows.slice(0, limit);
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const formatTopReasonsTooltip = useCallback((fund) => {
+    try {
+      const breakdown = fund?.scores?.breakdown || {};
+      const rows = Object.keys(breakdown).map((k) => {
+        const row = breakdown[k] || {};
+        const contrib = (typeof row.reweightedContribution === 'number') ? row.reweightedContribution : (row.weightedZScore || 0);
+        return { key: k, label: (METRICS_CONFIG?.labels?.[k] || k), contrib };
+      }).filter(r => Number.isFinite(r.contrib));
+      rows.sort((a,b) => Math.abs(b.contrib) - Math.abs(a.contrib));
+      const top = rows.slice(0, 3).map(r => `${r.contrib >= 0 ? '+' : '−'}${Math.abs(r.contrib).toFixed(2)} ${r.label}`);
+      if (top.length === 0) return 'Why this fund: no scoring contributors available';
+      return `Why this fund: ${top.join(', ')}`;
+    } catch {
+      return 'Why this fund: rationale unavailable';
+    }
+  }, []);
+
   // Column definitions
   const columnDefinitions = useMemo(() => ({
     symbol: {
@@ -100,7 +132,8 @@ const EnhancedFundTable = ({
       width: '250px',
       tooltip: 'Official fund name',
       render: (value, fund) => {
-        const reasons = getTopPositiveReasons(fund, 2);
+        const positive = getTopPositiveReasons(fund, 2);
+        const negative = (fund?.scores?.final != null && fund.scores.final < 45) ? getTopNegativeReasons(fund, 1) : [];
         return (
           <div>
             <div
@@ -115,12 +148,12 @@ const EnhancedFundTable = ({
             >
               {value}
             </div>
-            {reasons.length > 0 && (
+            {(positive.length > 0 || negative.length > 0) && (
               <div
-                title="Why this fund: top positive contributors to score within asset class"
+                title={formatTopReasonsTooltip(fund)}
                 style={{ marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}
               >
-                {reasons.map(r => (
+                {positive.map(r => (
                   <span
                     key={r.key}
                     style={{
@@ -134,6 +167,22 @@ const EnhancedFundTable = ({
                     title={`Contributes +${r.contrib.toFixed(2)} to score`}
                   >
                     +{r.contrib.toFixed(2)} {r.label}
+                  </span>
+                ))}
+                {negative.map(r => (
+                  <span
+                    key={`neg-${r.key}`}
+                    style={{
+                      fontSize: '0.6875rem',
+                      background: '#fef2f2',
+                      color: '#7f1d1d',
+                      border: '1px solid #fecaca',
+                      borderRadius: 9999,
+                      padding: '2px 6px'
+                    }}
+                    title={`Drags −${Math.abs(r.contrib).toFixed(2)} from score`}
+                  >
+                    −{Math.abs(r.contrib).toFixed(2)} {r.label}
                   </span>
                 ))}
               </div>
@@ -310,7 +359,7 @@ const EnhancedFundTable = ({
       getValue: (fund) => (fund.expense_ratio ?? fund['Net Exp Ratio (%)'] ?? 0),
       sortable: true,
       width: '120px',
-      tooltip: 'Annual fund costs; lower is better',
+      tooltip: 'Annual fund costs: lower is better',
       render: (value) => (
         <div style={{
           display: 'flex',
@@ -330,7 +379,7 @@ const EnhancedFundTable = ({
       getValue: (fund) => (fund.sharpe_ratio ?? fund['Sharpe Ratio - 3 Year'] ?? fund['Sharpe Ratio'] ?? 0),
       sortable: true,
       width: '110px',
-      tooltip: 'Risk-adjusted return; higher is better',
+      tooltip: 'Risk-adjusted return: higher is better',
       render: (value) => (
         <div style={{
           display: 'flex',
@@ -350,7 +399,7 @@ const EnhancedFundTable = ({
       getValue: (fund) => (fund.beta ?? fund['Beta - 5 Year'] ?? 0),
       sortable: true,
       width: '80px',
-      tooltip: 'Market sensitivity (~1.0 ≈ market risk)',
+      tooltip: 'Market sensitivity: 1.0 ≈ market risk',
       render: (value) => (
         <div style={{
           textAlign: 'center',
@@ -366,7 +415,7 @@ const EnhancedFundTable = ({
       getValue: (fund) => fund.standard_deviation_3y ?? null,
       sortable: true,
       width: '100px',
-      tooltip: 'Volatility (3-year); lower is better',
+      tooltip: 'Volatility (3-year): lower is better',
       render: (value) => (
         <div style={{ textAlign: 'center' }}>
           {value == null ? '—' : `${value.toFixed(2)}%`}
@@ -379,7 +428,7 @@ const EnhancedFundTable = ({
       getValue: (fund) => fund.standard_deviation_5y ?? null,
       sortable: true,
       width: '100px',
-      tooltip: 'Volatility (5-year); lower is better',
+      tooltip: 'Volatility (5-year): lower is better',
       render: (value) => (
         <div style={{ textAlign: 'center' }}>
           {value == null ? '—' : `${value.toFixed(2)}%`}
@@ -392,7 +441,7 @@ const EnhancedFundTable = ({
       getValue: (fund) => (fund.up_capture_ratio ?? fund['Up Capture Ratio (Morningstar Standard) - 3 Year'] ?? fund['Up Capture Ratio'] ?? 0),
       sortable: true,
       width: '100px',
-      tooltip: 'Capture in up markets; higher is better',
+      tooltip: 'Capture in up markets: higher is better',
       render: (value) => (
         <div style={{
           textAlign: 'center',
@@ -408,7 +457,7 @@ const EnhancedFundTable = ({
       getValue: (fund) => (fund.down_capture_ratio ?? fund['Down Capture Ratio (Morningstar Standard) - 3 Year'] ?? fund['Down Capture Ratio'] ?? 0),
       sortable: true,
       width: '110px',
-      tooltip: 'Capture in down markets; lower is better',
+      tooltip: 'Capture in down markets: lower is better',
       render: (value) => (
         <div style={{
           textAlign: 'center',
