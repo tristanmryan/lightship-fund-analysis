@@ -68,9 +68,6 @@ const HealthCheck = () => {
     });
   }, [funds]);
 
-  if (loading) return <div>Health Check: loading…</div>;
-  if (error) return <div>Health Check error: {error}</div>;
-
   const triage = useMemo(() => {
     const items = [];
     // Critical: no EOM row counts or zero rows for month
@@ -92,6 +89,10 @@ const HealthCheck = () => {
     }
     return items;
   }, [asOfMonth, monthStats, summary, coverage]);
+
+  // Early returns must come after all hooks to preserve order
+  if (loading) return <div>Health Check: loading…</div>;
+  if (error) return <div>Health Check error: {error}</div>;
 
   const severityOrder = { critical: 0, warning: 1, info: 2 };
 

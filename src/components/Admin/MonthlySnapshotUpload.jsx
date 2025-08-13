@@ -98,82 +98,7 @@ export default function MonthlySnapshotUpload() {
     return () => { mounted = false; };
   }, []);
 
-  // Handle global request to load sample data (from Dashboard empty state CTA)
-  useEffect(() => {
-    const handler = async () => {
-      await loadSampleData();
-    };
-    window.addEventListener('LOAD_SAMPLE_DATA', handler);
-    return () => window.removeEventListener('LOAD_SAMPLE_DATA', handler);
-  }, [loadSampleData]);
-
-  const handleFileChange = (e) => {
-    setFile(e.target.files?.[0] || null);
-    setParsedRows([]);
-    setPreview([]);
-    setCounts({ parsed: 0, willImport: 0, skipped: 0, eomWarnings: 0 });
-    setResult(null);
-    setMonthsInFile([]);
-    setMode('csv');
-    setHasAsOfColumn(false);
-    setCustomMap({});
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    const f = e.dataTransfer?.files?.[0];
-    if (f) {
-      setFile(f);
-      setParsedRows([]);
-      setPreview([]);
-      setCounts({ parsed: 0, willImport: 0, skipped: 0, eomWarnings: 0 });
-      setResult(null);
-      setMonthsInFile([]);
-      setMode('csv');
-      setHasAsOfColumn(false);
-      setCustomMap({});
-      setTimeout(() => parseCsv(), 0);
-    }
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDownloadTemplate = useCallback(() => {
-    try {
-      const blob = createMonthlyTemplateCSV();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'fund-monthly-template.csv';
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {}
-  }, []);
-
-  const handleDownloadLegacyTemplate = useCallback(() => {
-    try {
-      const blob = createLegacyMonthlyTemplateCSV();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'fund-monthly-template-legacy.csv';
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {}
-  }, []);
-
+  // Define callbacks before effects that depend on them
   const parseCsv = useCallback(() => {
     if (!file) return;
     setParsing(true);
@@ -268,6 +193,83 @@ export default function MonthlySnapshotUpload() {
       alert('Could not load sample CSV.');
     }
   }, [month, parseCsv, year]);
+
+  // Handle global request to load sample data (from Dashboard empty state CTA)
+  useEffect(() => {
+    const handler = async () => {
+      await loadSampleData();
+    };
+    window.addEventListener('LOAD_SAMPLE_DATA', handler);
+    return () => window.removeEventListener('LOAD_SAMPLE_DATA', handler);
+  }, [loadSampleData]);
+
+  const handleFileChange = (e) => {
+    setFile(e.target.files?.[0] || null);
+    setParsedRows([]);
+    setPreview([]);
+    setCounts({ parsed: 0, willImport: 0, skipped: 0, eomWarnings: 0 });
+    setResult(null);
+    setMonthsInFile([]);
+    setMode('csv');
+    setHasAsOfColumn(false);
+    setCustomMap({});
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const f = e.dataTransfer?.files?.[0];
+    if (f) {
+      setFile(f);
+      setParsedRows([]);
+      setPreview([]);
+      setCounts({ parsed: 0, willImport: 0, skipped: 0, eomWarnings: 0 });
+      setResult(null);
+      setMonthsInFile([]);
+      setMode('csv');
+      setHasAsOfColumn(false);
+      setCustomMap({});
+      setTimeout(() => parseCsv(), 0);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDownloadTemplate = useCallback(() => {
+    try {
+      const blob = createMonthlyTemplateCSV();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'fund-monthly-template.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
+  }, []);
+
+  const handleDownloadLegacyTemplate = useCallback(() => {
+    try {
+      const blob = createLegacyMonthlyTemplateCSV();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'fund-monthly-template-legacy.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
+  }, []);
+
 
   useEffect(() => {
     if (!parsedRows || parsedRows.length === 0) {

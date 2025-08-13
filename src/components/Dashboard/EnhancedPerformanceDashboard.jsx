@@ -66,6 +66,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
   const [initialTableState, setInitialTableState] = useState({ sortConfig: null, selectedColumns: null });
   const [tableState, setTableState] = useState({ sortConfig: null, selectedColumns: null });
   const tableExportRef = React.useRef(null);
+  const clearAllFiltersRef = React.useRef(null);
   const [availableMonths, setAvailableMonths] = useState([]);
   const [showNonEom, setShowNonEom] = useState(false);
   const [allMonths, setAllMonths] = useState([]);
@@ -148,23 +149,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
     </div>
   );
 
-  if (isLoadingAny) {
-    return (
-      <div className="enhanced-performance-dashboard">
-        <div className="dashboard-header">
-          <div className="header-left">
-            <h2>Performance</h2>
-            <p className="subtitle">Preparing your view…</p>
-          </div>
-        </div>
-        <div style={{ display:'grid', gap: 'var(--spacing-lg)' }}>
-          <SectionSkeleton />
-          <SectionSkeleton />
-          <SectionSkeleton />
-        </div>
-      </div>
-    );
-  }
+  // Note: render skeleton within main return to preserve hook order
 
   // Guardrails: when month changes, refresh counts (dev-only hint; safe if fails)
   React.useEffect(() => {
@@ -471,7 +456,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
     }).length;
     return activeCount;
   };
-  const clearAllFiltersRef = React.useRef(null);
+  // ref moved up to keep hooks before any return
 
   // Copy link to current view (share filters + asOf month via hash)
   const copyShareLink = React.useCallback(async () => {
@@ -515,31 +500,26 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (isLoading) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        alignItems: 'center', 
-        justifyContent: 'center',
-        padding: '3rem',
-        backgroundColor: '#f9fafb',
-        borderRadius: '0.5rem',
-        border: '1px solid #e5e7eb'
-      }}>
-        <RefreshCw size={48} style={{ animation: 'spin 1s linear infinite', marginBottom: '1rem', color: '#3b82f6' }} />
-        <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>
-          Loading Fund Data
-        </h3>
-        <p style={{ color: '#6b7280' }}>
-          Please wait while we fetch the latest performance data...
-        </p>
-      </div>
-    );
-  }
+  // Loader handled via isLoadingAny skeleton inside main return
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+      {isLoadingAny ? (
+        <div className="enhanced-performance-dashboard">
+          <div className="dashboard-header">
+            <div className="header-left">
+              <h2>Performance</h2>
+              <p className="subtitle">Preparing your view…</p>
+            </div>
+          </div>
+          <div style={{ display:'grid', gap: 'var(--spacing-lg)' }}>
+            <SectionSkeleton />
+            <SectionSkeleton />
+            <SectionSkeleton />
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Header */}
       <div style={{
         backgroundColor: 'white',
@@ -987,6 +967,8 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
           />
         )}
       </div>
+      </>
+      )}
 
       <style jsx>{`
         @keyframes spin {
