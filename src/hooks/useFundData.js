@@ -328,8 +328,13 @@ export function useFundData() {
   useEffect(() => {
     const unsubscribe = asOfStore.subscribe(({ activeMonth }) => {
       if (!activeMonth) return;
-      setAsOfMonth(activeMonth);
-      loadFunds(activeMonth);
+      // Guard: only react if month actually changed
+      setAsOfMonth(prev => {
+        if (prev === activeMonth) return prev;
+        // trigger load only when value changes
+        loadFunds(activeMonth);
+        return activeMonth;
+      });
     });
     return () => unsubscribe();
   }, [loadFunds]);
@@ -337,9 +342,11 @@ export function useFundData() {
   // Reload funds when asOfMonth changes
   useEffect(() => {
     // Skip initial double-trigger; loadFunds already ran on mount
-    if (asOfMonth !== undefined) {
-      loadFunds(asOfMonth);
-    }
+    if (asOfMonth === undefined || asOfMonth === null) return;
+    // Guard: only fetch when month actually differs from store's current active
+    const storeMonth = asOfStore.getActiveMonth?.() || null;
+    if (storeMonth && storeMonth === asOfMonth) return; // already fetched via store subscriber
+    loadFunds(asOfMonth);
   }, [asOfMonth, loadFunds]);
 
   // External setter should update store too

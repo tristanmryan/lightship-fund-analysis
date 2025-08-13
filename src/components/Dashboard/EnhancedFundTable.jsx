@@ -51,14 +51,26 @@ const EnhancedFundTable = ({
   const preloadSparklineData = useCallback(async (currentSortedFunds, currentHistoryCache) => {
     const needed = new Set((currentSortedFunds || []).map(f => (f.ticker || f.Symbol)).filter(Boolean));
     const toLoad = Array.from(needed).filter(sym => !(sym in currentHistoryCache));
-    for (const sym of toLoad) {
-      try {
-        const rows = await fundService.getFundPerformanceHistory(sym, null, (window.__AS_OF_MONTH__ || null));
-        const sorted = (rows || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
-        setHistoryCache(prev => ({ ...prev, [sym]: sorted }));
-      } catch {
-        // ignore
+    if (toLoad.length === 0) return;
+    try {
+      const results = await Promise.all(toLoad.map(async (sym) => {
+        try {
+          const rows = await fundService.getFundPerformanceHistory(sym, null, (window.__AS_OF_MONTH__ || null));
+          const sorted = (rows || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+          return [sym, sorted];
+        } catch {
+          return null;
+        }
+      }));
+      const updates = {};
+      for (const entry of results) {
+        if (entry && entry[0]) updates[entry[0]] = entry[1];
       }
+      if (Object.keys(updates).length > 0) {
+        setHistoryCache(prev => ({ ...prev, ...updates }));
+      }
+    } catch {
+      // ignore batch failures
     }
   }, []);
 
