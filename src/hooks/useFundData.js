@@ -324,6 +324,16 @@ export function useFundData() {
     })();
   }, [loadFunds]);
 
+  // Subscribe to As-Of store updates (e.g., after CSV import sets a new active month)
+  useEffect(() => {
+    const unsubscribe = asOfStore.subscribe(({ activeMonth }) => {
+      if (!activeMonth) return;
+      setAsOfMonth(activeMonth);
+      loadFunds(activeMonth);
+    });
+    return () => unsubscribe();
+  }, [loadFunds]);
+
   // Reload funds when asOfMonth changes
   useEffect(() => {
     // Skip initial double-trigger; loadFunds already ran on mount
