@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Plus, Search, Trash2, CheckCircle, AlertCircle, Star, StarOff } from 'lucide-react';
 import { useFundData } from '../../hooks/useFundData';
 import DictionaryAdmin from './DictionaryAdmin';
 import AdminOverview from './AdminOverview';
@@ -305,7 +305,11 @@ const FundManagement = () => {
                               className={`recommendation-toggle ${fund.is_recommended ? 'recommended' : 'not-recommended'}`}
                               title={fund.is_recommended ? 'Remove from recommended' : 'Add to recommended'}
                             >
-                              {fund.is_recommended ? '✓' : '○'}
+                              {fund.is_recommended ? (
+                                <Star size={16} style={{ color: '#f59e0b', fill: '#f59e0b' }} aria-hidden />
+                              ) : (
+                                <StarOff size={16} style={{ color: '#d1d5db' }} aria-hidden />
+                              )}
                             </button>
                           </td>
                           <td>

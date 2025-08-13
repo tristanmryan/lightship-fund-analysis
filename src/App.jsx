@@ -1,5 +1,6 @@
 // App.jsx
 import React, { useState, useEffect, useMemo } from 'react';
+import { Home, Table as TableIcon, BarChart3 as BarChartIcon, ShieldCheck, Settings, Download, RefreshCw, HelpCircle, Share2 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './App.css'; // Import the CSS file
 import LoginModal from './components/Auth/LoginModal';
@@ -488,11 +489,29 @@ const App = () => {
       <aside className="sidebar">
         <div className="sidebar-logo">Raymond James</div>
         <nav className="sidebar-nav">
-          <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => { setActiveTab('dashboard'); navigate('/dashboard'); }}>Home</button>
-          <button className={activeTab === 'performance' ? 'active' : ''} onClick={() => { setActiveTab('performance'); navigate('/performance'); }}>Funds</button>
-          <button className={activeTab === 'class' ? 'active' : ''} onClick={() => { setActiveTab('class'); navigate('/class'); }}>Asset Classes</button>
+          <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => { setActiveTab('dashboard'); navigate('/dashboard'); }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <Home size={16} aria-hidden />
+              <span>Home</span>
+            </span>
+          </button>
+          <button className={activeTab === 'performance' ? 'active' : ''} onClick={() => { setActiveTab('performance'); navigate('/performance'); }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <TableIcon size={16} aria-hidden />
+              <span>Funds</span>
+            </span>
+          </button>
+          <button className={activeTab === 'class' ? 'active' : ''} onClick={() => { setActiveTab('class'); navigate('/class'); }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <BarChartIcon size={16} aria-hidden />
+              <span>Asset Classes</span>
+            </span>
+          </button>
           <button className={activeTab === 'health' ? 'active' : ''} onClick={() => { setActiveTab('health'); navigate('/health'); }}>
-            Data Health
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <ShieldCheck size={16} aria-hidden />
+              <span>Data Health</span>
+            </span>
             {(() => {
               try {
                 const total = (funds || []).length;
@@ -508,7 +527,12 @@ const App = () => {
               } catch { return null; }
             })()}
           </button>
-          <button className={activeTab === 'admin' ? 'active' : ''} onClick={() => { setActiveTab('admin'); navigate('/admin'); }}>Admin</button>
+          <button className={activeTab === 'admin' ? 'active' : ''} onClick={() => { setActiveTab('admin'); navigate('/admin'); }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <Settings size={16} aria-hidden />
+              <span>Admin</span>
+            </span>
+          </button>
         </nav>
         <div className="sidebar-footer">
           <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.85)', marginBottom: '0.75rem' }}>Tip: Press Ctrl+H for help</div>
@@ -547,15 +571,19 @@ const App = () => {
               onClick={() => refreshData()}
               className="btn btn-secondary"
               title="Refresh data"
+              style={{ display:'inline-flex', alignItems:'center', gap:6 }}
             >
-              Refresh
+              <RefreshCw size={16} aria-hidden />
+              <span>Refresh</span>
             </button>
             <button 
               onClick={handleExport}
               className="btn"
               title="Export (Ctrl+E)"
+              style={{ display:'inline-flex', alignItems:'center', gap:6 }}
             >
-              Export
+              <Download size={16} aria-hidden />
+              <span>Export</span>
             </button>
             <button 
               onClick={() => setShowHelp(true)}
@@ -569,15 +597,21 @@ const App = () => {
                 fontWeight: 600
               }}
               title="Help (Ctrl+H)"
+              
             >
-              Help
+              <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+                <HelpCircle size={16} aria-hidden />
+                <span>Help</span>
+              </span>
             </button>
             <button
               onClick={() => { try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }}
               className="btn btn-secondary"
               title="Open methodology"
+              style={{ display:'inline-flex', alignItems:'center', gap:6 }}
             >
-              Methodology
+              <Info size={16} aria-hidden />
+              <span>Methodology</span>
             </button>
           </div>
       </div>
@@ -798,9 +832,12 @@ const App = () => {
               </div>
               ) : (
                 <div className="card" style={{ display:'grid', gap:12 }}>
-                  <div className="card-header">
-                    <h3 className="card-title">No Data Yet</h3>
-                    <p className="card-subtitle">Import a monthly CSV or try sample data to explore this analysis.</p>
+                  <div className="card-header" style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <Info size={18} aria-hidden />
+                    <div>
+                      <h3 className="card-title">No Data Yet</h3>
+                      <p className="card-subtitle">Import a monthly CSV or try sample data to explore this analysis.</p>
+                    </div>
                   </div>
                   <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                     <button className="btn" onClick={() => { setActiveTab('admin'); navigate('/admin'); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); }}>Go to Importer</button>

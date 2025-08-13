@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import asOfStore from '../../services/asOfStore';
 import { supabase, TABLES } from '../../services/supabase';
 import fundService from '../../services/fundService';
@@ -153,9 +154,15 @@ export default function DataDiagnostics() {
         </div>
       </div>
       {loading ? (
-        <div>Loading…</div>
+        <div style={{ display:'flex', alignItems:'center', gap:8, color:'#6b7280' }}>
+          <Info size={16} aria-hidden />
+          <span>Loading…</span>
+        </div>
       ) : error ? (
-        <div className="alert alert-error">{error}</div>
+        <div className="alert alert-error" style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <AlertTriangle size={16} aria-hidden />
+          <span>{error}</span>
+        </div>
       ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -200,7 +207,8 @@ export default function DataDiagnostics() {
 
           {backfillResult && (
             <div style={{ marginTop: 12 }}>
-              <div className="alert alert-success">
+              <div className="alert alert-success" style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <CheckCircle2 size={16} aria-hidden />
                 {validateOnly ? (
                   <span>Would update: {backfillResult.wouldUpdate}; Unmatched: {backfillResult.unmatched}</span>
                 ) : (

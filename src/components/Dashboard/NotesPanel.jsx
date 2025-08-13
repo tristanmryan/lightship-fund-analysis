@@ -1,6 +1,8 @@
 // src/components/Dashboard/NotesPanel.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase, TABLES } from '../../services/supabase';
+import DecisionIcon from '../common/DecisionIcon';
+import { Link2 } from 'lucide-react';
 import notesService from '../../services/researchNotesService';
 
 export default function NotesPanel({ fundId = null, fundTicker = null }) {
@@ -104,10 +106,16 @@ export default function NotesPanel({ fundId = null, fundTicker = null }) {
                   <span>by {n?.created_by || '—'}</span>
                 </div>
                 {n?.decision && (
-                  <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }} data-testid="note-decision">Decision: <strong>{n.decision}</strong></div>
+                  <div style={{ fontSize: 12, color: '#374151', marginTop: 2, display:'flex', alignItems:'center', gap:6 }} data-testid="note-decision">
+                    <DecisionIcon decision={n.decision} />
+                    <span>Decision: <strong>{n.decision}</strong></span>
+                  </div>
                 )}
                 {n?.override_id && (
-                  <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Linked to override</div>
+                  <div style={{ fontSize: 12, color: '#374151', marginTop: 2, display:'flex', alignItems:'center', gap:6 }}>
+                    <Link2 size={12} aria-hidden />
+                    <span>Linked to override</span>
+                  </div>
                 )}
                 <div style={{ marginTop: 4 }} data-testid="note-body">{short}</div>
                 {tooLong && (

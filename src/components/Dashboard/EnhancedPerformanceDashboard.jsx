@@ -2,8 +2,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { 
   TrendingUp, BarChart3, Grid, Table, RefreshCw, Download,
-  Filter, Target, AlertCircle, Info
+  Filter, Target, AlertCircle, Info, Share2
 } from 'lucide-react';
+import StatusIcon from '../common/StatusIcon';
 import AdvancedFilters from './AdvancedFilters';
 import EnhancedFundTable from './EnhancedFundTable';
 import PerformanceHeatmap from './PerformanceHeatmap';
@@ -315,7 +316,10 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         if (!filteredFunds || filteredFunds.length === 0) {
           return (
             <div className="card" style={{ padding: 16 }}>
-              <div style={{ color: '#6b7280', marginBottom: 8 }}>No data to display yet. Import a CSV or try sample data.</div>
+              <div style={{ color: '#6b7280', marginBottom: 8, display:'flex', alignItems:'center', gap:8 }}>
+                <AlertCircle size={16} aria-hidden />
+                <span>No data to display yet. Import a CSV or try sample data.</span>
+              </div>
               <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                 <a className="btn" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}>Go to Importer</a>
                 <a className="btn btn-secondary" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}>Use sample data</a>
@@ -346,8 +350,9 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
               </div>
             )}
             {asOfMonthProp && guard.fund === 0 && guard.bench === 0 && (
-              <div style={{ background:'#f3f4f6', border:'1px solid #e5e7eb', color:'#374151', borderRadius:6, padding:'8px 12px', marginTop: 8 }}>
-                No data for {asOfMonthProp}.
+              <div style={{ background:'#f3f4f6', border:'1px solid #e5e7eb', color:'#374151', borderRadius:6, padding:'8px 12px', marginTop: 8, display:'flex', alignItems:'center', gap:8 }}>
+                <AlertCircle size={16} aria-hidden />
+                <span>No data for {asOfMonthProp}.</span>
               </div>
             )}
           </>
@@ -357,7 +362,10 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         if (!filteredFunds || filteredFunds.length === 0) {
           return (
             <div className="card" style={{ padding: 16 }}>
-              <div style={{ color: '#6b7280', marginBottom: 8 }}>No data to display yet. Import a CSV or try sample data.</div>
+              <div style={{ color: '#6b7280', marginBottom: 8, display:'flex', alignItems:'center', gap:8 }}>
+                <AlertCircle size={16} aria-hidden />
+                <span>No data to display yet. Import a CSV or try sample data.</span>
+              </div>
               <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                 <a className="btn" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}>Go to Importer</a>
                 <a className="btn btn-secondary" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}>Use sample data</a>
@@ -383,7 +391,10 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         if (!filteredFunds || filteredFunds.length === 0) {
           return (
             <div className="card" style={{ padding: 16 }}>
-              <div style={{ color: '#6b7280', marginBottom: 8 }}>No data to display yet. Import a CSV or try sample data.</div>
+              <div style={{ color: '#6b7280', marginBottom: 8, display:'flex', alignItems:'center', gap:8 }}>
+                <AlertCircle size={16} aria-hidden />
+                <span>No data to display yet. Import a CSV or try sample data.</span>
+              </div>
               <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                 <a className="btn" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}>Go to Importer</a>
                 <a className="btn btn-secondary" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}>Use sample data</a>
@@ -409,7 +420,10 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         if (!filteredFunds || filteredFunds.length === 0) {
           return (
             <div className="card" style={{ padding: 16 }}>
-              <div style={{ color: '#6b7280', marginBottom: 8 }}>No data to display yet. Import a CSV or try sample data.</div>
+              <div style={{ color: '#6b7280', marginBottom: 8, display:'flex', alignItems:'center', gap:8 }}>
+                <AlertCircle size={16} aria-hidden />
+                <span>No data to display yet. Import a CSV or try sample data.</span>
+              </div>
               <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                 <a className="btn" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}>Go to Importer</a>
                 <a className="btn btn-secondary" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}>Use sample data</a>
@@ -576,7 +590,10 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
                 ))}
               </select>
             </div>
-            <button className="btn" onClick={copyShareLink} title="Copy link to this view">Share</button>
+            <button className="btn" onClick={copyShareLink} title="Copy link to this view" style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <Share2 size={16} aria-hidden />
+              <span>Share</span>
+            </button>
             {/* Non-EOM pill and toggle */}
             {nonEomSample && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -588,10 +605,11 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
                 </label>
               </div>
             )}
-            {/* Data Health badge */}
+            {/* Data Health badge with icon */}
             <div style={{ display:'flex', alignItems:'center', gap: 8 }}>
-              <div title={`Minimum coverage across key metrics`} style={{ background: dataHealth.color, color: 'white', borderRadius: 9999, padding: '4px 10px', fontWeight: 600, fontSize: 12 }}>
-                Data Health: {dataHealth.label} • {dataHealth.minCov}%
+              <div title={`Minimum coverage across key metrics`} style={{ background: dataHealth.color, color: 'white', borderRadius: 9999, padding: '4px 10px', fontWeight: 600, fontSize: 12, display:'inline-flex', alignItems:'center', gap:6 }}>
+                <StatusIcon level={dataHealth.minCov >= 80 ? 'good' : dataHealth.minCov >= 50 ? 'fair' : 'poor'} />
+                <span>Data Health: {dataHealth.label} • {dataHealth.minCov}%</span>
               </div>
               <a href="#" className="btn btn-link" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'health' } })); }} style={{ fontSize: 12 }}>Open Data Health</a>
             </div>
@@ -725,8 +743,9 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         </div>
       )}
       {viewMode !== 'heatmap' && asOfMonthProp && guard.fund === 0 && guard.bench === 0 && (
-        <div style={{ background:'#f3f4f6', border:'1px solid #e5e7eb', color:'#374151', borderRadius:6, padding:'8px 12px', margin:'8px 16px' }}>
-          No data for {asOfMonthProp}.
+        <div style={{ background:'#f3f4f6', border:'1px solid #e5e7eb', color:'#374151', borderRadius:6, padding:'8px 12px', margin:'8px 16px', display:'flex', alignItems:'center', gap:8 }}>
+          <AlertCircle size={16} aria-hidden />
+          <span>No data for {asOfMonthProp}.</span>
         </div>
       )}
 

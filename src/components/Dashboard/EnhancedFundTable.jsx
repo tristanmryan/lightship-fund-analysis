@@ -2,7 +2,8 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   ArrowUp, ArrowDown, ArrowUpDown, Eye, Star, TrendingUp, 
-  TrendingDown, Shield, DollarSign, Calendar, MoreHorizontal
+  TrendingDown, Shield, DollarSign, Calendar, MoreHorizontal, 
+  ChevronUp, ChevronDown, Info
 } from 'lucide-react';
 import { getScoreColor, METRICS_CONFIG } from '../../services/scoring';
 import { computeBenchmarkDelta } from './benchmarkUtils';
@@ -580,17 +581,17 @@ const EnhancedFundTable = ({
   const getSortIndicator = (columnKey) => {
     const sortIndex = sortConfig.findIndex(config => config.key === columnKey);
     if (sortIndex === -1) return <ArrowUpDown size={14} style={{ opacity: 0.3 }} />;
-    
+
     const config = sortConfig[sortIndex];
-    const Icon = config.direction === 'asc' ? ArrowUp : ArrowDown;
-    
+    const Icon = config.direction === 'asc' ? ChevronUp : ChevronDown;
+
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-        <Icon size={14} />
+        <Icon size={14} aria-hidden />
         {sortConfig.length > 1 && (
-          <span style={{ 
-            fontSize: '0.75rem', 
-            backgroundColor: '#3b82f6', 
+          <span style={{
+            fontSize: '0.75rem',
+            backgroundColor: '#3b82f6',
             color: 'white',
             borderRadius: '50%',
             width: '16px',
@@ -848,7 +849,7 @@ const EnhancedFundTable = ({
                           title="What is this metric?"
                           style={{ border:'none', background:'transparent', cursor:'pointer', color:'#6b7280' }}
                         >
-                          i
+                          <Info size={14} aria-hidden />
                         </button>
                       )}
                       {column.sortable && getSortIndicator(columnKey)}
