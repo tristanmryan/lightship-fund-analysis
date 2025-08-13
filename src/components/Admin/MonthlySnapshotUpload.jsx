@@ -6,7 +6,7 @@ import asOfStore from '../../services/asOfStore';
 import { dbUtils } from '../../services/supabase';
 import { createMonthlyTemplateCSV, createLegacyMonthlyTemplateCSV } from '../../services/csvTemplate';
 
-const FLAG_ENABLE_IMPORT = (process.env.REACT_APP_ENABLE_IMPORT || 'false') === 'true';
+const FLAG_ENABLE_IMPORT = (process.env.REACT_APP_ENABLE_IMPORT || (process.env.NODE_ENV !== 'production' ? 'true' : 'false')) === 'true';
 
 function isValidDateOnly(str) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(str || '').trim());
@@ -76,6 +76,7 @@ export default function MonthlySnapshotUpload() {
   const [coverage, setCoverage] = useState({}); // metricKey -> { nonNull, total }
   const [blockers, setBlockers] = useState([]); // strings
   const [skipReasons, setSkipReasons] = useState({}); // reason -> { count, tickers: [] }
+  const [missingTickers, setMissingTickers] = useState([]);
 
   useEffect(() => {
     let mounted = true;
@@ -248,6 +249,14 @@ export default function MonthlySnapshotUpload() {
     setMonthsInFile(Array.from(seenMonths).sort((a,b) => b.localeCompare(a)));
     setPreview(rows);
     setCounts({ parsed, willImport, skipped, eomWarnings });
+
+    // Track missing tickers for seeding action
+    try {
+      const missing = Array.from(new Set(rows
+        .filter(r => r.ticker && !r.willImport && (r.reason || '').toLowerCase().includes('unknown ticker'))
+        .map(r => r.ticker)));
+      setMissingTickers(missing);
+    } catch {}
 
     // Build skip reasons map (diagnostic)
     const byReason = new Map();
@@ -449,6 +458,33 @@ export default function MonthlySnapshotUpload() {
         <button onClick={parseCsv} disabled={!file || parsing} className="btn btn-primary">
           {parsing ? 'Parsing…' : 'Parse CSV'}
         </button>
+        {missingTickers.length > 0 && (
+          <button
+            onClick={async () => {
+              try {
+                const toSeed = missingTickers.slice(0);
+                if (toSeed.length === 0) return;
+                const res = await fundService.upsertMinimalFunds(toSeed);
+                console.log(`[Importer] Seeded ${res.count} funds.`);
+                // Refresh known tickers
+                const fundTickers = await fundService.listFundTickers();
+                setKnownTickers(new Set(fundTickers.map((t) => String(t || '').toUpperCase())));
+                // Recompute preview after seeding
+                setTimeout(() => {
+                  // re-trigger effect by nudging parsedRows
+                  setParsedRows(prev => prev.slice());
+                }, 0);
+              } catch (e) {
+                console.error('Seeding failed', e);
+                alert('Failed to seed missing funds. See console for details.');
+              }
+            }}
+            className="btn btn-secondary"
+            title={`Seed ${missingTickers.length} missing funds, then re-parse/import`}
+          >
+            Seed missing funds ({missingTickers.length})
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>

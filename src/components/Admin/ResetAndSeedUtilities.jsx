@@ -11,6 +11,8 @@ export default function ResetAndSeedUtilities() {
   const [fundsFile, setFundsFile] = useState(null);
   const [drySummary, setDrySummary] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [eomSource, setEomSource] = useState('');
+  const [eomResult, setEomResult] = useState(null);
 
   async function exportFundsCatalog() {
     const { data } = await supabase
@@ -203,6 +205,32 @@ export default function ResetAndSeedUtilities() {
             <button className="btn btn-secondary" onClick={exportBenchmarksCatalog}>Export benchmarks CSV</button>
             <button className="btn btn-danger" disabled={isProd || busy} title={isProd ? 'Disabled in production' : ''} onClick={resetBenchmarks}>Reset Benchmarks</button>
           </div>
+        </div>
+
+        {/* Convert Non-EOM to EOM */}
+        <div className="card" style={{ padding:12 }}>
+          <div style={{ fontWeight:600, marginBottom:8 }}>Convert Snapshot to EOM</div>
+          <div style={{ color:'#6b7280', marginBottom:8 }}>If a snapshot was imported mid-month, convert all fund rows to the month's end date. Existing EOM rows will be merged.</div>
+          <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', marginBottom:8 }}>
+            <label>Source date <input value={eomSource} onChange={(e)=>setEomSource(e.target.value)} placeholder="YYYY-MM-DD" style={{ width:140 }} /></label>
+            <button className="btn btn-secondary" disabled={busy || !eomSource} onClick={async ()=>{
+              try {
+                setBusy(true); setEomResult(null);
+                const svc = (await import('../../services/fundService')).default;
+                const res = await svc.convertSnapshotToEom(eomSource);
+                setEomResult(res);
+              } catch (e) {
+                setEomResult({ error: e.message || String(e) });
+              } finally {
+                setBusy(false);
+              }
+            }}>Convert</button>
+          </div>
+          {eomResult && (
+            <div className="alert" style={{ background:'#ecfdf5', border:'1px solid #a7f3d0', color:'#065f46', borderRadius:6, padding:8 }}>
+              {eomResult.error ? `Error: ${eomResult.error}` : `Moved ${eomResult.moved || 0} rows${eomResult.merged ? ' (merged with existing EOM)' : ''}.`}
+            </div>
+          )}
         </div>
       </div>
       )}

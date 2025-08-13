@@ -30,6 +30,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 // In tests or when env is missing, provide a no-op stub to avoid crashes
 const shouldStub = process.env.NODE_ENV === 'test' || !supabaseUrl || !supabaseAnonKey;
+export const isSupabaseStubbed = shouldStub;
 
 function createStubClient() {
   const resolved = (data = null) => Promise.resolve({ data, error: null });
@@ -63,6 +64,7 @@ function createStubClient() {
   };
   return {
     from: () => fromBuilder,
+    rpc: () => resolved([]),
     auth: {
       getUser: async () => ({ data: { user: null }, error: null })
     }

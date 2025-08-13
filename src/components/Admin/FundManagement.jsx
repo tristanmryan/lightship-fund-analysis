@@ -201,6 +201,20 @@ const FundManagement = () => {
           ))}
         </div>
 
+        {/* Allow external navigation (from quick actions) */}
+        {React.useEffect(() => {
+          const handler = (ev) => {
+            try {
+              const sub = ev?.detail?.subtab;
+              if (typeof sub === 'string' && ['data','catalogs','mappings','scoring','utilities'].includes(sub)) {
+                setActiveTab(sub);
+              }
+            } catch {}
+          };
+          window.addEventListener('NAVIGATE_ADMIN', handler);
+          return () => window.removeEventListener('NAVIGATE_ADMIN', handler);
+        }, [])}
+
         {activeTab === 'data' && (
           <>
             <MonthlySnapshotUpload />

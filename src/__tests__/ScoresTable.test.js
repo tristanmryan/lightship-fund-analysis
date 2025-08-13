@@ -23,8 +23,8 @@ jest.mock('../hooks/useFundData', () => ({
 
 test('Scores table renders normalized fields', async () => {
   render(<App />);
-  // Switch to Fund Scores tab
-  screen.getByText('Fund Scores').click();
+  // Switch to Funds tab (Enhanced Performance Dashboard)
+  screen.getByText('Funds').click();
   // Verify tickers and normalized fields appear
   expect(await screen.findByText('JQUA')).toBeInTheDocument();
   expect(screen.getByText('JPM US Quality')).toBeInTheDocument();

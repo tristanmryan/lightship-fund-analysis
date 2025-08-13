@@ -10,42 +10,56 @@ class FundService {
   // Get all funds from database with performance at a given date (or latest if null)
   async getAllFunds(asOfDate = null) {
     try {
-      // First get all funds
-      const { data: funds, error: fundsError } = await supabase
-        .from(TABLES.FUNDS)
-        .select('*')
-        .order('ticker');
+      // Single RPC to fetch funds + latest performance as-of date
+      const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
+      const dateOnly = asOf ? asOf.toISOString().slice(0,10) : null;
+      const { data: rows, error } = await supabase.rpc('get_funds_as_of', { p_date: dateOnly });
+      if (error) throw error;
 
-      if (fundsError) throw fundsError;
-      if (!funds || funds.length === 0) return [];
+      // Enrich with asset_classes in one pass (optional; keep resilient if table empty)
+      const classMap = new Map();
+      try {
+        const { data: classes } = await supabase
+          .from(TABLES.ASSET_CLASSES)
+          .select('id, code, name, group_name, sort_group, sort_order');
+        (classes || []).forEach(ac => classMap.set(ac.id, ac));
+      } catch {}
 
-      // Join with asset_classes for normalized fields
-      const fundsWithClasses = await Promise.all(
-        funds.map(async (fund) => {
-          let assetClass = null;
-          if (fund.asset_class_id) {
-            const { data: ac } = await supabase.from(TABLES.ASSET_CLASSES)
-              .select('id, code, name, group_name, sort_group, sort_order')
-              .eq('id', fund.asset_class_id)
-              .maybeSingle();
-            assetClass = ac || null;
-          }
-          const performance = await this.getFundPerformance(fund.ticker, asOfDate);
-          return {
-            ...fund,
-            ...performance,
-            symbol: fund.ticker, // temporary alias for legacy reads
-            asset_class_id: assetClass?.id || fund.asset_class_id || null,
-            asset_class_code: assetClass?.code || null,
-            asset_class_name: assetClass?.name || fund.asset_class || null,
-            asset_group_name: assetClass?.group_name || null,
-            asset_group_sort: assetClass?.sort_group || null,
-            asset_class_sort: assetClass?.sort_order || null
-          };
-        })
-      );
-
-      return fundsWithClasses;
+      return (rows || []).map((r) => {
+        const ac = r.asset_class_id ? classMap.get(r.asset_class_id) : null;
+        return {
+          ticker: r.ticker,
+          symbol: r.ticker,
+          name: r.name,
+          asset_class: r.asset_class,
+          asset_class_id: r.asset_class_id || null,
+          asset_class_code: ac?.code || null,
+          asset_class_name: ac?.name || r.asset_class || null,
+          asset_group_name: ac?.group_name || null,
+          asset_group_sort: ac?.sort_group || null,
+          asset_class_sort: ac?.sort_order || null,
+          is_recommended: !!r.is_recommended,
+          ytd_return: r.ytd_return,
+          one_year_return: r.one_year_return,
+          three_year_return: r.three_year_return,
+          five_year_return: r.five_year_return,
+          ten_year_return: r.ten_year_return,
+          sharpe_ratio: r.sharpe_ratio,
+          standard_deviation: r.standard_deviation,
+          standard_deviation_3y: r.standard_deviation_3y,
+          standard_deviation_5y: r.standard_deviation_5y,
+          expense_ratio: r.expense_ratio,
+          alpha: r.alpha,
+          beta: r.beta,
+          manager_tenure: r.manager_tenure,
+          up_capture_ratio: r.up_capture_ratio,
+          down_capture_ratio: r.down_capture_ratio,
+          category_rank: r.category_rank,
+          sec_yield: r.sec_yield,
+          fund_family: r.fund_family,
+          date: r.perf_date
+        };
+      });
     } catch (error) {
       handleSupabaseError(error, 'getAllFunds');
       return [];
@@ -435,7 +449,7 @@ class FundService {
           const cleanTicker = dbUtils.cleanSymbol(r.ticker || r.fund_ticker || '');
           const dateOnly = dbUtils.formatDateOnly(r.date || r.AsOfMonth || r.as_of_month);
           const base = { date: dateOnly };
-          for (const k of METRIC_KEYS) base[k] = toNumberStrict(r[k]);
+          for (const k of METRIC_KEYS) base[k] = pmn(r[k]);
           // TRUST r.kind from UI for routing
           if (String(r.kind).toLowerCase() === 'benchmark') {
             benchPayloadRaw.push({ benchmark_ticker: cleanTicker, ...base });

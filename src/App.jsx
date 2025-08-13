@@ -6,10 +6,12 @@ import {
   recommendedFunds as defaultRecommendedFunds,
   assetClassBenchmarks as defaultBenchmarks
 } from './data/config';
-import { 
+import {
   identifyReviewCandidates,
   loadMetricWeights
 } from './services/scoring';
+import fundService from './services/fundService';
+import { isSupabaseStubbed } from './services/supabase';
 import {
   getAllCombinedSnapshots,
   getDataSummary
@@ -70,6 +72,7 @@ const App = () => {
   const [snapshotComparison] = useState(null);
 
   const [assetClassBenchmarks, setAssetClassBenchmarks] = useState({});
+  const [availableMonths, setAvailableMonths] = useState([]);
 
 
 
@@ -172,6 +175,30 @@ const App = () => {
       prefetchBenchmarkMappings();
     }
   }, [funds]);
+
+  // Load snapshot months for global As-of selector
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const months = await fundService.listSnapshotMonths();
+        if (!cancelled) setAvailableMonths(months || []);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Global navigation events (from deep links like Data Health quick actions)
+  useEffect(() => {
+    const onNav = (ev) => {
+      try {
+        const tab = ev?.detail?.tab;
+        if (typeof tab === 'string') setActiveTab(tab);
+      } catch {}
+    };
+    window.addEventListener('NAVIGATE_APP', onNav);
+    return () => window.removeEventListener('NAVIGATE_APP', onNav);
+  }, []);
 
   // Initialize fund registry and load data (legacy - will be replaced)
   useEffect(() => {
@@ -371,19 +398,27 @@ const App = () => {
 
   return (
     <div className="app-container">
+      {/* Setup guard if Supabase env missing */}
+      {isSupabaseStubbed && process.env.NODE_ENV !== 'test' && (
+        <div style={{ padding:'2rem', maxWidth:740, margin:'2rem auto', border:'1px solid #fecaca', background:'#fef2f2', borderRadius:8 }}>
+          <h2 style={{ marginTop:0, color:'#7f1d1d' }}>Setup required: Supabase environment variables</h2>
+          <p style={{ color:'#7f1d1d' }}>The app is running without a live database connection. Set the following variables and restart:</p>
+          <ul style={{ color:'#7f1d1d' }}>
+            <li>REACT_APP_SUPABASE_URL</li>
+            <li>REACT_APP_SUPABASE_ANON_KEY</li>
+          </ul>
+          <p style={{ color:'#7f1d1d' }}>In development, add them to <code>.env.local</code>. In preview/production, set them in your hosting provider.</p>
+        </div>
+      )}
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-logo">Raymond James</div>
         <nav className="sidebar-nav">
-          <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
-          <button className={activeTab === 'performance' ? 'active' : ''} onClick={() => setActiveTab('performance')}>Performance</button>
-          <button className={activeTab === 'funds' ? 'active' : ''} onClick={() => setActiveTab('funds')}>Fund Scores</button>
-          <button className={activeTab === 'class' ? 'active' : ''} onClick={() => setActiveTab('class')}>Class View</button>
-          <button className={activeTab === 'analysis' ? 'active' : ''} onClick={() => setActiveTab('analysis')}>Analysis</button>
-          <button className={activeTab === 'analytics' ? 'active' : ''} onClick={() => setActiveTab('analytics')}>Analytics</button>
-          <button className={activeTab === 'history' ? 'active' : ''} onClick={() => setActiveTab('history')}>History</button>
+          <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => setActiveTab('dashboard')}>Overview</button>
+          <button className={activeTab === 'performance' ? 'active' : ''} onClick={() => setActiveTab('performance')}>Funds</button>
+          <button className={activeTab === 'class' ? 'active' : ''} onClick={() => setActiveTab('class')}>Asset Classes</button>
+          <button className={activeTab === 'health' ? 'active' : ''} onClick={() => setActiveTab('health')}>Data Health</button>
           <button className={activeTab === 'admin' ? 'active' : ''} onClick={() => setActiveTab('admin')}>Admin</button>
-          <button className={activeTab === 'health' ? 'active' : ''} onClick={() => setActiveTab('health')}>Health</button>
         </nav>
         <div className="sidebar-footer">
           <div className="user-info">
@@ -402,21 +437,37 @@ const App = () => {
             <h1 style={{ fontSize: '2rem', fontWeight: 600, color: 'var(--color-primary)' }}>Lightship Fund Analysis</h1>
             <p style={{ color: 'var(--color-primary-light)' }}>Monthly fund performance analysis with Z-score ranking system</p>
           </div>
-        <button 
-            onClick={() => setShowHelp(true)}
-          style={{ 
-            padding: '0.5rem 1rem',
-              backgroundColor: 'var(--color-primary-light)',
-              color: 'var(--color-white)',
-            border: 'none',
-            borderRadius: '0.375rem',
-            cursor: 'pointer',
-              fontWeight: 600
-          }}
-            title="Help (Ctrl+H)"
-        >
-            Help
-        </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>As of</label>
+              <select
+                value={asOfMonth || ''}
+                onChange={(e) => setAsOfMonth(e.target.value || null)}
+                style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6 }}
+                title="Switch dataset to a specific month snapshot"
+              >
+                <option value="">Latest</option>
+                {(availableMonths || []).map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+            <button 
+              onClick={() => setShowHelp(true)}
+              style={{ 
+                padding: '0.5rem 1rem',
+                backgroundColor: 'var(--color-primary-light)',
+                color: 'var(--color-white)',
+                border: 'none',
+                borderRadius: '0.375rem',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+              title="Help (Ctrl+H)"
+            >
+              Help
+            </button>
+          </div>
       </div>
         {/* Card-based main content */}
         <div className="card">
@@ -451,6 +502,50 @@ const App = () => {
                   >Enhanced Performance Dashboard</button> with advanced filtering and sorting capabilities!
                 </div>
               </div>
+              {/* Trust Meter */}
+              {(() => {
+                const total = (funds || []).length;
+                const nz = (arr) => arr.filter(v => v != null && !Number.isNaN(v)).length;
+                const ytdOk = nz((funds || []).map(f => f.ytd_return));
+                const oneYOk = nz((funds || []).map(f => f.one_year_return));
+                const sharpeOk = nz((funds || []).map(f => f.sharpe_ratio));
+                const sd3Ok = nz((funds || []).map(f => (f.standard_deviation_3y ?? f.standard_deviation)));
+                const covs = [ytdOk, oneYOk, sharpeOk, sd3Ok].map(n => total ? Math.round((n / total) * 100) : 0);
+                const minCov = covs.length ? Math.min(...covs) : 0;
+                const color = minCov >= 80 ? '#16a34a' : minCov >= 50 ? '#f59e0b' : '#dc2626';
+                const label = minCov >= 80 ? 'Good' : minCov >= 50 ? 'Fair' : 'Poor';
+                return (
+                  <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Data Health</div>
+                    <div style={{ background: color, color: 'white', borderRadius: 9999, padding: '4px 10px', fontWeight: 600 }}>
+                      {label} • min coverage {minCov}%
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Non-EOM banner */}
+              {(() => {
+                if (!asOfMonth) return null;
+                try {
+                  const a = new Date(asOfMonth + 'T00:00:00Z');
+                  const end = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() + 1, 0));
+                  const isEom = a.getUTCDate() === end.getUTCDate();
+                  if (isEom) return null;
+                  return (
+                    <div style={{ marginTop: '0.75rem', background:'#fffbeb', border:'1px solid #fde68a', color:'#92400e', borderRadius:6, padding:'8px 12px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
+                      <div>
+                        Active month {asOfMonth} is not end-of-month. Data may be incomplete. Convert to EOM for consistency.
+                      </div>
+                      <button className="btn btn-secondary" onClick={(e)=>{
+                        e.preventDefault();
+                        window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } }));
+                        window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'utilities' } }));
+                      }}>Open Utilities</button>
+                    </div>
+                  );
+                } catch { return null; }
+              })()}
               
           {funds.length > 0 ? (
                 <div>
@@ -530,7 +625,7 @@ const App = () => {
         </div>
       )}
 
-      {/* Performance Tab */}
+      {/* Funds Tab */}
       {activeTab === 'performance' && (
         <div>
           <EnhancedPerformanceDashboard 
@@ -543,134 +638,7 @@ const App = () => {
         </div>
       )}
 
-      {/* Fund Scores Tab */}
-{activeTab === 'funds' && (
-  <div>
-    {(funds?.length || 0) > 0 ? (
-      <div>
-                  <div className="card-header">
-                    <h2 className="card-title">All Funds with Scores</h2>
-                    <p className="card-subtitle">Scores calculated using weighted Z-score methodology within each asset class</p>
-        </div>
-        
-                  {/* Search and Filter Controls */}
-                  <div className="controls-container">
-                    <div className="input-group" style={{ margin: 0, flex: 1 }}>
-                      <input
-                        type="text"
-                        placeholder="Search funds..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="search-input"
-                      />
-                    </div>
-                    <div className="input-group" style={{ margin: 0 }}>
-                      <select
-                        value={filterAssetClass}
-                        onChange={(e) => setFilterAssetClass(e.target.value)}
-                        className="select-field"
-                      >
-                        <option value="all">All Asset Classes</option>
-                        {memoizedAssetClasses.map(cls => (
-                          <option key={cls} value={cls}>{cls}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="input-group" style={{ margin: 0 }}>
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="select-field"
-                      >
-                        <option value="score">Sort by Score</option>
-                        <option value="symbol">Sort by Symbol</option>
-                        <option value="name">Sort by Name</option>
-                        <option value="assetClass">Sort by Asset Class</option>
-                      </select>
-                    </div>
-                    <button
-                      onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
-                      className="btn btn-secondary"
-                    >
-                      {sortDirection === 'asc' ? '↑' : '↓'}
-                    </button>
-                  </div>
-
-                  {/* Results Summary */}
-                    <div style={{ marginBottom: 'var(--spacing-md)', color: '#6b7280', fontSize: '0.875rem' }}>
-                    Showing {filteredAndSortedFunds.length} of {funds.length} funds
-                  </div>
-
-                  {/* Fund Scores Table */}
-                  <div className="table-container">
-                    <table>
-            <thead>
-                        <tr>
-                          <th>Symbol</th>
-                          <th>Fund Name</th>
-                          <th>Asset Class</th>
-                          <th>Score</th>
-                          <th>YTD</th>
-                          <th>1 Year</th>
-                          <th>3 Year</th>
-                          <th>5 Year</th>
-                          <th>10 Year</th>
-                          <th>Sharpe</th>
-                          <th>Alpha</th>
-                          <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-                        {filteredAndSortedFunds.map((fund, index) => (
-                          <tr key={fund.ticker || fund.Symbol || index}>
-                            <td><strong>{fund.ticker || fund.symbol || fund.Symbol}</strong></td>
-                            <td>{fund.name || fund['Fund Name'] || '—'}</td>
-                            <td>{fund.asset_class_name || fund.asset_class || fund['Asset Class'] || '—'}</td>
-                            <td>
-                              <span className="score-badge" style={{
-                                backgroundColor: fund.score >= 0.7 ? '#059669' : 
-                                              fund.score >= 0.5 ? '#3B82F6' : 
-                                              fund.score >= 0.3 ? '#F59E0B' : '#DC2626',
-                                padding: 'var(--spacing-xs) var(--spacing-sm)',
-                                borderRadius: 'var(--border-radius)',
-                                color: 'white',
-                                fontWeight: '600',
-                                fontSize: '0.875rem'
-                              }}>
-                                {(typeof fund.score === 'number' ? fund.score : 0).toFixed(3)}
-                        </span>
-                            </td>
-                            <td>{fund.ytd_return != null ? `${fund.ytd_return.toFixed(2)}%` : '—'}</td>
-                            <td>{fund.one_year_return != null ? `${fund.one_year_return.toFixed(2)}%` : '—'}</td>
-                            <td>{fund.three_year_return != null ? `${fund.three_year_return.toFixed(2)}%` : '—'}</td>
-                            <td>{fund.five_year_return != null ? `${fund.five_year_return.toFixed(2)}%` : '—'}</td>
-                            <td>{fund.ten_year_return != null ? `${fund.ten_year_return.toFixed(2)}%` : '—'}</td>
-                            <td>{fund.sharpe_ratio != null ? fund.sharpe_ratio.toFixed(2) : '—'}</td>
-                            <td>{fund.alpha != null ? fund.alpha.toFixed(2) : '—'}</td>
-                            <td>
-                              <button
-                                className="btn btn-secondary"
-                                style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: '0.75rem' }}
-                              >
-                                Details
-                              </button>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-            </div>
-          ) : (
-                <div className="card">
-                  <div className="card-header">
-                    <h3 className="card-title">No Fund Data Available</h3>
-                    <p className="card-subtitle">Upload a fund performance file to get started</p>
-                  </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Removed legacy Fund Scores tab in favor of Enhanced Performance */}
 
       {/* Asset Class View Tab */}
       {activeTab === 'class' && (
