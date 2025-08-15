@@ -3,21 +3,21 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { computeBenchmarkDelta } from './benchmarkUtils';
 import { formatPercent, formatNumber } from '../../utils/formatters';
 import preferencesService from '../../services/preferencesService';
-import { exportCompareCSV, downloadFile, shouldConfirmLargeExport } from '../../services/exportService';
+import { exportCompareCSV, downloadFile, shouldConfirmLargeExport, formatExportFilename } from '../../services/exportService';
 
 const metricDefs = [
-  { key: 'scores.final', label: 'Score', fmt: (v) => (v == null ? '—' : formatNumber(v, 1)) },
-  { key: 'ytd', label: 'YTD Return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
-  { key: '1y', label: '1-Year Return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
-  { key: '3y', label: '3-Year Return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
-  { key: '5y', label: '5-Year Return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
-  { key: 'sharpe', label: 'Sharpe Ratio', fmt: (v) => (v == null ? '—' : formatNumber(v, 2)) },
-  { key: 'stdDev3Y', label: 'Std Dev (3Y)', tooltip: 'Standard deviation over the last 3 years.', fmt: (v) => (v == null ? '—' : formatPercent(v, 2)) },
-  { key: 'stdDev5Y', label: 'Std Dev (5Y)', tooltip: 'Standard deviation over the last 5 years.', fmt: (v) => (v == null ? '—' : formatPercent(v, 2)) },
-  { key: 'expense', label: 'Expense Ratio', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
-  { key: 'beta', label: 'Beta', fmt: (v) => (v == null ? '—' : formatNumber(v, 2)) },
-  { key: 'upCapture', label: 'Up Capture (3Y)', fmt: (v) => (v == null ? '—' : formatPercent(v, 1)) },
-  { key: 'downCapture', label: 'Down Capture (3Y)', fmt: (v) => (v == null ? '—' : formatPercent(v, 1)) }
+  { key: 'scores.final', label: 'Score', tooltip: '0–100 weighted Z-score within asset class', fmt: (v) => (v == null ? '—' : formatNumber(v, 1)) },
+  { key: 'ytd', label: 'YTD Return', tooltip: 'Year-to-date total return', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
+  { key: '1y', label: '1-Year Return', tooltip: 'Total return over the last 12 months', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
+  { key: '3y', label: '3-Year Return', tooltip: 'Annualized return over the last 3 years', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
+  { key: '5y', label: '5-Year Return', tooltip: 'Annualized return over the last 5 years', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
+  { key: 'sharpe', label: 'Sharpe Ratio', tooltip: 'Risk-adjusted return: higher is better', fmt: (v) => (v == null ? '—' : formatNumber(v, 2)) },
+  { key: 'stdDev3Y', label: 'Std Dev (3Y)', tooltip: 'Volatility (3-year): lower is better', fmt: (v) => (v == null ? '—' : formatPercent(v, 2)) },
+  { key: 'stdDev5Y', label: 'Std Dev (5Y)', tooltip: 'Volatility (5-year): lower is better', fmt: (v) => (v == null ? '—' : formatPercent(v, 2)) },
+  { key: 'expense', label: 'Expense Ratio', tooltip: 'Annual fund costs: lower is better', fmt: (v) => (v == null ? '—' : formatPercent(v)) },
+  { key: 'beta', label: 'Beta', tooltip: 'Market sensitivity: 1.0 ≈ market risk', fmt: (v) => (v == null ? '—' : formatNumber(v, 2)) },
+  { key: 'upCapture', label: 'Up Capture (3Y)', tooltip: 'Capture in up markets: higher is better', fmt: (v) => (v == null ? '—' : formatPercent(v, 1)) },
+  { key: 'downCapture', label: 'Down Capture (3Y)', tooltip: 'Capture in down markets: lower is better', fmt: (v) => (v == null ? '—' : formatPercent(v, 1)) }
 ];
 
 function getValue(fund, key) {
@@ -85,6 +85,20 @@ const ComparisonPanel = ({ funds = [], initialSavedSets = null }) => {
     });
   }, [funds, search]);
 
+  // Allow external deep-link to seed selection via event { tickers: [] }
+  useEffect(() => {
+    const handler = (ev) => {
+      try {
+        const tickers = Array.isArray(ev?.detail?.tickers) ? ev.detail.tickers.map(t => String(t).toUpperCase()) : [];
+        if (tickers.length === 0) return;
+        const found = (funds || []).filter(f => tickers.includes(getTicker(f))).slice(0, 4);
+        if (found.length > 0) setSelected(found);
+      } catch {}
+    };
+    window.addEventListener('LOAD_COMPARE_SELECTION', handler);
+    return () => window.removeEventListener('LOAD_COMPARE_SELECTION', handler);
+  }, [funds]);
+
   const addFund = (fund) => {
     if (!fund) return;
     if (selected.find(s => (s.Symbol || s.ticker) === (fund.Symbol || fund.ticker))) return;
@@ -114,6 +128,7 @@ const ComparisonPanel = ({ funds = [], initialSavedSets = null }) => {
     setSavedSets(next);
     await preferencesService.saveCompareSets(next);
     setCurrentLoaded(name);
+    setNotice(existing ? `Updated set "${name}".` : `Saved set "${name}".`);
   }
 
   async function handleLoad(nameKey) {
@@ -138,6 +153,8 @@ const ComparisonPanel = ({ funds = [], initialSavedSets = null }) => {
     setSavedSets(next);
     await preferencesService.saveCompareSets(next);
     setCurrentLoaded('');
+    setSetName('');
+    setNotice(`Deleted set "${savedSets[name]?.name || name}".`);
   }
 
   function handleExport() {
@@ -161,15 +178,17 @@ const ComparisonPanel = ({ funds = [], initialSavedSets = null }) => {
       funds: withBench,
       metadata: { exportedAt: new Date() }
     });
-    const now = new Date();
-    const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
-    downloadFile(blob, `compare_export_${ts}.csv`, 'text/csv;charset=utf-8');
+    const filename = formatExportFilename({ scope: 'compare', ext: 'csv' });
+    downloadFile(blob, filename, 'text/csv;charset=utf-8');
   }
 
   return (
-    <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-      <div style={{ padding: 16, borderBottom: '1px solid #e5e7eb', display: 'flex', gap: 8, alignItems: 'center' }}>
+    <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8 }} data-compare-export>
+      <div style={{ padding: 16, borderBottom: '1px solid #e5e7eb', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <strong>Compare Funds</strong>
+        {currentLoaded && (
+          <span style={{ color: '#6b7280' }}>Loaded set: <strong>{currentLoaded}</strong></span>
+        )}
         <input
           placeholder="Search symbol or name..."
           value={search}
@@ -203,16 +222,22 @@ const ComparisonPanel = ({ funds = [], initialSavedSets = null }) => {
         >
           <option value="">Load set…</option>
           {Object.entries(savedSets)
-            .sort((a,b) => (a[0].localeCompare(b[0])))
+            .sort((a,b) => {
+              const an = a[1]?.name || a[0];
+              const bn = b[1]?.name || b[0];
+              return an.localeCompare(bn);
+            })
             .map(([key, val]) => (
               <option key={key} value={key}>{val?.name || key}</option>
             ))}
         </select>
         <button onClick={handleDelete} className="btn btn-secondary" disabled={!setName.trim() && !currentLoaded}>Delete</button>
+        <button onClick={() => { setSelected([]); setNotice('Selection cleared.'); }} className="btn btn-secondary" disabled={selected.length === 0}>Clear selection</button>
         <button
           onClick={handleExport}
           disabled={selected.length === 0}
           className="btn btn-primary"
+          style={{ display: 'none' }}
         >Export CSV</button>
       </div>
 

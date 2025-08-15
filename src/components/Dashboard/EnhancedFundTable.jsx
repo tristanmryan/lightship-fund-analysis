@@ -2,13 +2,14 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   ArrowUp, ArrowDown, ArrowUpDown, Eye, Star, TrendingUp, 
-  TrendingDown, Shield, DollarSign, Calendar, MoreHorizontal
+  TrendingDown, Shield, DollarSign, Calendar, MoreHorizontal, 
+  ChevronUp, ChevronDown, Info
 } from 'lucide-react';
-import { getScoreColor } from '../../services/scoring';
+import { getScoreColor, METRICS_CONFIG } from '../../services/scoring';
 import { computeBenchmarkDelta } from './benchmarkUtils';
 import Sparkline from './Sparkline';
 import fundService from '../../services/fundService';
-import { exportTableCSV, downloadFile, shouldConfirmLargeExport } from '../../services/exportService';
+import { exportTableCSV, downloadFile, shouldConfirmLargeExport, formatExportFilename } from '../../services/exportService';
 
 /**
  * Enhanced Fund Table Component
@@ -50,14 +51,74 @@ const EnhancedFundTable = ({
   const preloadSparklineData = useCallback(async (currentSortedFunds, currentHistoryCache) => {
     const needed = new Set((currentSortedFunds || []).map(f => (f.ticker || f.Symbol)).filter(Boolean));
     const toLoad = Array.from(needed).filter(sym => !(sym in currentHistoryCache));
-    for (const sym of toLoad) {
-      try {
-        const rows = await fundService.getFundPerformanceHistory(sym, null, (window.__AS_OF_MONTH__ || null));
-        const sorted = (rows || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
-        setHistoryCache(prev => ({ ...prev, [sym]: sorted }));
-      } catch {
-        // ignore
+    if (toLoad.length === 0) return;
+    try {
+      const results = await Promise.all(toLoad.map(async (sym) => {
+        try {
+          const rows = await fundService.getFundPerformanceHistory(sym, null, (window.__AS_OF_MONTH__ || null));
+          const sorted = (rows || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+          return [sym, sorted];
+        } catch {
+          return null;
+        }
+      }));
+      const updates = {};
+      for (const entry of results) {
+        if (entry && entry[0]) updates[entry[0]] = entry[1];
       }
+      if (Object.keys(updates).length > 0) {
+        setHistoryCache(prev => ({ ...prev, ...updates }));
+      }
+    } catch {
+      // ignore batch failures
+    }
+  }, []);
+
+  // Helpers
+  const getTopPositiveReasons = useCallback((fund, limit = 2) => {
+    try {
+      const breakdown = fund?.scores?.breakdown || {};
+      const rows = Object.keys(breakdown).map((k) => {
+        const row = breakdown[k] || {};
+        const contrib = (typeof row.reweightedContribution === 'number') ? row.reweightedContribution : (row.weightedZScore || 0);
+        return { key: k, label: (METRICS_CONFIG?.labels?.[k] || k), contrib };
+      }).filter(r => Number.isFinite(r.contrib) && r.contrib > 0);
+      rows.sort((a, b) => b.contrib - a.contrib);
+      return rows.slice(0, limit);
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const getTopNegativeReasons = useCallback((fund, limit = 1) => {
+    try {
+      const breakdown = fund?.scores?.breakdown || {};
+      const rows = Object.keys(breakdown).map((k) => {
+        const row = breakdown[k] || {};
+        const contrib = (typeof row.reweightedContribution === 'number') ? row.reweightedContribution : (row.weightedZScore || 0);
+        return { key: k, label: (METRICS_CONFIG?.labels?.[k] || k), contrib };
+      }).filter(r => Number.isFinite(r.contrib) && r.contrib < 0);
+      rows.sort((a, b) => a.contrib - b.contrib); // most negative first
+      return rows.slice(0, limit);
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const formatTopReasonsTooltip = useCallback((fund) => {
+    try {
+      const breakdown = fund?.scores?.breakdown || {};
+      const rows = Object.keys(breakdown).map((k) => {
+        const row = breakdown[k] || {};
+        const contrib = (typeof row.reweightedContribution === 'number') ? row.reweightedContribution : (row.weightedZScore || 0);
+        return { key: k, label: (METRICS_CONFIG?.labels?.[k] || k), contrib };
+      }).filter(r => Number.isFinite(r.contrib));
+      rows.sort((a,b) => Math.abs(b.contrib) - Math.abs(a.contrib));
+      const top = rows.slice(0, 3).map(r => `${r.contrib >= 0 ? '+' : '−'}${Math.abs(r.contrib).toFixed(2)} ${r.label}`);
+      if (top.length === 0) return 'Why this fund: no scoring contributors available';
+      return `Why this fund: ${top.join(', ')}`;
+    } catch {
+      return 'Why this fund: rationale unavailable';
     }
   }, []);
 
@@ -69,6 +130,7 @@ const EnhancedFundTable = ({
       getValue: (fund) => fund.ticker || fund.symbol || fund.Symbol,
       sortable: true,
       width: '100px',
+      tooltip: 'Fund ticker symbol',
       render: (value, fund) => (
         <div style={{ fontWeight: '600', color: '#1f2937' }}>
           {value}
@@ -78,20 +140,69 @@ const EnhancedFundTable = ({
     name: {
       label: 'Fund Name',
       key: 'name',
-      getValue: (fund) => fund['Product Name'] || fund.name,
+      getValue: (fund) => fund.name || fund['Product Name'] || fund.displayName || fund.ticker,
       sortable: true,
       width: '250px',
-      render: (value) => (
-        <div style={{ 
-          fontSize: '0.875rem',
-          lineHeight: '1.25rem',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap'
-        }}>
-          {value}
-        </div>
-      )
+      tooltip: 'Official fund name',
+      render: (value, fund) => {
+        const positive = getTopPositiveReasons(fund, 2);
+        const negative = (fund?.scores?.final != null && fund.scores.final < 45) ? getTopNegativeReasons(fund, 1) : [];
+        return (
+          <div>
+            <div
+              title={String(value || '')}
+              style={{ 
+                fontSize: '0.875rem',
+                lineHeight: '1.25rem',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {value}
+            </div>
+            {(positive.length > 0 || negative.length > 0) && (
+              <div
+                title={formatTopReasonsTooltip(fund)}
+                style={{ marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}
+              >
+                {positive.map(r => (
+                  <span
+                    key={r.key}
+                    style={{
+                      fontSize: '0.6875rem',
+                      background: '#ecfdf5',
+                      color: '#065f46',
+                      border: '1px solid #a7f3d0',
+                      borderRadius: 9999,
+                      padding: '2px 6px'
+                    }}
+                    title={`Contributes +${r.contrib.toFixed(2)} to score`}
+                  >
+                    +{r.contrib.toFixed(2)} {r.label}
+                  </span>
+                ))}
+                {negative.map(r => (
+                  <span
+                    key={`neg-${r.key}`}
+                    style={{
+                      fontSize: '0.6875rem',
+                      background: '#fef2f2',
+                      color: '#7f1d1d',
+                      border: '1px solid #fecaca',
+                      borderRadius: 9999,
+                      padding: '2px 6px'
+                    }}
+                    title={`Drags −${Math.abs(r.contrib).toFixed(2)} from score`}
+                  >
+                    −{Math.abs(r.contrib).toFixed(2)} {r.label}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      }
     },
     assetClass: {
       label: 'Asset Class',
@@ -99,6 +210,7 @@ const EnhancedFundTable = ({
       getValue: (fund) => fund.asset_class_name || fund.asset_class || fund['Asset Class'],
       sortable: true,
       width: '150px',
+      tooltip: 'Normalized asset class',
       render: (value) => (
         <div style={{
           fontSize: '0.75rem',
@@ -117,15 +229,19 @@ const EnhancedFundTable = ({
       getValue: (fund) => fund.scores?.final || fund.score || 0,
       sortable: true,
       width: '80px',
+      tooltip: '0–100 weighted Z-score within asset class',
       render: (value) => (
-        <div style={{
-          padding: '0.25rem 0.5rem',
-          borderRadius: '0.375rem',
-          textAlign: 'center',
-          color: 'white',
-          fontWeight: '600',
-          backgroundColor: getScoreColor(value)
-        }}>
+        <div
+          title="Final score across peers in asset class (0–100)"
+          style={{
+            padding: '0.25rem 0.5rem',
+            borderRadius: '0.375rem',
+            textAlign: 'center',
+            color: 'white',
+            fontWeight: '600',
+            backgroundColor: getScoreColor(value)
+          }}
+        >
           {value?.toFixed(1) || '0.0'}
         </div>
       )
@@ -133,9 +249,10 @@ const EnhancedFundTable = ({
     ytdReturn: {
       label: 'YTD Return',
       key: 'ytdReturn',
-      getValue: (fund) => fund['Total Return - YTD (%)'] || fund.ytd_return || 0,
+      getValue: (fund) => (fund.ytd_return ?? fund['Total Return - YTD (%)'] ?? 0),
       sortable: true,
       width: '100px',
+      tooltip: 'Year-to-date total return',
       render: (value) => (
         <div style={{
           display: 'flex',
@@ -152,9 +269,10 @@ const EnhancedFundTable = ({
     oneYearReturn: {
       label: '1Y Return',
       key: 'oneYearReturn',
-      getValue: (fund) => fund['Total Return - 1 Year (%)'] || fund.one_year_return || 0,
+      getValue: (fund) => (fund.one_year_return ?? fund['Total Return - 1 Year (%)'] ?? fund['1 Year'] ?? 0),
       sortable: true,
       width: '100px',
+      tooltip: 'Total return over the last 12 months',
       render: (value, fund, allFunds) => {
         const bench = computeBenchmarkDelta(fund, allFunds, '1y');
         const color = value >= 0 ? '#16a34a' : '#dc2626';
@@ -184,9 +302,10 @@ const EnhancedFundTable = ({
     threeYearReturn: {
       label: '3Y Return',
       key: 'threeYearReturn',
-      getValue: (fund) => fund['Annualized Total Return - 3 Year (%)'] || fund.three_year_return || 0,
+      getValue: (fund) => (fund.three_year_return ?? fund['Annualized Total Return - 3 Year (%)'] ?? fund['3 Year'] ?? 0),
       sortable: true,
       width: '100px',
+      tooltip: 'Annualized return over the last 3 years',
       render: (value) => (
         <div style={{
           display: 'flex',
@@ -203,9 +322,10 @@ const EnhancedFundTable = ({
     fiveYearReturn: {
       label: '5Y Return',
       key: 'fiveYearReturn',
-      getValue: (fund) => fund['Annualized Total Return - 5 Year (%)'] || fund.five_year_return || 0,
+      getValue: (fund) => (fund.five_year_return ?? fund['Annualized Total Return - 5 Year (%)'] ?? fund['5 Year'] ?? 0),
       sortable: true,
       width: '100px',
+      tooltip: 'Annualized return over the last 5 years',
       render: (value) => (
         <div style={{
           display: 'flex',
@@ -249,9 +369,10 @@ const EnhancedFundTable = ({
     expenseRatio: {
       label: 'Expense Ratio',
       key: 'expenseRatio',
-      getValue: (fund) => fund['Net Exp Ratio (%)'] || fund.expense_ratio || 0,
+      getValue: (fund) => (fund.expense_ratio ?? fund['Net Exp Ratio (%)'] ?? 0),
       sortable: true,
       width: '120px',
+      tooltip: 'Annual fund costs: lower is better',
       render: (value) => (
         <div style={{
           display: 'flex',
@@ -268,9 +389,10 @@ const EnhancedFundTable = ({
     sharpeRatio: {
       label: 'Sharpe Ratio',
       key: 'sharpeRatio',
-      getValue: (fund) => fund['Sharpe Ratio - 3 Year'] || fund.sharpe_ratio || 0,
+      getValue: (fund) => (fund.sharpe_ratio ?? fund['Sharpe Ratio - 3 Year'] ?? fund['Sharpe Ratio'] ?? 0),
       sortable: true,
       width: '110px',
+      tooltip: 'Risk-adjusted return: higher is better',
       render: (value) => (
         <div style={{
           display: 'flex',
@@ -287,9 +409,10 @@ const EnhancedFundTable = ({
     beta: {
       label: 'Beta',
       key: 'beta',
-      getValue: (fund) => fund['Beta - 5 Year'] || fund.beta || 0,
+      getValue: (fund) => (fund.beta ?? fund['Beta - 5 Year'] ?? 0),
       sortable: true,
       width: '80px',
+      tooltip: 'Market sensitivity: 1.0 ≈ market risk',
       render: (value) => (
         <div style={{
           textAlign: 'center',
@@ -305,6 +428,7 @@ const EnhancedFundTable = ({
       getValue: (fund) => fund.standard_deviation_3y ?? null,
       sortable: true,
       width: '100px',
+      tooltip: 'Volatility (3-year): lower is better',
       render: (value) => (
         <div style={{ textAlign: 'center' }}>
           {value == null ? '—' : `${value.toFixed(2)}%`}
@@ -317,6 +441,7 @@ const EnhancedFundTable = ({
       getValue: (fund) => fund.standard_deviation_5y ?? null,
       sortable: true,
       width: '100px',
+      tooltip: 'Volatility (5-year): lower is better',
       render: (value) => (
         <div style={{ textAlign: 'center' }}>
           {value == null ? '—' : `${value.toFixed(2)}%`}
@@ -326,9 +451,10 @@ const EnhancedFundTable = ({
     upCaptureRatio: {
       label: 'Up Capture',
       key: 'upCaptureRatio',
-      getValue: (fund) => fund['Up Capture Ratio (Morningstar Standard) - 3 Year'] || fund.up_capture_ratio || 0,
+      getValue: (fund) => (fund.up_capture_ratio ?? fund['Up Capture Ratio (Morningstar Standard) - 3 Year'] ?? fund['Up Capture Ratio'] ?? 0),
       sortable: true,
       width: '100px',
+      tooltip: 'Capture in up markets: higher is better',
       render: (value) => (
         <div style={{
           textAlign: 'center',
@@ -341,9 +467,10 @@ const EnhancedFundTable = ({
     downCaptureRatio: {
       label: 'Down Capture',
       key: 'downCaptureRatio',
-      getValue: (fund) => fund['Down Capture Ratio (Morningstar Standard) - 3 Year'] || fund.down_capture_ratio || 0,
+      getValue: (fund) => (fund.down_capture_ratio ?? fund['Down Capture Ratio (Morningstar Standard) - 3 Year'] ?? fund['Down Capture Ratio'] ?? 0),
       sortable: true,
       width: '110px',
+      tooltip: 'Capture in down markets: lower is better',
       render: (value) => (
         <div style={{
           textAlign: 'center',
@@ -359,6 +486,7 @@ const EnhancedFundTable = ({
       getValue: (fund) => fund['Longest Manager Tenure (Years)'] || fund.manager_tenure || 0,
       sortable: true,
       width: '120px',
+      tooltip: 'Longest manager tenure (years)',
       render: (value) => (
         <div style={{
           display: 'flex',
@@ -377,6 +505,7 @@ const EnhancedFundTable = ({
       getValue: (fund) => fund.is_recommended || fund.recommended || false,
       sortable: true,
       width: '110px',
+      tooltip: 'Firm-designated recommended fund',
       render: (value) => (
         <div style={{
           display: 'flex',
@@ -464,17 +593,17 @@ const EnhancedFundTable = ({
   const getSortIndicator = (columnKey) => {
     const sortIndex = sortConfig.findIndex(config => config.key === columnKey);
     if (sortIndex === -1) return <ArrowUpDown size={14} style={{ opacity: 0.3 }} />;
-    
+
     const config = sortConfig[sortIndex];
-    const Icon = config.direction === 'asc' ? ArrowUp : ArrowDown;
-    
+    const Icon = config.direction === 'asc' ? ChevronUp : ChevronDown;
+
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-        <Icon size={14} />
+        <Icon size={14} aria-hidden />
         {sortConfig.length > 1 && (
-          <span style={{ 
-            fontSize: '0.75rem', 
-            backgroundColor: '#3b82f6', 
+          <span style={{
+            fontSize: '0.75rem',
+            backgroundColor: '#3b82f6',
             color: 'white',
             borderRadius: '50%',
             width: '16px',
@@ -541,9 +670,8 @@ const EnhancedFundTable = ({
         exportedAt: new Date()
       }
     });
-    const now = new Date();
-    const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
-    downloadFile(blob, `table_export_${ts}.csv`, 'text/csv;charset=utf-8');
+    const filename = formatExportFilename({ scope: 'table', asOf: (window.__AS_OF_MONTH__ || null), ext: 'csv' });
+    downloadFile(blob, filename, 'text/csv;charset=utf-8');
   }, [sortedFunds, sortConfig, chartPeriod, columnDefinitions, buildExportColumns]);
 
   useEffect(() => {
@@ -565,9 +693,23 @@ const EnhancedFundTable = ({
         <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>
           No Funds Found
         </h3>
-        <p style={{ color: '#6b7280' }}>
-          No funds match your current filter criteria. Try adjusting your filters or clearing them to see more results.
+        <p style={{ color: '#6b7280' }} title="Empty state guidance">
+          No funds match your current filter criteria. Adjust filters, clear them, or seed missing funds via Admin.
         </p>
+        <div style={{ marginTop: '0.75rem', display:'flex', gap:8, justifyContent:'center', flexWrap:'wrap' }}>
+          <button
+            onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}
+            style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: '0.375rem', backgroundColor: 'white', color: '#3b82f6', fontSize: '0.875rem', cursor: 'pointer' }}
+          >
+            Go to Importer
+          </button>
+          <button
+            onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}
+            style={{ padding: '0.5rem 1rem', border: '1px solid #6b7280', borderRadius: '0.375rem', backgroundColor: 'white', color: '#374151', fontSize: '0.875rem', cursor: 'pointer' }}
+          >
+            Use sample data
+          </button>
+        </div>
       </div>
     );
   }
@@ -612,6 +754,35 @@ const EnhancedFundTable = ({
             }}
           >
             Export CSV
+          </button>
+          <button
+            onClick={() => {
+              const rec = sortedFunds.filter(f => f.is_recommended || f.recommended);
+              if (rec.length === 0) return;
+              const keys = ['symbol','name','assetClass','score','oneYearReturn','expenseRatio'];
+              const cols = keys.filter(k => columnDefinitions[k]).map(k => ({
+                key: k,
+                label: columnDefinitions[k].label,
+                isPercent: false,
+                valueGetter: (fund) => columnDefinitions[k].getValue(fund)
+              }));
+              const blob = exportTableCSV({ funds: rec, columns: cols, sortConfig: [], metadata: { exportedAt: new Date(), kind: 'recommended_list' } });
+              const filename = formatExportFilename({ scope: 'table_recommended', asOf: (window.__AS_OF_MONTH__ || null), ext: 'csv' });
+              downloadFile(blob, filename, 'text/csv;charset=utf-8');
+            }}
+            disabled={sortedFunds.filter(f => f.is_recommended || f.recommended).length === 0}
+            style={{
+              padding: '0.5rem 1rem',
+              border: '1px solid #10b981',
+              borderRadius: '0.375rem',
+              backgroundColor: (sortedFunds.filter(f => f.is_recommended || f.recommended).length > 0) ? '#10b981' : '#a7f3d0',
+              color: 'white',
+              fontSize: '0.875rem',
+              cursor: (sortedFunds.filter(f => f.is_recommended || f.recommended).length > 0) ? 'pointer' : 'not-allowed'
+            }}
+            title="Export Recommended List"
+          >
+            Export Recommended
           </button>
           <button
             onClick={() => setSortConfig([])}
@@ -679,9 +850,20 @@ const EnhancedFundTable = ({
                       backgroundColor: '#f9fafb',
                       minWidth: column.width
                     }}
+                    title={column.tooltip || ''}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       {column.label}
+                      {['score','sharpeRatio','standardDeviation','expenseRatio','upCaptureRatio','downCaptureRatio'].includes(columnKey) && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }}
+                          title="What is this metric?"
+                          style={{ border:'none', background:'transparent', cursor:'pointer', color:'#6b7280' }}
+                        >
+                          <Info size={14} aria-hidden />
+                        </button>
+                      )}
                       {column.sortable && getSortIndicator(columnKey)}
                     </div>
                   </th>

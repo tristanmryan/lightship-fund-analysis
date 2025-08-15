@@ -2,19 +2,17 @@
 
 A comprehensive fund performance analysis platform built for financial advisors, featuring real-time data integration, professional reporting, and client-ready analytics.
 
-## 🚨 **IMPORTANT: YCharts API Integration Status**
+## 🚨 **IMPORTANT: CSV-only MVP (Phase 3) and YCharts Status**
 
 **Current Status (January 2025):**
-- ✅ **Integration is PRODUCTION-READY** - All code, endpoints, and authentication are correctly implemented
-- ⚠️ **Currently using MOCK DATA** due to YCharts API returning 403 errors
-- 🔄 **Waiting for YCharts sales team** to confirm production API access for mutual fund and equity data
-- 🚀 **Safe to continue development** - App will automatically switch to real data once API access is granted
+- ✅ Phase 3 pivoted to a CSV-only MVP. All ingestion and exports work without YCharts.
+- ⚠️ YCharts integration remains implemented but de-prioritized for MVP; API access pending (403s observed).
+- 🔄 When access is granted, the app can switch to real YCharts data without scope changes.
 
 **What this means for development:**
-- **CONTINUE BUILDING NEW FEATURES** - Mock data structure exactly matches real API responses
-- **NO CODE CHANGES NEEDED** - When API access is enabled, real data will flow automatically
-- **ZERO RISK** - Robust fallback system ensures app never breaks
-- **FULL FUNCTIONALITY** - All features work perfectly with comprehensive mock data
+- Focus on CSV ingestion, saved views, research notes, compare sets, and exports.
+- No Health surfacing of YCharts schedule/errors in MVP.
+- YCharts code paths remain in place and can be re-enabled post-MVP.
 
 ---
 
@@ -62,6 +60,26 @@ You don't have to ever use `eject`. The curated feature set is suitable for smal
 You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
 To learn React, check out the [React documentation](https://reactjs.org/).
+
+### Domain Docs
+
+- Scoring policy: [docs/SCORING_POLICY.md](./docs/SCORING_POLICY.md)
+- Advisor glossary: [docs/advisor_glossary.md](./docs/advisor_glossary.md)
+- Dashboard redesign (Home): [docs/dashboard_redesign.md](./docs/dashboard_redesign.md)
+
+### CSV-only MVP (Phase 3)
+
+- Use Admin → Data Uploads → Monthly Snapshot Upload to import a month of performance via CSV. The Month/Year picker is required and overrides CSV dates.
+- Seed Recommended Funds and Benchmarks via Admin seeders (CSV templates provided).
+- Exports available:
+  - Dashboard: Table CSV, Compare CSV, PDF (all filtered or recommended-only)
+  - Admin Overview: Recommended-only CSV, Primary Benchmark Mapping CSV, PDF (all funds)
+
+### Export filename conventions
+- Table CSV: `table_export_YYYYMMDD_HHMMSS.csv`
+- Compare CSV: `compare_export_YYYYMMDD_HHMMSS.csv`
+- Recommended (Dashboard): `recommended_list_YYYYMMDD_HHMMSS.csv`
+- Recommended (Admin Overview): `recommended_only_YYYYMMDD.csv`
 
 ### Code Splitting
 

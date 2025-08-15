@@ -13,8 +13,8 @@ export function useFundData() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [asOfMonth, setAsOfMonth] = useState(null); // YYYY-MM-DD or null for latest
   const [activeMonthCounts, setActiveMonthCounts] = useState({ fund: null, bench: null });
-  // Feature flag: runtime scoring for live as-of month data
-  const ENABLE_RUNTIME_SCORING = (process.env.REACT_APP_ENABLE_RUNTIME_SCORING || 'false') === 'true';
+  // Feature flag: runtime scoring for live as-of month data (default ON unless explicitly disabled)
+  const ENABLE_RUNTIME_SCORING = (process.env.REACT_APP_ENABLE_RUNTIME_SCORING ?? 'true') === 'true';
   const ENABLE_REFRESH = (process.env.REACT_APP_ENABLE_REFRESH || 'false') === 'true';
 
   // Load funds from database
@@ -39,6 +39,9 @@ export function useFundData() {
       setLastUpdated(new Date());
       
       console.log(`Loaded ${fundData.length} funds from database${asOf ? ` as of ${asOf}` : ''}${ENABLE_RUNTIME_SCORING ? ' (runtime scoring enabled)' : ''}`);
+      // Tiny log: sample fund row
+      // eslint-disable-next-line no-console
+      console.log('Sample fund row', fundData?.[0]);
       // Count rows for guardrails
       try {
         const d = asOf || asOfStore.getActiveMonth();
@@ -321,12 +324,29 @@ export function useFundData() {
     })();
   }, [loadFunds]);
 
+  // Subscribe to As-Of store updates (e.g., after CSV import sets a new active month)
+  useEffect(() => {
+    const unsubscribe = asOfStore.subscribe(({ activeMonth }) => {
+      if (!activeMonth) return;
+      // Guard: only react if month actually changed
+      setAsOfMonth(prev => {
+        if (prev === activeMonth) return prev;
+        // trigger load only when value changes
+        loadFunds(activeMonth);
+        return activeMonth;
+      });
+    });
+    return () => unsubscribe();
+  }, [loadFunds]);
+
   // Reload funds when asOfMonth changes
   useEffect(() => {
     // Skip initial double-trigger; loadFunds already ran on mount
-    if (asOfMonth !== undefined) {
-      loadFunds(asOfMonth);
-    }
+    if (asOfMonth === undefined || asOfMonth === null) return;
+    // Guard: only fetch when month actually differs from store's current active
+    const storeMonth = asOfStore.getActiveMonth?.() || null;
+    if (storeMonth && storeMonth === asOfMonth) return; // already fetched via store subscriber
+    loadFunds(asOfMonth);
   }, [asOfMonth, loadFunds]);
 
   // External setter should update store too

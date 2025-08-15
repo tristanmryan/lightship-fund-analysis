@@ -30,22 +30,27 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 // In tests or when env is missing, provide a no-op stub to avoid crashes
 const shouldStub = process.env.NODE_ENV === 'test' || !supabaseUrl || !supabaseAnonKey;
+export const isSupabaseStubbed = shouldStub;
 
 function createStubClient() {
   const resolved = (data = null) => Promise.resolve({ data, error: null });
 
   const makeFilterBuilder = () => {
-    const fb = {
-      select: () => fb,
-      eq: () => fb,
-      is: () => fb,
-      or: () => fb,
-      order: () => resolved([]),
-      limit: () => resolved([]),
-      range: () => resolved([]),
-      single: () => resolved(null),
-      maybeSingle: () => resolved(null)
-    };
+    const fb = {};
+    // Chainable no-ops
+    fb.select = () => fb;
+    fb.eq = () => fb;
+    fb.is = () => fb;
+    fb.or = () => fb;
+    fb.lt = () => fb;
+    fb.like = () => fb;
+    fb.in = () => fb;
+    fb.order = () => fb;
+    // Terminal methods return a result-like object
+    fb.limit = () => resolved([]);
+    fb.range = () => resolved([]);
+    fb.single = () => resolved(null);
+    fb.maybeSingle = () => resolved(null);
     return fb;
   };
 
@@ -55,7 +60,7 @@ function createStubClient() {
     upsert: () => resolved(null),
     delete: () => resolved(null),
     update: () => resolved(null),
-    order: () => resolved([]),
+    order: () => fromBuilder,
     range: () => resolved([]),
     single: () => resolved(null),
     maybeSingle: () => resolved(null),
@@ -63,6 +68,7 @@ function createStubClient() {
   };
   return {
     from: () => fromBuilder,
+    rpc: () => resolved([]),
     auth: {
       getUser: async () => ({ data: { user: null }, error: null })
     }
@@ -71,6 +77,20 @@ function createStubClient() {
 
 // Create Supabase client or stub
 export const supabase = shouldStub ? createStubClient() : createClient(supabaseUrl, supabaseAnonKey);
+
+// Strict numeric parser for importer paths
+export function toNumberStrict(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const s = String(v).trim();
+  if (s === '' || /^(-|n\/a|na|null|—|–)$/i.test(s)) return null;
+  const isParenNegative = /^\(.*\)$/.test(s);
+  let t = s.replace(/^\(|\)$/g, '');
+  t = t.replace(/%/g, '').replace(/,/g, '');
+  const n = Number(t);
+  if (!Number.isFinite(n)) return null;
+  return isParenNegative ? -n : n;
+}
 
 // Database table names
 export const TABLES = {

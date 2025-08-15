@@ -22,7 +22,7 @@ export function exportToExcel(data) {
   // Create workbook
   const wb = XLSX.utils.book_new();
 
-  // Sheet 1: Overview
+  // Sheet 1: Summary
   const overviewData = [
     ['Raymond James - Lightship Fund Analysis Report'],
     ['Generated:', new Date().toLocaleString()],
@@ -48,7 +48,7 @@ export function exportToExcel(data) {
   });
 
   const ws_overview = XLSX.utils.aoa_to_sheet(overviewData);
-  XLSX.utils.book_append_sheet(wb, ws_overview, 'Overview');
+  XLSX.utils.book_append_sheet(wb, ws_overview, 'Summary');
 
   // Sheet 2: All Funds
   const fundHeaders = [
@@ -419,6 +419,64 @@ export function generateHTMLReport(data) {
 }
 
 /**
+ * Capture a DOM element to PNG using html2canvas
+ * @param {HTMLElement} node
+ * @param {string} filename
+ */
+export async function exportElementToPNG(node, filename = 'chart.png') {
+  if (!node) return;
+  const html2canvas = (await import('html2canvas')).default;
+  const canvas = await html2canvas(node, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
+  const dataUrl = canvas.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  a.click();
+}
+
+/**
+ * Copy a DOM element as PNG to clipboard (best-effort)
+ * Requires ClipboardItem support and secure context
+ * @param {HTMLElement} node
+ */
+export async function copyElementPNGToClipboard(node) {
+  if (!node) return false;
+  try {
+    const html2canvas = (await import('html2canvas')).default;
+    const canvas = await html2canvas(node, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(async (blob) => {
+        try {
+          if (!blob || !navigator.clipboard || typeof window.ClipboardItem !== 'function') {
+            resolve(false);
+            return;
+          }
+          const item = new window.ClipboardItem({ 'image/png': blob });
+          await navigator.clipboard.write([item]);
+          resolve(true);
+        } catch (e) {
+          resolve(false);
+        }
+      }, 'image/png');
+    });
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Generate a standardized filename for exports
+ * Example: lightship_table_20250131_142530.csv or lightship_pdf_all_latest_20250131_142530.pdf
+ */
+export function formatExportFilename({ scope = 'export', asOf = null, ext = 'csv' }) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const now = new Date();
+  const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const asOfPart = (typeof asOf === 'string' && asOf.trim()) ? asOf.replace(/-/g, '') : 'latest';
+  return `lightship_${scope}_${asOfPart}_${ts}.${ext}`;
+}
+
+/**
  * Build CSV content string with BOM, CRLF line endings, and all fields quoted
  * Rows is an array of arrays of primitive values (string | number | null | undefined)
  * Returns a string starting with BOM for Excel compatibility
@@ -466,7 +524,8 @@ export async function exportRecommendedFundsCSV() {
     ]))
   ];
   const csv = buildCSV(rows);
-  return downloadBlob(csv, 'recommended_funds.csv');
+  const filename = formatExportFilename({ scope: 'recommended_funds', ext: 'csv' });
+  return downloadBlob(csv, filename);
 }
 
 /**
@@ -498,7 +557,8 @@ export async function exportPrimaryBenchmarkMappingCSV() {
     ]))
   ];
   const csv = buildCSV(rows);
-  return downloadBlob(csv, 'primary_benchmark_mapping.csv');
+  const filename = formatExportFilename({ scope: 'primary_benchmark_mapping', ext: 'csv' });
+  return downloadBlob(csv, filename);
 }
 
 function downloadBlob(csvString, filename) {

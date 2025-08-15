@@ -1,5 +1,6 @@
 // src/components/Dashboard/PerformanceHeatmap.jsx
 import React, { useState, useMemo } from 'react';
+import { tooltipBoxStyle, tooltipTitleStyle } from '../common/tooltipStyles';
 import { Info } from 'lucide-react';
 import { getScoreColor } from '../../services/scoring';
 
@@ -10,6 +11,24 @@ import { getScoreColor } from '../../services/scoring';
 const PerformanceHeatmap = ({ funds }) => {
   const [selectedMetric, setSelectedMetric] = useState('score');
   const [hoveredFund, setHoveredFund] = useState(null);
+  const [compact, setCompact] = useState(false);
+
+  // Respond to cross-highlight events from other panels
+  React.useEffect(() => {
+    const handler = (ev) => {
+      try {
+        const symbol = ev?.detail?.symbol;
+        if (!symbol) return;
+        const f = (funds || []).find(x => (x.Symbol || x.ticker) === symbol);
+        if (f) {
+          setHoveredFund(f);
+          setTimeout(()=> setHoveredFund(null), 1500);
+        }
+      } catch {}
+    };
+    window.addEventListener('HIGHLIGHT_FUND', handler);
+    return () => window.removeEventListener('HIGHLIGHT_FUND', handler);
+  }, [funds]);
 
   // Group funds by asset class
   const fundsByClass = useMemo(() => {
@@ -37,9 +56,9 @@ const PerformanceHeatmap = ({ funds }) => {
   // Defensive: If funds is not an array or is empty, show a message
   if (!Array.isArray(funds) || funds.length === 0) {
     return (
-      <div className="card" style={{ marginBottom: '2rem', padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Performance Heatmap</h3>
-        <div>No fund data available. Please upload and import a valid fund data file.</div>
+      <div role="region" aria-labelledby="heatmap-heading" style={{ marginBottom: '2rem', padding: '1rem' }}>
+        <h3 id="heatmap-heading" style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Performance Heatmap</h3>
+        <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>No fund data available. Please upload and import a valid fund data file.</div>
       </div>
     );
   }
@@ -113,16 +132,14 @@ const PerformanceHeatmap = ({ funds }) => {
 
 
   return (
-    <div style={{ marginBottom: '2rem' }}>
+    <div style={{ marginBottom: '2rem' }} role="region" aria-labelledby="heatmap-heading">
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
         marginBottom: '1rem' 
       }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
-          Performance Heatmap
-        </h3>
+        <h3 id="heatmap-heading" style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Performance Heatmap</h3>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <select
@@ -134,6 +151,7 @@ const PerformanceHeatmap = ({ funds }) => {
               borderRadius: '0.375rem',
               fontSize: '0.875rem'
             }}
+            aria-label="Select heatmap metric"
           >
             <option value="score">Overall Score</option>
             <option value="1year">1-Year Return</option>
@@ -141,6 +159,10 @@ const PerformanceHeatmap = ({ funds }) => {
             <option value="sharpe">Sharpe Ratio</option>
             <option value="expense">Expense Ratio</option>
           </select>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem', color: '#374151' }}>
+            <input type="checkbox" role="switch" aria-checked={compact} aria-label="Toggle compact heatmap" checked={compact} onChange={(e)=>setCompact(e.target.checked)} />
+            Compact
+          </label>
           
           <div style={{ 
             display: 'flex', 
@@ -168,7 +190,7 @@ const PerformanceHeatmap = ({ funds }) => {
       }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
           gap: '1rem'
         }}>
           {Object.entries(fundsByClass).map(([assetClass, classFunds]) => (
@@ -186,9 +208,9 @@ const PerformanceHeatmap = ({ funds }) => {
             
             <div style={{ 
               display: 'grid',
-              gridTemplateColumns: `repeat(auto-fill, minmax(80px, 1fr))`,
-              gap: '4px',
-              padding: '0.5rem'
+              gridTemplateColumns: compact ? `repeat(auto-fill, minmax(60px, 1fr))` : `repeat(auto-fill, minmax(80px, 1fr))`,
+              gap: compact ? '3px' : '4px',
+              padding: compact ? '0.375rem' : '0.5rem'
             }}>
               {classFunds.map((fund, index) => {
                 const color = getMetricColor(fund, selectedMetric);
@@ -202,7 +224,7 @@ const PerformanceHeatmap = ({ funds }) => {
                     style={{
                       backgroundColor: color,
                       color: 'white',
-                      padding: '0.5rem',
+                      padding: compact ? '0.375rem' : '0.5rem',
                       borderRadius: '0.25rem',
                       textAlign: 'center',
                       cursor: 'pointer',
@@ -212,11 +234,11 @@ const PerformanceHeatmap = ({ funds }) => {
                       transition: 'transform 0.1s',
                       transform: hoveredFund === fund ? 'scale(1.05)' : 'scale(1)'
                     }}
-                    onMouseEnter={() => setHoveredFund(fund)}
+                    onMouseEnter={() => { setHoveredFund(fund); try { window.dispatchEvent(new CustomEvent('HIGHLIGHT_FUND', { detail: { symbol: (fund.Symbol || fund.ticker) } })); } catch {} }}
                     onMouseLeave={() => setHoveredFund(null)}
                   >
                     <div style={{ 
-                      fontSize: '0.75rem', 
+                      fontSize: compact ? '0.6875rem' : '0.75rem', 
                       fontWeight: '500',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
@@ -225,7 +247,7 @@ const PerformanceHeatmap = ({ funds }) => {
                       {fund.Symbol}
                     </div>
                     <div style={{ 
-                      fontSize: '0.875rem', 
+                      fontSize: compact ? '0.8125rem' : '0.875rem', 
                       fontWeight: 'bold',
                       marginTop: '0.125rem'
                     }}>
@@ -261,20 +283,8 @@ const PerformanceHeatmap = ({ funds }) => {
 
       {/* Hover tooltip */}
       {hoveredFund && (
-        <div style={{
-          position: 'fixed',
-          bottom: '2rem',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          backgroundColor: 'white',
-          border: '1px solid #e5e7eb',
-          borderRadius: '0.5rem',
-          padding: '1rem',
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-          zIndex: 1000,
-          maxWidth: '400px'
-        }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
+        <div style={{ ...tooltipBoxStyle, bottom: '2rem', left: '50%', transform: 'translateX(-50%)' }}>
+          <div style={tooltipTitleStyle}>
             {hoveredFund.displayName}
           </div>
           <div style={{ 

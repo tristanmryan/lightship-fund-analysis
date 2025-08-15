@@ -1,5 +1,5 @@
 // src/services/fundService.js
-import { supabase, TABLES, dbUtils, handleSupabaseError } from './supabase';
+import { supabase, TABLES, dbUtils, handleSupabaseError, toNumberStrict } from './supabase';
 import { resolveAssetClassForTicker } from './resolvers/assetClassResolver';
 import ychartsAPI from './ychartsAPI';
 
@@ -10,42 +10,56 @@ class FundService {
   // Get all funds from database with performance at a given date (or latest if null)
   async getAllFunds(asOfDate = null) {
     try {
-      // First get all funds
-      const { data: funds, error: fundsError } = await supabase
-        .from(TABLES.FUNDS)
-        .select('*')
-        .order('ticker');
+      // Single RPC to fetch funds + latest performance as-of date
+      const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
+      const dateOnly = asOf ? asOf.toISOString().slice(0,10) : null;
+      const { data: rows, error } = await supabase.rpc('get_funds_as_of', { p_date: dateOnly });
+      if (error) throw error;
 
-      if (fundsError) throw fundsError;
-      if (!funds || funds.length === 0) return [];
+      // Enrich with asset_classes in one pass (optional; keep resilient if table empty)
+      const classMap = new Map();
+      try {
+        const { data: classes } = await supabase
+          .from(TABLES.ASSET_CLASSES)
+          .select('id, code, name, group_name, sort_group, sort_order');
+        (classes || []).forEach(ac => classMap.set(ac.id, ac));
+      } catch {}
 
-      // Join with asset_classes for normalized fields
-      const fundsWithClasses = await Promise.all(
-        funds.map(async (fund) => {
-          let assetClass = null;
-          if (fund.asset_class_id) {
-            const { data: ac } = await supabase.from(TABLES.ASSET_CLASSES)
-              .select('id, code, name, group_name, sort_group, sort_order')
-              .eq('id', fund.asset_class_id)
-              .maybeSingle();
-            assetClass = ac || null;
-          }
-          const performance = await this.getFundPerformance(fund.ticker, asOfDate);
-          return {
-            ...fund,
-            ...performance,
-            symbol: fund.ticker, // temporary alias for legacy reads
-            asset_class_id: assetClass?.id || fund.asset_class_id || null,
-            asset_class_code: assetClass?.code || null,
-            asset_class_name: assetClass?.name || fund.asset_class || null,
-            asset_group_name: assetClass?.group_name || null,
-            asset_group_sort: assetClass?.sort_group || null,
-            asset_class_sort: assetClass?.sort_order || null
-          };
-        })
-      );
-
-      return fundsWithClasses;
+      return (rows || []).map((r) => {
+        const ac = r.asset_class_id ? classMap.get(r.asset_class_id) : null;
+        return {
+          ticker: r.ticker,
+          symbol: r.ticker,
+          name: r.name,
+          asset_class: r.asset_class,
+          asset_class_id: r.asset_class_id || null,
+          asset_class_code: ac?.code || null,
+          asset_class_name: ac?.name || r.asset_class || null,
+          asset_group_name: ac?.group_name || null,
+          asset_group_sort: ac?.sort_group || null,
+          asset_class_sort: ac?.sort_order || null,
+          is_recommended: !!r.is_recommended,
+          ytd_return: r.ytd_return,
+          one_year_return: r.one_year_return,
+          three_year_return: r.three_year_return,
+          five_year_return: r.five_year_return,
+          ten_year_return: r.ten_year_return,
+          sharpe_ratio: r.sharpe_ratio,
+          standard_deviation: r.standard_deviation,
+          standard_deviation_3y: r.standard_deviation_3y,
+          standard_deviation_5y: r.standard_deviation_5y,
+          expense_ratio: r.expense_ratio,
+          alpha: r.alpha,
+          beta: r.beta,
+          manager_tenure: r.manager_tenure,
+          up_capture_ratio: r.up_capture_ratio,
+          down_capture_ratio: r.down_capture_ratio,
+          category_rank: r.category_rank,
+          sec_yield: r.sec_yield,
+          fund_family: r.fund_family,
+          date: r.perf_date
+        };
+      });
     } catch (error) {
       handleSupabaseError(error, 'getAllFunds');
       return [];
@@ -137,8 +151,11 @@ class FundService {
         .eq('fund_ticker', dbUtils.cleanSymbol(ticker));
 
       if (date) {
-        // Query by date-only equality against DATE column
-        query = query.eq('date', dbUtils.formatDateOnly(date));
+        // Fallback to latest row on or before the specified date
+        query = query
+          .lte('date', dbUtils.formatDateOnly(date))
+          .order('date', { ascending: false })
+          .limit(1);
       } else {
         query = query.order('date', { ascending: false }).limit(1);
       }
@@ -419,46 +436,23 @@ class FundService {
     // JSON upsert path (default) with dedupe and validation
     if (!USE_FAST) {
       try {
-        // Map inbound rows to fund/benchmark payloads and coerce types
+        // Map inbound rows to fund/benchmark payloads using normalized keys only
         const pmn = dbUtils.parseMetricNumber;
+        const METRIC_KEYS = [
+          'ytd_return','one_year_return','three_year_return','five_year_return','ten_year_return',
+          'sharpe_ratio','standard_deviation_3y','standard_deviation_5y',
+          'expense_ratio','alpha','beta','manager_tenure','up_capture_ratio','down_capture_ratio'
+        ];
         const fundPayloadRaw = [];
         const benchPayloadRaw = [];
         for (const r of rows) {
           const cleanTicker = dbUtils.cleanSymbol(r.ticker || r.fund_ticker || '');
-          const benchTicker = dbUtils.cleanSymbol(r.benchmark_ticker || '');
           const dateOnly = dbUtils.formatDateOnly(r.date || r.AsOfMonth || r.as_of_month);
-          const base = {
-            date: dateOnly,
-            ytd_return: pmn(r.ytd_return ?? r['YTD']),
-            one_year_return: pmn(r.one_year_return ?? r['1 Year']),
-            three_year_return: pmn(r.three_year_return ?? r['3 Year']),
-            five_year_return: pmn(r.five_year_return ?? r['5 Year']),
-            ten_year_return: pmn(r.ten_year_return ?? r['10 Year']),
-            sharpe_ratio: pmn(r.sharpe_ratio ?? r['Sharpe Ratio']),
-            standard_deviation: pmn(r.standard_deviation ?? r['Standard Deviation']),
-            standard_deviation_3y: pmn(
-              r.standard_deviation_3y ?? r['standard_deviation_3y'] ?? r['Standard Deviation 3Y'] ?? r.standard_deviation ?? r['Standard Deviation']
-            ),
-            standard_deviation_5y: pmn(
-              r.standard_deviation_5y ?? r['standard_deviation_5y'] ?? r['Standard Deviation 5Y']
-            ),
-            expense_ratio: pmn(r.expense_ratio ?? r['Net Expense Ratio']),
-            alpha: pmn(r.alpha ?? r.alpha_5y ?? r['Alpha']),
-            beta: pmn(r.beta ?? r.beta_3y ?? r['Beta']),
-            manager_tenure: pmn(r.manager_tenure ?? r['Manager Tenure']),
-            up_capture_ratio: pmn(
-              r.up_capture_ratio ?? r.up_capture_ratio_3y ?? r['Up Capture Ratio'] ?? r['Up Capture Ratio (Morningstar Standard) - 3 Year']
-            ),
-            down_capture_ratio: pmn(
-              r.down_capture_ratio ?? r.down_capture_ratio_3y ?? r['Down Capture Ratio'] ?? r['Down Capture Ratio (Morningstar Standard) - 3 Year']
-            )
-          };
-          // Prefer fund on collision
-          const kind = (r.kind === 'benchmark' && !cleanTicker) || (!r.kind && benchTicker && !cleanTicker)
-            ? 'benchmark'
-            : 'fund';
-          if (kind === 'benchmark') {
-            benchPayloadRaw.push({ benchmark_ticker: benchTicker || cleanTicker, ...base });
+          const base = { date: dateOnly };
+          for (const k of METRIC_KEYS) base[k] = pmn(r[k]);
+          // TRUST r.kind from UI for routing
+          if (String(r.kind).toLowerCase() === 'benchmark') {
+            benchPayloadRaw.push({ benchmark_ticker: cleanTicker, ...base });
           } else {
             fundPayloadRaw.push({ fund_ticker: cleanTicker, ...base });
           }
@@ -509,6 +503,15 @@ class FundService {
           }
         }
 
+        if (fundPayloadRaw.length) {
+          // eslint-disable-next-line no-console
+          console.log('[Import about to upsert] sample fund row', fundPayloadRaw[0]);
+        }
+        if (benchPayloadRaw.length) {
+          // eslint-disable-next-line no-console
+          console.log('[Import about to upsert] sample benchmark row', benchPayloadRaw[0]);
+        }
+
         await upsertChunks(TABLES.FUND_PERFORMANCE, fundValidated.rows, 'fund_ticker,date');
         await upsertChunks(TABLES.BENCHMARK_PERFORMANCE, benchValidated.rows, 'benchmark_ticker,date');
 
@@ -520,6 +523,26 @@ class FundService {
           err._importErrors = errors;
           throw err;
         }
+        // Post-import sanity probe for the active import date
+        try {
+          const importDate = dbUtils.formatDateOnly(rows[0]?.date || rows[0]?.AsOfMonth || rows[0]?.as_of_month);
+          const fields = 'fund_ticker,ytd_return,one_year_return,sharpe_ratio';
+          const { data: probe } = await supabase
+            .from(TABLES.FUND_PERFORMANCE)
+            .select(fields)
+            .eq('date', importDate)
+            .limit(5);
+          // eslint-disable-next-line no-console
+          console.log('[Import probe]', probe);
+          const metrics = ['ytd_return','one_year_return','sharpe_ratio'];
+          const allNull = Array.isArray(probe) && probe.length > 0 && probe.every(row => metrics.every(m => row?.[m] == null));
+          if (allNull) {
+            return { success, failed: failed + fundValidated.dropped + benchValidated.dropped, warning: `All fund metrics null for ${importDate} — check mapping` };
+          }
+        } catch (_) {
+          // non-fatal
+        }
+
         return { success, failed: failed + fundValidated.dropped + benchValidated.dropped };
       } catch (e) {
         handleSupabaseError(e, 'bulkUpsertFundPerformance(json)');
@@ -527,7 +550,7 @@ class FundService {
       }
     }
 
-    // FAST path (legacy column-mapped upsert)
+        // FAST path (legacy column-mapped upsert)
     const toBatches = [];
     for (let i = 0; i < rows.length; i += chunkSize) {
       toBatches.push(rows.slice(i, i + chunkSize));
@@ -539,7 +562,7 @@ class FundService {
       // Build two payloads
       const fundPayload = [];
       const benchmarkPayload = [];
-      for (const r of batch) {
+        for (const r of batch) {
         const clean = dbUtils.cleanSymbol(r.ticker || r.fund_ticker || r.benchmark_ticker);
         const base = {
           date: dbUtils.formatDateOnly(r.date || r.AsOfMonth || r.as_of_month),
@@ -568,14 +591,8 @@ class FundService {
           )
         };
 
-        // Heuristic: keep r.kind if provided; if explicit benchmark_ticker provided treat as benchmark
-        // Prefer fund on collision when both appear plausible
-        let kind = r.kind || (r.benchmark_ticker ? 'benchmark' : 'fund');
-        if (kind === 'benchmark' && r.ticker) {
-          // If caller passes a ticker that is a known fund, prefer fund to avoid misclassification
-          // (UI already gates this, this is only a safety net)
-          kind = 'fund';
-        }
+        // TRUST r.kind from UI for routing (no service-side reinterpretation)
+        let kind = String(r.kind || '').toLowerCase();
         if (kind === 'benchmark') {
           benchmarkPayload.push({ benchmark_ticker: clean, ...base });
         } else {

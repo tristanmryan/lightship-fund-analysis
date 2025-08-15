@@ -149,8 +149,8 @@ const TopBottomPerformers = ({ funds }) => {
         transition: 'transform 0.1s',
         cursor: 'pointer'
       }}
-      onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(4px)'}
-      onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}
+      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateX(4px)'; try { window.dispatchEvent(new CustomEvent('HIGHLIGHT_FUND', { detail: { symbol: (fund.Symbol || fund.ticker) } })); } catch {} }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateX(0)'; }}
       >
         <div style={{
           width: '32px',
@@ -225,16 +225,14 @@ const TopBottomPerformers = ({ funds }) => {
   };
 
   return (
-    <div style={{ marginBottom: '2rem' }}>
+    <div style={{ marginBottom: '2rem' }} role="region" aria-labelledby="topbottom-heading">
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
         marginBottom: '1rem' 
       }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
-          Top & Bottom Performers
-        </h3>
+        <h3 id="topbottom-heading" style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Top & Bottom Performers</h3>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <select
@@ -246,6 +244,7 @@ const TopBottomPerformers = ({ funds }) => {
               borderRadius: '0.375rem',
               fontSize: '0.875rem'
             }}
+            aria-label="Filter by asset class"
           >
             {assetClasses.map(ac => (
               <option key={ac} value={ac}>
@@ -263,6 +262,7 @@ const TopBottomPerformers = ({ funds }) => {
               borderRadius: '0.375rem',
               fontSize: '0.875rem'
             }}
+            aria-label="Select metric"
           >
             <option value="score">Overall Score</option>
             <option value="1year">1-Year Return</option>
@@ -281,6 +281,7 @@ const TopBottomPerformers = ({ funds }) => {
               borderRadius: '0.375rem',
               fontSize: '0.875rem'
             }}
+            aria-label="Select list size"
           >
             <option value={3}>Top 3</option>
             <option value={5}>Top 5</option>

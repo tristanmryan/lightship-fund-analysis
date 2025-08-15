@@ -1,0 +1,6 @@
+Ticker,YTD,1 Year,3 Year,5 Year,10 Year,Sharpe Ratio,Standard Deviation 3Y,Standard Deviation 5Y,Net Expense Ratio,Alpha,Beta,Manager Tenure,Up Capture Ratio (Morningstar Standard) - 3 Year,Down Capture Ratio (Morningstar Standard) - 3 Year
+SPY,1.03,13.41,14.31,15.84,12.77,0.39,16.19,21.52,0.09,0.38,1.00,32.4,99.69,99.96
+IWF,-0.34,17.41,19.65,17.49,15.88,0.79,19.31,20.69,0.19,-0.17,1.02,12.8,114.78,100.51
+VYM,1.84,10.89,8.34,13.46,9.74,0.29,15.64,14.71,0.06,1.23,0.90,9.27,76.44,89.79
+AGG,2.42,5.45,1.49,-0.91,1.45,-0.41,7.32,6.33,0.03,-0.02,0.10,13.9,99.88,99.86
+JEPI,0.17,6.74,8.00,10.94,,0.34,10.53,11.39,0.35,1.92,0.65,5.03,58.30,60.52

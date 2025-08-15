@@ -46,19 +46,20 @@ const REPORT_CONFIG = {
   }
 };
 
-// Column definitions for the new API-driven data structure
+// Column definitions for the API-driven data structure (Phase 3 parity)
 const TABLE_COLUMNS = [
   { header: 'Ticker', dataKey: 'ticker', width: 40 },
   { header: 'Fund Name', dataKey: 'name', width: 135 },
-  { header: 'Asset Class', dataKey: 'asset_class', width: 60 },
-  { header: 'YTD Return', dataKey: 'ytd_return', width: 44 },
-  { header: '1Y Return', dataKey: 'one_year_return', width: 44 },
-  { header: '3Y Return', dataKey: 'three_year_return', width: 44 },
-  { header: '5Y Return', dataKey: 'five_year_return', width: 44 },
-  { header: 'Expense Ratio', dataKey: 'expense_ratio', width: 40 },
-  { header: 'Sharpe Ratio', dataKey: 'sharpe_ratio', width: 40 },
-  { header: 'Std Dev', dataKey: 'standard_deviation', width: 40 },
-  { header: 'Recommended', dataKey: 'is_recommended', width: 40 }
+  { header: 'Asset Class', dataKey: 'asset_class', width: 70 },
+  { header: 'YTD Return', dataKey: 'ytd_return', width: 50 },
+  { header: '1Y Return', dataKey: 'one_year_return', width: 50 },
+  { header: '3Y Return', dataKey: 'three_year_return', width: 50 },
+  { header: '5Y Return', dataKey: 'five_year_return', width: 50 },
+  { header: 'Expense Ratio', dataKey: 'expense_ratio', width: 52 },
+  { header: 'Sharpe Ratio', dataKey: 'sharpe_ratio', width: 48 },
+  { header: 'Std Dev (3Y)', dataKey: 'standard_deviation_3y', width: 58 },
+  { header: 'Std Dev (5Y)', dataKey: 'standard_deviation_5y', width: 58 },
+  { header: 'Recommended', dataKey: 'is_recommended', width: 60 }
 ];
 
 /**
@@ -255,14 +256,15 @@ function prepareRowData(fund) {
   return {
     ticker: fund.ticker || '',
     name: fund.name || '',
-    asset_class: fund.asset_class || 'Unassigned',
+    asset_class: fund.asset_class_name || fund.asset_class || 'Unassigned',
     ytd_return: formatPercent(fund.ytd_return),
     one_year_return: formatPercent(fund.one_year_return),
     three_year_return: formatPercent(fund.three_year_return),
     five_year_return: formatPercent(fund.five_year_return),
     expense_ratio: formatPercent(fund.expense_ratio),
     sharpe_ratio: formatNumber(fund.sharpe_ratio, 2),
-    standard_deviation: formatPercent(fund.standard_deviation),
+    standard_deviation_3y: formatPercent(fund.standard_deviation_3y ?? fund.standard_deviation),
+    standard_deviation_5y: formatPercent(fund.standard_deviation_5y),
     is_recommended: fund.is_recommended ? 'Yes' : 'No'
   };
 }

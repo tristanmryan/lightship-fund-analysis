@@ -1,6 +1,8 @@
 // src/components/Dashboard/NotesPanel.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase, TABLES } from '../../services/supabase';
+import DecisionIcon from '../common/DecisionIcon';
+import { Link2 } from 'lucide-react';
 import notesService from '../../services/researchNotesService';
 
 export default function NotesPanel({ fundId = null, fundTicker = null }) {
@@ -13,6 +15,7 @@ export default function NotesPanel({ fundId = null, fundTicker = null }) {
   const [decision, setDecision] = useState('');
   const [overrideId, setOverrideId] = useState('');
   const [overrides, setOverrides] = useState([]);
+  const [announce, setAnnounce] = useState('');
 
   const cleanTicker = useMemo(() => (fundTicker || '').toUpperCase(), [fundTicker]);
 
@@ -47,10 +50,11 @@ export default function NotesPanel({ fundId = null, fundTicker = null }) {
         body: trimmed,
         decision: decision || null
       });
-      setNotes(prev => [note, ...prev]);
+      setNotes(prev => [note, ...(Array.isArray(prev) ? prev : [])]);
       setBody('');
       setDecision('');
       setOverrideId('');
+      try { setAnnounce('Note added'); setTimeout(()=> setAnnounce(''), 1500); } catch {}
     } catch (e) { alert(e.message); }
   }
 
@@ -59,24 +63,26 @@ export default function NotesPanel({ fundId = null, fundTicker = null }) {
   if (error) return <div className="card" style={{ padding: 12, color: '#b91c1c' }}>Notes error: {error}</div>;
 
   return (
-    <div className="card" style={{ padding: 12 }}>
-      <div style={{ fontWeight: 600, marginBottom: 8 }}>Notes</div>
+    <div className="card" style={{ padding: 12 }} data-testid="notes-panel">
+      <div style={{ fontWeight: 600, marginBottom: 8 }}>Research notes</div>
+      <div aria-live="polite" style={{ position:'absolute', width:1, height:1, overflow:'hidden', clip:'rect(1px, 1px, 1px, 1px)' }}>{announce}</div>
       <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
         <textarea
           placeholder="Add a research note…"
           value={body}
           onChange={(e) => setBody(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); onAdd(); } }}
           style={{ width: '100%', minHeight: 70, padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }}
         />
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select value={decision} onChange={(e) => setDecision(e.target.value)} style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }}>
+          <select data-testid="decision-select" value={decision} onChange={(e) => setDecision(e.target.value)} style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }}>
             <option value="">Decision (optional)</option>
             <option value="approve">Approve</option>
             <option value="monitor">Monitor</option>
             <option value="reject">Reject</option>
             <option value="hold">Hold</option>
           </select>
-          <select value={overrideId} onChange={(e) => setOverrideId(e.target.value)} style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }}>
+          <select data-testid="override-select" value={overrideId} onChange={(e) => setOverrideId(e.target.value)} style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }}>
             <option value="">Link to Override (optional)</option>
             {overrides.map(o => (
               <option key={o.id} value={o.id}>{o.override_type} override — {new Date(o.created_at).toLocaleDateString()}</option>
@@ -85,25 +91,39 @@ export default function NotesPanel({ fundId = null, fundTicker = null }) {
           <button onClick={onAdd} className="btn btn-primary" disabled={!body.trim()}>Add Note</button>
         </div>
       </div>
-      {(Array.isArray(notes) ? notes.length : 0) === 0 ? (
+      {(Array.isArray(notes) ? notes.filter(Boolean).length : 0) === 0 ? (
         <div style={{ color: '#6b7280' }}>No notes yet.</div>
       ) : (
         <div style={{ display: 'grid', gap: 8 }}>
-          {notes.map(n => (
-            <div key={n.id} style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6b7280' }}>
-                <span>{new Date(n.created_at).toLocaleString()}</span>
-                <span>by {n.created_by}</span>
+          {(Array.isArray(notes) ? notes : []).filter(Boolean).map(n => {
+            const bodyText = String(n?.body || '');
+            const tooLong = bodyText.length > 400;
+            const short = tooLong ? bodyText.slice(0, 400) + '…' : bodyText;
+            return (
+              <div key={n.id || Math.random()} style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }} data-testid="note-item">
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6b7280' }}>
+                  <span>{n?.created_at ? new Date(n.created_at).toLocaleString() : '—'}</span>
+                  <span>by {n?.created_by || '—'}</span>
+                </div>
+                {n?.decision && (
+                  <div style={{ fontSize: 12, color: '#374151', marginTop: 2, display:'flex', alignItems:'center', gap:6 }} data-testid="note-decision">
+                    <DecisionIcon decision={n.decision} />
+                    <span>Decision: <strong>{n.decision}</strong></span>
+                  </div>
+                )}
+                {n?.override_id && (
+                  <div style={{ fontSize: 12, color: '#374151', marginTop: 2, display:'flex', alignItems:'center', gap:6 }}>
+                    <Link2 size={12} aria-hidden />
+                    <span>Linked to override</span>
+                  </div>
+                )}
+                <div style={{ marginTop: 4 }} data-testid="note-body">{short}</div>
+                {tooLong && (
+                  <a href="#" onClick={(e)=>{ e.preventDefault(); alert(bodyText); }} style={{ fontSize: 12 }}>Show more</a>
+                )}
               </div>
-              {n.decision && (
-                <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Decision: <strong>{n.decision}</strong></div>
-              )}
-              {n.override_id && (
-                <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Linked to override</div>
-              )}
-              <div style={{ marginTop: 4 }}>{n.body}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

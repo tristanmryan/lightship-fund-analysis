@@ -1,5 +1,6 @@
 // src/components/Dashboard/AssetClassOverview.jsx
 import React, { useState, useMemo } from 'react';
+import { tooltipBoxStyle, tooltipTitleStyle } from '../common/tooltipStyles';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { getScoreColor, generateClassSummary } from '../../services/scoring';
 
@@ -148,18 +149,19 @@ const AssetClassOverview = ({ funds, classSummaries = {}, benchmarkData = {} }) 
   }, [classStats]);
 
   return (
-    <div style={{ marginBottom: '2rem' }}>
+    <div style={{ marginBottom: '2rem' }} role="region" aria-labelledby="assetclass-heading">
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
         marginBottom: '1rem' 
       }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
+        <h3 id="assetclass-heading" style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
           Asset Class Overview
         </h3>
 
         <select
+          aria-label="Sort by"
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
           style={{
@@ -177,6 +179,7 @@ const AssetClassOverview = ({ funds, classSummaries = {}, benchmarkData = {} }) 
         </select>
 
         <select
+          aria-label="Group by"
           value={groupBy}
           onChange={(e) => setGroupBy(e.target.value)}
           style={{

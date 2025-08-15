@@ -74,3 +74,18 @@ test('loadEffectiveWeightsResolver returns without throwing', async () => {
   await expect(loadEffectiveWeightsResolver()).resolves.not.toThrow;
 });
 
+test('breakdown includes weightSource fields when resolver present', async () => {
+  jest.resetModules();
+  const scoring = require('../services/scoring');
+  await scoring.loadEffectiveWeightsResolver();
+  const funds = [
+    { ticker: 'WSRC', asset_class: 'LCB', isBenchmark: false, ytd_return: 0, one_year_return: 0, three_year_return: 0, five_year_return: 0, ten_year_return: 0, sharpe_ratio: 0.5, standard_deviation_3y: 10, standard_deviation_5y: 12, expense_ratio: 0.5, alpha: 0, manager_tenure: 5 },
+    { ticker: 'WSRD', asset_class: 'LCB', isBenchmark: false, ytd_return: 0, one_year_return: 0, three_year_return: 0, five_year_return: 0, ten_year_return: 0, sharpe_ratio: 0.6, standard_deviation_3y: 11, standard_deviation_5y: 13, expense_ratio: 0.4, alpha: 0.1, manager_tenure: 6 }
+  ];
+  const out = scoring.calculateScores(funds);
+  expect(out.length).toBe(2);
+  const bd = out[0].scores.breakdown || {};
+  const any = Object.values(bd)[0];
+  expect(any).toHaveProperty('weightSource');
+});
+

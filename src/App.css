@@ -392,6 +392,12 @@ tbody td {
   to { transform: rotate(360deg); }
 }
 
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .sidebar {

@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import App from '../App';
+import { MemoryRouter } from 'react-router-dom';
 
 // Minimal mock for useFundData to control inputs
 jest.mock('../hooks/useFundData', () => ({
@@ -22,9 +23,14 @@ jest.mock('../hooks/useFundData', () => ({
 }));
 
 test('Scores table renders normalized fields', async () => {
-  render(<App />);
-  // Switch to Fund Scores tab
-  screen.getByText('Fund Scores').click();
+  render(
+    <MemoryRouter>
+      <App />
+    </MemoryRouter>
+  );
+  // Switch to Funds tab (Enhanced Performance Dashboard)
+  const [fundsBtn] = screen.getAllByText('Funds');
+  fundsBtn.click();
   // Verify tickers and normalized fields appear
   expect(await screen.findByText('JQUA')).toBeInTheDocument();
   expect(screen.getByText('JPM US Quality')).toBeInTheDocument();

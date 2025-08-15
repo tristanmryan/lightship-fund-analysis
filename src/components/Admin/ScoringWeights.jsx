@@ -6,6 +6,7 @@ import { computeRuntimeScores, DEFAULT_WEIGHTS, calculateScores } from '../../se
 const METRICS = [
   { key: 'ytd', label: 'YTD Return' },
   { key: 'oneYear', label: '1-Year Return' },
+  { key: 'oneYearDeltaVsBench', label: '1Y vs Benchmark (delta)' },
   { key: 'threeYear', label: '3-Year Return' },
   { key: 'fiveYear', label: '5-Year Return' },
   { key: 'tenYear', label: '10-Year Return' },

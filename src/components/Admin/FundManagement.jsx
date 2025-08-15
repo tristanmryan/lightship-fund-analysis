@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Plus, Search, Trash2, CheckCircle, AlertCircle, Star, StarOff } from 'lucide-react';
 import { useFundData } from '../../hooks/useFundData';
 import DictionaryAdmin from './DictionaryAdmin';
 import AdminOverview from './AdminOverview';
@@ -201,6 +201,20 @@ const FundManagement = () => {
           ))}
         </div>
 
+        {/* Allow external navigation (from quick actions) */}
+        {React.useEffect(() => {
+          const handler = (ev) => {
+            try {
+              const sub = ev?.detail?.subtab;
+              if (typeof sub === 'string' && ['data','catalogs','mappings','scoring','utilities'].includes(sub)) {
+                setActiveTab(sub);
+              }
+            } catch {}
+          };
+          window.addEventListener('NAVIGATE_ADMIN', handler);
+          return () => window.removeEventListener('NAVIGATE_ADMIN', handler);
+        }, [])}
+
         {activeTab === 'data' && (
           <>
             <MonthlySnapshotUpload />
@@ -291,7 +305,11 @@ const FundManagement = () => {
                               className={`recommendation-toggle ${fund.is_recommended ? 'recommended' : 'not-recommended'}`}
                               title={fund.is_recommended ? 'Remove from recommended' : 'Add to recommended'}
                             >
-                              {fund.is_recommended ? '✓' : '○'}
+                              {fund.is_recommended ? (
+                                <Star size={16} style={{ color: '#f59e0b', fill: '#f59e0b' }} aria-hidden />
+                              ) : (
+                                <StarOff size={16} style={{ color: '#d1d5db' }} aria-hidden />
+                              )}
                             </button>
                           </td>
                           <td>
@@ -312,6 +330,23 @@ const FundManagement = () => {
             </div>
           </>
         )}
+
+        {/* Focus specific sub-sections inside catalogs based on event */}
+        {React.useEffect(() => {
+          const handler = (ev) => {
+            try {
+              const focus = ev?.detail?.focus;
+              if (activeTab !== 'catalogs') return;
+              if (focus === 'benchmarks') {
+                // scroll primary benchmark column into view
+                const ths = document.querySelectorAll('.dictionary-admin table thead th');
+                if (ths && ths.length >= 4) ths[3].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+              }
+            } catch {}
+          };
+          window.addEventListener('NAVIGATE_ADMIN', handler);
+          return () => window.removeEventListener('NAVIGATE_ADMIN', handler);
+        }, [activeTab])}
 
         {activeTab === 'mappings' && (
           <>
@@ -338,7 +373,7 @@ const FundManagement = () => {
         <h3>How It Works</h3>
         <ol>
           <li><strong>Add Funds:</strong> Enter a ticker symbol (e.g., VTSAX, SPY) and select an asset class</li>
-          <li><strong>Auto-Fetch Data:</strong> The app automatically fetches fund details from Ycharts API</li>
+          <li><strong>Import Performance (CSV-only MVP):</strong> Use Admin → Data Uploads → Monthly Snapshot Upload. The Month/Year picker is required and overrides CSV dates.</li>
           <li><strong>Manage Recommendations:</strong> Toggle the recommendation status for each fund</li>
           <li><strong>View Performance:</strong> Check the Performance tab to see your funds' data</li>
         </ol>

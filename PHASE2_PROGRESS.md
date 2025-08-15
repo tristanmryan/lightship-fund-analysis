@@ -1,4 +1,28 @@
 > For ongoing work, see Phase 3: [PHASE3_PROGRESS.md](./PHASE3_PROGRESS.md)
+
+# Phase 2 — Scoring Quality and Interpretability (Progress Log)
+
+Status: COMPLETE. All planned Phase 2 items are implemented and verified by tests. Ongoing work continues in Phase 3.
+
+## Objectives
+- Improve robustness (winsorization, tiny-class rules, optional missing-metric penalty)
+- Clarify rationale (top positive/negative contributors)
+- Keep UX consistent; no regressions
+
+## Tasks
+- [x] Implement winsorization clamp (flag OFF by default). Per-metric limits; doc notes added.
+- [x] Add tiny-class fallback rules (flag OFF). Neutralize at ≤2 peers; shrink raw effect when peers < 5.
+- [x] Extend rationale chips to include 1 negative contributor when final score < 45.
+- [x] Align tooltip copy across Funds/Drilldown/Comparison.
+- [x] Tighten Data Health thresholds and guidance (≥80% target and CTAs).
+- [x] Unit tests: winsorization clamp present; tiny-class behavior test added; rationale chips rendering test added.
+- [x] Docs: scoring policy updated; advisor glossary added: [docs/advisor_glossary.md](./docs/advisor_glossary.md).
+
+## Notes
+- Flags default OFF to ensure backward compatibility; CI must remain green throughout.
+- Env flags added to `env.example`: winsorization and tiny-class fallback with tunables.
+- Trust Meter indicates tiny-class fallback when enabled; Data Health shows ≥80% target and Admin CTAs.
+
 ## Asset Class Dictionary & Resolver (Priority 2 foundation)
 
 - Introduced a Supabase-backed Asset Class Dictionary with codes, names, group order, and benchmark mapping.
@@ -65,7 +89,7 @@ Next steps (Priority 2 sequence)
 2) Drilldown cards and comparison: consume resolver-only; no hardcoded maps.
 3) Mini-charts (sparklines) off fund_performance history.
 4) Legacy normalization PR: remove remaining `['Asset Class']` reads in scoring/analytics/utils; keep shim until merged.
-5) Tests: unit tests for resolvers and delta math; snapshot for Scores table rendering.
+5) Tests: unit tests for resolvers and delta math; snapshot for Scores table rendering. (in progress/Phase 3)
 
 Migration sequence (no downtime):
 1. Run DB migrations to create dictionary/mapping tables and add `funds.asset_class_id`.

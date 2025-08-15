@@ -2,8 +2,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { 
   TrendingUp, BarChart3, Grid, Table, RefreshCw, Download,
-  Filter, Target, AlertCircle, Info
+  Filter, Target, AlertCircle, Info, Share2
 } from 'lucide-react';
+import StatusIcon from '../common/StatusIcon';
 import AdvancedFilters from './AdvancedFilters';
 import EnhancedFundTable from './EnhancedFundTable';
 import PerformanceHeatmap from './PerformanceHeatmap';
@@ -14,6 +15,7 @@ import ComparisonPanel from './ComparisonPanel';
 import DrilldownCards from './DrilldownCards';
 import preferencesService from '../../services/preferencesService';
 import fundService from '../../services/fundService';
+import { generatePDFReport, downloadFile, exportToExcel, formatExportFilename, exportElementToPNG, copyElementPNGToClipboard } from '../../services/exportService';
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -65,12 +67,27 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
   const [initialTableState, setInitialTableState] = useState({ sortConfig: null, selectedColumns: null });
   const [tableState, setTableState] = useState({ sortConfig: null, selectedColumns: null });
   const tableExportRef = React.useRef(null);
+  const clearAllFiltersRef = React.useRef(null);
   const [availableMonths, setAvailableMonths] = useState([]);
   const [showNonEom, setShowNonEom] = useState(false);
   const [allMonths, setAllMonths] = useState([]);
   const [nonEomSample, setNonEomSample] = useState(null);
   const ENABLE_REFRESH = (process.env.REACT_APP_ENABLE_REFRESH || 'false') === 'true';
   const [guard, setGuard] = useState({ fund: null, bench: null });
+  // Data Health badge based on filtered set coverage
+  const dataHealth = useMemo(() => {
+    const total = (filteredFunds || []).length;
+    const nz = (arr) => arr.filter(v => v != null && !Number.isNaN(v)).length;
+    const ytd = nz((filteredFunds || []).map(f => f.ytd_return));
+    const oneY = nz((filteredFunds || []).map(f => f.one_year_return));
+    const sharpe = nz((filteredFunds || []).map(f => f.sharpe_ratio));
+    const sd3 = nz((filteredFunds || []).map(f => (f.standard_deviation_3y ?? f.standard_deviation)));
+    const covs = [ytd, oneY, sharpe, sd3].map(n => total ? Math.round((n / total) * 100) : 0);
+    const minCov = covs.length ? Math.min(...covs) : 0;
+    const label = minCov >= 80 ? 'Good' : minCov >= 50 ? 'Fair' : 'Poor';
+    const color = minCov >= 80 ? '#16a34a' : minCov >= 50 ? '#f59e0b' : '#dc2626';
+    return { minCov, label, color };
+  }, [filteredFunds]);
 
   // Load saved view defaults on mount
   React.useEffect(() => {
@@ -118,6 +135,22 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
     })();
     return () => { cancelled = true; };
   }, [asOfMonthProp, onAsOfMonthChange]);
+
+  // Skeleton loading states for key sections
+  const isLoadingAny = isLoading || !initialized;
+  const Skeleton = ({ height = 140 }) => (
+    <div style={{ background:'#f3f4f6', borderRadius:8, height, width:'100%', animation:'pulse 1.2s ease-in-out infinite' }} />
+  );
+  const SectionSkeleton = () => (
+    <div className="card">
+      <div className="card-header">
+        <div className="card-title" style={{ opacity: 0.6 }}>Loading…</div>
+      </div>
+      <Skeleton height={180} />
+    </div>
+  );
+
+  // Note: render skeleton within main return to preserve hook order
 
   // Guardrails: when month changes, refresh counts (dev-only hint; safe if fails)
   React.useEffect(() => {
@@ -280,9 +313,31 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         );
       
       case 'heatmap':
+        if (!filteredFunds || filteredFunds.length === 0) {
+          return (
+            <div className="card" style={{ padding: 16 }}>
+              <div style={{ color: '#6b7280', marginBottom: 8, display:'flex', alignItems:'center', gap:8 }}>
+                <AlertCircle size={16} aria-hidden />
+                <span>No data to display yet. Import a CSV or try sample data.</span>
+              </div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                <a className="btn" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}>Go to Importer</a>
+                <a className="btn btn-secondary" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}>Use sample data</a>
+              </div>
+            </div>
+          );
+        }
         return (
           <>
-            <div className="card">
+            <div className="card" ref={(el)=>{ window.__HEATMAP_NODE__ = el; }}>
+              <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <h3 className="card-title" style={{ margin:0 }}>Performance Heatmap</h3>
+                <div style={{ display:'flex', gap:8 }}>
+                  <button className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }} title="How to read the heatmap">i</button>
+                  <button className="btn" onClick={async (e)=>{ e.preventDefault(); const node = window.__HEATMAP_NODE__; await exportElementToPNG(node, 'heatmap.png'); }} title="Export heatmap as PNG">Export PNG</button>
+                  <button className="btn btn-secondary" onClick={async (e)=>{ e.preventDefault(); const node = window.__HEATMAP_NODE__; const ok = await copyElementPNGToClipboard(node); if (!ok) alert('Copy not supported in this browser.'); }} title="Copy heatmap to clipboard">Copy</button>
+                </div>
+              </div>
               <PerformanceHeatmap funds={filteredFunds} />
             </div>
             {asOfMonthProp && (guard.fund === 0 || guard.fund === null) && (guard.bench > 0) && (
@@ -295,30 +350,97 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
               </div>
             )}
             {asOfMonthProp && guard.fund === 0 && guard.bench === 0 && (
-              <div style={{ background:'#f3f4f6', border:'1px solid #e5e7eb', color:'#374151', borderRadius:6, padding:'8px 12px', marginTop: 8 }}>
-                No data for {asOfMonthProp}.
+              <div style={{ background:'#f3f4f6', border:'1px solid #e5e7eb', color:'#374151', borderRadius:6, padding:'8px 12px', marginTop: 8, display:'flex', alignItems:'center', gap:8 }}>
+                <AlertCircle size={16} aria-hidden />
+                <span>No data for {asOfMonthProp}.</span>
               </div>
             )}
           </>
         );
       
       case 'overview':
+        if (!filteredFunds || filteredFunds.length === 0) {
+          return (
+            <div className="card" style={{ padding: 16 }}>
+              <div style={{ color: '#6b7280', marginBottom: 8, display:'flex', alignItems:'center', gap:8 }}>
+                <AlertCircle size={16} aria-hidden />
+                <span>No data to display yet. Import a CSV or try sample data.</span>
+              </div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                <a className="btn" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}>Go to Importer</a>
+                <a className="btn btn-secondary" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}>Use sample data</a>
+              </div>
+            </div>
+          );
+        }
         return (
-          <div className="card">
+          <div className="card" ref={(el)=>{ window.__OVERVIEW_NODE__ = el; }}>
+            <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <h3 className="card-title" style={{ margin:0 }}>Asset Class Overview</h3>
+              <div style={{ display:'flex', gap:8 }}>
+                <button className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }} title="How class metrics are computed">i</button>
+                <button className="btn" onClick={async (e)=>{ e.preventDefault(); const node = window.__OVERVIEW_NODE__; await exportElementToPNG(node, 'class-overview.png'); }} title="Export overview as PNG">Export PNG</button>
+                <button className="btn btn-secondary" onClick={async (e)=>{ e.preventDefault(); const node = window.__OVERVIEW_NODE__; const ok = await copyElementPNGToClipboard(node); if (!ok) alert('Copy not supported in this browser.'); }} title="Copy overview to clipboard">Copy</button>
+              </div>
+            </div>
             <AssetClassOverview funds={filteredFunds} />
           </div>
         );
       
       case 'performers':
+        if (!filteredFunds || filteredFunds.length === 0) {
+          return (
+            <div className="card" style={{ padding: 16 }}>
+              <div style={{ color: '#6b7280', marginBottom: 8, display:'flex', alignItems:'center', gap:8 }}>
+                <AlertCircle size={16} aria-hidden />
+                <span>No data to display yet. Import a CSV or try sample data.</span>
+              </div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                <a className="btn" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}>Go to Importer</a>
+                <a className="btn btn-secondary" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}>Use sample data</a>
+              </div>
+            </div>
+          );
+        }
         return (
-          <div className="card">
+          <div className="card" ref={(el)=>{ window.__PERFORMERS_NODE__ = el; }}>
+            <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <h3 className="card-title" style={{ margin:0 }}>Top & Bottom Performers</h3>
+              <div style={{ display:'flex', gap:8 }}>
+                <button className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }} title="How performers are ranked">i</button>
+                <button className="btn" onClick={async (e)=>{ e.preventDefault(); const node = window.__PERFORMERS_NODE__; await exportElementToPNG(node, 'performers.png'); }} title="Export performers as PNG">Export PNG</button>
+                <button className="btn btn-secondary" onClick={async (e)=>{ e.preventDefault(); const node = window.__PERFORMERS_NODE__; const ok = await copyElementPNGToClipboard(node); if (!ok) alert('Copy not supported in this browser.'); }} title="Copy performers to clipboard">Copy</button>
+              </div>
+            </div>
             <TopBottomPerformers funds={filteredFunds} />
           </div>
         );
       
       case 'compare':
+        if (!filteredFunds || filteredFunds.length === 0) {
+          return (
+            <div className="card" style={{ padding: 16 }}>
+              <div style={{ color: '#6b7280', marginBottom: 8, display:'flex', alignItems:'center', gap:8 }}>
+                <AlertCircle size={16} aria-hidden />
+                <span>No data to display yet. Import a CSV or try sample data.</span>
+              </div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                <a className="btn" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}>Go to Importer</a>
+                <a className="btn btn-secondary" href="#" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}>Use sample data</a>
+              </div>
+            </div>
+          );
+        }
         return (
-          <div className="card">
+          <div className="card" ref={(el)=>{ window.__COMPARE_NODE__ = el; }}>
+            <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <h3 className="card-title" style={{ margin:0 }}>Compare Funds</h3>
+              <div style={{ display:'flex', gap:8 }}>
+                <button className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }} title="How comparison works">i</button>
+                <button className="btn" onClick={async (e)=>{ e.preventDefault(); const node = window.__COMPARE_NODE__; await exportElementToPNG(node, 'compare.png'); }} title="Export compare as PNG">Export PNG</button>
+                <button className="btn btn-secondary" onClick={async (e)=>{ e.preventDefault(); const node = window.__COMPARE_NODE__; const ok = await copyElementPNGToClipboard(node); if (!ok) alert('Copy not supported in this browser.'); }} title="Copy compare to clipboard">Copy</button>
+              </div>
+            </div>
             <ComparisonPanel funds={filteredFunds} />
           </div>
         );
@@ -348,32 +470,70 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
     }).length;
     return activeCount;
   };
+  // ref moved up to keep hooks before any return
 
-  if (isLoading) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        alignItems: 'center', 
-        justifyContent: 'center',
-        padding: '3rem',
-        backgroundColor: '#f9fafb',
-        borderRadius: '0.5rem',
-        border: '1px solid #e5e7eb'
-      }}>
-        <RefreshCw size={48} style={{ animation: 'spin 1s linear infinite', marginBottom: '1rem', color: '#3b82f6' }} />
-        <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>
-          Loading Fund Data
-        </h3>
-        <p style={{ color: '#6b7280' }}>
-          Please wait while we fetch the latest performance data...
-        </p>
-      </div>
-    );
-  }
+  // Copy link to current view (share filters + asOf month via hash)
+  const copyShareLink = React.useCallback(async () => {
+    try {
+      const data = {
+        asOf: asOfMonthProp || null,
+        viewMode,
+        filters: activeFilters || null,
+        // Compare selection tickers via event query (best-effort)
+        compareTickers: (() => {
+          try {
+            const cells = document.querySelectorAll('[data-compare-export] th div span');
+            const syms = Array.from(cells).slice(0, 8).map(n => (n?.textContent || '').trim()).filter(Boolean);
+            return syms.length ? syms : null;
+          } catch { return null; }
+        })()
+      };
+      const hash = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(data)))));
+      const url = `${window.location.origin}${window.location.pathname}#s=${hash}`;
+      await navigator.clipboard.writeText(url);
+      alert('Link copied to clipboard');
+    } catch (e) {
+      console.error('Failed to copy link', e);
+    }
+  }, [asOfMonthProp, viewMode, activeFilters]);
+
+  // On load, parse share hash if present
+  React.useEffect(() => {
+    try {
+      const m = window.location.hash.match(/#s=(.+)$/);
+      if (!m) return;
+      const parsed = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1])))));
+      if (parsed?.asOf && typeof onAsOfMonthChange === 'function') onAsOfMonthChange(parsed.asOf);
+      if (parsed?.viewMode && ['table','heatmap','overview','performers','compare','details'].includes(parsed.viewMode)) setViewMode(parsed.viewMode);
+      if (parsed?.filters && typeof parsed.filters === 'object') setActiveFilters(parsed.filters);
+      if (Array.isArray(parsed?.compareTickers) && parsed.compareTickers.length > 0) {
+        setViewMode('compare');
+        setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_COMPARE_SELECTION', { detail: { tickers: parsed.compareTickers } })); } catch {} }, 0);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Loader handled via isLoadingAny skeleton inside main return
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+      {isLoadingAny ? (
+        <div className="enhanced-performance-dashboard">
+          <div className="dashboard-header">
+            <div className="header-left">
+              <h2>Performance</h2>
+              <p className="subtitle">Preparing your view…</p>
+            </div>
+          </div>
+          <div style={{ display:'grid', gap: 'var(--spacing-lg)' }}>
+            <SectionSkeleton />
+            <SectionSkeleton />
+            <SectionSkeleton />
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Header */}
       <div style={{
         backgroundColor: 'white',
@@ -430,17 +590,29 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
                 ))}
               </select>
             </div>
+            <button className="btn" onClick={copyShareLink} title="Copy link to this view" style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <Share2 size={16} aria-hidden />
+              <span>Share</span>
+            </button>
             {/* Non-EOM pill and toggle */}
             {nonEomSample && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 12, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', padding: '2px 6px', borderRadius: 9999 }}>
-                  Non-EOM month detected ({new Date(nonEomSample).toLocaleDateString('en-US')})
+                  This month isn’t end‑of‑month; values may be incomplete
                 </span>
                 <label style={{ fontSize: 12, color: '#374151' }}>
                   <input type="checkbox" checked={showNonEom} onChange={(e) => setShowNonEom(e.target.checked)} /> Show non-EOM
                 </label>
               </div>
             )}
+            {/* Data Health badge with icon */}
+            <div style={{ display:'flex', alignItems:'center', gap: 8 }}>
+              <div title={`Minimum coverage across key metrics`} style={{ background: dataHealth.color, color: 'white', borderRadius: 9999, padding: '4px 10px', fontWeight: 600, fontSize: 12, display:'inline-flex', alignItems:'center', gap:6 }}>
+                <StatusIcon level={dataHealth.minCov >= 80 ? 'good' : dataHealth.minCov >= 50 ? 'fair' : 'poor'} />
+                <span>Data Health: {dataHealth.label} • {dataHealth.minCov}%</span>
+              </div>
+              <a href="#" className="btn btn-link" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'health' } })); }} style={{ fontSize: 12 }}>Open Data Health</a>
+            </div>
             <button
               onClick={onRefresh}
               disabled={isLoading || (process.env.REACT_APP_ENABLE_REFRESH || 'false') !== 'true'}
@@ -467,26 +639,100 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
               </div>
             )}
             
-            <button
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.5rem 1rem',
-                border: '1px solid #3b82f6',
-                borderRadius: '0.375rem',
-                backgroundColor: filteredFunds.length > 0 ? '#3b82f6' : '#93c5fd',
-                color: 'white',
-                fontSize: '0.875rem',
-                cursor: filteredFunds.length > 0 && tableExportRef.current ? 'pointer' : 'not-allowed',
-                opacity: filteredFunds.length > 0 && tableExportRef.current ? 1 : 0.6
-              }}
-              onClick={() => tableExportRef.current && filteredFunds.length > 0 && tableExportRef.current()}
-              disabled={!tableExportRef.current || filteredFunds.length === 0}
-            >
-              <Download size={16} />
-              Export Results
-            </button>
+            {/* Export menu */}
+            <div style={{ position: 'relative' }}>
+              <button
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem 1rem',
+                  border: '1px solid #3b82f6',
+                  borderRadius: '0.375rem',
+                  backgroundColor: filteredFunds.length > 0 ? '#3b82f6' : '#93c5fd',
+                  color: 'white',
+                  fontSize: '0.875rem',
+                  cursor: filteredFunds.length > 0 ? 'pointer' : 'not-allowed',
+                  opacity: filteredFunds.length > 0 ? 1 : 0.6
+                }}
+                aria-haspopup="menu"
+                aria-expanded="false"
+                disabled={filteredFunds.length === 0}
+                onClick={(e) => {
+                  const menu = e.currentTarget.nextSibling;
+                  if (menu) menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+                }}
+                title="Export options"
+              >
+                <Download size={16} />
+                Export
+              </button>
+              <div role="menu" style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', background: 'white', border: '1px solid #e5e7eb', borderRadius: 6, minWidth: 200, boxShadow: '0 6px 18px rgba(0,0,0,0.08)', display: 'none', zIndex: 50 }}>
+                {viewMode === 'compare' ? (
+                  <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: 'pointer' }} onClick={() => {
+                    try {
+                      const panel = document.querySelector('[data-compare-export]');
+                      if (panel) panel.dispatchEvent(new CustomEvent('COMPARE_EXPORT', { bubbles: true }));
+                    } catch {}
+                  }}>
+                    Compare (CSV)
+                  </button>
+                ) : (
+                  <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: 'pointer' }} onClick={() => { if (tableExportRef.current) tableExportRef.current(); }}>
+                    Table (CSV)
+                  </button>
+                )}
+                <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: 'pointer' }} onClick={() => {
+                  try {
+                    const wbBlob = exportToExcel({ funds: filteredFunds });
+                    const name = formatExportFilename({ scope: 'excel', asOf: (asOfMonthProp || window.__AS_OF_MONTH__ || null), ext: 'xlsx' });
+                    downloadFile(wbBlob, name);
+                  } catch (e) { /* eslint-disable no-console */ console.error('Excel export failed', e); }
+                }}>
+                  Excel workbook (.xlsx)
+                </button>
+                <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: 'pointer' }} onClick={() => {
+                  try {
+                    const metadata = {
+                      date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+                      totalFunds: filteredFunds.length,
+                      recommendedFunds: filteredFunds.filter(f => f.is_recommended || f.recommended).length,
+                      assetClassCount: new Set(filteredFunds.map(f => f.asset_class_name || f.asset_class || f['Asset Class']).filter(Boolean)).size,
+                      averagePerformance: (() => {
+                        const vals = filteredFunds.map(f => f.ytd_return).filter(v => v != null && !Number.isNaN(v));
+                        return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
+                      })()
+                    };
+                    const pdf = generatePDFReport({ funds: filteredFunds, metadata });
+                    const name = formatExportFilename({ scope: 'pdf_all', asOf: (asOfMonthProp || window.__AS_OF_MONTH__ || null), ext: 'pdf' });
+                    pdf.save(name);
+                  } catch (e) { /* eslint-disable no-console */ console.error('PDF export failed', e); }
+                }}>
+                  PDF (all)
+                </button>
+                <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: (filteredFunds.filter(f => f.is_recommended || f.recommended).length > 0) ? 'pointer' : 'not-allowed', opacity: (filteredFunds.filter(f => f.is_recommended || f.recommended).length > 0) ? 1 : 0.5 }} disabled={(filteredFunds.filter(f => f.is_recommended || f.recommended).length === 0)} onClick={() => {
+                  const rec = (filteredFunds || []).filter(f => f.is_recommended || f.recommended);
+                  if (rec.length === 0) return;
+                  try {
+                    const metadata = {
+                      date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+                      totalFunds: rec.length,
+                      recommendedFunds: rec.length,
+                      assetClassCount: new Set(rec.map(f => f.asset_class_name || f.asset_class || f['Asset Class']).filter(Boolean)).size,
+                      averagePerformance: (() => {
+                        const vals = rec.map(f => f.ytd_return).filter(v => v != null && !Number.isNaN(v));
+                        return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
+                      })()
+                    };
+                    const pdf = generatePDFReport({ funds: rec, metadata });
+                    const name = formatExportFilename({ scope: 'pdf_recommended', asOf: (asOfMonthProp || window.__AS_OF_MONTH__ || null), ext: 'pdf' });
+                    pdf.save(name);
+                  } catch (e) { /* eslint-disable no-console */ console.error('PDF export failed', e); }
+                }}>
+                  PDF — Recommended
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -497,8 +743,9 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         </div>
       )}
       {viewMode !== 'heatmap' && asOfMonthProp && guard.fund === 0 && guard.bench === 0 && (
-        <div style={{ background:'#f3f4f6', border:'1px solid #e5e7eb', color:'#374151', borderRadius:6, padding:'8px 12px', margin:'8px 16px' }}>
-          No data for {asOfMonthProp}.
+        <div style={{ background:'#f3f4f6', border:'1px solid #e5e7eb', color:'#374151', borderRadius:6, padding:'8px 12px', margin:'8px 16px', display:'flex', alignItems:'center', gap:8 }}>
+          <AlertCircle size={16} aria-hidden />
+          <span>No data for {asOfMonthProp}.</span>
         </div>
       )}
 
@@ -568,12 +815,12 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         </div>
 
         {/* Advanced Filters */}
-        {initialized && (
-        <AdvancedFilters 
-          funds={funds}
-          onFilterChange={handleFilterChange}
-          initialFilters={initialFilters}
-        />)}
+          {initialized && (
+          <AdvancedFilters 
+            funds={funds}
+            onFilterChange={handleFilterChange}
+            initialFilters={initialFilters}
+          />)}
 
         {/* View Mode Selector */}
         <div style={{
@@ -647,6 +894,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
             }}>
               <Filter size={16} />
               {getFilterSummary()} filter{getFilterSummary() !== 1 ? 's' : ''} active
+              <button onClick={()=> window.location.reload()} style={{ marginLeft: 8, background: 'transparent', border: 'none', color: '#1d4ed8', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.875rem' }}>Clear all</button>
             </div>
           )}
         </div>
@@ -738,6 +986,8 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
           />
         )}
       </div>
+      </>
+      )}
 
       <style jsx>{`
         @keyframes spin {

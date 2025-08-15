@@ -1,15 +1,19 @@
 // App.jsx
 import React, { useState, useEffect, useMemo } from 'react';
+import { Home as HomeIcon, Table as TableIcon, BarChart3 as BarChartIcon, ShieldCheck, Settings, Download, RefreshCw, HelpCircle, Share2, Info } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import './App.css'; // Import the CSS file
 import LoginModal from './components/Auth/LoginModal';
 import {
   recommendedFunds as defaultRecommendedFunds,
   assetClassBenchmarks as defaultBenchmarks
 } from './data/config';
-import { 
+import {
   identifyReviewCandidates,
   loadMetricWeights
 } from './services/scoring';
+import fundService from './services/fundService';
+import { isSupabaseStubbed } from './services/supabase';
 import {
   getAllCombinedSnapshots,
   getDataSummary
@@ -18,9 +22,11 @@ import fundRegistry from './services/fundRegistry';
 import PerformanceHeatmap from './components/Dashboard/PerformanceHeatmap';
 import TopBottomPerformers from './components/Dashboard/TopBottomPerformers';
 import AssetClassOverview from './components/Dashboard/AssetClassOverview';
+import Home from './components/Dashboard/Home';
 import CorrelationMatrix from './components/Analytics/CorrelationMatrix';
 import RiskReturnScatter from './components/Analytics/RiskReturnScatter';
 import EnhancedPerformanceDashboard from './components/Dashboard/EnhancedPerformanceDashboard';
+import MethodologyDrawer from './components/Dashboard/MethodologyDrawer';
 import FundManagement from './components/Admin/FundManagement';
 import HealthCheck from './components/Dashboard/HealthCheck';
 import { 
@@ -70,6 +76,7 @@ const App = () => {
   const [snapshotComparison] = useState(null);
 
   const [assetClassBenchmarks, setAssetClassBenchmarks] = useState({});
+  const [availableMonths, setAvailableMonths] = useState([]);
 
 
 
@@ -92,6 +99,58 @@ const App = () => {
 
   // Help modal state
   const [showHelp, setShowHelp] = useState(false);
+
+  // Router integration: sync activeTab with URL
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const tabToPath = {
+    dashboard: '/dashboard',
+    performance: '/performance',
+    class: '/class',
+    analysis: '/analysis',
+    analytics: '/analytics',
+    history: '/history',
+    admin: '/admin',
+    health: '/health'
+  };
+  const pathToTab = (pathname) => {
+    if (pathname.startsWith('/performance')) return 'performance';
+    if (pathname.startsWith('/class')) return 'class';
+    if (pathname.startsWith('/analysis')) return 'analysis';
+    if (pathname.startsWith('/analytics')) return 'analytics';
+    if (pathname.startsWith('/history')) return 'history';
+    if (pathname.startsWith('/admin')) return 'admin';
+    if (pathname.startsWith('/health')) return 'health';
+    return 'dashboard';
+  };
+
+  // Redirect root to /dashboard on first load
+  useEffect(() => {
+    // Alias redirects
+    const aliasMap = {
+      '/funds': '/performance',
+      '/scores': '/performance'
+    };
+    if (aliasMap[location.pathname]) {
+      navigate(aliasMap[location.pathname], { replace: true });
+      return;
+    }
+    if (location.pathname === '/') {
+      const last = localStorage.getItem('lastTab');
+      const target = tabToPath[last] || '/dashboard';
+      navigate(target, { replace: true });
+    }
+    setActiveTab(pathToTab(location.pathname));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  // Persist last tab
+  useEffect(() => {
+    if (activeTab) {
+      localStorage.setItem('lastTab', activeTab);
+    }
+  }, [activeTab]);
 
   // Check authentication on app load
   useEffect(() => {
@@ -173,6 +232,34 @@ const App = () => {
     }
   }, [funds]);
 
+  // Load snapshot months for global As-of selector
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const months = await fundService.listSnapshotMonths();
+        if (!cancelled) setAvailableMonths(months || []);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Global navigation events (from deep links like Data Health quick actions)
+  useEffect(() => {
+    const onNav = (ev) => {
+      try {
+        const tab = ev?.detail?.tab;
+        if (typeof tab === 'string') {
+          setActiveTab(tab);
+          const to = tabToPath[tab] || '/dashboard';
+          navigate(to);
+        }
+      } catch {}
+    };
+    window.addEventListener('NAVIGATE_APP', onNav);
+    return () => window.removeEventListener('NAVIGATE_APP', onNav);
+  }, [navigate]);
+
   // Initialize fund registry and load data (legacy - will be replaced)
   useEffect(() => {
     if (!isAuthenticated) return; // Only load legacy data if not using new system
@@ -214,17 +301,32 @@ const App = () => {
       }
       // Number keys for tab navigation
       if (e.key >= '1' && e.key <= '6' && !e.ctrlKey && !e.metaKey) {
-        const tabs = ['dashboard', 'funds', 'class', 'analysis', 'analytics', 'history'];
+        const tabs = ['dashboard', 'performance', 'class', 'analysis', 'analytics', 'history'];
         const tabIndex = parseInt(e.key) - 1;
         if (tabIndex < tabs.length) {
-          setActiveTab(tabs[tabIndex]);
+          const t = tabs[tabIndex];
+          setActiveTab(t);
+          const to = tabToPath[t] || '/dashboard';
+          navigate(to);
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [funds, classSummaries, currentSnapshotDate]);
+  }, [funds, classSummaries, currentSnapshotDate, navigate]);
+
+  const handleExport = () => {
+    if ((funds?.length || 0) === 0) return;
+    const data = {
+      funds,
+      classSummaries,
+      reviewCandidates: identifyReviewCandidates(funds || []),
+      metadata: { date: currentSnapshotDate }
+    };
+    const blob = exportToExcel(data);
+    downloadFile(blob, `fund_analysis_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
 
 
 
@@ -371,21 +473,69 @@ const App = () => {
 
   return (
     <div className="app-container">
+      {/* Setup guard if Supabase env missing */}
+      {isSupabaseStubbed && process.env.NODE_ENV !== 'test' && (
+        <div style={{ padding:'2rem', maxWidth:740, margin:'2rem auto', border:'1px solid #fecaca', background:'#fef2f2', borderRadius:8 }}>
+          <h2 style={{ marginTop:0, color:'#7f1d1d' }}>Setup required: Supabase environment variables</h2>
+          <p style={{ color:'#7f1d1d' }}>The app is running without a live database connection. Set the following variables and restart:</p>
+          <ul style={{ color:'#7f1d1d' }}>
+            <li>REACT_APP_SUPABASE_URL</li>
+            <li>REACT_APP_SUPABASE_ANON_KEY</li>
+          </ul>
+          <p style={{ color:'#7f1d1d' }}>In development, add them to <code>.env.local</code>. In preview/production, set them in your hosting provider.</p>
+        </div>
+      )}
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-logo">Raymond James</div>
         <nav className="sidebar-nav">
-          <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
-          <button className={activeTab === 'performance' ? 'active' : ''} onClick={() => setActiveTab('performance')}>Performance</button>
-          <button className={activeTab === 'funds' ? 'active' : ''} onClick={() => setActiveTab('funds')}>Fund Scores</button>
-          <button className={activeTab === 'class' ? 'active' : ''} onClick={() => setActiveTab('class')}>Class View</button>
-          <button className={activeTab === 'analysis' ? 'active' : ''} onClick={() => setActiveTab('analysis')}>Analysis</button>
-          <button className={activeTab === 'analytics' ? 'active' : ''} onClick={() => setActiveTab('analytics')}>Analytics</button>
-          <button className={activeTab === 'history' ? 'active' : ''} onClick={() => setActiveTab('history')}>History</button>
-          <button className={activeTab === 'admin' ? 'active' : ''} onClick={() => setActiveTab('admin')}>Admin</button>
-          <button className={activeTab === 'health' ? 'active' : ''} onClick={() => setActiveTab('health')}>Health</button>
+          <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => { setActiveTab('dashboard'); navigate('/dashboard'); }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <HomeIcon size={16} aria-hidden />
+              <span>Home</span>
+            </span>
+          </button>
+          <button className={activeTab === 'performance' ? 'active' : ''} onClick={() => { setActiveTab('performance'); navigate('/performance'); }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <TableIcon size={16} aria-hidden />
+              <span>Funds</span>
+            </span>
+          </button>
+          <button className={activeTab === 'class' ? 'active' : ''} onClick={() => { setActiveTab('class'); navigate('/class'); }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <BarChartIcon size={16} aria-hidden />
+              <span>Asset Classes</span>
+            </span>
+          </button>
+          <button className={activeTab === 'health' ? 'active' : ''} onClick={() => { setActiveTab('health'); navigate('/health'); }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <ShieldCheck size={16} aria-hidden />
+              <span>Data Health</span>
+            </span>
+            {(() => {
+              try {
+                const total = (funds || []).length;
+                const nz = (arr) => arr.filter(v => v != null && !Number.isNaN(v)).length;
+                const ytdOk = nz((funds || []).map(f => f.ytd_return));
+                const oneYOk = nz((funds || []).map(f => f.one_year_return));
+                const sharpeOk = nz((funds || []).map(f => f.sharpe_ratio));
+                const sd3Ok = nz((funds || []).map(f => (f.standard_deviation_3y ?? f.standard_deviation)));
+                const covs = [ytdOk, oneYOk, sharpeOk, sd3Ok].map(n => total ? Math.round((n / total) * 100) : 0);
+                const minCov = covs.length ? Math.min(...covs) : 0;
+                const color = minCov >= 80 ? '#16a34a' : minCov >= 50 ? '#f59e0b' : '#dc2626';
+                return <span style={{ marginLeft: 8, background: color, width: 10, height: 10, display:'inline-block', borderRadius: 9999 }} title={`Minimum coverage: ${minCov}%`} />;
+              } catch { return null; }
+            })()}
+          </button>
+          <button className={activeTab === 'admin' ? 'active' : ''} onClick={() => { setActiveTab('admin'); navigate('/admin'); }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <Settings size={16} aria-hidden />
+              <span>Admin</span>
+            </span>
+          </button>
         </nav>
         <div className="sidebar-footer">
+          <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.85)', marginBottom: '0.75rem' }}>Tip: Press Ctrl+H for help</div>
           <div className="user-info">
             <span>Welcome, {currentUser?.name || 'User'}</span>
           </div>
@@ -402,21 +552,68 @@ const App = () => {
             <h1 style={{ fontSize: '2rem', fontWeight: 600, color: 'var(--color-primary)' }}>Lightship Fund Analysis</h1>
             <p style={{ color: 'var(--color-primary-light)' }}>Monthly fund performance analysis with Z-score ranking system</p>
           </div>
-        <button 
-            onClick={() => setShowHelp(true)}
-          style={{ 
-            padding: '0.5rem 1rem',
-              backgroundColor: 'var(--color-primary-light)',
-              color: 'var(--color-white)',
-            border: 'none',
-            borderRadius: '0.375rem',
-            cursor: 'pointer',
-              fontWeight: 600
-          }}
-            title="Help (Ctrl+H)"
-        >
-            Help
-        </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>As of</label>
+              <select
+                value={asOfMonth || ''}
+                onChange={(e) => setAsOfMonth(e.target.value || null)}
+                style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6 }}
+                title="Switch dataset to a specific month snapshot"
+              >
+                <option value="">Latest</option>
+                {(availableMonths || []).map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+            <button 
+              onClick={() => refreshData()}
+              className="btn btn-secondary"
+              title="Refresh data"
+              style={{ display:'inline-flex', alignItems:'center', gap:6 }}
+            >
+              <RefreshCw size={16} aria-hidden />
+              <span>Refresh</span>
+            </button>
+            <button 
+              onClick={handleExport}
+              className="btn"
+              title="Export (Ctrl+E)"
+              style={{ display:'inline-flex', alignItems:'center', gap:6 }}
+            >
+              <Download size={16} aria-hidden />
+              <span>Export</span>
+            </button>
+            <button 
+              onClick={() => setShowHelp(true)}
+              style={{ 
+                padding: '0.5rem 1rem',
+                backgroundColor: 'var(--color-primary-light)',
+                color: 'var(--color-white)',
+                border: 'none',
+                borderRadius: '0.375rem',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+              title="Help (Ctrl+H)"
+              
+            >
+              <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+                <HelpCircle size={16} aria-hidden />
+                <span>Help</span>
+              </span>
+            </button>
+            <button
+              onClick={() => { try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }}
+              className="btn btn-secondary"
+              title="Open methodology"
+              style={{ display:'inline-flex', alignItems:'center', gap:6 }}
+            >
+              <Info size={16} aria-hidden />
+              <span>Methodology</span>
+            </button>
+          </div>
       </div>
         {/* Card-based main content */}
         <div className="card">
@@ -426,111 +623,10 @@ const App = () => {
 
       {/* Dashboard Tab */}
       {activeTab === 'dashboard' && (
-        <div>
-              <div className="card-header">
-                <h2 className="card-title">Fund Analysis Dashboard</h2>
-                <p className="card-subtitle">Comprehensive overview of fund performance and analysis</p>
-                <div style={{ 
-                  marginTop: '1rem', 
-                  padding: '0.75rem', 
-                  backgroundColor: '#eff6ff', 
-                  border: '1px solid #3b82f6', 
-                  borderRadius: '0.375rem',
-                  fontSize: '0.875rem'
-                }}>
-                  💡 <strong>New:</strong> Try the <button 
-                    onClick={() => setActiveTab('performance')} 
-                    style={{ 
-                      color: '#3b82f6', 
-                      textDecoration: 'underline', 
-                      background: 'none', 
-                      border: 'none', 
-                      cursor: 'pointer',
-                      fontWeight: '600'
-                    }}
-                  >Enhanced Performance Dashboard</button> with advanced filtering and sorting capabilities!
-                </div>
-              </div>
-              
-          {funds.length > 0 ? (
-                <div>
-                  {/* Summary Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 'var(--spacing-lg)', marginBottom: 'var(--spacing-lg)' }}>
-                    <div className="card">
-                      <div className="card-header">
-                        <h3 className="card-title">Total Funds</h3>
-                      </div>
-                      <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
-                        {funds.length}
-                      </div>
-                </div>
-                
-                    <div className="card">
-                      <div className="card-header">
-                        <h3 className="card-title">Asset Classes</h3>
-                      </div>
-                      <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
-                        {assetClasses.length}
-                      </div>
-                    </div>
-                    
-                    <div className="card">
-                      <div className="card-header">
-                        <h3 className="card-title">Top Performers</h3>
-                      </div>
-                      <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-success)' }}>
-                        {funds.filter(f => f.is_recommended || f.recommended).length}
-                      </div>
-                    </div>
-                    
-                    <div className="card">
-                      <div className="card-header">
-                        <h3 className="card-title">Review Candidates</h3>
-                      </div>
-                      <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-error)' }}>
-                        {reviewCandidates.length}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Performance Heatmap */}
-                  <div className="card">
-                    <div className="card-header">
-                      <h3 className="card-title">Performance Heatmap</h3>
-                      <p className="card-subtitle">Visual representation of fund performance across asset classes</p>
-                    </div>
-                    <PerformanceHeatmap funds={funds} />
-                  </div>
-
-                  {/* Top/Bottom Performers */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-lg)' }}>
-                    <div className="card">
-                      <div className="card-header">
-                        <h3 className="card-title">Top Performers</h3>
-                </div>
-                      <TopBottomPerformers funds={funds} />
-              </div>
-              
-                    <div className="card">
-                      <div className="card-header">
-                        <h3 className="card-title">Asset Class Overview</h3>
-                      </div>
-                      <AssetClassOverview funds={funds} />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="card">
-                  <div className="card-header">
-                    <h3 className="card-title">No Data Available</h3>
-                    <p className="card-subtitle">Upload fund data to see the dashboard</p>
-                  </div>
-            </div>
-          )}
-        </div>
+        <Home />
       )}
 
-      {/* Performance Tab */}
+      {/* Funds Tab */}
       {activeTab === 'performance' && (
         <div>
           <EnhancedPerformanceDashboard 
@@ -543,134 +639,7 @@ const App = () => {
         </div>
       )}
 
-      {/* Fund Scores Tab */}
-{activeTab === 'funds' && (
-  <div>
-    {(funds?.length || 0) > 0 ? (
-      <div>
-                  <div className="card-header">
-                    <h2 className="card-title">All Funds with Scores</h2>
-                    <p className="card-subtitle">Scores calculated using weighted Z-score methodology within each asset class</p>
-        </div>
-        
-                  {/* Search and Filter Controls */}
-                  <div className="controls-container">
-                    <div className="input-group" style={{ margin: 0, flex: 1 }}>
-                      <input
-                        type="text"
-                        placeholder="Search funds..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="search-input"
-                      />
-                    </div>
-                    <div className="input-group" style={{ margin: 0 }}>
-                      <select
-                        value={filterAssetClass}
-                        onChange={(e) => setFilterAssetClass(e.target.value)}
-                        className="select-field"
-                      >
-                        <option value="all">All Asset Classes</option>
-                        {memoizedAssetClasses.map(cls => (
-                          <option key={cls} value={cls}>{cls}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="input-group" style={{ margin: 0 }}>
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="select-field"
-                      >
-                        <option value="score">Sort by Score</option>
-                        <option value="symbol">Sort by Symbol</option>
-                        <option value="name">Sort by Name</option>
-                        <option value="assetClass">Sort by Asset Class</option>
-                      </select>
-                    </div>
-                    <button
-                      onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
-                      className="btn btn-secondary"
-                    >
-                      {sortDirection === 'asc' ? '↑' : '↓'}
-                    </button>
-                  </div>
-
-                  {/* Results Summary */}
-                    <div style={{ marginBottom: 'var(--spacing-md)', color: '#6b7280', fontSize: '0.875rem' }}>
-                    Showing {filteredAndSortedFunds.length} of {funds.length} funds
-                  </div>
-
-                  {/* Fund Scores Table */}
-                  <div className="table-container">
-                    <table>
-            <thead>
-                        <tr>
-                          <th>Symbol</th>
-                          <th>Fund Name</th>
-                          <th>Asset Class</th>
-                          <th>Score</th>
-                          <th>YTD</th>
-                          <th>1 Year</th>
-                          <th>3 Year</th>
-                          <th>5 Year</th>
-                          <th>10 Year</th>
-                          <th>Sharpe</th>
-                          <th>Alpha</th>
-                          <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-                        {filteredAndSortedFunds.map((fund, index) => (
-                          <tr key={fund.ticker || fund.Symbol || index}>
-                            <td><strong>{fund.ticker || fund.symbol || fund.Symbol}</strong></td>
-                            <td>{fund.name || fund['Fund Name'] || '—'}</td>
-                            <td>{fund.asset_class_name || fund.asset_class || fund['Asset Class'] || '—'}</td>
-                            <td>
-                              <span className="score-badge" style={{
-                                backgroundColor: fund.score >= 0.7 ? '#059669' : 
-                                              fund.score >= 0.5 ? '#3B82F6' : 
-                                              fund.score >= 0.3 ? '#F59E0B' : '#DC2626',
-                                padding: 'var(--spacing-xs) var(--spacing-sm)',
-                                borderRadius: 'var(--border-radius)',
-                                color: 'white',
-                                fontWeight: '600',
-                                fontSize: '0.875rem'
-                              }}>
-                                {(typeof fund.score === 'number' ? fund.score : 0).toFixed(3)}
-                        </span>
-                            </td>
-                            <td>{fund.ytd_return != null ? `${fund.ytd_return.toFixed(2)}%` : '—'}</td>
-                            <td>{fund.one_year_return != null ? `${fund.one_year_return.toFixed(2)}%` : '—'}</td>
-                            <td>{fund.three_year_return != null ? `${fund.three_year_return.toFixed(2)}%` : '—'}</td>
-                            <td>{fund.five_year_return != null ? `${fund.five_year_return.toFixed(2)}%` : '—'}</td>
-                            <td>{fund.ten_year_return != null ? `${fund.ten_year_return.toFixed(2)}%` : '—'}</td>
-                            <td>{fund.sharpe_ratio != null ? fund.sharpe_ratio.toFixed(2) : '—'}</td>
-                            <td>{fund.alpha != null ? fund.alpha.toFixed(2) : '—'}</td>
-                            <td>
-                              <button
-                                className="btn btn-secondary"
-                                style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: '0.75rem' }}
-                              >
-                                Details
-                              </button>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-            </div>
-          ) : (
-                <div className="card">
-                  <div className="card-header">
-                    <h3 className="card-title">No Fund Data Available</h3>
-                    <p className="card-subtitle">Upload a fund performance file to get started</p>
-                  </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Removed legacy Fund Scores tab in favor of Enhanced Performance */}
 
       {/* Asset Class View Tab */}
       {activeTab === 'class' && (
@@ -862,13 +831,20 @@ const App = () => {
                   </div>
               </div>
               ) : (
-                <div className="card">
-                  <div className="card-header">
-                    <h3 className="card-title">No Data Available</h3>
-                    <p className="card-subtitle">Upload fund data to see analysis</p>
+                <div className="card" style={{ display:'grid', gap:12 }}>
+                  <div className="card-header" style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <Info size={18} aria-hidden />
+                    <div>
+                      <h3 className="card-title">No Data Yet</h3>
+                      <p className="card-subtitle">Import a monthly CSV or try sample data to explore this analysis.</p>
+                    </div>
                   </div>
-            </div>
-          )}
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    <button className="btn" onClick={() => { setActiveTab('admin'); navigate('/admin'); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); }}>Go to Importer</button>
+                    <button className="btn btn-secondary" onClick={() => { setActiveTab('admin'); navigate('/admin'); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}>Use sample data</button>
+                  </div>
+                </div>
+              )}
         </div>
       )}
 
@@ -1157,6 +1133,7 @@ const App = () => {
 
         </div>
       </main>
+      <MethodologyDrawer />
       {/* Footer */}
       <footer className="footer">
         &copy; {new Date().getFullYear()} Raymond James (Demo) | Lightship Fund Analysis

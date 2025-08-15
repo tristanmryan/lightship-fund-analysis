@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import asOfStore from '../../services/asOfStore';
 import { supabase, TABLES } from '../../services/supabase';
 import fundService from '../../services/fundService';
-import { exportRecommendedFundsCSV, exportPrimaryBenchmarkMappingCSV } from '../../services/exportService';
+import { exportRecommendedFundsCSV, exportPrimaryBenchmarkMappingCSV, exportTableCSV } from '../../services/exportService';
+import { generatePDFReport } from '../../services/exportService';
 
 export default function AdminOverview({ onNavigate = () => {} }) {
   const [loading, setLoading] = useState(true);
@@ -131,8 +132,34 @@ export default function AdminOverview({ onNavigate = () => {} }) {
             ))}
           </div>
           <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn btn-secondary" onClick={() => exportRecommendedFundsCSV()}>Export Recommended Funds</button>
-            <button className="btn btn-secondary" onClick={() => exportPrimaryBenchmarkMappingCSV()}>Export Primary Benchmark Mapping</button>
+            {/* Consolidated Exports menu */}
+            <div style={{ position: 'relative' }}>
+              <button className="btn btn-secondary" aria-haspopup="menu" aria-expanded="false" onClick={(e)=>{ const m=e.currentTarget.nextSibling; if (m) m.style.display=(m.style.display==='block')?'none':'block'; }}>Exports</button>
+              <div role="menu" style={{ position: 'absolute', background: 'white', border: '1px solid #e5e7eb', borderRadius: 6, minWidth: 240, boxShadow: '0 6px 18px rgba(0,0,0,0.08)', display: 'none', zIndex: 40 }}>
+                <button role="menuitem" className="btn btn-link" style={{ display: 'block', width: '100%', textAlign: 'left' }} onClick={() => exportRecommendedFundsCSV()}>Recommended funds (CSV)</button>
+                <button role="menuitem" className="btn btn-link" style={{ display: 'block', width: '100%', textAlign: 'left' }} onClick={() => exportPrimaryBenchmarkMappingCSV()}>Primary benchmark mapping (CSV)</button>
+                <button role="menuitem" className="btn btn-link" style={{ display: 'block', width: '100%', textAlign: 'left' }} onClick={async () => {
+                  try {
+                    const { supabase, TABLES } = await import('../../services/supabase');
+                    const { data: funds } = await supabase.from(TABLES.FUNDS).select('*').order('ticker');
+                    const metadata = {
+                      date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+                      totalFunds: (funds || []).length,
+                      recommendedFunds: (funds || []).filter(f => f.is_recommended).length,
+                      assetClassCount: new Set((funds || []).map(f => f.asset_class).filter(Boolean)).size,
+                      averagePerformance: (() => {
+                        const vals = (funds || []).map(f => f.ytd_return).filter(v => v != null && !Number.isNaN(v));
+                        return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
+                      })()
+                    };
+                    const pdf = generatePDFReport({ funds: funds || [], metadata });
+                    const { formatExportFilename } = await import('../../services/exportService');
+                    const name = formatExportFilename({ scope: 'admin_pdf_all', ext: 'pdf' });
+                    pdf.save(name);
+                  } catch (e) { console.error('PDF export failed', e); }
+                }}>All funds (PDF)</button>
+              </div>
+            </div>
           </div>
         </>
       )}

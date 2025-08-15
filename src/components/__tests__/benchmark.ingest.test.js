@@ -20,7 +20,12 @@ test('fund vs benchmark rows route to respective tables', async () => {
           if (table === 'fund_performance') upserts.fund.push(...rows);
           if (table === 'benchmark_performance') upserts.bench.push(...rows);
           return { error: null };
-        }
+        },
+        select: () => ({
+          eq: () => ({
+            limit: async () => ({ data: [], error: null })
+          })
+        })
       })
     },
     handleSupabaseError: (e) => { throw e; }
@@ -30,7 +35,7 @@ test('fund vs benchmark rows route to respective tables', async () => {
 
   const rows = [
     { ticker: 'ABCX', date: '2025-07-31', ytd_return: '10%' , kind: 'fund' },
-    { benchmark_ticker: 'IWF', date: '2025-07-31', ytd_return: '12%' }
+    { ticker: 'IWF', kind: 'benchmark', date: '2025-07-31', ytd_return: '12%' }
   ];
 
   const res = await fundService.bulkUpsertFundPerformance(rows, 100);

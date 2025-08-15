@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import fundService from '../../services/fundService';
 import { createMonthlyTemplateCSV } from '../../services/csvTemplate';
+import asOfStore from '../../services/asOfStore';
 
 export default function SnapshotManager() {
   const [snapshots, setSnapshots] = useState([]);
@@ -69,9 +70,16 @@ export default function SnapshotManager() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `fund-monthly-template-${date}.csv`;
+      a.download = `fund-monthly-template.csv`;
       a.click();
       URL.revokeObjectURL(url);
+    } catch {}
+  };
+
+  const handleSetActive = async (date) => {
+    try {
+      asOfStore.setActiveMonth(date);
+      alert(`Active month set to ${date}`);
     } catch {}
   };
 
@@ -108,8 +116,9 @@ export default function SnapshotManager() {
                     </span>
                   </td>
                   <td>{s.rows}</td>
-                  <td style={{ display: 'flex', gap: 8 }}>
+                  <td style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button className="btn btn-secondary" onClick={() => handleDownloadTemplate(s.date)}>Download Template</button>
+                    <button className="btn btn-secondary" onClick={() => handleSetActive(s.date)}>Set Active Month</button>
                     {!isEom(s.date) && (
                       <button className="btn btn-warning" disabled={convertBusy === s.date} onClick={() => convertToEom(s.date)}>
                         {convertBusy === s.date ? 'Converting…' : 'Convert to EOM…'}

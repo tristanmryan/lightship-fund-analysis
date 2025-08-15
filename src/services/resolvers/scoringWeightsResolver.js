@@ -85,6 +85,17 @@ export async function buildWeightsResolver() {
     return DEFAULT_WEIGHTS[metricKey];
   }
 
+  function getWeightSource(fund, metricKey) {
+    const ticker = dbUtils.cleanSymbol(fund?.ticker || fund?.Symbol || fund?.symbol || '');
+    const assetClass = fund?.asset_class_name || fund?.asset_class || fund?.['Asset Class'] || '';
+    const fKey = ticker ? `${ticker}::${metricKey}` : null;
+    if (fKey && fundWeights.has(fKey)) return { source: 'fund', key: fKey, weight: fundWeights.get(fKey) };
+    const cKey = assetClass ? `${assetClass}::${metricKey}` : null;
+    if (cKey && classWeights.has(cKey)) return { source: 'asset_class', key: cKey, weight: classWeights.get(cKey) };
+    if (globalWeights.has(metricKey)) return { source: 'global', key: metricKey, weight: globalWeights.get(metricKey) };
+    return { source: 'default', key: metricKey, weight: DEFAULT_WEIGHTS[metricKey] };
+  }
+
   // Dump effective map for debugging/preview
   function debugSnapshot() {
     return {
@@ -97,6 +108,6 @@ export async function buildWeightsResolver() {
     };
   }
 
-  return { profile, getWeightFor, debugSnapshot };
+  return { profile, getWeightFor, getWeightSource, debugSnapshot };
 }
 

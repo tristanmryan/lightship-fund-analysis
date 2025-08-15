@@ -1,5 +1,5 @@
 // src/services/researchNotesService.js
-import { supabase, TABLES } from './supabase';
+import { supabase, TABLES, isSupabaseStubbed } from './supabase';
 import authService from './authService';
 
 const DECISIONS = ['approve','monitor','reject','hold'];
@@ -33,6 +33,11 @@ export async function addNote({ fundId = null, fundTicker = null, overrideId = n
     decision: decision && DECISIONS.includes(decision) ? decision : null,
     created_by: createdBy
   };
+  if (isSupabaseStubbed) {
+    // In tests, our stub client does not support chaining select/single after insert
+    await supabase.from(TABLES.FUND_RESEARCH_NOTES).insert(payload);
+    return { id: `local_${Date.now()}`, created_at: new Date().toISOString(), ...payload };
+  }
   const { data, error } = await supabase
     .from(TABLES.FUND_RESEARCH_NOTES)
     .insert(payload)

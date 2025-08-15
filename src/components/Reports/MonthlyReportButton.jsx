@@ -186,7 +186,7 @@ const MonthlyReportButton = () => {
         <h4>Report Features:</h4>
         <ul>
           <li><strong>PDF Report:</strong> Professional Raymond James branded report with cover page, asset class tables, and performance metrics</li>
-          <li><strong>Excel Report:</strong> Multi-sheet workbook with overview, all funds, recommended funds, and performance summary</li>
+          <li><strong>Excel Report:</strong> Multi-sheet workbook with summary, all funds, recommended funds, and performance details</li>
           <li><strong>CSV Export:</strong> Simple data export for external analysis</li>
         </ul>
       </div>

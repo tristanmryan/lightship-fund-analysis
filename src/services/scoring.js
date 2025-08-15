@@ -2,6 +2,21 @@
 import { getConfig, saveConfig } from './dataStore.js';
 import { CONFIG_KEYS } from '../data/storage.js';
 import { buildWeightsResolver } from './resolvers/scoringWeightsResolver';
+import { calculateMean, calculateStdDev, calculateZScore, quantile, erf, erfinv } from './math';
+import {
+  isWinsorizationEnabled,
+  isAdaptiveWinsorEnabled,
+  getAdaptiveWinsorQuantiles,
+  isTinyClassFallbackEnabled,
+  getTinyClassPolicy,
+  getCoverageThreshold,
+  getZShrinkK,
+  isRobustScalingEnabled,
+  getMissingPolicy,
+  SCORE_BANDS,
+  getScoreColor as getScoreColorPolicy,
+  getScoreLabel as getScoreLabelPolicy
+} from './scoringPolicy';
 
 /**
  * Core Scoring Engine for Lightship Fund Analysis
@@ -37,49 +52,23 @@ export const DEFAULT_WEIGHTS = {
     downCapture3Y: -0.10,
     alpha5Y: 0.05,
     expenseRatio: -0.025,
-    managerTenure: 0.025
+    managerTenure: 0.025,
+    // Derived metric (optional, default 0 weight). Set via flag/profile to enable
+    oneYearDeltaVsBench: 0
   };
 
 // Mutable weights used during scoring (legacy/local storage fallback only)
 let METRIC_WEIGHTS = { ...DEFAULT_WEIGHTS };
 // Canonical metric keys ordered for iteration
-const METRIC_KEYS = Object.keys(DEFAULT_WEIGHTS);
+  const METRIC_KEYS = Object.keys(DEFAULT_WEIGHTS);
 // Active resolver loaded from Supabase (null means fallback to METRIC_WEIGHTS)
 let CURRENT_WEIGHTS_RESOLVER = null;
   
   // Metric display names for reporting
-  const METRIC_LABELS = {
-    ytd: 'YTD Return',
-    oneYear: '1-Year Return',
-    threeYear: '3-Year Return',
-    fiveYear: '5-Year Return',
-    tenYear: '10-Year Return',
-    sharpeRatio3Y: '3Y Sharpe Ratio',
-    stdDev3Y: '3Y Std Deviation',
-    stdDev5Y: '5Y Std Deviation',
-    upCapture3Y: '3Y Up Capture',
-    downCapture3Y: '3Y Down Capture',
-    alpha5Y: '5Y Alpha',
-    expenseRatio: 'Expense Ratio',
-    managerTenure: 'Manager Tenure'
-  };
+  const METRIC_LABELS = require('./metrics').METRIC_LABELS;
 
   // Order of metrics for UI display
-export const METRIC_ORDER = [
-    'ytd',
-    'oneYear',
-    'threeYear',
-    'fiveYear',
-    'tenYear',
-    'sharpeRatio3Y',
-    'stdDev3Y',
-    'stdDev5Y',
-    'upCapture3Y',
-    'downCapture3Y',
-    'alpha5Y',
-    'expenseRatio',
-  'managerTenure'
-];
+export const METRIC_ORDER = require('./metrics').METRIC_ORDER;
 
 // Load stored weights and set METRIC_WEIGHTS
 export async function loadMetricWeights() {
@@ -135,21 +124,14 @@ export async function loadEffectiveWeightsResolver() {
    * @param {number} stdDev - Standard deviation of the distribution
    * @returns {number} Z-score
    */
-  function calculateZScore(value, mean, stdDev) {
-    if (stdDev === 0 || isNaN(stdDev)) return 0;
-    return (value - mean) / stdDev;
-  }
+  // calculateZScore moved to math
   
   /**
    * Calculate mean of an array of numbers, ignoring null/undefined
    * @param {Array<number>} values - Array of values
    * @returns {number} Mean value
    */
-  function calculateMean(values) {
-    const validValues = values.filter(v => v != null && !isNaN(v));
-    if (validValues.length === 0) return 0;
-    return validValues.reduce((sum, val) => sum + val, 0) / validValues.length;
-  }
+  // calculateMean moved to math
   
   /**
    * Calculate standard deviation of an array of numbers
@@ -157,14 +139,47 @@ export async function loadEffectiveWeightsResolver() {
    * @param {number} mean - Pre-calculated mean
    * @returns {number} Standard deviation
    */
-  function calculateStdDev(values, mean) {
-    const validValues = values.filter(v => v != null && !isNaN(v));
-    if (validValues.length <= 1) return 0;
-    
-    const squaredDiffs = validValues.map(val => Math.pow(val - mean, 2));
-    const avgSquaredDiff = squaredDiffs.reduce((sum, val) => sum + val, 0) / validValues.length;
-    return Math.sqrt(avgSquaredDiff);
+  // calculateStdDev moved to math
+
+  // Phase 2 scaffold: Winsorization (disabled by default)
+  const ENABLE_WINSORIZATION = isWinsorizationEnabled();
+  const ENABLE_ADAPTIVE_WINSOR = isAdaptiveWinsorEnabled();
+  const WINSOR_LIMIT = 0.98; // global default clamp
+  const WINSOR_LIMITS_BY_METRIC = {
+    ytd: 0.99,
+    oneYear: 0.99,
+    threeYear: 0.985,
+    fiveYear: 0.985,
+    tenYear: 0.985,
+    sharpeRatio3Y: 0.98,
+    stdDev3Y: 0.975,
+    stdDev5Y: 0.975,
+    upCapture3Y: 0.98,
+    downCapture3Y: 0.98,
+    alpha5Y: 0.98,
+    expenseRatio: 0.98,
+    managerTenure: 0.99
+  };
+
+  // quantile moved to math
+
+  function winsorizeZ(z, metric) {
+    // simple clamp equivalent; full percentile-based clamp can be added later
+    const p = (metric && WINSOR_LIMITS_BY_METRIC[metric]) || WINSOR_LIMIT;
+    const limit = Math.sqrt(2) * erfinv(2 * p - 1) || 2.326;
+    if (z > limit) return limit;
+    if (z < -limit) return -limit;
+    return z;
   }
+
+  // Approximate inverse error function for winsorization clamp
+  // erfinv moved to math
+
+  // Phase 2 scaffold: Tiny-class fallback rules (disabled by default)
+  const ENABLE_TINY_CLASS_FALLBACK = (process.env.REACT_APP_ENABLE_TINY_CLASS_FALLBACK || 'false') === 'true';
+  const TINY_CLASS_MIN_PEERS = Number.parseInt(process.env.REACT_APP_TINY_CLASS_MIN_PEERS || '5', 10);
+  const TINY_CLASS_NEUTRAL_THRESHOLD = Number.parseInt(process.env.REACT_APP_TINY_CLASS_NEUTRAL_THRESHOLD || '2', 10);
+  const TINY_CLASS_SHRINK = Number.parseFloat(process.env.REACT_APP_TINY_CLASS_SHRINK || '0.25');
   
   /**
    * Transform raw weighted Z-score sum to the final 0-100 range used in the UI.
@@ -177,6 +192,30 @@ export async function loadEffectiveWeightsResolver() {
     if (scaled < 0) return 0;
     if (scaled > 100) return 100;
     return Math.round(scaled * 10) / 10;
+  }
+
+  // Optional robust scaling flag (per-class quantile anchors)
+  const ENABLE_ROBUST_SCALING = (process.env.REACT_APP_ENABLE_ROBUST_SCALING || 'false') === 'true';
+  function scaleScoreRobust(raw, anchors) {
+    // anchors: { q05, median, q95 }
+    const { q05, median, q95 } = anchors || {};
+    if (![q05, median, q95].every(v => Number.isFinite(v))) return scaleScore(raw);
+    // Map q05→40, median→50, q95→60, and linearly extend; clamp 0..100
+    let y;
+    if (raw <= q05) {
+      const m = (40 - 0) / (q05 - (q05 - (q95 - q05))); // extend slope; coarse
+      y = 40 + m * (raw - q05);
+    } else if (raw >= q95) {
+      const m = (100 - 60) / ((q95 + (q95 - q05)) - q95);
+      y = 60 + m * (raw - q95);
+    } else if (raw <= median) {
+      const m = (50 - 40) / (median - q05);
+      y = 40 + m * (raw - q05);
+    } else {
+      const m = (60 - 50) / (q95 - median);
+      y = 50 + m * (raw - median);
+    }
+    return Math.max(0, Math.min(100, Math.round(y * 10) / 10));
   }
   
   /**
@@ -207,7 +246,7 @@ export async function loadEffectiveWeightsResolver() {
    * @param {Object} fundData - Raw fund data from Excel
    * @returns {Object} Standardized metrics object
    */
-  function extractMetrics(fundData) {
+  function extractMetrics(fundData, benchDataMap = null) {
     // Map both legacy CSV-derived keys and live Supabase keys to engine metrics
     // Legacy/CSV keys
     const csv = {
@@ -241,6 +280,21 @@ export async function loadEffectiveWeightsResolver() {
       expenseRatio: fundData.expense_ratio,
       managerTenure: fundData.manager_tenure
     };
+    // Optional: 1Y delta vs benchmark (derived) when enabled and benchmark present
+    let oneYearDeltaVsBench = null;
+    const ENABLE_BENCH_DELTA = (process.env.REACT_APP_ENABLE_BENCH_DELTA || 'false') === 'true';
+    try {
+      if (ENABLE_BENCH_DELTA && benchDataMap && typeof benchDataMap.get === 'function') {
+        const benchTicker = fundData.primary_benchmark || fundData.benchmark_ticker || null;
+        const bench = benchTicker ? benchDataMap.get(String(benchTicker)) : null;
+        if (bench && bench.one_year_return != null && (live.oneYear ?? csv.oneYear) != null) {
+          const f1y = parseMetricValue(live.oneYear ?? csv.oneYear);
+          const b1y = parseMetricValue(bench.one_year_return);
+          if (f1y != null && b1y != null) oneYearDeltaVsBench = f1y - b1y;
+        }
+      }
+    } catch {}
+
     return {
       ytd: parseMetricValue(live.ytd ?? csv.ytd),
       oneYear: parseMetricValue(live.oneYear ?? csv.oneYear),
@@ -254,7 +308,8 @@ export async function loadEffectiveWeightsResolver() {
       downCapture3Y: parseMetricValue(live.downCapture3Y ?? csv.downCapture3Y),
       alpha5Y: parseMetricValue(live.alpha5Y ?? csv.alpha5Y),
       expenseRatio: parseMetricValue(live.expenseRatio ?? csv.expenseRatio),
-      managerTenure: parseMetricValue(live.managerTenure ?? csv.managerTenure)
+      managerTenure: parseMetricValue(live.managerTenure ?? csv.managerTenure),
+      oneYearDeltaVsBench
     };
   }
   
@@ -265,18 +320,33 @@ export async function loadEffectiveWeightsResolver() {
    */
   function calculateMetricStatistics(funds) {
     const stats = {};
+    const total = (funds || []).length;
     
     METRIC_KEYS.forEach(metric => {
       const values = funds.map(fund => fund.metrics?.[metric]).filter(v => v != null);
       const mean = calculateMean(values);
       const stdDev = calculateStdDev(values, mean);
+      const count = values.length;
+      const coverage = total > 0 ? (count / total) : 0;
+      // Adaptive winsorization anchors (empirical quantiles), only when enabled and sample reasonably large
+      let qLo = null;
+      let qHi = null;
+      if (ENABLE_ADAPTIVE_WINSOR && count >= 20) {
+        const sorted = values.slice().sort((a,b)=>a-b);
+        const { qLo: ql, qHi: qh } = getAdaptiveWinsorQuantiles();
+        qLo = quantile(sorted, Math.max(0, Math.min(ql, 0.49)));
+        qHi = quantile(sorted, Math.min(1, Math.max(qh, 0.51)));
+      }
       
       stats[metric] = {
         mean,
         stdDev,
-        count: values.length,
-        min: values.length > 0 ? Math.min(...values) : 0,
-        max: values.length > 0 ? Math.max(...values) : 0
+        count,
+        coverage,
+        qLo,
+        qHi,
+        min: count > 0 ? Math.min(...values) : 0,
+        max: count > 0 ? Math.max(...values) : 0
       };
     });
     
@@ -292,7 +362,10 @@ export async function loadEffectiveWeightsResolver() {
   function calculateFundScore(fund, statistics, resolverOverride = null) {
     const scoreBreakdown = {};
     let weightedSum = 0;
+    let observedPeerCounts = [];
     const resolver = resolverOverride || CURRENT_WEIGHTS_RESOLVER;
+    const COVERAGE_THRESHOLD = getCoverageThreshold();
+    const Z_SHRINK_K = getZShrinkK();
     
     METRIC_KEYS.forEach((metric) => {
       const weight = resolver ? resolver.getWeightFor(fund, metric) : (METRIC_WEIGHTS[metric]);
@@ -304,15 +377,56 @@ export async function loadEffectiveWeightsResolver() {
       // (two values). Previously required >2 which skipped small asset
       // classes entirely.
       if (value != null && stats && stats.stdDev > 0 && stats.count >= 2) {
-        const zScore = calculateZScore(value, stats.mean, stats.stdDev);
+        // Coverage-aware exclusion
+        if (stats.coverage < COVERAGE_THRESHOLD) {
+          scoreBreakdown[metric] = {
+            value,
+            zScore: 0,
+            weight: 0,
+            weightedZScore: 0,
+            percentile: null,
+            excludedForCoverage: true
+          };
+          return;
+        }
+        observedPeerCounts.push(stats.count);
+        let zScore = calculateZScore(value, stats.mean, stats.stdDev);
+        // Adaptive winsorization: clamp by empirical quantiles when available
+        if (ENABLE_WINSORIZATION && ENABLE_ADAPTIVE_WINSOR && Number.isFinite(stats.mean) && Number.isFinite(stats.stdDev) && stats.qLo != null && stats.qHi != null) {
+          const zLo = calculateZScore(stats.qLo, stats.mean, stats.stdDev);
+          const zHi = calculateZScore(stats.qHi, stats.mean, stats.stdDev);
+          if (zScore < zLo) zScore = zLo;
+          if (zScore > zHi) zScore = zHi;
+        }
+        // Fixed winsorization clamp (apply before z-shrink)
+        if (ENABLE_WINSORIZATION && !(ENABLE_ADAPTIVE_WINSOR && stats.qLo != null && stats.qHi != null)) {
+          zScore = winsorizeZ(zScore, metric);
+        }
+        // Z-shrink for thin samples (apply after winsor).
+        // Behavior:
+        // - When winsorization is OFF: always apply shrink for thin samples
+        // - When winsorization is ON: apply shrink only on very tiny samples (<=3) to avoid overwhelming clamps
+        const shouldShrink = (!ENABLE_WINSORIZATION && Number.isFinite(Z_SHRINK_K) && Z_SHRINK_K > 1 && stats.count < Z_SHRINK_K)
+          || (ENABLE_WINSORIZATION && stats.count <= 3 && Number.isFinite(Z_SHRINK_K) && Z_SHRINK_K > 1);
+        if (shouldShrink) {
+          const lambda = Math.max(0, Math.min(1, (stats.count - 1) / (Z_SHRINK_K - 1)));
+          zScore = zScore * lambda;
+        }
         const weightedZScore = zScore * weight;
         
+        const sourceInfo = resolver?.getWeightSource ? resolver.getWeightSource(fund, metric) : null;
         scoreBreakdown[metric] = {
           value,
-          zScore: Math.round(zScore * 100) / 100, // Round to 2 decimals
+          zScore: Math.round(zScore * 1000) / 1000, // Round to 3 decimals for fidelity
           weight,
           weightedZScore: Math.round(weightedZScore * 1000) / 1000, // Round to 3 decimals
-          percentile: calculatePercentile(value, stats, metric, weight)
+          percentile: calculatePercentile(value, stats, metric, weight),
+          zShrinkFactor: (shouldShrink)
+            ? Math.max(0, Math.min(1, (stats.count - 1) / (Z_SHRINK_K - 1)))
+            : 1,
+          weightSource: sourceInfo?.source || 'resolved',
+          weightSourceKey: sourceInfo?.key || null,
+          coverage: typeof stats.coverage === 'number' ? stats.coverage : null
         };
         
         weightedSum += weightedZScore;
@@ -345,7 +459,8 @@ export async function loadEffectiveWeightsResolver() {
       rawReweighted: Math.round(reweightedSum * 1000) / 1000,
       breakdown: scoreBreakdown,
       metricsUsed: Object.keys(scoreBreakdown).length,
-      totalPossibleMetrics: METRIC_KEYS.length
+      totalPossibleMetrics: METRIC_KEYS.length,
+      peerCountMin: observedPeerCounts.length ? Math.min(...observedPeerCounts) : 0
     };
   }
   
@@ -374,23 +489,7 @@ export async function loadEffectiveWeightsResolver() {
   }
   
   // Error function approximation for percentile calculation
-  function erf(x) {
-    // Abramowitz and Stegun approximation
-    const a1 =  0.254829592;
-    const a2 = -0.284496736;
-    const a3 =  1.421413741;
-    const a4 = -1.453152027;
-    const a5 =  1.061405429;
-    const p  =  0.3275911;
-  
-    const sign = x >= 0 ? 1 : -1;
-    x = Math.abs(x);
-  
-    const t = 1.0 / (1.0 + p * x);
-    const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
-  
-    return sign * y;
-  }
+  // erf moved to math
   
   /**
    * Main scoring function - calculates scores for all funds
@@ -437,10 +536,16 @@ export async function loadEffectiveWeightsResolver() {
         return;
       }
       
-      // Extract and standardize metrics for all funds
+      // Build quick map of benchmarks for derived metrics
+      const ENABLE_BENCH_DELTA = (process.env.REACT_APP_ENABLE_BENCH_DELTA || 'false') === 'true';
+      const benchByTicker = new Map();
+      if (ENABLE_BENCH_DELTA) {
+        classFunds.forEach(f => { if (f && f.isBenchmark) benchByTicker.set(String(f.ticker || f.Symbol || ''), f); });
+      }
+      // Extract and standardize metrics for all funds (with optional bench deltas)
       const fundsWithMetrics = classFunds.map(fund => ({
         ...fund,
-        metrics: extractMetrics(fund)
+        metrics: extractMetrics(fund, ENABLE_BENCH_DELTA ? benchByTicker : null)
       }));
       
       // Calculate statistics for the asset class using peer funds only
@@ -458,11 +563,30 @@ export async function loadEffectiveWeightsResolver() {
       
       // Get all raw scores for scaling (use reweighted if available)
       const rawScores = fundsWithRawScores.map(f => (Number.isFinite(f.scoreData.rawReweighted) ? f.scoreData.rawReweighted : f.scoreData.raw));
+      let anchors = null;
+      if (ENABLE_ROBUST_SCALING && rawScores.length >= 10) {
+        const sorted = rawScores.slice().sort((a,b)=>a-b);
+        const q05 = quantile(sorted, 0.05);
+        const median = quantile(sorted, 0.5);
+        const q95 = quantile(sorted, 0.95);
+        anchors = { q05, median, q95 };
+      }
 
       // Scale scores to 0-100 and calculate final percentiles
       fundsWithRawScores.forEach((fund, index) => {
-        const base = Number.isFinite(fund.scoreData.rawReweighted) ? fund.scoreData.rawReweighted : fund.scoreData.raw;
-        const finalScore = scaleScore(base);
+        let base = Number.isFinite(fund.scoreData.rawReweighted) ? fund.scoreData.rawReweighted : fund.scoreData.raw;
+        // Tiny-class fallback: shrink extreme values and bias toward neutral when peer samples are thin
+        if (ENABLE_TINY_CLASS_FALLBACK) {
+          const minPeers = fund.scoreData.peerCountMin || 0;
+          if (minPeers > 0 && minPeers < TINY_CLASS_MIN_PEERS) {
+            if (minPeers <= TINY_CLASS_NEUTRAL_THRESHOLD) {
+              base = 0; // neutral contribution when peers are extremely few
+            } else {
+              base = base * TINY_CLASS_SHRINK; // shrink raw effect
+            }
+          }
+        }
+        const finalScore = anchors ? scaleScoreRobust(base, anchors) : scaleScore(base);
         
         // Calculate percentile within asset class
         const betterThanCount = rawScores.filter(s => s < fund.scoreData.raw).length;
@@ -596,28 +720,9 @@ export async function loadEffectiveWeightsResolver() {
    * @param {number} score - Score value (0-100)
    * @returns {string} Color hex code
    */
-  export const SCORE_BANDS = [
-    { min: 60, label: 'Strong',  color: '#16a34a' },
-    { min: 55, label: 'Healthy', color: '#22c55e' },
-    { min: 45, label: 'Neutral', color: '#6b7280' },
-    { min: 40, label: 'Caution', color: '#eab308' },
-    { min: 0,  label: 'Weak',    color: '#dc2626' }
-  ];
-
-  export function getScoreColor(score) {
-    const band = SCORE_BANDS.find(b => score >= b.min);
-    return band ? band.color : '#000';
-  }
-  
-  /**
-   * Get score label based on value
-   * @param {number} score - Score value (0-100)
-   * @returns {string} Performance label
-   */
-  export function getScoreLabel(score) {
-    const band = SCORE_BANDS.find(b => score >= b.min);
-    return band ? band.label : '';
-  }
+export { SCORE_BANDS } from './scoringPolicy';
+export function getScoreColor(score) { return getScoreColorPolicy(score); }
+export function getScoreLabel(score) { return getScoreLabelPolicy(score); }
   
   // Export all metric information for UI use
 export const METRICS_CONFIG = {
@@ -628,7 +733,7 @@ export const METRICS_CONFIG = {
 };
 
 // Missing data policy scaffold
-export const SCORING_MISSING_POLICY = 'reweight'; // future: 'penalty'
-export const MISSING_METRIC_PENALTY = 0; // default 0 for no change
+export const SCORING_MISSING_POLICY = (process.env.REACT_APP_MISSING_POLICY || 'reweight'); // legacy export
+export const MISSING_METRIC_PENALTY = Number.parseFloat(process.env.REACT_APP_MISSING_PENALTY || '0'); // legacy export
 
  
