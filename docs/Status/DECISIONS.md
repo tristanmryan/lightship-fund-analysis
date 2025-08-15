@@ -56,6 +56,26 @@ Each decision follows this format:
   - ❌ Some functions return placeholder data until full scoring implementation
   - ❌ Additional complexity in database schema
 
+## D-0004 - Sprint 0 Baseline Environment Established
+- **Date**: 2025-01-15
+- **Status**: Active
+- **Context**: Sprint 0 required a complete baseline measurement environment with deterministic test data, verification scripts, and performance benchmarking to establish foundation for future development sprints.
+- **Decision**: Created comprehensive baseline environment including:
+  - Deterministic seed scripts with 32 asset classes, 28 benchmarks, 120 funds (RJFA001-RJFA120)
+  - 12 months of EOM performance data (2024-08-31 to 2025-07-31)
+  - Verification script for data integrity checks
+  - Benchmark harness testing all 6 RPCs with concurrency levels 1 and 5
+  - Status tracking documentation framework
+  - Package.json scripts for easy workflow management
+- **Consequences**:
+  - ✅ Reproducible baseline environment for consistent testing
+  - ✅ Performance benchmarks establish optimization targets
+  - ✅ Automated verification prevents regression issues
+  - ✅ Foundation ready for Sprint 1 development
+  - ✅ Clear performance thresholds documented
+  - ❌ Test data may not represent full production complexity
+  - ❌ Benchmark thresholds are conservative and require optimization
+
 ---
 
 ## Implementation Notes
@@ -67,7 +87,15 @@ Each decision follows this format:
 ### Rollback Strategy
 Each migration includes rollback instructions in comments. RLS can be re-enabled by running the inverse operations and recreating policies as needed.
 
+### Baseline Environment Scripts
+Added to package.json:
+- `npm run seed` - Idempotent deterministic data seeding
+- `npm run verify` - Comprehensive database integrity checks  
+- `npm run bench` - RPC performance testing (Mode A: 120 funds)
+- `npm run bench:full` - Full benchmark suite (Mode A + B: 520 funds, concurrency 5,1)
+
 ### Future Decisions
 - Scoring system implementation (full algorithm in database vs. client)
 - Multi-tenant architecture when expanding beyond internal use
 - Performance optimization strategies for large datasets
+- Sprint 1 performance threshold adjustments based on baseline results

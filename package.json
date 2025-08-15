@@ -31,7 +31,11 @@
     "test:ci": "cross-env CI=true react-scripts test --watchAll=false --runInBand --silent",
     "eject": "react-scripts eject",
     "process-data": "node scripts/buildData.mjs",
-    "setup": "node scripts/setup.js"
+    "setup": "node scripts/setup.js",
+    "seed": "node seeds/seed.js",
+    "verify": "node seeds/verify.js",
+    "bench": "node bench/bench.js",
+    "bench:full": "npm run bench -- --mode=both --concurrency=5,1"
   },
   "eslintConfig": {
     "extends": [
