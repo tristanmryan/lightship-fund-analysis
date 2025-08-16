@@ -138,49 +138,50 @@ AS $$
     FROM funds_asof f
     WHERE f.asset_class_id IS NOT NULL
   )
-  -- Return fund rows with scores
-  SELECT 
-    f.asset_class_id,
-    f.ticker,
-    f.name,
-    false AS is_benchmark,
-    f.is_recommended,
-    f.perf_date,
-    f.ytd_return, f.one_year_return, f.three_year_return, 
-    f.five_year_return, f.ten_year_return,
-    f.sharpe_ratio, f.standard_deviation_3y, f.standard_deviation_5y,
-    f.expense_ratio, f.beta, f.alpha, f.up_capture_ratio, f.down_capture_ratio,
-    f.manager_tenure,
-    COALESCE(fs.score_final, 50.0) AS score_final,
-    fs.percentile
-  FROM funds_asof f
-  LEFT JOIN fund_scores fs ON fs.asset_class_id = f.asset_class_id AND fs.ticker = f.ticker
-  
-  UNION ALL
-  
-  -- Return benchmark rows if requested (no scores for benchmarks)
-  SELECT 
-    bp.asset_class_id,
-    bp.benchmark_ticker AS ticker,
-    bp.benchmark_name AS name,
-    true AS is_benchmark,
-    false AS is_recommended,
-    bp.perf_date,
-    bp.ytd_return, bp.one_year_return, bp.three_year_return,
-    bp.five_year_return, bp.ten_year_return,
-    bp.sharpe_ratio, bp.standard_deviation_3y, bp.standard_deviation_5y,
-    bp.expense_ratio, bp.beta, bp.alpha, bp.up_capture_ratio, bp.down_capture_ratio,
-    NULL::numeric AS manager_tenure,
-    NULL::numeric AS score_final,
-    NULL::int AS percentile
-  FROM bench_perf bp
-  WHERE p_include_benchmark = true
-) ranked_data
-ORDER BY 
-  is_benchmark ASC, 
-  CASE WHEN is_benchmark THEN ticker ELSE NULL END ASC,
-  CASE WHEN NOT is_benchmark THEN COALESCE(score_final, 0) ELSE NULL END DESC NULLS LAST,
-  ticker ASC;
+  SELECT * FROM (
+    -- Return fund rows with scores
+    SELECT 
+      f.asset_class_id,
+      f.ticker,
+      f.name,
+      false AS is_benchmark,
+      f.is_recommended,
+      f.perf_date,
+      f.ytd_return, f.one_year_return, f.three_year_return, 
+      f.five_year_return, f.ten_year_return,
+      f.sharpe_ratio, f.standard_deviation_3y, f.standard_deviation_5y,
+      f.expense_ratio, f.beta, f.alpha, f.up_capture_ratio, f.down_capture_ratio,
+      f.manager_tenure,
+      COALESCE(fs.score_final, 50.0) AS score_final,
+      fs.percentile
+    FROM funds_asof f
+    LEFT JOIN fund_scores fs ON fs.asset_class_id = f.asset_class_id AND fs.ticker = f.ticker
+    
+    UNION ALL
+    
+    -- Return benchmark rows if requested (no scores for benchmarks)
+    SELECT 
+      bp.asset_class_id,
+      bp.benchmark_ticker AS ticker,
+      bp.benchmark_name AS name,
+      true AS is_benchmark,
+      false AS is_recommended,
+      bp.perf_date,
+      bp.ytd_return, bp.one_year_return, bp.three_year_return,
+      bp.five_year_return, bp.ten_year_return,
+      bp.sharpe_ratio, bp.standard_deviation_3y, bp.standard_deviation_5y,
+      bp.expense_ratio, bp.beta, bp.alpha, bp.up_capture_ratio, bp.down_capture_ratio,
+      NULL::numeric AS manager_tenure,
+      NULL::numeric AS score_final,
+      NULL::int AS percentile
+    FROM bench_perf bp
+    WHERE p_include_benchmark = true
+  ) ranked_data
+  ORDER BY 
+    is_benchmark ASC, 
+    CASE WHEN is_benchmark THEN ticker ELSE NULL END ASC,
+    CASE WHEN NOT is_benchmark THEN COALESCE(score_final, 0) ELSE NULL END DESC NULLS LAST,
+    ticker ASC;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_asset_class_table(date, uuid, boolean) TO anon, authenticated, service_role;
