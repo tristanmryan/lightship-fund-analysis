@@ -3,8 +3,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Papa from 'papaparse';
 import fundService from '../../services/fundService';
 import asOfStore from '../../services/asOfStore';
-import { dbUtils } from '../../services/supabase';
+import { dbUtils, supabase } from '../../services/supabase';
 import { createMonthlyTemplateCSV, createLegacyMonthlyTemplateCSV } from '../../services/csvTemplate';
+import uploadValidator from '../../utils/uploadValidator';
 
 const FLAG_ENABLE_IMPORT = (process.env.REACT_APP_ENABLE_IMPORT || (process.env.NODE_ENV !== 'production' ? 'true' : 'false')) === 'true';
 
@@ -58,29 +59,42 @@ function PreviewTable({ rows }) {
 }
 
 export default function MonthlySnapshotUpload() {
-  const [knownTickers, setKnownTickers] = useState(new Set());
-  const [benchmarkMap, setBenchmarkMap] = useState(new Map()); // ticker -> name
-  const [file, setFile] = useState(null);
-  const [parsing, setParsing] = useState(false);
-  const [parsedRows, setParsedRows] = useState([]);
-  const [preview, setPreview] = useState([]);
-  const [counts, setCounts] = useState({ parsed: 0, willImport: 0, skipped: 0, eomWarnings: 0 });
-  const [monthsInFile, setMonthsInFile] = useState([]);
-  const [mode, setMode] = useState('csv'); // 'csv' | 'picker'
-  const [hasAsOfColumn, setHasAsOfColumn] = useState(false);
+  // Dual file upload state
+  const [fundFile, setFundFile] = useState(null);
+  const [benchmarkFile, setBenchmarkFile] = useState(null);
+  const [fundValidation, setFundValidation] = useState(null);
+  const [benchmarkValidation, setBenchmarkValidation] = useState(null);
+  const [validating, setValidating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState(null);
   const [toast, setToast] = useState(null);
   const [month, setMonth] = useState(''); // 1-12 as string
   const [year, setYear] = useState(''); // YYYY as string
-  const [headerMap, setHeaderMap] = useState({ recognized: [], unrecognized: [] });
-  const [coverage, setCoverage] = useState({}); // metricKey -> { nonNull, total }
-  const [blockers, setBlockers] = useState([]); // strings
-  const [skipReasons, setSkipReasons] = useState({}); // reason -> { count, tickers: [] }
-  const [missingTickers, setMissingTickers] = useState([]);
-  const [customMap, setCustomMap] = useState({}); // header -> key
-  const [isDragging, setIsDragging] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [knownTickers, setKnownTickers] = useState(new Set());
+  const [benchmarkMap, setBenchmarkMap] = useState(new Map());
+  const [uploadProgress, setUploadProgress] = useState({ stage: '', progress: 0 });
+  const [activityLog, setActivityLog] = useState([]);
+  
+  // Legacy state variables (needed for backward compatibility)
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState([]);
+  const [counts, setCounts] = useState({ parsed: 0, willImport: 0, skipped: 0, eomWarnings: 0 });
+  const [monthsInFile, setMonthsInFile] = useState([]);
+  const [parsedRows, setParsedRows] = useState([]);
+  const [mode, setMode] = useState('picker');
+  const [hasAsOfColumn, setHasAsOfColumn] = useState(false);
+  const [headerMap, setHeaderMap] = useState({ recognizedPairs: [], unrecognized: [] });
+  const [coverage, setCoverage] = useState({});
+  const [blockers, setBlockers] = useState([]);
+  const [skipReasons, setSkipReasons] = useState({});
+  const [missingTickers, setMissingTickers] = useState([]);
+  const [customMap, setCustomMap] = useState({});
+  const [parsing, setParsing] = useState(false);
+  
+  // Drag and drop state
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragTarget, setDragTarget] = useState(null); // 'fund' | 'benchmark'
 
   useEffect(() => {
     let mounted = true;
@@ -98,78 +112,135 @@ export default function MonthlySnapshotUpload() {
     return () => { mounted = false; };
   }, []);
 
-  // Define callbacks before effects that depend on them
-  const parseCsv = useCallback(() => {
+  // Validate uploaded files using the new validator
+  const validateFile = useCallback(async (file, fileType) => {
+    if (!file) return null;
+    
+    setValidating(true);
+    try {
+      const validation = await uploadValidator.validateCSVUpload(file, knownTickers, {
+        requireEOM: true,
+        allowMixed: false
+      });
+      
+      if (fileType === 'fund') {
+        setFundValidation(validation);
+      } else {
+        setBenchmarkValidation(validation);
+      }
+      
+      return validation;
+    } catch (error) {
+      const errorValidation = {
+        isValid: false,
+        errors: [error.message],
+        warnings: [],
+        data: null,
+        uploadType: null
+      };
+      
+      if (fileType === 'fund') {
+        setFundValidation(errorValidation);
+      } else {
+        setBenchmarkValidation(errorValidation);
+      }
+      
+      return errorValidation;
+    } finally {
+      setValidating(false);
+    }
+  }, [knownTickers]);
+
+  // Legacy CSV parsing function
+  const parseCsv = useCallback(async () => {
     if (!file) return;
+    
     setParsing(true);
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (res) => {
-        const headers = (res.meta && res.meta.fields) || [];
-        const hasAsOf = headers.some(h => String(h).toLowerCase() === 'asofmonth' || String(h).toLowerCase() === 'as_of_month');
-        setHasAsOfColumn(hasAsOf);
-        // Deterministic mode: if picker has values, picker wins; else if AsOfMonth exists, csv; else picker if picker values present later
-        setMode((() => {
-          const pickerDate = computePickerDate();
-          if (pickerDate) return 'picker';
-          return hasAsOf ? 'csv' : 'picker';
-        })());
-        const rows = (res.data || []).map((r) => {
-          // Normalize keys to our expectations but keep original
-          const ticker = dbUtils.cleanSymbol(r.Ticker || r.ticker || r.SYMBOL);
-          let a = String(r.AsOfMonth || r.as_of_month || '').trim();
-          // Accept YYYY-MM or YYYY-MM-DD; expand YYYY-MM to last day
-          if (/^\d{4}-\d{2}$/.test(a)) {
-            try {
-              const [yy, mm] = a.split('-').map(n => Number(n));
-              const eom = new Date(Date.UTC(yy, mm, 0));
-              a = eom.toISOString().slice(0,10);
-            } catch {}
-          }
-          const asOf = a;
-          return { ...r, __ticker: ticker, __asOf: asOf };
-        });
-        setParsedRows(rows);
-        // Build header recognition map with column mapping
-        const metricDefs = [
-          { key: 'ticker', aliases: ['Ticker','ticker','SYMBOL'] },
-          { key: 'date', aliases: ['AsOfMonth','as_of_month'] },
-          { key: 'ytd_return', aliases: ['YTD','ytd_return'] },
-          { key: 'one_year_return', aliases: ['1 Year','one_year_return'] },
-          { key: 'three_year_return', aliases: ['3 Year','three_year_return'] },
-          { key: 'five_year_return', aliases: ['5 Year','five_year_return'] },
-          { key: 'ten_year_return', aliases: ['10 Year','ten_year_return'] },
-          { key: 'sharpe_ratio', aliases: ['Sharpe Ratio','sharpe_ratio'] },
-          { key: 'standard_deviation', aliases: ['Standard Deviation','standard_deviation'] },
-          { key: 'standard_deviation_3y', aliases: ['Standard Deviation 3Y','standard_deviation_3y'] },
-          { key: 'standard_deviation_5y', aliases: ['Standard Deviation 5Y','standard_deviation_5y'] },
-          { key: 'expense_ratio', aliases: ['Net Expense Ratio','expense_ratio'] },
-          { key: 'alpha', aliases: ['Alpha','alpha','alpha_5y'] },
-          { key: 'beta', aliases: ['Beta','beta','beta_3y'] },
-          { key: 'manager_tenure', aliases: ['Manager Tenure','manager_tenure'] },
-          { key: 'up_capture_ratio', aliases: ['Up Capture Ratio','up_capture_ratio','up_capture_ratio_3y','Up Capture Ratio (Morningstar Standard) - 3 Year'] },
-          { key: 'down_capture_ratio', aliases: ['Down Capture Ratio','down_capture_ratio','down_capture_ratio_3y','Down Capture Ratio (Morningstar Standard) - 3 Year'] },
-        ];
-        const headerSet = new Set(headers);
-        const recognizedPairs = [];
-        const recognizedSet = new Set();
-        for (const h of headers) {
-          for (const def of metricDefs) {
-            if (def.aliases.includes(h)) {
-              recognizedPairs.push({ header: h, key: def.key });
-              recognizedSet.add(h);
-              break;
-            }
-          }
+    try {
+      const text = await file.text();
+      const result = Papa.parse(text, { header: true, skipEmptyLines: true });
+      
+      if (result.errors.length > 0) {
+        console.warn('CSV parsing warnings:', result.errors);
+      }
+      
+      const rows = result.data || [];
+      setParsedRows(rows);
+      
+      // Detect if AsOfMonth column exists
+      const hasAsOf = rows.length > 0 && rows[0].hasOwnProperty('AsOfMonth');
+      setHasAsOfColumn(hasAsOf);
+      
+      // Basic header mapping
+      const recognized = [];
+      const unrecognized = [];
+      const firstRow = rows[0] || {};
+      
+      Object.keys(firstRow).forEach(header => {
+        const normalized = header.toLowerCase().trim();
+        if (['ticker', 'asofmonth', 'type'].includes(normalized)) {
+          recognized.push({ header, key: normalized });
+        } else {
+          unrecognized.push(header);
         }
-        const unrecognized = headers.filter(h => !recognizedSet.has(h));
-        setHeaderMap({ recognizedPairs, unrecognized, headerSet });
-        setParsing(false);
-      },
-      error: () => setParsing(false)
-    });
+      });
+      
+      setHeaderMap({ recognizedPairs: recognized, unrecognized });
+      
+    } catch (error) {
+      console.error('Failed to parse CSV:', error);
+      alert('Failed to parse CSV file. Please check the file format.');
+    } finally {
+      setParsing(false);
+    }
   }, [file]);
+
+  // Legacy file change handler
+  const handleFileChange = useCallback((e) => {
+    const selectedFile = e.target.files?.[0] || null;
+    setFile(selectedFile);
+    setParsedRows([]);
+    setPreview([]);
+    setCounts({ parsed: 0, willImport: 0, skipped: 0, eomWarnings: 0 });
+    setMonthsInFile([]);
+    setMode('picker');
+    setHasAsOfColumn(false);
+    setHeaderMap({ recognizedPairs: [], unrecognized: [] });
+    setCoverage({});
+    setBlockers([]);
+    setSkipReasons({});
+    setMissingTickers([]);
+    setCustomMap({});
+  }, []);
+
+  // Legacy template download handlers
+  const handleDownloadTemplate = useCallback(() => {
+    try {
+      const blob = createMonthlyTemplateCSV();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'monthly_template.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download template:', error);
+    }
+  }, []);
+
+  const handleDownloadLegacyTemplate = useCallback(() => {
+    try {
+      const blob = createLegacyMonthlyTemplateCSV();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'legacy_monthly_template.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download legacy template:', error);
+    }
+  }, []);
 
   // Helper: load sample CSV
   const loadSampleData = useCallback(async () => {
@@ -203,74 +274,117 @@ export default function MonthlySnapshotUpload() {
     return () => window.removeEventListener('LOAD_SAMPLE_DATA', handler);
   }, [loadSampleData]);
 
-  const handleFileChange = (e) => {
-    setFile(e.target.files?.[0] || null);
-    setParsedRows([]);
-    setPreview([]);
-    setCounts({ parsed: 0, willImport: 0, skipped: 0, eomWarnings: 0 });
-    setResult(null);
-    setMonthsInFile([]);
-    setMode('csv');
-    setHasAsOfColumn(false);
-    setCustomMap({});
+  // Handle fund file selection
+  const handleFundFileChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setFundFile(file);
+    setFundValidation(null);
+    if (file) {
+      validateFile(file, 'fund');
+    }
   };
 
+  // Handle benchmark file selection
+  const handleBenchmarkFileChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setBenchmarkFile(file);
+    setBenchmarkValidation(null);
+    if (file) {
+      validateFile(file, 'benchmark');
+    }
+  };
+
+  // Enhanced drag and drop with target detection
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
+    
     const f = e.dataTransfer?.files?.[0];
-    if (f) {
-      setFile(f);
-      setParsedRows([]);
-      setPreview([]);
-      setCounts({ parsed: 0, willImport: 0, skipped: 0, eomWarnings: 0 });
-      setResult(null);
-      setMonthsInFile([]);
-      setMode('csv');
-      setHasAsOfColumn(false);
-      setCustomMap({});
-      setTimeout(() => parseCsv(), 0);
+    if (f && dragTarget) {
+      if (dragTarget === 'fund') {
+        setFundFile(f);
+        setFundValidation(null);
+        validateFile(f, 'fund');
+      } else if (dragTarget === 'benchmark') {
+        setBenchmarkFile(f);
+        setBenchmarkValidation(null);
+        validateFile(f, 'benchmark');
+      }
     }
+    setDragTarget(null);
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e, target) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
+    setDragTarget(target);
   };
 
   const handleDragLeave = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
+    setDragTarget(null);
   };
 
-  const handleDownloadTemplate = useCallback(() => {
+  // Download fund performance template
+  const handleDownloadFundTemplate = useCallback(() => {
     try {
       const blob = createMonthlyTemplateCSV();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'fund-monthly-template.csv';
+      a.download = 'fund_performance_template.csv';
       a.click();
       URL.revokeObjectURL(url);
-    } catch {}
+    } catch (error) {
+      console.error('Failed to download fund template:', error);
+    }
   }, []);
 
-  const handleDownloadLegacyTemplate = useCallback(() => {
+  // Download benchmark performance template
+  const handleDownloadBenchmarkTemplate = useCallback(() => {
     try {
-      const blob = createLegacyMonthlyTemplateCSV();
+      const csvContent = [
+        'benchmark_ticker,date,ytd_return,one_year_return,three_year_return,five_year_return,ten_year_return,sharpe_ratio,standard_deviation_3y,standard_deviation_5y,expense_ratio,alpha,beta,up_capture_ratio,down_capture_ratio',
+        'IWF,2025-01-31,9.15,15.23,11.45,11.87,10.23,1.28,16.12,15.34,0.19,0.00,1.00,100.0,100.0',
+        'EFA,2025-01-31,4.23,8.67,6.34,7.12,5.89,0.78,18.23,17.45,0.32,0.00,1.00,100.0,100.0'
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'fund-monthly-template-legacy.csv';
+      a.download = 'benchmark_performance_template.csv';
       a.click();
       URL.revokeObjectURL(url);
-    } catch {}
+    } catch (error) {
+      console.error('Failed to download benchmark template:', error);
+    }
+  }, []);
+
+  // Download error report
+  const handleDownloadErrorReport = useCallback((validation) => {
+    try {
+      const report = uploadValidator.generateErrorReport(validation);
+      if (report) {
+        const blob = new Blob([report], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'upload_validation_report.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Failed to download error report:', error);
+    }
   }, []);
 
 
+  // Process parsed rows and update preview
   useEffect(() => {
     if (!parsedRows || parsedRows.length === 0) {
       setPreview([]);
@@ -278,23 +392,34 @@ export default function MonthlySnapshotUpload() {
       setMonthsInFile([]);
       return;
     }
+    
     const seenMonths = new Set();
     const pickerDate = computePickerDate();
     // Picker always wins if present
     const activeMode = pickerDate ? 'picker' : (hasAsOfColumn ? 'csv' : 'picker');
     setMode(activeMode);
+    
     const rows = parsedRows.map((r) => {
-      const ticker = r.__ticker;
-      const asOf = activeMode === 'picker' ? pickerDate : r.__asOf;
+      const ticker = r.__ticker || r.ticker;
+      const asOf = activeMode === 'picker' ? pickerDate : r.__asOf || r.AsOfMonth;
       let reason = '';
       let willImport = true;
-      if (!ticker) { willImport = false; reason = 'Missing Ticker'; }
-      if (!asOf || !isValidDateOnly(asOf)) { willImport = false; reason = reason ? reason + '; invalid AsOfMonth' : 'Invalid AsOfMonth'; }
+      
+      if (!ticker) { 
+        willImport = false; 
+        reason = 'Missing Ticker'; 
+      }
+      if (!asOf || !isValidDateOnly(asOf)) { 
+        willImport = false; 
+        reason = reason ? reason + '; invalid AsOfMonth' : 'Invalid AsOfMonth'; 
+      }
+      
       let eom = false;
       if (asOf && isValidDateOnly(asOf)) {
         eom = isEndOfMonth(asOf);
         seenMonths.add(asOf);
       }
+      
       const isBenchmark = ticker && benchmarkMap.has(ticker);
       const isKnownFund = ticker && knownTickers.has(ticker);
       // CSV explicit Type column can request Benchmark; allow only when not a known fund
@@ -307,15 +432,21 @@ export default function MonthlySnapshotUpload() {
         willImport = false;
         reason = reason ? reason + '; benchmark row (stored separately)' : 'Benchmark row (stored separately)';
       }
-      if (ticker && !isKnownFund && !isBenchmark && !explicitBenchmark) { willImport = false; reason = reason ? reason + '; unknown ticker' : 'Unknown ticker'; }
+      if (ticker && !isKnownFund && !isBenchmark && !explicitBenchmark) { 
+        willImport = false; 
+        reason = reason ? reason + '; unknown ticker' : 'Unknown ticker'; 
+      }
+      
       // Harden kind: prefer fund on collision
       const kind = (isBenchmark && !isKnownFund) || (explicitBenchmark && !isKnownFund) ? 'benchmark' : 'fund';
       return { ticker, asOf, kind, willImport, reason, eom };
     });
+    
     const parsed = rows.length;
     const willImport = rows.filter(r => r.willImport).length;
     const skipped = parsed - willImport;
     const eomWarnings = rows.filter(r => r.willImport && !r.eom).length;
+    
     setMonthsInFile(Array.from(seenMonths).sort((a,b) => b.localeCompare(a)));
     setPreview(rows);
     setCounts({ parsed, willImport, skipped, eomWarnings });
@@ -344,6 +475,7 @@ export default function MonthlySnapshotUpload() {
       reasonObj[k] = v;
     }
     setSkipReasons(reasonObj);
+    
     // Mirror to console for diagnostics
     try {
       console.log('[Importer] Skipped rows by reason:', reasonObj);
@@ -367,6 +499,7 @@ export default function MonthlySnapshotUpload() {
       { key: 'up_capture_ratio', aliases: ['Up Capture Ratio','up_capture_ratio_3y','Up Capture Ratio (Morningstar Standard) - 3 Year'] },
       { key: 'down_capture_ratio', aliases: ['Down Capture Ratio','down_capture_ratio_3y','Down Capture Ratio (Morningstar Standard) - 3 Year'] },
     ];
+    
     const cov = {};
     const blockList = [];
     for (const m of metrics) {
@@ -375,7 +508,7 @@ export default function MonthlySnapshotUpload() {
       for (const r of parsedRows) {
         const raw = r[m.key] ?? m.aliases.reduce((acc, a) => acc ?? r[a], undefined);
         // Only count rows marked willImport for coverage
-        const prev = rows.find(x => x.ticker === r.__ticker && (x.asOf === (computePickerDate() || r.__asOf)));
+        const prev = rows.find(x => x.ticker === (r.__ticker || r.ticker) && (x.asOf === (computePickerDate() || r.__asOf || r.AsOfMonth)));
         if (!prev || !prev.willImport) continue;
         total += 1;
         if (pmn(raw) != null) nonNull += 1;
@@ -388,7 +521,7 @@ export default function MonthlySnapshotUpload() {
     }
     setCoverage(cov);
     setBlockers(blockList);
-  }, [parsedRows, knownTickers, benchmarkMap]);
+  }, [parsedRows, knownTickers, benchmarkMap, hasAsOfColumn, year, month]);
 
   function computePickerDate() {
     if (!year || !month) return null;
@@ -400,136 +533,167 @@ export default function MonthlySnapshotUpload() {
     return eom.toISOString().slice(0, 10);
   }
 
+
+
+  // Enhanced import function using new RPCs
   const performImport = async () => {
-    if (preview.length === 0) return;
-    // Block on any all-null metric
-    if (blockers.length > 0) {
-      alert('Import blocked: One or more required metrics would be all null after parsing. See warnings above.');
-      return;
-    }
     const pickerDate = computePickerDate();
     if (!pickerDate) {
-      alert('Please select Month and Year. The picker is required and overrides CSV dates.');
+      alert('Please select Month and Year. The picker date is required.');
       return;
     }
+
+    // Check that at least one file is valid
+    const hasFunds = fundValidation?.isValid && fundValidation?.data?.length > 0;
+    const hasBenchmarks = benchmarkValidation?.isValid && benchmarkValidation?.data?.length > 0;
+    
+    if (!hasFunds && !hasBenchmarks) {
+      alert('Please upload and validate at least one file (fund or benchmark performance).');
+      return;
+    }
+
     setImporting(true);
     setResult(null);
+    setUploadProgress({ stage: 'Starting upload...', progress: 10 });
+
     try {
-      // Preflight: duplicates and missing funds
-      const pickerDate = computePickerDate();
-      const willRows = preview.filter(r => r.willImport || r.kind === 'benchmark');
-      const dupKeys = new Set();
-      let dupCount = 0;
-      for (const r of willRows) {
-        if (r.kind === 'benchmark') continue;
-        const key = `${r.ticker}::${pickerDate}`;
-        if (dupKeys.has(key)) dupCount++; else dupKeys.add(key);
-      }
-      if (dupCount > 0) {
-        console.warn(`[Import] Removed ${dupCount} duplicate fund rows before import.`);
-      }
-      const missingTickers = Array.from(new Set(willRows.filter(r => r.kind !== 'benchmark').map(r => r.ticker))).filter(t => !knownTickers.has(t));
-      if (missingTickers.length > 0) {
-        console.warn(`[Import] Missing ${missingTickers.length} tickers in funds. Use the 'Seed missing funds' button to insert minimal rows before retry.`);
+      const results = { funds: null, benchmarks: null };
+      let totalSuccess = 0;
+      let totalFailed = 0;
+
+      // Import fund data if available
+      if (hasFunds) {
+        setUploadProgress({ stage: 'Uploading fund performance data...', progress: 30 });
+        
+        const fundData = fundValidation.data.map(row => ({
+          fund_ticker: row._normalizedTicker,
+          date: pickerDate, // Override with picker date
+          ytd_return: dbUtils.parseMetricNumber(row.ytd_return),
+          one_year_return: dbUtils.parseMetricNumber(row.one_year_return),
+          three_year_return: dbUtils.parseMetricNumber(row.three_year_return),
+          five_year_return: dbUtils.parseMetricNumber(row.five_year_return),
+          ten_year_return: dbUtils.parseMetricNumber(row.ten_year_return),
+          sharpe_ratio: dbUtils.parseMetricNumber(row.sharpe_ratio),
+          standard_deviation_3y: dbUtils.parseMetricNumber(row.standard_deviation_3y),
+          standard_deviation_5y: dbUtils.parseMetricNumber(row.standard_deviation_5y),
+          expense_ratio: dbUtils.parseMetricNumber(row.expense_ratio),
+          alpha: dbUtils.parseMetricNumber(row.alpha),
+          beta: dbUtils.parseMetricNumber(row.beta),
+          manager_tenure: dbUtils.parseMetricNumber(row.manager_tenure),
+          up_capture_ratio: dbUtils.parseMetricNumber(row.up_capture_ratio),
+          down_capture_ratio: dbUtils.parseMetricNumber(row.down_capture_ratio)
+        }));
+
+        const { data: fundResult, error: fundError } = await supabase.rpc('upsert_fund_performance', { 
+          csv_data: fundData 
+        });
+
+        if (fundError) throw fundError;
+        results.funds = fundResult;
+        totalSuccess += fundResult.inserted + fundResult.updated;
+        totalFailed += fundResult.errors;
       }
 
-      const keyToHeader = (() => {
-        const map = {};
-        for (const [h, k] of Object.entries(customMap || {})) {
-          if (k) map[k] = h;
-        }
-        return map;
-      })();
-      const valueFor = (original, key, aliases = []) => {
-        const mappedHeader = keyToHeader[key];
-        if (mappedHeader && original.hasOwnProperty(mappedHeader)) return original[mappedHeader];
-        if (original[key] != null) return original[key];
-        for (const a of aliases) {
-          if (original[a] != null) return original[a];
-        }
-        return null;
-      };
-      const rowsToImport = willRows.map((r) => {
-        let original = parsedRows.find(pr => pr.__ticker === r.ticker && pr.__asOf === r.asOf);
-        if (!original) original = parsedRows.find(pr => pr.__ticker === r.ticker) || {};
-          // Picker overrides CSV AsOfMonth
-          return {
-          ticker: r.ticker,
-          kind: r.kind,
-          date: pickerDate,
-          ytd_return: valueFor(original, 'ytd_return', ['YTD']),
-          one_year_return: valueFor(original, 'one_year_return', ['1 Year']),
-          three_year_return: valueFor(original, 'three_year_return', ['3 Year']),
-          five_year_return: valueFor(original, 'five_year_return', ['5 Year']),
-          ten_year_return: valueFor(original, 'ten_year_return', ['10 Year']),
-          sharpe_ratio: valueFor(original, 'sharpe_ratio', ['Sharpe Ratio']),
-            standard_deviation: valueFor(original, 'standard_deviation', ['Standard Deviation']),
-            standard_deviation_3y: (() => {
-              const v = valueFor(original, 'standard_deviation_3y', ['standard_deviation_3y','Standard Deviation 3Y']);
-              if (v != null) return v;
-              const legacy = valueFor(original, 'standard_deviation', ['Standard Deviation']);
-              if (legacy != null) {
-                // legacy fallback mapping notice
-                // eslint-disable-next-line no-console
-                console.warn('[Importer] Legacy "standard_deviation" mapped to 3Y. Please switch to "standard_deviation_3y".');
-                return legacy;
-              }
-              return null;
-            })(),
-            standard_deviation_5y: valueFor(original, 'standard_deviation_5y', ['standard_deviation_5y','Standard Deviation 5Y']),
-          expense_ratio: valueFor(original, 'expense_ratio', ['Net Expense Ratio']),
-            alpha: valueFor(original, 'alpha', ['alpha_5y','Alpha']),
-            beta: valueFor(original, 'beta', ['beta_3y','Beta']),
-            manager_tenure: valueFor(original, 'manager_tenure', ['Manager Tenure']),
-            up_capture_ratio: valueFor(original, 'up_capture_ratio', ['up_capture_ratio_3y','Up Capture Ratio','Up Capture Ratio (Morningstar Standard) - 3 Year']),
-            down_capture_ratio: valueFor(original, 'down_capture_ratio', ['down_capture_ratio_3y','Down Capture Ratio','Down Capture Ratio (Morningstar Standard) - 3 Year'])
-        };
-      });
-      const { success, failed } = await fundService.bulkUpsertFundPerformance(rowsToImport, 500);
-      const uniqueMonths = new Set(rowsToImport.map(r => r.date));
-      const monthsArr = Array.from(uniqueMonths).sort((a,b) => b.localeCompare(a));
-      setResult({ success, failed, months: monthsArr });
-      // Post-import summary log
+      // Import benchmark data if available
+      if (hasBenchmarks) {
+        setUploadProgress({ stage: 'Uploading benchmark performance data...', progress: 60 });
+        
+        const benchmarkData = benchmarkValidation.data.map(row => ({
+          benchmark_ticker: row._normalizedTicker,
+          date: pickerDate, // Override with picker date
+          ytd_return: dbUtils.parseMetricNumber(row.ytd_return),
+          one_year_return: dbUtils.parseMetricNumber(row.one_year_return),
+          three_year_return: dbUtils.parseMetricNumber(row.three_year_return),
+          five_year_return: dbUtils.parseMetricNumber(row.five_year_return),
+          ten_year_return: dbUtils.parseMetricNumber(row.ten_year_return),
+          sharpe_ratio: dbUtils.parseMetricNumber(row.sharpe_ratio),
+          standard_deviation_3y: dbUtils.parseMetricNumber(row.standard_deviation_3y),
+          standard_deviation_5y: dbUtils.parseMetricNumber(row.standard_deviation_5y),
+          expense_ratio: dbUtils.parseMetricNumber(row.expense_ratio),
+          alpha: dbUtils.parseMetricNumber(row.alpha),
+          beta: dbUtils.parseMetricNumber(row.beta),
+          up_capture_ratio: dbUtils.parseMetricNumber(row.up_capture_ratio),
+          down_capture_ratio: dbUtils.parseMetricNumber(row.down_capture_ratio)
+        }));
+
+        const { data: benchResult, error: benchError } = await supabase.rpc('upsert_benchmark_performance', { 
+          csv_data: benchmarkData 
+        });
+
+        if (benchError) throw benchError;
+        results.benchmarks = benchResult;
+        totalSuccess += benchResult.inserted + benchResult.updated;
+        totalFailed += benchResult.errors;
+      }
+
+      setUploadProgress({ stage: 'Logging activity...', progress: 80 });
+
+      // Log activity
       try {
-        const fundsInserted = rowsToImport.filter(r => r.kind !== 'benchmark').length;
-        const benchInserted = rowsToImport.filter(r => r.kind === 'benchmark').length;
-        const pmn = (k) => (k && coverage[k]?.total > 0 && (coverage[k].nonNull / coverage[k].total) < 0.2);
-        const lowCov = Object.keys(coverage || {}).filter(pmn);
-        console.log(`[Import] Funds: ${fundsInserted}, Benchmarks: ${benchInserted}, Low coverage: ${lowCov.join(', ')}`);
-      } catch {}
-      // Post-import: sync and switch active month to the imported month (picker date)
+        await supabase.rpc('log_activity', {
+          user_info: {
+            user_id: null, // Will be populated when auth is implemented
+            ip_address: null,
+            user_agent: navigator.userAgent
+          },
+          action: 'csv_upload',
+          details: {
+            upload_date: pickerDate,
+            funds_processed: results.funds?.records_processed || 0,
+            benchmarks_processed: results.benchmarks?.records_processed || 0,
+            total_success: totalSuccess,
+            total_failed: totalFailed,
+            files: {
+              fund_file: fundFile?.name || null,
+              benchmark_file: benchmarkFile?.name || null
+            }
+          }
+        });
+      } catch (logError) {
+        console.warn('Failed to log activity:', logError);
+      }
+
+      setUploadProgress({ stage: 'Finalizing...', progress: 90 });
+
+      // Update active month and sync
       try {
         await asOfStore.syncWithDb();
-        const importedMonth = monthsArr[0];
-        if (importedMonth) {
-          asOfStore.setActiveMonth(importedMonth);
-          // Tiny toast UI
-          try {
-            const msg = `Import successful — active month set to ${new Date(importedMonth).toLocaleString('en-US', { month: 'short', year: 'numeric' })}`;
-            setToast(msg);
-            setTimeout(() => setToast(null), 4000);
-          } catch {}
-        }
-      } catch {}
-    } catch (error) {
-      // Surface PostgREST error body details and first offending keys if present
-      // @ts-ignore
-      const parts = [error?.message, error?.details, error?.hint, error?.code].filter(Boolean);
-      // @ts-ignore
-      if (error?._importErrors?.length) {
-        // @ts-ignore
-        const sample = error._importErrors.slice(0, 3).map(e => `${e.table}@${e.indexStart}`);
-        parts.push(`rows: ${sample.join(', ')}`);
+        asOfStore.setActiveMonth(pickerDate);
+        
+        const msg = `Upload successful! Processed ${totalSuccess} records. Active month set to ${new Date(pickerDate).toLocaleString('en-US', { month: 'short', year: 'numeric' })}`;
+        setToast(msg);
+        setTimeout(() => setToast(null), 5000);
+      } catch (syncError) {
+        console.warn('Failed to sync after upload:', syncError);
       }
+
+      setUploadProgress({ stage: 'Complete', progress: 100 });
+      setResult({ 
+        success: true, 
+        results, 
+        totalSuccess, 
+        totalFailed, 
+        uploadDate: pickerDate 
+      });
+
+    } catch (error) {
       console.error('[Import] Error:', error);
-      setResult({ error: parts.join(' | ') || String(error) });
+      setResult({ 
+        success: false, 
+        error: error.message || String(error) 
+      });
+      setUploadProgress({ stage: 'Error', progress: 0 });
     } finally {
       setImporting(false);
+      setTimeout(() => setUploadProgress({ stage: '', progress: 0 }), 2000);
     }
   };
 
   const handleImportClick = () => {
-    if (preview.length === 0) return;
+    const hasFunds = fundValidation?.isValid && fundValidation?.data?.length > 0;
+    const hasBenchmarks = benchmarkValidation?.isValid && benchmarkValidation?.data?.length > 0;
+    
+    if (!hasFunds && !hasBenchmarks) return;
     setShowConfirm(true);
   };
 
@@ -539,17 +703,30 @@ export default function MonthlySnapshotUpload() {
 
   return (
     <div className="card" style={{ padding: 16, marginTop: 16 }}>
-      {/* Stepper */}
-      <div style={{ display:'flex', gap:8, marginBottom:8, alignItems:'center', flexWrap:'wrap' }}>
+      {/* Enhanced Stepper */}
+      <div style={{ display:'flex', gap:8, marginBottom:16, alignItems:'center', flexWrap:'wrap' }}>
         {[
-          { idx: 1, label: 'Month' },
-          { idx: 2, label: 'Upload & preview' },
+          { idx: 1, label: 'Date & Templates' },
+          { idx: 2, label: 'Upload & Validate' },
           { idx: 3, label: 'Import' }
         ].map((s) => {
-          const active = (s.idx === 1 && !file) || (s.idx === 2 && !!file && preview.length === 0) || (s.idx === 3 && preview.length > 0);
+          const hasValidFund = fundValidation?.isValid;
+          const hasValidBenchmark = benchmarkValidation?.isValid;
+          const hasAnyValid = hasValidFund || hasValidBenchmark;
+          
+          const active = (s.idx === 1 && (!month || !year)) || 
+                         (s.idx === 2 && month && year && !hasAnyValid) || 
+                         (s.idx === 3 && hasAnyValid);
+          
           return (
             <div key={s.idx} style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <div style={{ width:22, height:22, borderRadius:9999, background: active ? '#005EB8' : '#E5E7EB', color: active ? '#fff' : '#374151', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:600 }}>{s.idx}</div>
+              <div style={{ 
+                width:24, height:24, borderRadius:12, 
+                background: active ? '#005EB8' : '#E5E7EB', 
+                color: active ? '#fff' : '#374151', 
+                display:'flex', alignItems:'center', justifyContent:'center', 
+                fontSize:12, fontWeight:600 
+              }}>{s.idx}</div>
               <div style={{ fontWeight: active ? 600 : 500, color: active ? '#005EB8' : '#374151' }}>{s.label}</div>
             </div>
           );
@@ -557,37 +734,80 @@ export default function MonthlySnapshotUpload() {
       </div>
       {toast && (
         <div style={{
-          marginBottom: 8,
-          padding: 8,
+          marginBottom: 12,
+          padding: 10,
           background: '#ecfdf5',
           border: '1px solid #a7f3d0',
           color: '#065f46',
-          borderRadius: 6
+          borderRadius: 6,
+          fontSize: 14
         }}>
           {toast}
         </div>
       )}
-      <h3 style={{ marginTop: 0 }}>Monthly Snapshot Upload (CSV)</h3>
-      <p style={{ color: '#6b7280', marginTop: 4 }}>One CSV per month. Month/Year picker is required and overrides any CSV dates.</p>
+      
+      <h3 style={{ marginTop: 0, marginBottom: 8 }}>Monthly Performance Upload</h3>
+      <p style={{ color: '#6b7280', marginTop: 4, marginBottom: 16 }}>
+        Upload fund and/or benchmark performance data. Supports dual file upload with enhanced validation.
+      </p>
 
-      {/* Step 1 */}
-      <div style={{ marginTop: 8, borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>1. Month</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+      {/* Progress indicator */}
+      {uploadProgress.stage && (
+        <div style={{ marginBottom: 16, padding: 12, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 6 }}>
+          <div style={{ fontSize: 14, color: '#0c4a6e', marginBottom: 8 }}>{uploadProgress.stage}</div>
+          <div style={{ width: '100%', height: 6, background: '#e0e7ff', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ 
+              width: `${uploadProgress.progress}%`, 
+              height: '100%', 
+              background: '#3b82f6', 
+              transition: 'width 0.3s ease' 
+            }} />
+          </div>
+        </div>
+      )}
+
+      {/* Step 1: Date & Templates */}
+      <div style={{ marginTop: 8, borderTop: '1px solid #e5e7eb', paddingTop: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontWeight: 600, fontSize: 16 }}>1. Date & Templates</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={handleDownloadFundTemplate} className="btn btn-secondary" style={{ fontSize: 12 }}>
+              📊 Fund Template
+            </button>
+            <button onClick={handleDownloadBenchmarkTemplate} className="btn btn-secondary" style={{ fontSize: 12 }}>
+              📈 Benchmark Template
+            </button>
+          </div>
+        </div>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto auto 1fr', gap: 12, alignItems: 'end', marginBottom: 16 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280' }}>Month *</label>
-            <select value={month} onChange={(e) => setMonth(e.target.value)}>
-              <option value="">Select…</option>
-              {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
+            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Month *</label>
+            <select 
+              value={month} 
+              onChange={(e) => setMonth(e.target.value)}
+              style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4 }}
+            >
+              <option value="">Select month</option>
+              {Array.from({ length: 12 }, (_, i) => {
+                const monthNum = String(i + 1).padStart(2, '0');
+                const monthName = new Date(2000, i, 1).toLocaleString('default', { month: 'long' });
+                return <option key={monthNum} value={monthNum}>{monthNum} - {monthName}</option>;
+              })}
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280' }}>Year *</label>
-            <input value={year} onChange={(e) => setYear(e.target.value)} placeholder="YYYY" style={{ width: 100 }} />
+            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Year *</label>
+            <input 
+              value={year} 
+              onChange={(e) => setYear(e.target.value)} 
+              placeholder="YYYY" 
+              style={{ width: 100, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4 }} 
+            />
           </div>
-          <div style={{ color: '#6b7280', fontSize: 12 }}>Picker overrides CSV dates.</div>
+          <div style={{ color: '#6b7280', fontSize: 12, paddingBottom: 8 }}>
+            Upload date: <strong>{computePickerDate() || 'Not set'}</strong>
+          </div>
         </div>
       </div>
 
