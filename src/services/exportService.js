@@ -772,6 +772,109 @@ function getAssetClassSummary(funds) {
 }
 
 /**
+ * Export Asset Class table data to CSV
+ * @param {Array} data - Asset class table data (funds + benchmark)
+ * @param {string} assetClassName - Name of the asset class
+ * @param {string} asOfDate - As of date for the data
+ */
+export function exportAssetClassTableCSV(data, assetClassName = 'Asset Class', asOfDate = null) {
+  try {
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      throw new Error('No data available to export');
+    }
+
+    // CSV headers
+    const headers = [
+      'Ticker',
+      'Name',
+      'Type',
+      'Score',
+      'Percentile',
+      'YTD Return (%)',
+      '1Y Return (%)',
+      '3Y Return (%)',
+      '5Y Return (%)',
+      '10Y Return (%)',
+      'Sharpe Ratio',
+      'Std Dev 3Y (%)',
+      'Std Dev 5Y (%)',
+      'Expense Ratio (%)',
+      'Alpha',
+      'Beta',
+      'Up Capture (%)',
+      'Down Capture (%)',
+      'Manager Tenure',
+      'Recommended'
+    ];
+
+    // Convert data to CSV rows
+    const csvRows = data.map(row => [
+      row.ticker || '',
+      row.name || '',
+      row.is_benchmark ? 'Benchmark' : 'Fund',
+      row.score_final != null && !row.is_benchmark ? row.score_final.toFixed(1) : '',
+      row.percentile != null && !row.is_benchmark ? row.percentile : '',
+      formatPercentForCSV(row.ytd_return),
+      formatPercentForCSV(row.one_year_return),
+      formatPercentForCSV(row.three_year_return),
+      formatPercentForCSV(row.five_year_return),
+      formatPercentForCSV(row.ten_year_return),
+      formatNumberForCSV(row.sharpe_ratio),
+      formatPercentForCSV(row.standard_deviation_3y),
+      formatPercentForCSV(row.standard_deviation_5y),
+      formatPercentForCSV(row.expense_ratio),
+      formatNumberForCSV(row.alpha),
+      formatNumberForCSV(row.beta),
+      formatPercentForCSV(row.up_capture_ratio),
+      formatPercentForCSV(row.down_capture_ratio),
+      formatNumberForCSV(row.manager_tenure),
+      row.is_recommended && !row.is_benchmark ? 'Yes' : 'No'
+    ]);
+
+    // Create CSV content
+    const csvContent = [
+      // Title row
+      [`${assetClassName} Performance Report`],
+      [`Generated: ${new Date().toLocaleString()}`],
+      [`As of: ${asOfDate || 'Latest'}`],
+      [], // Empty row
+      headers,
+      ...csvRows
+    ].map(row => row.map(cell => 
+      // Escape quotes and wrap in quotes if contains comma or quote
+      typeof cell === 'string' && (cell.includes(',') || cell.includes('"')) 
+        ? `"${cell.replace(/"/g, '""')}"` 
+        : cell
+    ).join(',')).join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const filename = `${assetClassName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+    downloadFile(blob, filename);
+
+  } catch (error) {
+    console.error('Error exporting asset class table CSV:', error);
+    throw new Error('Failed to export CSV data');
+  }
+}
+
+/**
+ * Format number for CSV export (return empty string for null/undefined)
+ */
+function formatNumberForCSV(value, decimals = 2) {
+  if (value == null || isNaN(value)) return '';
+  return Number(value).toFixed(decimals);
+}
+
+/**
+ * Format percentage for CSV export (return empty string for null/undefined)
+ */
+function formatPercentForCSV(value, decimals = 2) {
+  if (value == null || isNaN(value)) return '';
+  return Number(value).toFixed(decimals);
+}
+
+/**
  * Format percentage for display
  * @param {number} value - Percentage value
  * @returns {string} Formatted percentage

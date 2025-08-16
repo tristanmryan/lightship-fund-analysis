@@ -19,3 +19,29 @@ export function toISODateTime(dateLike) {
   }
 }
 
+// Unified formatting object for consistency across components
+export const fmt = {
+  percent(value, opts = {}) {
+    const { decimals = 2, sign = false } = opts;
+    if (value == null || Number.isNaN(value)) return '—';
+    const s = sign && value > 0 ? '+' : '';
+    return `${s}${Number(value).toFixed(decimals)}%`;
+  },
+  
+  number(value, opts = {}) {
+    const { decimals = 2 } = opts;
+    if (value == null || Number.isNaN(value)) return '—';
+    return Number(value).toFixed(decimals);
+  },
+  
+  date(value) {
+    try {
+      const d = value instanceof Date ? value : new Date(String(value));
+      if (!Number.isFinite(d.getTime())) return '—';
+      return d.toISOString().slice(0, 10);
+    } catch {
+      return '—';
+    }
+  }
+};
+
