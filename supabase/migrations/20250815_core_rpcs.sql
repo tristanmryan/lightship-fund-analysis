@@ -175,12 +175,12 @@ AS $$
     NULL::int AS percentile
   FROM bench_perf bp
   WHERE p_include_benchmark = true
-  
-  ORDER BY 
-    is_benchmark ASC, 
-    CASE WHEN is_benchmark THEN ticker ELSE NULL END ASC,
-    CASE WHEN NOT is_benchmark THEN COALESCE(score_final, 0) ELSE NULL END DESC NULLS LAST,
-    ticker ASC;
+) ranked_data
+ORDER BY 
+  is_benchmark ASC, 
+  CASE WHEN is_benchmark THEN ticker ELSE NULL END ASC,
+  CASE WHEN NOT is_benchmark THEN COALESCE(score_final, 0) ELSE NULL END DESC NULLS LAST,
+  ticker ASC;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_asset_class_table(date, uuid, boolean) TO anon, authenticated, service_role;
