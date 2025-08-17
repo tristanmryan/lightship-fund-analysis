@@ -815,6 +815,53 @@ class FundService {
       return [];
     }
   }
+
+  // Get comparison dataset using enhanced RPC
+  async getCompareDataset(asOfDate = null, tickers = [], benchmarkTicker = null) {
+    try {
+      const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
+      const dateOnly = asOf ? asOf.toISOString().slice(0, 10) : null;
+      
+      const params = {
+        p_date: dateOnly,
+        p_tickers: tickers
+      };
+
+      // Use the version with benchmark parameter if available
+      if (benchmarkTicker) {
+        params.p_benchmark_ticker = benchmarkTicker;
+        const { data, error } = await supabase.rpc('get_compare_dataset', params);
+        if (error) throw error;
+        return data || [];
+      } else {
+        // Use backwards compatible version
+        const { data, error } = await supabase.rpc('get_compare_dataset', {
+          p_date: dateOnly,
+          p_tickers: tickers
+        });
+        if (error) throw error;
+        return data || [];
+      }
+    } catch (error) {
+      handleSupabaseError(error, 'getCompareDataset');
+      return [];
+    }
+  }
+
+  // Get all benchmarks for selection
+  async getAllBenchmarks() {
+    try {
+      const { data, error } = await supabase
+        .from(TABLES.BENCHMARKS)
+        .select('ticker, name, proxy_type')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      handleSupabaseError(error, 'getAllBenchmarks');
+      return [];
+    }
+  }
 }
 
 // Create singleton instance

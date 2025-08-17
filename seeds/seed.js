@@ -65,13 +65,13 @@ const benchmarkData = [
   { ticker: 'IJR', name: 'Core S&P Small-Cap ETF', asset_class: 'Small Cap Core' },
   { ticker: 'IWN', name: 'Russell 2000 Value ETF', asset_class: 'Small Cap Value' },
   
-  // International benchmarks
+  // International benchmarks - Use actual CSV tickers
   { ticker: 'EFA', name: 'MSCI EAFE ETF', asset_class: 'International Stock (Large Cap)' },
   { ticker: 'SCZ', name: 'MSCI EAFE Small-Cap ETF', asset_class: 'International Stock (Small/Mid Cap)' },
-  { ticker: 'EEM', name: 'MSCI Emerging Markets ETF', asset_class: 'Emerging Markets' },
+  { ticker: 'ACWX', name: 'MSCI ACWI ex US ETF', asset_class: 'Emerging Markets' },
   
-  // Fixed Income benchmarks
-  { ticker: 'SHY', name: 'Short Treasury ETF', asset_class: 'Money Market' },
+  // Fixed Income benchmarks - Use actual CSV tickers
+  { ticker: 'BIL', name: 'SPDR Bloomberg 1-3 Month T-Bill ETF', asset_class: 'Money Market' },
   { ticker: 'SHM', name: 'Short-Term Muni ETF', asset_class: 'Short Term Muni' },
   { ticker: 'MUB', name: 'Intermediate Muni ETF', asset_class: 'Intermediate Muni' },
   { ticker: 'HYD', name: 'High Yield Muni ETF', asset_class: 'High Yield Muni' },
@@ -450,6 +450,71 @@ async function seedDatabase() {
     console.log(`   • Total attempted: ${performanceInserts.length} records`);
     console.log(`   • Success rate: ${((successfulInserts/performanceInserts.length)*100).toFixed(1)}%`);
     
+    // 4b. Seed Benchmark Performance Data
+    console.log('\n📊 Seeding Benchmark Performance Data...');
+    
+    // Delete existing benchmark performance data for test benchmarks
+    const benchmarkTickers = benchmarkData.map(b => b.ticker);
+    await supabase.from('benchmark_performance').delete().in('benchmark_ticker', benchmarkTickers);
+    
+    // Create benchmark performance data for the same EOM dates
+    const benchmarkPerformanceInserts = [];
+    const benchmarkPerfRng = new SeededRandom(123); // Different seed for benchmarks
+    
+    for (const benchmark of benchmarkData) {
+      for (const date of eomDates) {
+        // Generate realistic benchmark performance data
+        const baseReturn = benchmarkPerfRng.range(-15, 20); // Slightly more conservative than funds
+        
+        benchmarkPerformanceInserts.push({
+          benchmark_ticker: benchmark.ticker,
+          date,
+          ytd_return: Number((baseReturn * benchmarkPerfRng.range(0.4, 1.1)).toFixed(4)),
+          one_year_return: Number((baseReturn * benchmarkPerfRng.range(0.7, 1.2)).toFixed(4)),
+          three_year_return: Number((baseReturn * benchmarkPerfRng.range(0.5, 1.0)).toFixed(4)),
+          five_year_return: Number((baseReturn * benchmarkPerfRng.range(0.6, 0.9)).toFixed(4)),
+          ten_year_return: Number((baseReturn * benchmarkPerfRng.range(0.4, 0.8)).toFixed(4)),
+          sharpe_ratio: Number(benchmarkPerfRng.range(0.1, 2.0).toFixed(4)),
+          standard_deviation: Number(benchmarkPerfRng.range(4, 22).toFixed(4)),
+          standard_deviation_3y: Number(benchmarkPerfRng.range(5, 25).toFixed(4)),
+          standard_deviation_5y: Number(benchmarkPerfRng.range(6, 28).toFixed(4)),
+          expense_ratio: Number(benchmarkPerfRng.range(0.05, 0.5).toFixed(4)),
+          alpha: Number(benchmarkPerfRng.range(-2, 3).toFixed(4)),
+          beta: Number(benchmarkPerfRng.range(0.2, 1.5).toFixed(4)),
+          up_capture_ratio: Number(benchmarkPerfRng.range(80, 120).toFixed(4)),
+          down_capture_ratio: Number(benchmarkPerfRng.range(80, 120).toFixed(4))
+        });
+      }
+    }
+    
+    // Insert benchmark performance data in batches
+    const benchmarkBatchSize = 50;
+    let successfulBenchmarkInserts = 0;
+    
+    console.log(`   Inserting ${benchmarkPerformanceInserts.length} benchmark performance records...`);
+    
+    for (let i = 0; i < benchmarkPerformanceInserts.length; i += benchmarkBatchSize) {
+      const batch = benchmarkPerformanceInserts.slice(i, i + benchmarkBatchSize);
+      const { error: benchPerfError } = await supabase
+        .from('benchmark_performance')
+        .insert(batch);
+      
+      if (benchPerfError) {
+        console.warn(`     Benchmark performance batch error: ${benchPerfError.message}`);
+        // Try inserting individually
+        for (const record of batch) {
+          const { error: singleError } = await supabase
+            .from('benchmark_performance')
+            .insert([record]);
+          if (!singleError) successfulBenchmarkInserts++;
+        }
+      } else {
+        successfulBenchmarkInserts += batch.length;
+      }
+    }
+    
+    console.log(`   ✅ Benchmark performance data: ${successfulBenchmarkInserts}/${benchmarkPerformanceInserts.length} records inserted`);
+    
     // Wait a moment for database to process all inserts
     console.log(`\n⏳ Waiting for database to complete processing...`);
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -523,7 +588,70 @@ async function seedDatabase() {
     } else {
       console.log(`   ✅ All 120 funds have performance data`);
     }
+
+    // Verify benchmark performance data first to get the count
+    const { data: finalBenchPerf, count: benchPerfCount } = await supabase
+      .from('benchmark_performance')
+      .select('benchmark_ticker, date', { count: 'exact' })
+      .in('benchmark_ticker', benchmarkTickers);
     
+    const uniqueBenchmarksInPerf = [...new Set(finalBenchPerf?.map(p => p.benchmark_ticker) || [])];
+    
+    // Check for missing benchmark performance data and insert if needed
+    if (uniqueBenchmarksInPerf.length < benchmarkData.length) {
+      console.log(`   Found ${benchmarkData.length - uniqueBenchmarksInPerf.length} benchmarks without performance data`);
+      
+      const missingBenchTickers = benchmarkTickers.filter(ticker => !uniqueBenchmarksInPerf.includes(ticker));
+      console.log(`   Inserting missing benchmark performance data for: ${missingBenchTickers.slice(0, 5).join(', ')}${missingBenchTickers.length > 5 ? '...' : ''}`);
+      
+      // Insert missing benchmark performance data
+      let correctiveBenchInserts = 0;
+      
+      for (const ticker of missingBenchTickers) {
+        console.log(`   Inserting missing benchmark performance data for ${ticker}...`);
+        
+        const correctiveBenchRecords = eomDates.map(date => {
+          const baseReturn = benchmarkPerfRng.range(-15, 20);
+          return {
+            benchmark_ticker: ticker,
+            date,
+            ytd_return: Number((baseReturn * benchmarkPerfRng.range(0.4, 1.1)).toFixed(4)),
+            one_year_return: Number((baseReturn * benchmarkPerfRng.range(0.7, 1.2)).toFixed(4)),
+            three_year_return: Number((baseReturn * benchmarkPerfRng.range(0.5, 1.0)).toFixed(4)),
+            five_year_return: Number((baseReturn * benchmarkPerfRng.range(0.6, 0.9)).toFixed(4)),
+            ten_year_return: Number((baseReturn * benchmarkPerfRng.range(0.4, 0.8)).toFixed(4)),
+            sharpe_ratio: Number(benchmarkPerfRng.range(0.1, 2.0).toFixed(4)),
+            standard_deviation: Number(benchmarkPerfRng.range(4, 22).toFixed(4)),
+            standard_deviation_3y: Number(benchmarkPerfRng.range(5, 25).toFixed(4)),
+            standard_deviation_5y: Number(benchmarkPerfRng.range(6, 28).toFixed(4)),
+            expense_ratio: Number(benchmarkPerfRng.range(0.05, 0.5).toFixed(4)),
+            alpha: Number(benchmarkPerfRng.range(-2, 3).toFixed(4)),
+            beta: Number(benchmarkPerfRng.range(0.2, 1.5).toFixed(4)),
+            up_capture_ratio: Number(benchmarkPerfRng.range(80, 120).toFixed(4)),
+            down_capture_ratio: Number(benchmarkPerfRng.range(80, 120).toFixed(4))
+          };
+        });
+        
+        // Insert one by one for better error tracking
+        for (const record of correctiveBenchRecords) {
+          const { data, error } = await supabase
+            .from('benchmark_performance')
+            .insert([record])
+            .select();
+          
+          if (error) {
+            console.log(`     ❌ Failed: ${record.benchmark_ticker} on ${record.date} - ${error.message}`);
+          } else {
+            correctiveBenchInserts++;
+          }
+        }
+      }
+      
+      console.log(`   ✅ Corrective benchmark inserts completed: ${correctiveBenchInserts} records added`);
+    } else {
+      console.log(`   ✅ All ${benchmarkData.length} benchmarks have performance data`);
+    }
+
     // Verify actual insertion counts - refresh to avoid cache
     const { data: finalFunds } = await supabase.from('funds').select('ticker').like('ticker', 'RJFA%');
     
@@ -540,6 +668,16 @@ async function seedDatabase() {
     console.log(`   • Funds in database: ${finalFunds?.length || 0}`);
     console.log(`   • Performance records in database: ${finalPerf?.length || 0} (count: ${perfCount})`);
     console.log(`   • Unique funds with performance data: ${uniqueFundsInPerf.length}`);
+    console.log(`   • Benchmarks in database: ${benchmarkData.length}`);
+    console.log(`   • Benchmark performance records: ${finalBenchPerf?.length || 0} (count: ${benchPerfCount})`);
+    console.log(`   • Unique benchmarks with performance data: ${uniqueBenchmarksInPerf.length}`);
+    
+    if (uniqueBenchmarksInPerf.length < benchmarkData.length) {
+      const missingBenchTickers = benchmarkTickers.filter(ticker => !uniqueBenchmarksInPerf.includes(ticker));
+      console.log(`   • Benchmarks missing performance data (${missingBenchTickers.length}): ${missingBenchTickers.slice(0, 5).join(', ')}${missingBenchTickers.length > 5 ? '...' : ''}`);
+    } else {
+      console.log(`   • ✅ All ${benchmarkData.length} benchmarks have performance data`);
+    }
     
     if (uniqueFundsInPerf.length < 120) {
       const expectedTickers = Array.from({length: 120}, (_, i) => `RJFA${(i+1).toString().padStart(3, '0')}`);
@@ -568,8 +706,11 @@ async function seedDatabase() {
     console.log(`   • ${finalFunds?.length || 0} funds actually inserted (RJFA001-RJFA120)`);
     console.log(`   • ${performanceInserts.length} performance records prepared`);
     console.log(`   • ${finalPerf?.length || 0} performance records actually inserted (count: ${perfCount})`);
+    console.log(`   • ${benchmarkPerformanceInserts.length} benchmark performance records prepared`);
+    console.log(`   • ${finalBenchPerf?.length || 0} benchmark performance records actually inserted (count: ${benchPerfCount})`);
     console.log(`   • ${eomDates.length} months of data (${eomDates[0]} to ${eomDates[eomDates.length-1]})`);
     console.log(`   • First 20 funds marked as recommended`);
+    console.log(`   • Test benchmarks: ${benchmarkTickers.slice(0, 5).join(', ')}${benchmarkTickers.length > 5 ? '...' : ''}`);
     
   } catch (error) {
     console.error('❌ Seeding failed:', error.message);

@@ -324,3 +324,158 @@ function addPageNumbers(doc, totalPages) {
     );
   }
 }
+
+/**
+ * Generate PDF report for fund comparison
+ * Enhanced for mixed fund/benchmark comparison
+ */
+export function generateComparePDF(data) {
+  const { funds, metadata } = data;
+  
+  // Create new PDF document in portrait for comparison table
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: REPORT_CONFIG.unit,
+    format: REPORT_CONFIG.format
+  });
+
+  // Register font for special characters
+  doc.addFileToVFS('DejaVuSans.ttf', DejaVuSans);
+  doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
+  doc.setFont('helvetica');
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  let yPosition = REPORT_CONFIG.margins.top;
+
+  // Header section
+  doc.setFillColor(...REPORT_CONFIG.colors.primary);
+  doc.rect(0, 0, pageWidth, 70, 'F');
+  
+  doc.setTextColor(...REPORT_CONFIG.colors.secondary);
+  doc.setFontSize(REPORT_CONFIG.fontSize.title);
+  doc.text('Raymond James', REPORT_CONFIG.margins.left, 30);
+  
+  doc.setFontSize(REPORT_CONFIG.fontSize.subtitle);
+  doc.text(metadata.title || 'Fund Comparison Report', REPORT_CONFIG.margins.left, 55);
+
+  yPosition = 90;
+
+  // Report metadata
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(REPORT_CONFIG.fontSize.body);
+  doc.text(`${metadata.subtitle || ''}`, REPORT_CONFIG.margins.left, yPosition);
+  yPosition += 15;
+  doc.text(`As of: ${metadata.asOfDate}`, REPORT_CONFIG.margins.left, yPosition);
+  yPosition += 15;
+  doc.text(`${metadata.benchmarkInfo || ''}`, REPORT_CONFIG.margins.left, yPosition);
+  yPosition += 15;
+  doc.text(`Items compared: ${funds.length}`, REPORT_CONFIG.margins.left, yPosition);
+  yPosition += 25;
+
+  // Comparison table
+  const tableData = funds.map(fund => ({
+    ticker: fund.ticker || '',
+    name: (fund.name || '').substring(0, 25) + ((fund.name || '').length > 25 ? '...' : ''),
+    type: fund.is_benchmark ? 'Benchmark' : 'Fund',
+    asset_class: (fund.asset_class || '').substring(0, 15),
+    ytd_return: formatPercent(fund.ytd_return),
+    one_year_return: formatPercent(fund.one_year_return),
+    three_year_return: formatPercent(fund.three_year_return),
+    five_year_return: formatPercent(fund.five_year_return),
+    sharpe_ratio: formatNumber(fund.sharpe_ratio, 2),
+    expense_ratio: formatPercent(fund.expense_ratio, 2),
+    delta_ytd: fund.is_benchmark ? '' : formatDeltaPercent(fund.delta_ytd),
+    delta_1y: fund.is_benchmark ? '' : formatDeltaPercent(fund.delta_1y),
+    delta_3y: fund.is_benchmark ? '' : formatDeltaPercent(fund.delta_3y),
+    delta_5y: fund.is_benchmark ? '' : formatDeltaPercent(fund.delta_5y)
+  }));
+
+  // Table columns for comparison report
+  const compareColumns = [
+    { header: 'Ticker', dataKey: 'ticker', width: 35 },
+    { header: 'Name', dataKey: 'name', width: 85 },
+    { header: 'Type', dataKey: 'type', width: 30 },
+    { header: 'Asset Class', dataKey: 'asset_class', width: 50 },
+    { header: 'YTD', dataKey: 'ytd_return', width: 30 },
+    { header: '1Y', dataKey: 'one_year_return', width: 30 },
+    { header: '3Y', dataKey: 'three_year_return', width: 30 },
+    { header: '5Y', dataKey: 'five_year_return', width: 30 },
+    { header: 'Sharpe', dataKey: 'sharpe_ratio', width: 30 },
+    { header: 'ER', dataKey: 'expense_ratio', width: 25 },
+    { header: 'Δ YTD', dataKey: 'delta_ytd', width: 30 },
+    { header: 'Δ 1Y', dataKey: 'delta_1y', width: 30 },
+    { header: 'Δ 3Y', dataKey: 'delta_3y', width: 30 },
+    { header: 'Δ 5Y', dataKey: 'delta_5y', width: 30 }
+  ];
+
+  // Draw table header
+  doc.setFillColor(...REPORT_CONFIG.colors.headerBg);
+  doc.rect(REPORT_CONFIG.margins.left, yPosition, pageWidth - REPORT_CONFIG.margins.left - REPORT_CONFIG.margins.right, 15, 'F');
+  
+  doc.setTextColor(...REPORT_CONFIG.colors.headerText);
+  doc.setFontSize(REPORT_CONFIG.fontSize.heading);
+  
+  let xPosition = REPORT_CONFIG.margins.left + 2;
+  compareColumns.forEach(col => {
+    doc.text(col.header, xPosition, yPosition + 10);
+    xPosition += col.width;
+  });
+
+  yPosition += 15;
+
+  // Draw table rows
+  tableData.forEach((row, index) => {
+    // Alternate row colors
+    if (index % 2 === 1) {
+      doc.setFillColor(...REPORT_CONFIG.colors.alternateRow);
+      doc.rect(REPORT_CONFIG.margins.left, yPosition, pageWidth - REPORT_CONFIG.margins.left - REPORT_CONFIG.margins.right, 12, 'F');
+    }
+
+    // Highlight benchmark rows
+    if (row.type === 'Benchmark') {
+      doc.setFillColor(...REPORT_CONFIG.colors.benchmarkBg);
+      doc.rect(REPORT_CONFIG.margins.left, yPosition, pageWidth - REPORT_CONFIG.margins.left - REPORT_CONFIG.margins.right, 12, 'F');
+    }
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(REPORT_CONFIG.fontSize.body);
+
+    xPosition = REPORT_CONFIG.margins.left + 2;
+    compareColumns.forEach(col => {
+      const value = row[col.dataKey] || '';
+      doc.text(String(value), xPosition, yPosition + 9);
+      xPosition += col.width;
+    });
+
+    yPosition += 12;
+
+    // Add new page if needed
+    if (yPosition > doc.internal.pageSize.getHeight() - 60) {
+      doc.addPage();
+      yPosition = REPORT_CONFIG.margins.top;
+    }
+  });
+
+  // Add footer with delta legend
+  yPosition += 20;
+  doc.setFontSize(REPORT_CONFIG.fontSize.body);
+  doc.setTextColor(100, 100, 100);
+  doc.text('Δ = Delta vs benchmark (outperformance/underperformance)', REPORT_CONFIG.margins.left, yPosition);
+  doc.text('ER = Expense Ratio', REPORT_CONFIG.margins.left, yPosition + 12);
+  doc.text('All returns shown as percentages. Deltas show fund performance minus benchmark performance.', REPORT_CONFIG.margins.left, yPosition + 24);
+
+  // Add timestamp
+  const timestamp = new Date().toLocaleString();
+  doc.text(`Generated: ${timestamp}`, REPORT_CONFIG.margins.left, doc.internal.pageSize.getHeight() - 20);
+
+  return doc.output('blob');
+}
+
+// Helper function for formatting delta percentages with +/- signs
+function formatDeltaPercent(value) {
+  if (value === null || value === undefined || isNaN(value)) {
+    return '';
+  }
+  const sign = value >= 0 ? '+' : '';
+  return `${sign}${value.toFixed(2)}%`;
+}

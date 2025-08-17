@@ -622,19 +622,25 @@ export function exportTableCSV({ funds = [], columns = [], sortConfig = [], meta
 
 /**
  * Export the compare selection as CSV.
- * funds: array of fund-like objects; may include precomputed fields:
- *   exportDelta1y, exportBenchTicker, exportBenchName
+ * Enhanced version supporting mixed fund/benchmark selection and multiple delta calculations
+ * funds: array of fund-like objects from get_compare_dataset RPC
  */
 export function exportCompareCSV({ funds = [], metadata = {} }) {
   const headers = [
-    'Ticker', 'Name', 'Asset Class', 'Score',
-    'YTD', '1Y', '3Y', '5Y',
-    'Sharpe', 'Expense Ratio', 'Beta', 'Std Dev (3Y)', 'Std Dev (5Y)',
-    'Up Capture (3Y)', 'Down Capture (3Y)',
-    '1Y vs Benchmark (delta)', 'Benchmark Ticker', 'Benchmark Name'
+    'Ticker', 'Name', 'Type', 'Asset Class', 'Score', 'Percentile',
+    'YTD Return (%)', '1Y Return (%)', '3Y Return (%)', '5Y Return (%)', '10Y Return (%)',
+    'Sharpe Ratio', 'Expense Ratio (%)', 'Alpha', 'Beta', 
+    'Std Dev 3Y (%)', 'Std Dev 5Y (%)',
+    'Up Capture (%)', 'Down Capture (%)', 'Manager Tenure',
+    'YTD vs Benchmark (%)', '1Y vs Benchmark (%)', '3Y vs Benchmark (%)', '5Y vs Benchmark (%)',
+    'Benchmark Ticker', 'Benchmark Name', 'Peer Count'
   ];
 
-  const percentKeys = new Set(['YTD', '1Y', '3Y', '5Y', 'Expense Ratio', 'Up Capture (3Y)', 'Down Capture (3Y)', '1Y vs Benchmark (delta)']);
+  const percentKeys = new Set([
+    'YTD Return (%)', '1Y Return (%)', '3Y Return (%)', '5Y Return (%)', '10Y Return (%)',
+    'Expense Ratio (%)', 'Std Dev 3Y (%)', 'Std Dev 5Y (%)', 'Up Capture (%)', 'Down Capture (%)',
+    'YTD vs Benchmark (%)', '1Y vs Benchmark (%)', '3Y vs Benchmark (%)', '5Y vs Benchmark (%)'
+  ]);
 
   const get = (f, ...alts) => {
     for (const k of alts) {
@@ -645,30 +651,42 @@ export function exportCompareCSV({ funds = [], metadata = {} }) {
   };
 
   const metaRows = [
+    ['Fund Comparison Report'],
     ['Exported at', toISODateTime(metadata.exportedAt || new Date())],
-    ['Selected fund count', funds.length]
+    ['Selected items count', funds.length],
+    ['As of date', metadata.asOfDate || 'Latest'],
+    ['Benchmark comparison', metadata.benchmarkTicker || 'Asset class primary']
   ];
 
   const dataRows = funds.map(f => {
     const rowMap = {
-      'Ticker': get(f, 'Symbol', 'ticker', 'symbol') || '',
-      'Name': get(f, 'Fund Name', 'name') || '',
-      'Asset Class': get(f, 'asset_class_name', 'asset_class', 'Asset Class') || '',
-      'Score': get(f, 'scores')?.final ?? get(f, 'score') ?? '',
-      'YTD': get(f, 'ytd_return'),
-      '1Y': get(f, 'one_year_return', 'Total Return - 1 Year (%)'),
-      '3Y': get(f, 'three_year_return', 'Annualized Total Return - 3 Year (%)'),
-      '5Y': get(f, 'five_year_return', 'Annualized Total Return - 5 Year (%)'),
-      'Sharpe': get(f, 'sharpe_ratio', 'Sharpe Ratio - 3 Year'),
-      'Expense Ratio': get(f, 'expense_ratio', 'Net Exp Ratio (%)'),
+      'Ticker': get(f, 'ticker', 'Symbol', 'symbol') || '',
+      'Name': get(f, 'name', 'Fund Name') || '',
+      'Type': f.is_benchmark ? 'Benchmark' : 'Fund',
+      'Asset Class': get(f, 'asset_class', 'asset_class_name', 'Asset Class') || '',
+      'Score': !f.is_benchmark ? get(f, 'score_final', 'scores')?.final ?? get(f, 'score') : '',
+      'Percentile': !f.is_benchmark ? get(f, 'percentile') : '',
+      'YTD Return (%)': get(f, 'ytd_return'),
+      '1Y Return (%)': get(f, 'one_year_return', 'Total Return - 1 Year (%)'),
+      '3Y Return (%)': get(f, 'three_year_return', 'Annualized Total Return - 3 Year (%)'),
+      '5Y Return (%)': get(f, 'five_year_return', 'Annualized Total Return - 5 Year (%)'),
+      '10Y Return (%)': get(f, 'ten_year_return'),
+      'Sharpe Ratio': get(f, 'sharpe_ratio', 'Sharpe Ratio - 3 Year'),
+      'Expense Ratio (%)': get(f, 'expense_ratio', 'Net Exp Ratio (%)'),
+      'Alpha': get(f, 'alpha'),
       'Beta': get(f, 'beta', 'Beta - 5 Year'),
-      'Std Dev (3Y)': get(f, 'standard_deviation_3y'),
-      'Std Dev (5Y)': get(f, 'standard_deviation_5y'),
-      'Up Capture (3Y)': get(f, 'up_capture_ratio', 'Up Capture Ratio (Morningstar Standard) - 3 Year'),
-      'Down Capture (3Y)': get(f, 'down_capture_ratio', 'Down Capture Ratio (Morningstar Standard) - 3 Year'),
-      '1Y vs Benchmark (delta)': get(f, 'exportDelta1y'),
-      'Benchmark Ticker': get(f, 'exportBenchTicker'),
-      'Benchmark Name': get(f, 'exportBenchName')
+      'Std Dev 3Y (%)': get(f, 'standard_deviation_3y'),
+      'Std Dev 5Y (%)': get(f, 'standard_deviation_5y'),
+      'Up Capture (%)': get(f, 'up_capture_ratio', 'Up Capture Ratio (Morningstar Standard) - 3 Year'),
+      'Down Capture (%)': get(f, 'down_capture_ratio', 'Down Capture Ratio (Morningstar Standard) - 3 Year'),
+      'Manager Tenure': get(f, 'manager_tenure'),
+      'YTD vs Benchmark (%)': !f.is_benchmark ? get(f, 'delta_ytd') : '',
+      '1Y vs Benchmark (%)': !f.is_benchmark ? get(f, 'delta_1y', 'exportDelta1y') : '',
+      '3Y vs Benchmark (%)': !f.is_benchmark ? get(f, 'delta_3y') : '',
+      '5Y vs Benchmark (%)': !f.is_benchmark ? get(f, 'delta_5y') : '',
+      'Benchmark Ticker': get(f, 'benchmark_ticker', 'exportBenchTicker'),
+      'Benchmark Name': get(f, 'benchmark_name', 'exportBenchName'),
+      'Peer Count': get(f, 'peer_count')
     };
 
     return headers.map(h => {
@@ -689,6 +707,37 @@ export function exportCompareCSV({ funds = [], metadata = {} }) {
   ];
   const csv = buildCSV(rows);
   return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+}
+
+/**
+ * Export compare data as PDF report
+ * Enhanced for mixed fund/benchmark comparison with professional formatting
+ */
+export async function exportComparePDF({ funds = [], metadata = {} }) {
+  try {
+    // Lazy load PDF generation to avoid issues in test/node environments
+    const { generateComparePDF } = await import('../services/pdfReportService');
+    
+    // Enhanced metadata for PDF generation
+    const pdfData = {
+      funds,
+      metadata: {
+        ...metadata,
+        title: 'Fund & Benchmark Comparison Report',
+        subtitle: `Generated on ${new Date().toLocaleDateString()}`,
+        asOfDate: metadata.asOfDate || 'Latest',
+        benchmarkInfo: metadata.benchmarkTicker 
+          ? `Comparison vs ${metadata.benchmarkTicker}` 
+          : 'Comparison vs asset class primary benchmarks',
+        exportedAt: new Date()
+      }
+    };
+
+    return await generateComparePDF(pdfData);
+  } catch (error) {
+    console.error('Error generating compare PDF:', error);
+    throw new Error('Failed to generate PDF report');
+  }
 }
 
 /**

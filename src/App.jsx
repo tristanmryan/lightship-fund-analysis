@@ -1,6 +1,6 @@
 // App.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Home as HomeIcon, Table as TableIcon, BarChart3 as BarChartIcon, ShieldCheck, Settings, Download, RefreshCw, HelpCircle, Share2, Info } from 'lucide-react';
+import { Home as HomeIcon, Table as TableIcon, BarChart3 as BarChartIcon, ShieldCheck, Settings, Download, RefreshCw, HelpCircle, Share2, Info, TrendingUp as CompareIcon } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './App.css'; // Import the CSS file
 import LoginModal from './components/Auth/LoginModal';
@@ -29,6 +29,8 @@ import EnhancedPerformanceDashboard from './components/Dashboard/EnhancedPerform
 import MethodologyDrawer from './components/Dashboard/MethodologyDrawer';
 import FundManagement from './components/Admin/FundManagement';
 import HealthCheck from './components/Dashboard/HealthCheck';
+import AssetClassTable from './components/Dashboard/AssetClassTable';
+import ComparisonPanel from './components/Dashboard/ComparisonPanel';
 import { 
   exportToExcel, 
   downloadFile
@@ -90,6 +92,23 @@ const App = () => {
     return Array.from(classes).sort();
   }, [assetClassBenchmarks, funds]);
 
+  // Find the selected asset class ID from fund data
+  const selectedAssetClassData = useMemo(() => {
+    if (!selectedClass || !funds || funds.length === 0) return null;
+    
+    // Find a fund with matching asset class name to get the ID
+    const matchingFund = funds.find(fund => 
+      fund.asset_class_name === selectedClass || 
+      fund.asset_class === selectedClass ||
+      fund['Asset Class'] === selectedClass
+    );
+    
+    return matchingFund ? {
+      id: matchingFund.asset_class_id,
+      name: matchingFund.asset_class_name || matchingFund.asset_class || selectedClass
+    } : { id: null, name: selectedClass };
+  }, [selectedClass, funds]);
+
   // Memoize review candidates calculation
   const reviewCandidates = useMemo(() => {
     return identifyReviewCandidates(funds || []);
@@ -108,6 +127,7 @@ const App = () => {
     dashboard: '/dashboard',
     performance: '/performance',
     class: '/class',
+    compare: '/compare',
     analysis: '/analysis',
     analytics: '/analytics',
     history: '/history',
@@ -117,6 +137,7 @@ const App = () => {
   const pathToTab = (pathname) => {
     if (pathname.startsWith('/performance')) return 'performance';
     if (pathname.startsWith('/class')) return 'class';
+    if (pathname.startsWith('/compare')) return 'compare';
     if (pathname.startsWith('/analysis')) return 'analysis';
     if (pathname.startsWith('/analytics')) return 'analytics';
     if (pathname.startsWith('/history')) return 'history';
@@ -300,8 +321,8 @@ const App = () => {
         downloadFile(blob, `fund_analysis_${new Date().toISOString().split('T')[0]}.xlsx`);
       }
       // Number keys for tab navigation
-      if (e.key >= '1' && e.key <= '6' && !e.ctrlKey && !e.metaKey) {
-        const tabs = ['dashboard', 'performance', 'class', 'analysis', 'analytics', 'history'];
+      if (e.key >= '1' && e.key <= '7' && !e.ctrlKey && !e.metaKey) {
+        const tabs = ['dashboard', 'performance', 'class', 'compare', 'analysis', 'analytics', 'history'];
         const tabIndex = parseInt(e.key) - 1;
         if (tabIndex < tabs.length) {
           const t = tabs[tabIndex];
@@ -507,6 +528,12 @@ const App = () => {
               <span>Asset Classes</span>
             </span>
           </button>
+          <button className={activeTab === 'compare' ? 'active' : ''} onClick={() => { setActiveTab('compare'); navigate('/compare'); }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <CompareIcon size={16} aria-hidden />
+              <span>Compare</span>
+            </span>
+          </button>
           <button className={activeTab === 'health' ? 'active' : ''} onClick={() => { setActiveTab('health'); navigate('/health'); }}>
             <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
               <ShieldCheck size={16} aria-hidden />
@@ -663,62 +690,28 @@ const App = () => {
           </select>
               </div>
 
-              {selectedClass && classSummaries[selectedClass] && (
-                <div className="card">
-                  <div className="card-header">
-                    <h3 className="card-title">{selectedClass} Analysis</h3>
-                    <p className="card-subtitle">
-                      {classSummaries[selectedClass].fundCount} funds analyzed
-                    </p>
-                      </div>
-                  
-                  <div className="table-container">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Metric</th>
-                          <th>Average</th>
-                          <th>Median</th>
-                          <th>Top 25%</th>
-                          <th>Bottom 25%</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td><strong>YTD Return</strong></td>
-                          <td>{classSummaries[selectedClass].avgYTD?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].medianYTD?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].top25YTD?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].bottom25YTD?.toFixed(2)}%</td>
-                        </tr>
-                        <tr>
-                          <td><strong>1 Year Return</strong></td>
-                          <td>{classSummaries[selectedClass].avg1Y?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].median1Y?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].top251Y?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].bottom251Y?.toFixed(2)}%</td>
-                        </tr>
-                        <tr>
-                          <td><strong>3 Year Return</strong></td>
-                          <td>{classSummaries[selectedClass].avg3Y?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].median3Y?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].top253Y?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].bottom253Y?.toFixed(2)}%</td>
-                        </tr>
-                        <tr>
-                          <td><strong>Sharpe Ratio</strong></td>
-                          <td>{classSummaries[selectedClass].avgSharpe?.toFixed(2)}</td>
-                          <td>{classSummaries[selectedClass].medianSharpe?.toFixed(2)}</td>
-                          <td>{classSummaries[selectedClass].top25Sharpe?.toFixed(2)}</td>
-                          <td>{classSummaries[selectedClass].bottom25Sharpe?.toFixed(2)}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                    </div>
-                      </div>
+              {selectedClass && selectedAssetClassData && (
+                <AssetClassTable 
+                  assetClassId={selectedAssetClassData.id}
+                  assetClassName={selectedAssetClassData.name}
+                />
               )}
                     </div>
           )}
+
+      {/* Compare View Tab */}
+      {activeTab === 'compare' && (
+        <div>
+          <div className="card-header">
+            <h2 className="card-title">Fund Comparison</h2>
+            <p className="card-subtitle">Compare up to 4 funds and benchmarks side-by-side</p>
+          </div>
+          
+          <ComparisonPanel 
+            funds={funds || []}
+          />
+        </div>
+      )}
 
           {/* Analysis Tab */}
           {activeTab === 'analysis' && (

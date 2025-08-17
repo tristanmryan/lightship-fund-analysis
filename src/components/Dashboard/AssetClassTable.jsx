@@ -59,7 +59,14 @@ const AssetClassTable = ({
   // Load asset class data
   useEffect(() => {
     const loadData = async () => {
-      if (!assetClassId || !asOfMonth) return;
+      if (!asOfMonth) return;
+
+      // Handle case where asset class ID is missing (legacy data)
+      if (!assetClassId) {
+        setLoading(false);
+        setError(`Asset class "${assetClassName}" is not configured in the database yet. Please import data using the Admin tab to set up this asset class.`);
+        return;
+      }
 
       setLoading(true);
       setError(null);
@@ -81,7 +88,7 @@ const AssetClassTable = ({
     };
 
     loadData();
-  }, [assetClassId, asOfMonth, selectedProfile]);
+  }, [assetClassId, assetClassName, asOfMonth, selectedProfile]);
 
   // Sorted data
   const sortedData = useMemo(() => {
