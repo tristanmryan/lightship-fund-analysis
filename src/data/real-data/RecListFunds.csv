@@ -1,0 +1,108 @@
+Fund Ticker,Fund Name,Asset Class
+CAIFX,American Funds Cap Inc Build,Asset Allocation
+PRWCX,T. Rowe Price Capital Appreciation,Asset Allocation
+TIBIX,Thornburg Inv Inc Builder,Asset Allocation
+FCSZX,Franklin Convertible Adv.,Convertible Bonds
+FZAEX,Fidelity Adv. Emerging Markets Z,Emerging Markets
+DODLX,Dodge & Cox Global Bond I,Foreign Bonds
+MEDIX,MFS Emerging Market Debt I,Foreign Bonds
+GSRTX,Goldman Sachs Absolute Return Tracker Inv,Hedged/Enhanced
+JDJIX,John Hancock Diversified Macro Fund,Hedged/Enhanced
+JHEQX,JP Morgan Hedged Equity I,Hedged/Enhanced
+EIHIX,Eaton Vance High Income Opp. I,High Yield Bonds
+MHYIX,Mainstay High Yield I,High Yield Bonds
+DVHIX,Delaware High Yield Muni,High Yield Muni
+FEHIX,First Eagle High Yield Muni I,High Yield Muni
+MMHIX,Mainstay High Yield Muni Bond I,High Yield Muni
+EIHMX,Eaton Vance National Muni Income I,Intermediate Muni
+GSMTX,Goldman Sachs Dynamic Muni Inc. I,Intermediate Muni
+MTBIX,Mainstay McKay Tax Free Bond I,Intermediate Muni
+STWTX,Hartford Schroders Tax Aware Bond,Intermediate Muni
+FBKWX,Fidelity Adv. Total Bond Z,Intermediate Term Bonds
+LSIIX,Loomis Sayles Investment Grade,Intermediate Term Bonds
+UIITX,Victory Core Plus Interm Bond,Intermediate Term Bonds
+GSINX,Goldman Sachs GQG Ptnrs Intl Opps I,International Stock (Large Cap)
+IHDG,WisdomTree Intl. Hedged Quality Div Growth ETF,International Stock (Large Cap)
+JIGFX,Janus Overseas I,International Stock (Large Cap)
+MDIJX,MFS Internation Diversification I,International Stock (Large Cap)
+MQGIX,MFS International Growth I,International Stock (Large Cap)
+SCIEX,Hartford Schroder's Intl. Stock I,International Stock (Large Cap)
+TSWIX,Transamerica Intl Equity,International Stock (Large Cap)
+APDJX,Artisan International Small Cap I,International Stock (Small/Mid Cap)
+JEPI,JP Morgan Equity Premium Income ETF,Large Cap Blend
+JQUA,JP Morgan US Quality Factor ETF,Large Cap Blend
+PRDGX,T. Rowe Price Dividend Growth,Large Cap Blend
+RSP,Invesco Equal Weighted S&P 500 ETF,Large Cap Blend
+CEYIX,Calvert Equity,Large Cap Blend
+FDYZX,Franklin Dynatech Adv,Large Cap Growth
+MFEIX,MFS Growth I,Large Cap Growth
+SPYG,SPDR S&P 500 Growth ETF,Large Cap Growth
+TCAF,T. Rowe Price Capital Appreciation ETF,Large Cap Growth
+WINN,Harbor Long Term Growers,Large Cap Growth
+FDL,First Trust Dividend Leaders ETF,Large Cap Value
+PEIYX,Putnam Large Cap Value Y,Large Cap Value
+SCHD,Schwab Strategic Trust ETF,Large Cap Value
+SDY,SPDR S&P Dividend,Large Cap Value
+VYM,Vanguard High Div ETF,Large Cap Value
+CMNIX,Calamos Market Neutral Income,Long/Short
+CPLIX,Calamos Phineus Long/Short I,Long/Short
+HHCZX,Nextpoint Event Driven,Long/Short
+EIMAX,Eaton Vance MA Tax free,Mass Muni Bonds
+MTALX,MFS MA Muni Bond Fund,Mass Muni Bonds
+IJH,iShares Core S&P Mid-Cap ETF,Mid-Cap Blend
+JHMM,John Hancock Mid Cap Multifactor,Mid-Cap Blend
+TMCPX,Touchstone Mid Cap Fund Y,Mid-Cap Blend
+FGSIX,Federated Hermes MDT Mid Cap Growth IS,Mid-Cap Growth
+HLGEX,JP Morgan Mid Cap Growth,Mid-Cap Growth
+JVMIX,John Hancock Mid Cap Value I,Mid-Cap Value
+XMVM,Invesco S&S Midcap Value w/ Momentum ETF,Mid-Cap Value
+PCOXX,Federated Money Market,Money Market
+ESIIX,Eaton Vance Strat Income I,Multi Sector Bonds
+JMSIX,JP Morgan Income I,Multi Sector Bonds
+PMOYX,Putnam Mortgage Opportunities,Multi Sector Bonds
+PONPX,Pimco Income I2,Multi Sector Bonds
+PMFYX,Pioneer Multi-Asset Income Y,Multi-Asset Income
+TSHIX,Transamerica Multi-Asset Income I,Multi-Asset Income
+CPITX,Counterpoint Tactical Income I,Non-Traditional Bonds
+PFPNX,Pimco Preferred & Cap Securities Fund I,Preferred Stock
+FRIRX,Fidelity Advisor Real Estate Income Z,Real Estate
+MGLIX,MFS Global Real Estate I,Real Estate
+RRRRX,Deutsche Real Estate S,Real Estate
+ASFYX,Virtus ASG Managed Futures Strat,Sector Funds
+BGSIX,Blackrock Tech Opportunities I,Sector Funds
+BUYZ,Franklin Disruptive Commerce ETF,Sector Funds
+EGIIX,Eaton Vance Greater India,Sector Funds
+FDN,First Trust Dow Jones Internet,Sector Funds
+FIJYX,Fidelity Adv. Biotechnology Z,Sector Funds
+FIKAX,Fidelity Adv. Energy Z,Sector Funds
+FIKCX,Fidelity Advisor Healthcare Z,Sector Funds
+FTGC,First Trust Global Tactical Commodity Strategy,Sector Funds
+GLIFX,Lazard Global Infrastructure I,Sector Funds
+MMUIX,MFS Utilities I,Sector Funds
+NXTG,First Trust 5G ETF,Sector Funds
+QCLN,First Trust Clean Energy ETF,Sector Funds
+QQQM,Invesco Nasdaq 100 ETF,Sector Funds
+SKYY,First Trust Cloud Computing ETF,Sector Funds
+XLK,Tech Select Sector SPDR ETF,Sector Funds
+LDLFX,Lord Abbett Short Duration F,Short Term Bonds
+LUBFX,Lord Abbett Ultra Short F,Short Term Bonds
+MQLIX,MFS Limited Maturity,Short Term Bonds
+ISHYX,Invesco Short Duration High Yield Muni,Short Term Muni
+MTLIX,MFS Municipal Limited Maturity I,Short Term Muni
+FCDIX,Fidelity Adv. Stock Selector Small Cap,Small Cap Core
+GACIX,Gabelli Small Cap Growth,Small Cap Core
+IVVIX,Delaware IVY SMID core,Small Cap Core
+IWM,iShares Russell 2000 ETF,Small Cap Core
+PSYGX,Putnam Small Cap Growth Y,Small Cap Growth
+FCVIX,Fidelity Adv. Small Cap Value Z,Small Cap Value
+DRRIX,BNY Mellon Global Real Return I,Tactical
+PFTPX,PIMCO Low Duration Income I2,Short Term Bonds
+NEAR,iShares Short Duration ETF,Short Term Bonds
+JPLD,JPMorgan Limited Duration ETF,Short Term Bonds
+PRPFX,Permanent Portfolio Fund I,Asset Allocation
+IYGIX,Maxquarie Large Cap Growth,Large Cap Growth
+VLIFX,Value Line Mid Cap Focused,Mid-Cap Growth
+FEQZX,Fidelity Advisor Hedged Equity,Hedged/Enhanced
+PRFRX,T. Rowe Price Floating Rate,Non-Traditional Bonds
+FIDI,Fidelity International HY Dividend ETF,International Stock (Large Cap)
+TIQIX,Touchstone Non-US Equity Fund,International Stock (Large Cap)
