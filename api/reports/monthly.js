@@ -3,7 +3,7 @@
  * Uses React-PDF for high-performance PDF generation without Chromium
  */
 
-const { z } = require('zod');
+let z;
 
 // Payload validation schema
 const PayloadSchema = z.object({
@@ -42,18 +42,43 @@ module.exports = async function handler(req, res) {
     const payload = PayloadSchema.parse(req.body);
     console.log('✅ Payload validated:', { scope: payload.selection?.scope, asOf: payload.asOf });
     
-    // Import React-PDF dependencies
-    console.log('📦 Importing React-PDF dependencies...');
-    const { renderToBuffer } = require('@react-pdf/renderer');
-    const React = require('react');
-    console.log('✅ React-PDF dependencies loaded');
+    // Import all dependencies using dynamic import for ES module compatibility
+    console.log('📦 Importing dependencies...');
+    let z, renderToBuffer, React, shapeReportData, MonthlyReportPDF;
+    
+    try {
+      const zodModule = await import('zod');
+      z = zodModule.z;
+      console.log('✅ Zod validation library loaded');
+    } catch (e) {
+      console.error('❌ Failed to load Zod:', e.message);
+      throw new Error('Zod validation library unavailable');
+    }
+    
+    try {
+      const reactPdfModule = await import('@react-pdf/renderer');
+      renderToBuffer = reactPdfModule.renderToBuffer;
+      console.log('✅ React-PDF renderer loaded');
+    } catch (e) {
+      console.error('❌ Failed to load React-PDF renderer:', e.message);
+      throw new Error('React-PDF renderer unavailable');
+    }
+    
+    try {
+      const reactModule = await import('react');
+      React = reactModule.default;
+      console.log('✅ React module loaded');
+    } catch (e) {
+      console.error('❌ Failed to load React module:', e.message);
+      throw new Error('React module unavailable');
+    }
     
     // Import our services and components
     console.log('🎨 Importing report services...');
-    let shapeReportData, MonthlyReportPDF;
     
     try {
-      ({ shapeReportData } = require('../../src/reports/monthly/data/shapeData.js'));
+      const shapeDataModule = await import('../../src/reports/monthly/data/shapeData.js');
+      shapeReportData = shapeDataModule.shapeReportData;
       console.log('✅ Data shaping service loaded');
     } catch (e) {
       console.error('❌ Failed to load shapeReportData:', e.message);
@@ -61,7 +86,8 @@ module.exports = async function handler(req, res) {
     }
     
     try {
-      MonthlyReportPDF = require('../../src/reports/monthly/template/MonthlyReportPDF.js');
+      const reportTemplateModule = await import('../../src/reports/monthly/template/MonthlyReportPDF.js');
+      MonthlyReportPDF = reportTemplateModule.default;
       console.log('✅ React-PDF Monthly report template loaded');
     } catch (e) {
       console.error('❌ Failed to load MonthlyReportPDF:', e.message);

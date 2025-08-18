@@ -4,15 +4,15 @@
  * Uses React.createElement syntax for Node.js compatibility
  */
 
-const React = require('react');
-const { 
+import React from 'react';
+import { 
   Document, 
   Page, 
   View, 
   Text, 
   StyleSheet,
   Font
-} = require('@react-pdf/renderer');
+} from '@react-pdf/renderer';
 
 // Raymond James Professional Color Scheme and Typography
 const styles = StyleSheet.create({
@@ -799,4 +799,4 @@ function getRankColor(rankStr) {
   return styles.rankPoor;
 }
 
-module.exports = MonthlyReportPDF;
+export default MonthlyReportPDF;
