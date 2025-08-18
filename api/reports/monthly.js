@@ -136,18 +136,21 @@ module.exports = async function handler(req, res) {
     // Step 5: Launch Puppeteer and generate PDF
     console.log('🚀 Launching Chromium for PDF generation...');
     
-    // Try to get chromium configuration with fallbacks
+    // Configure Chromium for Vercel serverless environment
     let chromiumArgs, chromiumViewport, executablePath;
     
     try {
-      chromiumArgs = chromium.args || chromium.default?.args || [];
-      chromiumViewport = chromium.defaultViewport || chromium.default?.defaultViewport || { width: 1920, height: 1080 };
-      executablePath = await (chromium.executablePath ? chromium.executablePath() : chromium.default?.executablePath?.() || '/usr/bin/chromium-browser');
+      // Use @sparticuz/chromium configuration
+      chromiumArgs = chromium.args || [];
+      chromiumViewport = chromium.defaultViewport || { width: 1920, height: 1080 };
+      executablePath = await chromium.executablePath();
+      
       console.log('✅ Chromium configuration prepared');
-      console.log('📍 Executable path:', executablePath);
+      console.log('📍 Executable path:', executablePath ? 'Found' : 'Not found');
+      console.log('📋 Chromium args count:', chromiumArgs.length);
     } catch (e) {
       console.error('❌ Failed to configure Chromium:', e.message);
-      throw new Error('Chromium configuration failed');
+      throw new Error(`Chromium configuration failed: ${e.message}`);
     }
     
     const browser = await (puppeteer.launch || puppeteer.default?.launch)({

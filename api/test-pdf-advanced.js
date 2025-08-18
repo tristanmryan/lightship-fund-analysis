@@ -30,10 +30,19 @@ module.exports = async function handler(req, res) {
 
     // Test 3: Browser launch
     console.log('🚀 Testing browser launch...');
-    const browser = await (puppeteer.launch || puppeteer.default?.launch)({
-      args: chromium.args || chromium.default?.args || [],
-      defaultViewport: chromium.defaultViewport || chromium.default?.defaultViewport,
-      executablePath: await (chromium.executablePath ? chromium.executablePath() : chromium.default?.executablePath?.()),
+    
+    // Configure Chromium
+    const chromiumArgs = chromium.args || [];
+    const chromiumViewport = chromium.defaultViewport || { width: 1920, height: 1080 };
+    const executablePath = await chromium.executablePath();
+    
+    console.log('📍 Chromium executable path:', executablePath ? 'Found' : 'Not found');
+    console.log('📋 Chromium args count:', chromiumArgs.length);
+    
+    const browser = await puppeteer.launch({
+      args: chromiumArgs,
+      defaultViewport: chromiumViewport,
+      executablePath: executablePath,
       headless: true,
       ignoreHTTPSErrors: true
     });
