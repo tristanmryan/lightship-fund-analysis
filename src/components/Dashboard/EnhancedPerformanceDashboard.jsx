@@ -15,7 +15,7 @@ import ComparisonPanel from './ComparisonPanel';
 import DrilldownCards from './DrilldownCards';
 import preferencesService from '../../services/preferencesService';
 import fundService from '../../services/fundService';
-import { generatePDFReport, downloadFile, exportToExcel, formatExportFilename, exportElementToPNG, copyElementPNGToClipboard } from '../../services/exportService';
+import { generatePDFReport, downloadFile, downloadPDF, exportToExcel, formatExportFilename, exportElementToPNG, copyElementPNGToClipboard } from '../../services/exportService';
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -691,7 +691,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
                 }}>
                   Excel workbook (.xlsx)
                 </button>
-                <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: 'pointer' }} onClick={() => {
+                <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: 'pointer' }} onClick={async () => {
                   try {
                     const metadata = {
                       date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
@@ -703,14 +703,16 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
                         return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
                       })()
                     };
-                    const pdf = generatePDFReport({ funds: filteredFunds, metadata });
+                    console.log('🚀 Starting PDF generation for all funds...');
+                    const pdf = await generatePDFReport({ funds: filteredFunds, metadata }, { forceV2: true });
                     const name = formatExportFilename({ scope: 'pdf_all', asOf: (asOfMonthProp || window.__AS_OF_MONTH__ || null), ext: 'pdf' });
-                    pdf.save(name);
+                    console.log('📄 Generated PDF, attempting download...', { type: typeof pdf, isBlob: pdf instanceof Blob });
+                    downloadPDF(pdf, name);
                   } catch (e) { /* eslint-disable no-console */ console.error('PDF export failed', e); }
                 }}>
                   PDF (all)
                 </button>
-                <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: (filteredFunds.filter(f => f.is_recommended || f.recommended).length > 0) ? 'pointer' : 'not-allowed', opacity: (filteredFunds.filter(f => f.is_recommended || f.recommended).length > 0) ? 1 : 0.5 }} disabled={(filteredFunds.filter(f => f.is_recommended || f.recommended).length === 0)} onClick={() => {
+                <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: (filteredFunds.filter(f => f.is_recommended || f.recommended).length > 0) ? 'pointer' : 'not-allowed', opacity: (filteredFunds.filter(f => f.is_recommended || f.recommended).length > 0) ? 1 : 0.5 }} disabled={(filteredFunds.filter(f => f.is_recommended || f.recommended).length === 0)} onClick={async () => {
                   const rec = (filteredFunds || []).filter(f => f.is_recommended || f.recommended);
                   if (rec.length === 0) return;
                   try {
@@ -724,9 +726,11 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
                         return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
                       })()
                     };
-                    const pdf = generatePDFReport({ funds: rec, metadata });
+                    console.log('🚀 Starting PDF generation for recommended funds...');
+                    const pdf = await generatePDFReport({ funds: rec, metadata }, { forceV2: true });
                     const name = formatExportFilename({ scope: 'pdf_recommended', asOf: (asOfMonthProp || window.__AS_OF_MONTH__ || null), ext: 'pdf' });
-                    pdf.save(name);
+                    console.log('📄 Generated PDF, attempting download...', { type: typeof pdf, isBlob: pdf instanceof Blob });
+                    downloadPDF(pdf, name);
                   } catch (e) { /* eslint-disable no-console */ console.error('PDF export failed', e); }
                 }}>
                   PDF — Recommended

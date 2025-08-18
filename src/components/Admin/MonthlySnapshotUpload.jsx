@@ -59,7 +59,7 @@ function PreviewTable({ rows }) {
 }
 
 export default function MonthlySnapshotUpload() {
-  // Dual file upload state
+  // State for enhanced file upload
   const [fundFile, setFundFile] = useState(null);
   const [benchmarkFile, setBenchmarkFile] = useState(null);
   const [fundValidation, setFundValidation] = useState(null);
@@ -67,16 +67,18 @@ export default function MonthlySnapshotUpload() {
   const [validating, setValidating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState({ stage: '', progress: 0 });
+
+  // Missing state variables that are referenced
+  const [knownTickers, setKnownTickers] = useState(new Set());
+  const [benchmarkMap, setBenchmarkMap] = useState(new Map());
   const [toast, setToast] = useState(null);
   const [month, setMonth] = useState(''); // 1-12 as string
   const [year, setYear] = useState(''); // YYYY as string
   const [showConfirm, setShowConfirm] = useState(false);
-  const [knownTickers, setKnownTickers] = useState(new Set());
-  const [benchmarkMap, setBenchmarkMap] = useState(new Map());
-  const [uploadProgress, setUploadProgress] = useState({ stage: '', progress: 0 });
   const [activityLog, setActivityLog] = useState([]);
-  
-  // Legacy state variables (needed for backward compatibility)
+
+  // Legacy state variables
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState([]);
   const [counts, setCounts] = useState({ parsed: 0, willImport: 0, skipped: 0, eomWarnings: 0 });
@@ -119,7 +121,7 @@ export default function MonthlySnapshotUpload() {
     setValidating(true);
     try {
       const validation = await uploadValidator.validateCSVUpload(file, knownTickers, {
-        requireEOM: true,
+        requireEOM: false, // Don't require EOM since CSV files don't have dates
         allowMixed: false
       });
       
@@ -565,24 +567,32 @@ export default function MonthlySnapshotUpload() {
       if (hasFunds) {
         setUploadProgress({ stage: 'Uploading fund performance data...', progress: 30 });
         
-        const fundData = fundValidation.data.map(row => ({
-          fund_ticker: row._normalizedTicker,
-          date: pickerDate, // Override with picker date
-          ytd_return: dbUtils.parseMetricNumber(row.ytd_return),
-          one_year_return: dbUtils.parseMetricNumber(row.one_year_return),
-          three_year_return: dbUtils.parseMetricNumber(row.three_year_return),
-          five_year_return: dbUtils.parseMetricNumber(row.five_year_return),
-          ten_year_return: dbUtils.parseMetricNumber(row.ten_year_return),
-          sharpe_ratio: dbUtils.parseMetricNumber(row.sharpe_ratio),
-          standard_deviation_3y: dbUtils.parseMetricNumber(row.standard_deviation_3y),
-          standard_deviation_5y: dbUtils.parseMetricNumber(row.standard_deviation_5y),
-          expense_ratio: dbUtils.parseMetricNumber(row.expense_ratio),
-          alpha: dbUtils.parseMetricNumber(row.alpha),
-          beta: dbUtils.parseMetricNumber(row.beta),
-          manager_tenure: dbUtils.parseMetricNumber(row.manager_tenure),
-          up_capture_ratio: dbUtils.parseMetricNumber(row.up_capture_ratio),
-          down_capture_ratio: dbUtils.parseMetricNumber(row.down_capture_ratio)
-        }));
+        // Add date column to each row and normalize the data
+        const fundData = fundValidation.data.map(row => {
+          // Use normalized data if available, otherwise fall back to original
+          const normalizedRow = row._originalRow || row;
+          
+          return {
+            fund_ticker: row._normalizedTicker,
+            date: pickerDate, // Override with picker date
+            ytd_return: dbUtils.parseMetricNumber(normalizedRow.ytd_return),
+            one_year_return: dbUtils.parseMetricNumber(normalizedRow.one_year_return),
+            three_year_return: dbUtils.parseMetricNumber(normalizedRow.three_year_return),
+            five_year_return: dbUtils.parseMetricNumber(normalizedRow.five_year_return),
+            ten_year_return: dbUtils.parseMetricNumber(normalizedRow.ten_year_return),
+            sharpe_ratio: dbUtils.parseMetricNumber(normalizedRow.sharpe_ratio),
+            standard_deviation_3y: dbUtils.parseMetricNumber(normalizedRow.standard_deviation_3y),
+            standard_deviation_5y: dbUtils.parseMetricNumber(normalizedRow.standard_deviation_5y),
+            expense_ratio: dbUtils.parseMetricNumber(normalizedRow.expense_ratio),
+            alpha: dbUtils.parseMetricNumber(normalizedRow.alpha),
+            beta: dbUtils.parseMetricNumber(normalizedRow.beta),
+            manager_tenure: dbUtils.parseMetricNumber(normalizedRow.manager_tenure),
+            up_capture_ratio: dbUtils.parseMetricNumber(normalizedRow.up_capture_ratio),
+            down_capture_ratio: dbUtils.parseMetricNumber(normalizedRow.down_capture_ratio)
+          };
+        });
+
+        console.log('Fund data to import:', fundData.slice(0, 3)); // Log first 3 rows for debugging
 
         const { data: fundResult, error: fundError } = await supabase.rpc('upsert_fund_performance', { 
           csv_data: fundData 
@@ -598,23 +608,31 @@ export default function MonthlySnapshotUpload() {
       if (hasBenchmarks) {
         setUploadProgress({ stage: 'Uploading benchmark performance data...', progress: 60 });
         
-        const benchmarkData = benchmarkValidation.data.map(row => ({
-          benchmark_ticker: row._normalizedTicker,
-          date: pickerDate, // Override with picker date
-          ytd_return: dbUtils.parseMetricNumber(row.ytd_return),
-          one_year_return: dbUtils.parseMetricNumber(row.one_year_return),
-          three_year_return: dbUtils.parseMetricNumber(row.three_year_return),
-          five_year_return: dbUtils.parseMetricNumber(row.five_year_return),
-          ten_year_return: dbUtils.parseMetricNumber(row.ten_year_return),
-          sharpe_ratio: dbUtils.parseMetricNumber(row.sharpe_ratio),
-          standard_deviation_3y: dbUtils.parseMetricNumber(row.standard_deviation_3y),
-          standard_deviation_5y: dbUtils.parseMetricNumber(row.standard_deviation_5y),
-          expense_ratio: dbUtils.parseMetricNumber(row.expense_ratio),
-          alpha: dbUtils.parseMetricNumber(row.alpha),
-          beta: dbUtils.parseMetricNumber(row.beta),
-          up_capture_ratio: dbUtils.parseMetricNumber(row.up_capture_ratio),
-          down_capture_ratio: dbUtils.parseMetricNumber(row.down_capture_ratio)
-        }));
+        // Add date column to each row and normalize the data
+        const benchmarkData = benchmarkValidation.data.map(row => {
+          // Use normalized data if available, otherwise fall back to original
+          const normalizedRow = row._originalRow || row;
+          
+          return {
+            benchmark_ticker: row._normalizedTicker,
+            date: pickerDate, // Override with picker date
+            ytd_return: dbUtils.parseMetricNumber(normalizedRow.ytd_return),
+            one_year_return: dbUtils.parseMetricNumber(normalizedRow.one_year_return),
+            three_year_return: dbUtils.parseMetricNumber(normalizedRow.three_year_return),
+            five_year_return: dbUtils.parseMetricNumber(normalizedRow.five_year_return),
+            ten_year_return: dbUtils.parseMetricNumber(normalizedRow.ten_year_return),
+            sharpe_ratio: dbUtils.parseMetricNumber(normalizedRow.sharpe_ratio),
+            standard_deviation_3y: dbUtils.parseMetricNumber(normalizedRow.standard_deviation_3y),
+            standard_deviation_5y: dbUtils.parseMetricNumber(normalizedRow.standard_deviation_5y),
+            expense_ratio: dbUtils.parseMetricNumber(normalizedRow.expense_ratio),
+            alpha: dbUtils.parseMetricNumber(normalizedRow.alpha),
+            beta: dbUtils.parseMetricNumber(normalizedRow.beta),
+            up_capture_ratio: dbUtils.parseMetricNumber(normalizedRow.up_capture_ratio),
+            down_capture_ratio: dbUtils.parseMetricNumber(normalizedRow.down_capture_ratio)
+          };
+        });
+
+        console.log('Benchmark data to import:', benchmarkData.slice(0, 3)); // Log first 3 rows for debugging
 
         const { data: benchResult, error: benchError } = await supabase.rpc('upsert_benchmark_performance', { 
           csv_data: benchmarkData 
@@ -668,12 +686,26 @@ export default function MonthlySnapshotUpload() {
       }
 
       setUploadProgress({ stage: 'Complete', progress: 100 });
+      
+      // Check for warnings (e.g., benchmark import issues)
+      const warnings = [];
+      if (results.benchmarks && results.benchmarks.inserted === 0 && results.benchmarks.updated === 0 && results.benchmarks.errors === 0) {
+        warnings.push('Benchmark file processed but no benchmark tickers were recognized. Please check ticker symbols match existing benchmarks.');
+      }
+      if (results.funds && results.funds.errors > 0) {
+        warnings.push(`${results.funds.errors} fund records failed to import. Check for invalid data or duplicate entries.`);
+      }
+      if (results.benchmarks && results.benchmarks.errors > 0) {
+        warnings.push(`${results.benchmarks.errors} benchmark records failed to import. Check for invalid data or duplicate entries.`);
+      }
+      
       setResult({ 
-        success: true, 
+        success: totalSuccess > 0 || warnings.length === 0, 
         results, 
         totalSuccess, 
         totalFailed, 
-        uploadDate: pickerDate 
+        uploadDate: pickerDate,
+        warnings
       });
 
     } catch (error) {
@@ -811,96 +843,187 @@ export default function MonthlySnapshotUpload() {
         </div>
       </div>
 
-      {/* Step 2 */}
-      <div style={{ marginTop: 8, borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
-        <div style={{ fontWeight: 600, marginBottom: 8, display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
-          <span>2. Upload & preview</span>
-          <details>
-            <summary style={{ cursor:'pointer', color:'#1e40af' }}>Required/recommended columns</summary>
-            <div style={{ background:'#f8fafc', border:'1px solid #e5e7eb', borderRadius:6, padding:8, marginTop:8, fontSize:12 }}>
-              <div style={{ fontWeight:600, marginBottom:4 }}>Minimum</div>
-              <ul style={{ margin:0, paddingLeft:16 }}>
-                <li>Ticker</li>
-                <li>AsOfMonth is optional; Month/Year picker overrides dates</li>
-              </ul>
-              <div style={{ fontWeight:600, margin:'8px 0 4px' }}>Recommended metrics</div>
-              <ul style={{ margin:0, paddingLeft:16 }}>
-                <li>YTD, 1 Year, 3 Year, 5 Year (returns %)</li>
-                <li>Sharpe Ratio, Standard Deviation 3Y (risk)</li>
-                <li>Net Expense Ratio, Manager Tenure</li>
-              </ul>
-            </div>
-          </details>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-        <button onClick={handleDownloadTemplate} className="btn btn-secondary" title="Download a blank monthly snapshot CSV template">
-          Download CSV Template
-        </button>
-        <button onClick={handleDownloadLegacyTemplate} className="btn btn-link" title="Download legacy CSV template that includes AsOfMonth">
-          Legacy template (includes AsOfMonth)
-        </button>
-        <input type="file" accept=".csv,text/csv" onChange={handleFileChange} />
-        <button onClick={parseCsv} disabled={!file || parsing} className="btn btn-primary">
-          {parsing ? 'Parsing…' : 'Parse CSV'}
-        </button>
-        <button
-          onClick={async () => {
-            await loadSampleData();
-          }}
-          className="btn btn-secondary"
-          title="Load a small sample CSV to try the importer quickly"
-        >
-          Use sample data
-        </button>
-        {missingTickers.length > 0 && (
-          <button
-            onClick={async () => {
-              try {
-                const toSeed = missingTickers.slice(0);
-                if (toSeed.length === 0) return;
-                const res = await fundService.upsertMinimalFunds(toSeed);
-                console.log(`[Importer] Seeded ${res.count} funds.`);
-                // Refresh known tickers
-                const fundTickers = await fundService.listFundTickers();
-                setKnownTickers(new Set(fundTickers.map((t) => String(t || '').toUpperCase())));
-                // Recompute preview after seeding
-                setTimeout(() => {
-                  // re-trigger effect by nudging parsedRows
-                  setParsedRows(prev => prev.slice());
-                }, 0);
-              } catch (e) {
-                console.error('Seeding failed', e);
-                alert('Failed to seed missing funds. See console for details.');
-              }
-            }}
-            className="btn btn-secondary"
-            title={`Seed ${missingTickers.length} missing funds, then re-parse/import`}
-          >
-            Seed missing funds ({missingTickers.length})
-          </button>
-        )}
+      {/* Enhanced File Upload Section */}
+      <div style={{ marginTop: 16, borderTop: '1px solid #e5e7eb', paddingTop: 16 }}>
+        <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 16 }}>Enhanced File Upload & Validation</div>
+        <p style={{ color: '#6b7280', marginTop: 4, marginBottom: 16, fontSize: 14 }}>
+          Upload fund and/or benchmark performance data with automatic column mapping and validation.
+        </p>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          {/* Fund File Upload */}
+          <div style={{ padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+            <div style={{ fontWeight: 600, marginBottom: 8, color: '#374151' }}>📊 Fund Performance Data</div>
+            <input 
+              type="file" 
+              accept=".csv,text/csv" 
+              onChange={handleFundFileChange}
+              style={{ marginBottom: 8 }}
+            />
+            
+            {fundValidation && (
+              <div style={{ 
+                marginTop: 12, 
+                padding: 12, 
+                background: fundValidation.isValid ? '#f0fdf4' : '#fef2f2', 
+                border: `1px solid ${fundValidation.isValid ? '#22c55e' : '#ef4444'}`, 
+                borderRadius: 6 
+              }}>
+                <div style={{ fontWeight: 600, marginBottom: 8, color: fundValidation.isValid ? '#166534' : '#991b1b' }}>
+                  Fund File: {fundFile?.name} - {fundValidation.isValid ? 'Valid' : 'Invalid'}
+                </div>
+                
+                {fundValidation.columnMapping && (
+                  <details style={{ marginBottom: 8 }}>
+                    <summary style={{ cursor: 'pointer', color: fundValidation.isValid ? '#166534' : '#991b1b' }}>Column Mapping</summary>
+                    <div style={{ marginTop: 8, fontSize: 12 }}>
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>Mapped Columns:</div>
+                      <ul style={{ margin: 0, paddingLeft: 16 }}>
+                        {Object.entries(fundValidation.columnMapping.mapping).map(([header, mapping]) => (
+                          <li key={header}>
+                            <strong>{header}</strong> → {mapping.targetMetric} ({mapping.confidence})
+                          </li>
+                        ))}
+                      </ul>
+                      {fundValidation.columnMapping.unmapped.length > 0 && (
+                        <>
+                          <div style={{ fontWeight: 600, marginTop: 8, marginBottom: 4 }}>Unmapped Columns:</div>
+                          <ul style={{ margin: 0, paddingLeft: 16 }}>
+                            {fundValidation.columnMapping.unmapped.map(header => (
+                              <li key={header} style={{ color: '#6b7280' }}>{header}</li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                    </div>
+                  </details>
+                )}
+                
+                {fundValidation.errors.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4, color: '#991b1b' }}>Errors:</div>
+                    <ul style={{ margin: 0, paddingLeft: 16, color: '#991b1b' }}>
+                      {fundValidation.errors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {fundValidation.warnings.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4, color: '#92400e' }}>Warnings:</div>
+                    <ul style={{ margin: 0, paddingLeft: 16, color: '#92400e' }}>
+                      {fundValidation.warnings.map((warning, index) => (
+                        <li key={index}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {fundValidation.isValid && (
+                  <div style={{ marginTop: 8, color: '#166534' }}>
+                    <strong>✓ Ready to import {fundValidation.data?.length || 0} fund records</strong>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Benchmark File Upload */}
+          <div style={{ padding: 16, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+            <div style={{ fontWeight: 600, marginBottom: 8, color: '#374151' }}>📈 Benchmark Performance Data</div>
+            <input 
+              type="file" 
+              accept=".csv,text/csv" 
+              onChange={handleBenchmarkFileChange}
+              style={{ marginBottom: 8 }}
+            />
+            
+            {benchmarkValidation && (
+              <div style={{ 
+                marginTop: 12, 
+                padding: 12, 
+                background: benchmarkValidation.isValid ? '#f0fdf4' : '#fef2f2', 
+                border: `1px solid ${benchmarkValidation.isValid ? '#22c55e' : '#ef4444'}`, 
+                borderRadius: 6 
+              }}>
+                <div style={{ fontWeight: 600, marginBottom: 8, color: benchmarkValidation.isValid ? '#166534' : '#991b1b' }}>
+                  Benchmark File: {benchmarkFile?.name} - {benchmarkValidation.isValid ? 'Valid' : 'Invalid'}
+                </div>
+                
+                {benchmarkValidation.columnMapping && (
+                  <details style={{ marginBottom: 8 }}>
+                    <summary style={{ cursor: 'pointer', color: benchmarkValidation.isValid ? '#166534' : '#991b1b' }}>Column Mapping</summary>
+                    <div style={{ marginTop: 8, fontSize: 12 }}>
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>Mapped Columns:</div>
+                      <ul style={{ margin: 0, paddingLeft: 16 }}>
+                        {Object.entries(benchmarkValidation.columnMapping.mapping).map(([header, mapping]) => (
+                          <li key={header}>
+                            <strong>{header}</strong> → {mapping.targetMetric} ({mapping.confidence})
+                          </li>
+                        ))}
+                      </ul>
+                      {benchmarkValidation.columnMapping.unmapped.length > 0 && (
+                        <>
+                          <div style={{ fontWeight: 600, marginTop: 8, marginBottom: 4 }}>Unmapped Columns:</div>
+                          <ul style={{ margin: 0, paddingLeft: 16 }}>
+                            {benchmarkValidation.columnMapping.unmapped.map(header => (
+                              <li key={header} style={{ color: '#6b7280' }}>{header}</li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                    </div>
+                  </details>
+                )}
+                
+                {benchmarkValidation.errors.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4, color: '#991b1b' }}>Errors:</div>
+                    <ul style={{ margin: 0, paddingLeft: 16, color: '#991b1b' }}>
+                      {benchmarkValidation.errors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {benchmarkValidation.warnings.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4, color: '#92400e' }}>Warnings:</div>
+                    <ul style={{ margin: 0, paddingLeft: 16, color: '#92400e' }}>
+                      {benchmarkValidation.warnings.map((warning, index) => (
+                        <li key={index}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {benchmarkValidation.isValid && (
+                  <div style={{ marginTop: 8, color: '#166534' }}>
+                    <strong>✓ Ready to import {benchmarkValidation.data?.length || 0} benchmark records</strong>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Drag & drop zone */}
-        <div
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          style={{
-            marginTop: 8,
-            padding: '16px',
-            border: '2px dashed ' + (isDragging ? '#005EB8' : '#CBD5E1'),
-            background: isDragging ? '#EFF6FF' : '#F8FAFC',
-            borderRadius: 8,
-            color: '#334155',
-            textAlign: 'center'
-          }}
-        >
-          Drag & drop a CSV here, or use the file picker above
-          {file && (
-            <div style={{ marginTop: 6, fontSize: 12, color:'#64748b' }}>Selected: {file.name}</div>
-          )}
-        </div>
+        {/* Import Button */}
+        {((fundValidation?.isValid && fundValidation?.data?.length > 0) || 
+          (benchmarkValidation?.isValid && benchmarkValidation?.data?.length > 0)) && (
+          <div style={{ textAlign: 'center', marginTop: 16 }}>
+            <button 
+              onClick={performImport} 
+              disabled={importing} 
+              className="btn btn-primary"
+              style={{ fontSize: 16, padding: '12px 24px' }}
+            >
+              {importing ? 'Importing...' : 'Import Performance Data'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Step 3 */}
@@ -1113,10 +1236,33 @@ export default function MonthlySnapshotUpload() {
               </div>
             </div>
           ) : (
-            <div style={{ padding: 8, background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', borderRadius: 6 }}>
-              <div style={{ marginBottom: 6 }}>
-                Imported: {result.success}, Failed: {result.failed}. AsOfMonth: {result.months?.length === 1 ? result.months[0] : (result.months || []).join(', ')}
-              </div>
+            <div>
+              {/* Main result message */}
+              {result.warnings && result.warnings.length > 0 ? (
+                <div style={{ padding: 8, background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', borderRadius: 6, marginBottom: 8 }}>
+                  <div style={{ marginBottom: 6, fontWeight: 'bold' }}>⚠️ Import completed with warnings</div>
+                  <div style={{ marginBottom: 6 }}>
+                    Imported: {result.totalSuccess}, Failed: {result.totalFailed}. AsOfMonth: {result.uploadDate}
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>Warnings:</strong>
+                    <ul style={{ margin: 0, paddingLeft: 20 }}>
+                      {result.warnings.map((warning, index) => (
+                        <li key={index} style={{ marginBottom: 4 }}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: 8, background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', borderRadius: 6, marginBottom: 8 }}>
+                  <div style={{ marginBottom: 6, fontWeight: 'bold' }}>✅ Import successful!</div>
+                  <div style={{ marginBottom: 6 }}>
+                    Imported: {result.totalSuccess}, Failed: {result.totalFailed}. AsOfMonth: {result.uploadDate}
+                  </div>
+                </div>
+              )}
+              
+              {/* Action buttons */}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
                   className="btn btn-secondary"

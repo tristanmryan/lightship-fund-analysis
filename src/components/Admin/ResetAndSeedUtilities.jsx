@@ -1,6 +1,7 @@
 // src/components/Admin/ResetAndSeedUtilities.jsx
 import React, { useMemo, useState } from 'react';
 import DataHealth from './DataHealth';
+import RealDataImporter from './RealDataImporter';
 import Papa from 'papaparse';
 import { supabase, TABLES } from '../../services/supabase';
 import { buildCSV, downloadFile } from '../../services/exportService';
@@ -164,7 +165,7 @@ export default function ResetAndSeedUtilities() {
     }
   }
 
-  const [tab, setTab] = useState('seed');
+  const [tab, setTab] = useState('import');
   const [rcDate, setRcDate] = useState('');
   const [rcDry, setRcDry] = useState(null);
   const [professionalReset, setProfessionalReset] = useState({ inProgress: false, result: null });
@@ -175,10 +176,14 @@ export default function ResetAndSeedUtilities() {
         <p className="card-subtitle">Dangerous operations are disabled in production. Data Health is for dev-only diagnostics.</p>
       </div>
       <div style={{ display:'flex', gap:8, margin:'8px 0' }}>
+        <button className={`btn ${tab==='import'?'btn-primary':'btn-secondary'}`} onClick={()=>setTab('import')}>Real Data Import</button>
         <button className={`btn ${tab==='reset'?'btn-primary':'btn-secondary'}`} onClick={()=>setTab('reset')}>Professional Reset</button>
         <button className={`btn ${tab==='seed'?'btn-primary':'btn-secondary'}`} onClick={()=>setTab('seed')}>Seed</button>
         <button className={`btn ${tab==='health'?'btn-primary':'btn-secondary'}`} onClick={()=>setTab('health')}>Data Health</button>
       </div>
+      {tab === 'import' && (
+        <RealDataImporter />
+      )}
       {tab === 'reset' && (
         <ProfessionalResetTab professionalReset={professionalReset} setProfessionalReset={setProfessionalReset} />
       )}

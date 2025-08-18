@@ -167,11 +167,108 @@ export function exportToExcel(data) {
 }
 
 /**
- * Generate PDF report
+ * Generate PDF report with feature flag support for PDF v2
+ * @param {Object} data - Report data
+ * @param {Object} options - PDF generation options
+ * @returns {jsPDF|Blob} PDF document (jsPDF for v1, Blob for v2)
+ */
+export async function generatePDFReport(data, options = {}) {
+  // Check for PDF v2 feature flag
+  const envValue = process.env.REACT_APP_ENABLE_PDF_V2;
+  const usePdfV2 = envValue === 'true' || options.forceV2;
+  
+  // Debug logging
+  console.log('🔍 PDF Feature Flag Debug:', {
+    envValue,
+    usePdfV2,
+    forceV2: options.forceV2,
+    allEnv: Object.keys(process.env).filter(k => k.startsWith('REACT_APP_'))
+  });
+  
+  if (usePdfV2) {
+    try {
+      console.log('📊 Using PDF v2 (server-rendered)');
+      return await generatePDFReportV2(data, options);
+    } catch (error) {
+      console.warn('⚠️ PDF v2 failed, falling back to legacy PDF:', error);
+      // Fall back to legacy PDF
+      return await generatePDFReportLegacy(data);
+    }
+  } else {
+    console.log('📊 Using legacy PDF (client-side)');
+    return await generatePDFReportLegacy(data);
+  }
+}
+
+/**
+ * Generate PDF report using new server-side HTML-to-PDF pipeline (v2)
+ * @param {Object} data - Report data
+ * @param {Object} options - PDF generation options
+ * @returns {Blob} PDF blob
+ */
+export async function generatePDFReportV2(data, options = {}) {
+  const { funds, metadata } = data;
+
+  // Build payload for API
+  const payload = {
+    asOf: metadata?.asOf || window.__AS_OF_MONTH__ || null,
+    selection: {
+      scope: options.scope || 'all',
+      tickers: options.tickers || null
+    },
+    options: {
+      columns: options.columns || [
+        'ticker', 'name', 'asset_class', 'ytd_return', 'one_year_return',
+        'three_year_return', 'five_year_return', 'expense_ratio', 'sharpe_ratio',
+        'standard_deviation_3y', 'standard_deviation_5y', 'manager_tenure', 'is_recommended'
+      ],
+      brand: 'RJ',
+      locale: 'en-US',
+      landscape: options.landscape !== false, // Default to landscape
+      includeTOC: options.includeTOC !== false // Default to include TOC
+    }
+  };
+
+  console.log('🚀 Calling PDF v2 API with payload:', payload);
+
+  // Check if we're in development mode (localhost)
+  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  
+  if (isDevelopment) {
+    console.log('🔧 Development mode detected - using client-side PDF generation for now');
+    
+    // Import the client-side PDF generation as a fallback for development
+    const { generateClientSideProfessionalPDF } = await import('./clientPdfV2Service.js');
+    return await generateClientSideProfessionalPDF(data, options);
+  }
+
+  // Production: Call the serverless API  
+  const response = await fetch('/api/reports/monthly', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(`PDF v2 API failed: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`);
+  }
+
+  // Return the PDF blob
+  const blob = await response.blob();
+  console.log(`✅ PDF v2 generated successfully: ${blob.size} bytes`);
+
+  return blob;
+}
+
+/**
+ * Generate PDF report using legacy client-side jsPDF (v1)
  * @param {Object} data - Report data
  * @returns {jsPDF} PDF document
  */
-export function generatePDFReport(data) {
+export async function generatePDFReportLegacy(data) {
   const { funds, metadata } = data;
   
   // Prepare metadata for PDF
@@ -191,7 +288,7 @@ export function generatePDFReport(data) {
   // Lazy require to prevent jsdom canvas errors during tests
   // eslint-disable-next-line global-require
   const { generateMonthlyReport } = require('./pdfReportService');
-  return generateMonthlyReport({ funds, metadata: pdfMetadata });
+  return await generateMonthlyReport({ funds, metadata: pdfMetadata });
 }
 
 /**
@@ -763,6 +860,33 @@ export function downloadFile(content, filename, type = 'application/octet-stream
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Download PDF with support for both v1 (jsPDF) and v2 (Blob) formats
+ * @param {jsPDF|Blob} pdfResult - PDF result from either legacy or v2 system
+ * @param {string} filename - File name
+ */
+export function downloadPDF(pdfResult, filename) {
+  if (!pdfResult) {
+    throw new Error('No PDF result provided');
+  }
+  
+  // Handle jsPDF objects (legacy v1)
+  if (pdfResult.save && typeof pdfResult.save === 'function') {
+    console.log('📄 Downloading PDF v1 (jsPDF)');
+    pdfResult.save(filename);
+    return;
+  }
+  
+  // Handle Blob objects (v2)
+  if (pdfResult instanceof Blob) {
+    console.log('📄 Downloading PDF v2 (Blob)');
+    downloadFile(pdfResult, filename, 'application/pdf');
+    return;
+  }
+  
+  throw new Error('Unsupported PDF result type');
 }
 
 /**

@@ -21,6 +21,7 @@ import MethodologyDrawer from './components/Dashboard/MethodologyDrawer';
 import FundManagement from './components/Admin/FundManagement';
 import AssetClassTable from './components/Dashboard/AssetClassTable';
 import ComparisonPanel from './components/Dashboard/ComparisonPanel';
+import MonthlyReportButton from './components/Reports/MonthlyReportButton';
 import { 
   exportToExcel, 
   downloadFile
@@ -569,10 +570,14 @@ const App = () => {
             <p className="card-subtitle">Generate and download professional fund analysis reports</p>
           </div>
           
-          <div className="card">
+          {/* Enhanced Reports Section with PDF Export */}
+          <MonthlyReportButton />
+          
+          {/* Legacy Excel Export Option */}
+          <div className="card" style={{ marginTop: '1.5rem' }}>
             <div className="card-header">
-              <h3 className="card-title">Available Reports</h3>
-              <p className="card-subtitle">Export data in various formats for presentations and analysis</p>
+              <h3 className="card-title">Legacy Export Options</h3>
+              <p className="card-subtitle">Additional export formats for compatibility</p>
             </div>
             
             <div style={{ display: 'grid', gap: '1rem' }}>
