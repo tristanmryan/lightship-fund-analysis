@@ -285,43 +285,19 @@ module.exports = async function handler(req, res) {
     // Step 5: Launch Puppeteer and generate PDF
     console.log('🚀 Launching Chromium for PDF generation...');
     
-    // Configure Chromium for Vercel serverless environment
-    let chromiumArgs, chromiumViewport, executablePath;
+    // Use the proven working configuration for @sparticuz/chromium
+    const executablePath = await chromium.executablePath();
     
-    try {
-      // Use @sparticuz/chromium configuration with additional serverless-specific args
-      chromiumArgs = [
-        ...chromium.args,
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor'
-      ];
-      chromiumViewport = chromium.defaultViewport || { width: 1920, height: 1080 };
-      executablePath = await chromium.executablePath();
-      
-      console.log('✅ Chromium configuration prepared');
-      console.log('📍 Executable path:', executablePath ? 'Found' : 'Not found');
-      console.log('📋 Chromium args count:', chromiumArgs.length);
-    } catch (e) {
-      console.error('❌ Failed to configure Chromium:', e.message);
-      throw new Error(`Chromium configuration failed: ${e.message}`);
-    }
+    console.log('✅ Chromium configuration prepared');
+    console.log('📍 Executable path:', executablePath ? 'Found' : 'Not found');
+    console.log('📋 Using @sparticuz/chromium default args');
     
-    const browser = await (puppeteer.launch || puppeteer.default?.launch)({
-      args: chromiumArgs,
-      defaultViewport: chromiumViewport,
-      executablePath: executablePath,
-      headless: true,
-      ignoreHTTPSErrors: true,
-      timeout: 60000,
-      protocolTimeout: 60000
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath,
+      headless: chromium.headless,
+      ignoreHTTPSErrors: true
     });
     console.log('✅ Browser launched successfully');
 
