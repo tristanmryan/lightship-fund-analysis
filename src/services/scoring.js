@@ -17,6 +17,7 @@ import {
   getScoreColor as getScoreColorPolicy,
   getScoreLabel as getScoreLabelPolicy
 } from './scoringPolicy';
+import { METRIC_LABELS, METRIC_ORDER } from './metrics.js';
 
 /**
  * Core Scoring Engine for Lightship Fund Analysis
@@ -65,10 +66,10 @@ let METRIC_WEIGHTS = { ...DEFAULT_WEIGHTS };
 let CURRENT_WEIGHTS_RESOLVER = null;
   
   // Metric display names for reporting
-  const METRIC_LABELS = require('./metrics').METRIC_LABELS;
+  // import { METRIC_LABELS } from './metrics.js'; // Moved to top
 
   // Order of metrics for UI display
-export const METRIC_ORDER = require('./metrics').METRIC_ORDER;
+  // export { METRIC_ORDER } from './metrics.js'; // Moved to top
 
 // Load stored weights and set METRIC_WEIGHTS
 export async function loadMetricWeights() {

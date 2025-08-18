@@ -270,28 +270,41 @@ async function seedDatabase() {
       logProgress(i, 120, 'Creating funds');
     }
     
-    // Insert funds in batches with error handling
+    // Insert funds in batches with UPSERT logic to handle duplicates
     const fundBatchSize = 20;
     let successfulFunds = 0;
     
     for (let i = 0; i < fundInserts.length; i += fundBatchSize) {
       const batch = fundInserts.slice(i, i + fundBatchSize);
+      const batchNum = Math.floor(i / fundBatchSize) + 1;
+      const totalBatches = Math.ceil(fundInserts.length / fundBatchSize);
+      
+      console.log(`   Processing batch ${batchNum}/${totalBatches}: ${batch.length} funds`);
+      
       const { data, error: fundError } = await supabase
         .from('funds')
-        .insert(batch)
+        .upsert(batch, { 
+          onConflict: 'ticker',
+          ignoreDuplicates: false 
+        })
         .select();
       
       if (fundError) {
-        console.warn(`Fund batch error: ${fundError.message}`);
+        console.warn(`   ❌ Fund batch ${batchNum} error: ${fundError.message}`);
         // Try inserting individually to identify problematic records
         for (const fund of batch) {
           const { error: singleError } = await supabase
             .from('funds')
-            .insert([fund]);
+            .upsert([fund], { 
+              onConflict: 'ticker',
+              ignoreDuplicates: false 
+            });
           if (!singleError) successfulFunds++;
         }
       } else {
-        successfulFunds += data?.length || 0;
+        const insertedCount = data?.length || 0;
+        successfulFunds += insertedCount;
+        console.log(`   ✅ Fund batch ${batchNum} SUCCESS: ${insertedCount} funds upserted`);
       }
     }
     

@@ -83,7 +83,8 @@ module.exports = async function handler(req, res) {
     }
     
     try {
-      MonthlyReportPDF = require('../../src/reports/monthly/template/MonthlyReportPDF.js');
+      const MonthlyReportPDFModule = await import('../../src/reports/monthly/template/MonthlyReportPDF.js');
+      MonthlyReportPDF = MonthlyReportPDFModule.default;
       console.log('✅ React-PDF Monthly report template loaded');
     } catch (e) {
       console.error('❌ Failed to load MonthlyReportPDF:', e.message);
@@ -104,16 +105,53 @@ module.exports = async function handler(req, res) {
 
     // Step 2: Create React-PDF component
     console.log('⚛️ Creating React-PDF component...');
+    
+    // Enhanced component validation
+    console.log('🔍 Component creation details:', {
+      ReactAvailable: typeof React === 'function',
+      MonthlyReportPDFAvailable: typeof MonthlyReportPDF === 'function',
+      dataValid: !!shapedData,
+      dataKeys: Object.keys(shapedData || {}),
+      optionsValid: !!payload.options,
+      optionsKeys: Object.keys(payload.options || {})
+    });
+    
     const reportComponent = React.createElement(MonthlyReportPDF, {
       data: shapedData,
       options: payload.options || {}
     });
+    
     console.log('✅ React-PDF component created');
+    console.log('🔍 Component details:', {
+      componentType: typeof reportComponent,
+      hasProps: !!reportComponent.props,
+      propsKeys: Object.keys(reportComponent.props || {}),
+      childrenCount: reportComponent.props?.children?.length || 0
+    });
     
     // Step 3: Render to PDF buffer
     console.log('🖨️ Rendering PDF with React-PDF...');
-    const pdfBuffer = await renderToBuffer(reportComponent);
-    console.log(`✅ PDF generated successfully: ${pdfBuffer.length} bytes`);
+    
+    try {
+      console.log('🔄 Starting PDF rendering process...');
+      const pdfBuffer = await renderToBuffer(reportComponent);
+      console.log(`✅ PDF generated successfully: ${pdfBuffer.length} bytes`);
+      console.log('📊 Buffer details:', {
+        size: pdfBuffer.length,
+        sizeKB: (pdfBuffer.length / 1024).toFixed(2),
+        sizeMB: (pdfBuffer.length / (1024 * 1024)).toFixed(2)
+      });
+    } catch (renderError) {
+      console.error('❌ PDF rendering failed:', renderError.message);
+      console.error('❌ Render error details:', {
+        errorType: renderError.constructor.name,
+        errorStack: renderError.stack,
+        componentValid: !!reportComponent,
+        dataValid: !!shapedData,
+        renderToBufferAvailable: typeof renderToBuffer === 'function'
+      });
+      throw new Error(`PDF rendering failed: ${renderError.message}`);
+    }
 
     // Return PDF
     console.log('📤 Sending PDF response...');

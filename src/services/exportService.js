@@ -303,7 +303,7 @@ export async function generatePDFReportLegacy(data) {
 
   // Lazy require to prevent jsdom canvas errors during tests
   // eslint-disable-next-line global-require
-  const { generateMonthlyReport } = require('./pdfReportService');
+  const { generateMonthlyReport } = await import('./pdfReportService.js');
   return await generateMonthlyReport({ funds, metadata: pdfMetadata });
 }
 

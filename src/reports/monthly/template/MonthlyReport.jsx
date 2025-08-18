@@ -414,6 +414,6 @@ function truncateText(text, maxLength) {
   return text.substring(0, maxLength - 3) + '...';
 }
 
-// Export for both ES6 and CommonJS
-module.exports = { MonthlyReport };
-module.exports.MonthlyReport = MonthlyReport;
+// Export for ES6 modules
+export { MonthlyReport };
+export default MonthlyReport;
