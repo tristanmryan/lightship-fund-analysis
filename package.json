@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@sparticuz/chromium": "^123.0.1",
+    "@sparticuz/chromium": "^119.0.2",
     "@supabase/auth-helpers-react": "^0.5.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.53.0",
@@ -17,7 +17,7 @@
     "jspdf-autotable": "^3.5.31",
     "lucide-react": "^0.525.0",
     "papaparse": "^5.5.3",
-    "puppeteer-core": "^22.5.0",
+    "puppeteer-core": "^21.5.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^6.30.1",
