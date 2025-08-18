@@ -3,23 +3,7 @@
  * Uses React-PDF for high-performance PDF generation without Chromium
  */
 
-let z;
-
-// Payload validation schema
-const PayloadSchema = z.object({
-  asOf: z.string().nullable().optional(),
-  selection: z.object({
-    scope: z.enum(['all', 'recommended', 'tickers']),
-    tickers: z.array(z.string()).nullable().optional()
-  }),
-  options: z.object({
-    columns: z.array(z.string()).optional(),
-    brand: z.string().default('RJ'),
-    locale: z.string().default('en-US'),
-    landscape: z.boolean().default(true),
-    includeTOC: z.boolean().default(true)
-  }).optional()
-});
+// Payload validation schema will be defined after dynamic imports
 
 module.exports = async function handler(req, res) {
   // CORS headers
@@ -38,10 +22,6 @@ module.exports = async function handler(req, res) {
   try {
     console.log('🚀 Starting React-PDF generation process...');
     
-    // Validate payload
-    const payload = PayloadSchema.parse(req.body);
-    console.log('✅ Payload validated:', { scope: payload.selection?.scope, asOf: payload.asOf });
-    
     // Import all dependencies using dynamic import for ES module compatibility
     console.log('📦 Importing dependencies...');
     let z, renderToBuffer, React, shapeReportData, MonthlyReportPDF;
@@ -50,6 +30,23 @@ module.exports = async function handler(req, res) {
       const zodModule = await import('zod');
       z = zodModule.z;
       console.log('✅ Zod validation library loaded');
+      
+      // Define payload validation schema after Zod is loaded
+      const PayloadSchema = z.object({
+        asOf: z.string().nullable().optional(),
+        selection: z.object({
+          scope: z.enum(['all', 'recommended', 'tickers']),
+          tickers: z.array(z.string()).nullable().optional()
+        }),
+        options: z.object({
+          columns: z.array(z.string()).optional(),
+          brand: z.string().default('RJ'),
+          locale: z.string().default('en-US'),
+          landscape: z.boolean().default(true),
+          includeTOC: z.boolean().default(true)
+        }).optional()
+      });
+      
     } catch (e) {
       console.error('❌ Failed to load Zod:', e.message);
       throw new Error('Zod validation library unavailable');
@@ -93,6 +90,11 @@ module.exports = async function handler(req, res) {
       console.error('❌ Failed to load MonthlyReportPDF:', e.message);
       throw new Error('React-PDF template unavailable');
     }
+    
+    // Now validate payload after all dependencies are loaded
+    console.log('🔍 Validating request payload...');
+    const payload = PayloadSchema.parse(req.body);
+    console.log('✅ Payload validated:', { scope: payload.selection?.scope, asOf: payload.asOf });
     
     console.log(`📊 Processing PDF request: ${payload.selection.scope}, asOf: ${payload.asOf || 'latest'}`);
 
