@@ -83,8 +83,7 @@ module.exports = async function handler(req, res) {
     }
     
     try {
-      const reportTemplateModule = await import('../../src/reports/monthly/template/MonthlyReportPDF.js');
-      MonthlyReportPDF = reportTemplateModule.default;
+      MonthlyReportPDF = require('../../src/reports/monthly/template/MonthlyReportPDF.js');
       console.log('✅ React-PDF Monthly report template loaded');
     } catch (e) {
       console.error('❌ Failed to load MonthlyReportPDF:', e.message);
