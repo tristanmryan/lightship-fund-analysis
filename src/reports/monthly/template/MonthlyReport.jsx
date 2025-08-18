@@ -3,7 +3,7 @@
  * Renders professional-quality HTML for server-side PDF generation
  */
 
-import React from 'react';
+const React = require('react');
 
 /**
  * Main Monthly Report Component

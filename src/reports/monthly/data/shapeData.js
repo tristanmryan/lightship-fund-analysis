@@ -76,7 +76,6 @@ async function fetchFunds(selection, asOf) {
       ticker,
       name,
       asset_class,
-      asset_class_name,
       ytd_return,
       one_year_return,
       three_year_return,
@@ -172,7 +171,7 @@ function groupByAssetClass(funds) {
   const groups = {};
   
   funds.forEach(fund => {
-    const assetClass = fund.asset_class_name || fund.asset_class || 'Unassigned';
+    const assetClass = fund.asset_class || 'Unassigned';
     if (!groups[assetClass]) {
       groups[assetClass] = [];
     }
@@ -292,7 +291,7 @@ function prepareFundRow(fund, rank, totalInClass) {
   return {
     ticker: fund.ticker || '',
     name: fund.name || '',
-    assetClass: fund.asset_class_name || fund.asset_class || 'Unassigned',
+    assetClass: fund.asset_class || 'Unassigned',
     ytdReturn: formatPercentDisplay(fund.ytd_return),
     oneYearReturn: formatPercentDisplay(fund.one_year_return),
     threeYearReturn: formatPercentDisplay(fund.three_year_return),
