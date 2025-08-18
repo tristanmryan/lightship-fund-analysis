@@ -3,7 +3,7 @@
  * Renders professional-quality HTML for server-side PDF generation
  */
 
-const React = require('react');
+import React from 'react';
 
 /**
  * Main Monthly Report Component
@@ -415,5 +415,4 @@ function truncateText(text, maxLength) {
 }
 
 // Export for ES6 modules
-export { MonthlyReport };
 export default MonthlyReport;
