@@ -70,12 +70,161 @@ module.exports = async function handler(req, res) {
       console.log('✅ Monthly report template loaded');
     } catch (e) {
       console.error('❌ Failed to load MonthlyReport:', e.message);
-      // Use a simple fallback template
-      MonthlyReport = ({ data }) => React.createElement('div', null, 
-        React.createElement('h1', null, 'Raymond James Monthly Fund Analysis'),
-        React.createElement('p', null, `Report generated for ${data?.totalFunds || 0} funds`)
-      );
-      console.log('🔄 Using fallback template');
+      // Use a comprehensive fallback template
+      MonthlyReport = ({ data, options = {}, theme }) => {
+        const sections = data?.assetClassSections || [];
+        const metadata = data?.metadata || {};
+        
+        return React.createElement('div', { 
+          style: { fontFamily: 'Arial, sans-serif', margin: '0', padding: '20px' }
+        }, [
+          // Header
+          React.createElement('div', { 
+            key: 'header',
+            style: { 
+              borderBottom: '3px solid #0066cc', 
+              paddingBottom: '20px', 
+              marginBottom: '30px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }
+          }, [
+            React.createElement('div', { key: 'logo-section' }, [
+              React.createElement('h1', { 
+                key: 'title',
+                style: { 
+                  color: '#0066cc', 
+                  fontSize: '28px', 
+                  margin: '0 0 5px 0',
+                  fontWeight: 'bold'
+                }
+              }, 'Raymond James'),
+              React.createElement('h2', { 
+                key: 'subtitle',
+                style: { 
+                  color: '#333', 
+                  fontSize: '18px', 
+                  margin: '0',
+                  fontWeight: 'normal'
+                }
+              }, 'Monthly Fund Performance Analysis')
+            ]),
+            React.createElement('div', { 
+              key: 'date-section',
+              style: { textAlign: 'right', color: '#666' }
+            }, [
+              React.createElement('div', { key: 'date' }, `As of: ${data?.asOf || 'Latest'}`),
+              React.createElement('div', { key: 'generated' }, `Generated: ${new Date().toLocaleDateString()}`)
+            ])
+          ]),
+          
+          // Summary
+          React.createElement('div', { 
+            key: 'summary',
+            style: { 
+              backgroundColor: '#f8f9fa', 
+              padding: '20px', 
+              borderRadius: '8px',
+              marginBottom: '30px'
+            }
+          }, [
+            React.createElement('h3', { 
+              key: 'summary-title',
+              style: { margin: '0 0 15px 0', color: '#333' }
+            }, 'Portfolio Summary'),
+            React.createElement('div', { 
+              key: 'stats',
+              style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }
+            }, [
+              React.createElement('div', { key: 'total' }, `Total Funds: ${data?.totalFunds || 0}`),
+              React.createElement('div', { key: 'recommended' }, `Recommended: ${data?.recommendedCount || 0}`),
+              React.createElement('div', { key: 'classes' }, `Asset Classes: ${sections.length || 0}`)
+            ])
+          ]),
+          
+          // Asset Class Sections
+          ...sections.map((section, index) => 
+            React.createElement('div', {
+              key: `section-${index}`,
+              style: { 
+                marginBottom: '40px',
+                pageBreakInside: 'avoid'
+              }
+            }, [
+              React.createElement('h3', {
+                key: 'section-title',
+                style: { 
+                  backgroundColor: '#0066cc',
+                  color: 'white',
+                  padding: '12px 20px',
+                  margin: '0 0 20px 0',
+                  borderRadius: '4px'
+                }
+              }, section.assetClass || 'Unknown Asset Class'),
+              
+              React.createElement('table', {
+                key: 'funds-table',
+                style: { 
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  fontSize: '12px'
+                }
+              }, [
+                React.createElement('thead', { key: 'thead' }, 
+                  React.createElement('tr', { 
+                    style: { backgroundColor: '#f1f3f4' }
+                  }, [
+                    React.createElement('th', { key: 'ticker', style: { padding: '8px', textAlign: 'left', border: '1px solid #ddd' } }, 'Ticker'),
+                    React.createElement('th', { key: 'name', style: { padding: '8px', textAlign: 'left', border: '1px solid #ddd' } }, 'Fund Name'),
+                    React.createElement('th', { key: 'ytd', style: { padding: '8px', textAlign: 'right', border: '1px solid #ddd' } }, 'YTD'),
+                    React.createElement('th', { key: '1yr', style: { padding: '8px', textAlign: 'right', border: '1px solid #ddd' } }, '1 Year'),
+                    React.createElement('th', { key: '3yr', style: { padding: '8px', textAlign: 'right', border: '1px solid #ddd' } }, '3 Year'),
+                    React.createElement('th', { key: 'sharpe', style: { padding: '8px', textAlign: 'right', border: '1px solid #ddd' } }, 'Sharpe'),
+                    React.createElement('th', { key: 'rec', style: { padding: '8px', textAlign: 'center', border: '1px solid #ddd' } }, 'Rec.')
+                  ])
+                ),
+                React.createElement('tbody', { key: 'tbody' },
+                  (section.funds || []).map((fund, fIndex) =>
+                    React.createElement('tr', {
+                      key: `fund-${fIndex}`,
+                      style: { 
+                        backgroundColor: fund.isRecommended ? '#e8f5e8' : 'white',
+                        borderBottom: '1px solid #eee'
+                      }
+                    }, [
+                      React.createElement('td', { key: 'ticker', style: { padding: '6px 8px', border: '1px solid #ddd', fontWeight: 'bold' } }, fund.ticker || ''),
+                      React.createElement('td', { key: 'name', style: { padding: '6px 8px', border: '1px solid #ddd' } }, fund.name || ''),
+                      React.createElement('td', { key: 'ytd', style: { padding: '6px 8px', border: '1px solid #ddd', textAlign: 'right' } }, fund.ytdReturn || '—'),
+                      React.createElement('td', { key: '1yr', style: { padding: '6px 8px', border: '1px solid #ddd', textAlign: 'right' } }, fund.oneYearReturn || '—'),
+                      React.createElement('td', { key: '3yr', style: { padding: '6px 8px', border: '1px solid #ddd', textAlign: 'right' } }, fund.threeYearReturn || '—'),
+                      React.createElement('td', { key: 'sharpe', style: { padding: '6px 8px', border: '1px solid #ddd', textAlign: 'right' } }, fund.sharpeRatio || '—'),
+                      React.createElement('td', { key: 'rec', style: { padding: '6px 8px', border: '1px solid #ddd', textAlign: 'center' } }, fund.isRecommended ? '✓' : '')
+                    ])
+                  )
+                )
+              ])
+            ])
+          ),
+          
+          // Footer
+          React.createElement('div', {
+            key: 'footer',
+            style: { 
+              marginTop: '40px',
+              paddingTop: '20px',
+              borderTop: '1px solid #ddd',
+              fontSize: '10px',
+              color: '#666',
+              textAlign: 'center'
+            }
+          }, [
+            React.createElement('p', { key: 'disclaimer' }, 'This report is generated for informational purposes only. Past performance does not guarantee future results.'),
+            React.createElement('p', { key: 'contact' }, 'Raymond James Financial Services • Investment Committee Analysis')
+          ])
+        ]);
+      };
+      console.log('🔄 Using comprehensive fallback template');
     }
     
     try {

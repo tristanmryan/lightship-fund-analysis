@@ -70,37 +70,27 @@ async function resolveAsOfDate(asOf) {
  * Fetch funds based on selection criteria
  */
 async function fetchFunds(selection, asOf) {
-  let query = supabase
-    .from(TABLES.FUNDS)
-    .select(`
-      ticker,
-      name,
-      asset_class,
-      ytd_return,
-      one_year_return,
-      three_year_return,
-      five_year_return,
-      expense_ratio,
-      sharpe_ratio,
-      standard_deviation_3y,
-      standard_deviation_5y,
-      manager_tenure,
-      is_recommended,
-      score,
-      scores
-    `);
+  // Use the same RPC function that the main app uses to get funds with performance data
+  const dateOnly = asOf ? new Date(asOf + 'T00:00:00Z').toISOString().slice(0,10) : null;
+  const { data: allFunds, error } = await supabase.rpc('get_funds_as_of', { p_date: dateOnly });
+  
+  if (error) {
+    throw new Error(`Failed to fetch funds: ${error.message}`);
+  }
+  
+  let funds = allFunds || [];
   
   // Apply selection filters
   switch (selection.scope) {
     case 'recommended':
-      query = query.eq('is_recommended', true);
+      funds = funds.filter(fund => fund.is_recommended);
       break;
       
     case 'tickers':
       if (!selection.tickers || selection.tickers.length === 0) {
         throw new Error('Tickers must be provided when scope is "tickers"');
       }
-      query = query.in('ticker', selection.tickers);
+      funds = funds.filter(fund => selection.tickers.includes(fund.ticker));
       break;
       
     case 'all':
@@ -109,16 +99,14 @@ async function fetchFunds(selection, asOf) {
       break;
   }
   
-  // Add as-of month filter if available
-  const { data, error } = await query
-    .order('asset_class')
-    .order('ticker');
+  // Sort by asset class and ticker
+  funds.sort((a, b) => {
+    const assetCompare = (a.asset_class || '').localeCompare(b.asset_class || '');
+    if (assetCompare !== 0) return assetCompare;
+    return (a.ticker || '').localeCompare(b.ticker || '');
+  });
   
-  if (error) {
-    throw new Error(`Failed to fetch funds: ${error.message}`);
-  }
-  
-  return data || [];
+  return funds;
 }
 
 /**
@@ -171,7 +159,7 @@ function groupByAssetClass(funds) {
   const groups = {};
   
   funds.forEach(fund => {
-    const assetClass = fund.asset_class || 'Unassigned';
+    const assetClass = fund.asset_class_name || fund.asset_class || 'Unassigned';
     if (!groups[assetClass]) {
       groups[assetClass] = [];
     }
@@ -289,10 +277,10 @@ async function getBenchmarkPerformance(ticker, asOf) {
  */
 function prepareFundRow(fund, rank, totalInClass) {
   return {
-    ticker: fund.ticker || '',
-    name: fund.name || '',
-    assetClass: fund.asset_class || 'Unassigned',
-    ytdReturn: formatPercentDisplay(fund.ytd_return),
+          ticker: fund.ticker || '',
+      name: fund.name || '',
+      assetClass: fund.asset_class_name || fund.asset_class || 'Unassigned',
+      ytdReturn: formatPercentDisplay(fund.ytd_return),
     oneYearReturn: formatPercentDisplay(fund.one_year_return),
     threeYearReturn: formatPercentDisplay(fund.three_year_return),
     fiveYearReturn: formatPercentDisplay(fund.five_year_return),
