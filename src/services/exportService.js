@@ -235,11 +235,27 @@ export async function generatePDFReportV2(data, options = {}) {
   const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   
   if (isDevelopment) {
-    console.log('🔧 Development mode detected - using client-side PDF generation for now');
+    console.log('🔧 Development mode detected - testing serverless function first');
     
-    // Import the client-side PDF generation as a fallback for development
-    const { generateClientSideProfessionalPDF } = await import('./clientPdfV2Service.js');
-    return await generateClientSideProfessionalPDF(data, options);
+    // Try the advanced test endpoint first to verify serverless setup
+    try {
+      console.log('🧪 Testing advanced PDF endpoint...');
+      const testResponse = await fetch('/api/test-pdf-advanced', { method: 'GET' });
+      
+      if (testResponse.ok) {
+        console.log('✅ Serverless PDF system working! Using server-side generation...');
+        // If test works, proceed with real API call (fall through to production code)
+      } else {
+        throw new Error(`Test endpoint failed: ${testResponse.status}`);
+      }
+    } catch (testError) {
+      console.log('⚠️ Serverless function not available, using client-side fallback');
+      console.log('🔧 Using enhanced client-side PDF generation');
+      
+      // Import the client-side PDF generation as a fallback for development
+      const { generateClientSideProfessionalPDF } = await import('./clientPdfV2Service.js');
+      return await generateClientSideProfessionalPDF(data, options);
+    }
   }
 
   // Production: Call the serverless API  

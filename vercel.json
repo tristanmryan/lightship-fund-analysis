@@ -4,9 +4,14 @@
       "maxDuration": 30
     },
     "api/reports/monthly.js": {
-      "memory": 1024,
-      "maxDuration": 60,
-      "includeFiles": "src/reports/fonts/**"
+      "runtime": "nodejs18.x",
+      "memory": 3008,
+      "maxDuration": 300,
+      "includeFiles": "src/reports/fonts/**",
+      "environment": {
+        "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true",
+        "PUPPETEER_EXECUTABLE_PATH": "/opt/nodejs/node_modules/@sparticuz/chromium/bin"
+      }
     }
   },
   "headers": [
