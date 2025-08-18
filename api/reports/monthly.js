@@ -7,10 +7,10 @@ const { z } = require('zod');
 
 // Payload validation schema
 const PayloadSchema = z.object({
-  asOf: z.string().optional(),
+  asOf: z.string().nullable().optional(),
   selection: z.object({
     scope: z.enum(['all', 'recommended', 'tickers']),
-    tickers: z.array(z.string()).optional()
+    tickers: z.array(z.string()).nullable().optional()
   }),
   options: z.object({
     columns: z.array(z.string()).optional(),
