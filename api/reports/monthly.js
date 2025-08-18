@@ -289,8 +289,20 @@ module.exports = async function handler(req, res) {
     let chromiumArgs, chromiumViewport, executablePath;
     
     try {
-      // Use @sparticuz/chromium configuration
-      chromiumArgs = chromium.args || [];
+      // Use @sparticuz/chromium configuration with additional serverless-specific args
+      chromiumArgs = [
+        ...chromium.args,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+        '--disable-gpu',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor'
+      ];
       chromiumViewport = chromium.defaultViewport || { width: 1920, height: 1080 };
       executablePath = await chromium.executablePath();
       
@@ -307,7 +319,9 @@ module.exports = async function handler(req, res) {
       defaultViewport: chromiumViewport,
       executablePath: executablePath,
       headless: true,
-      ignoreHTTPSErrors: true
+      ignoreHTTPSErrors: true,
+      timeout: 60000,
+      protocolTimeout: 60000
     });
     console.log('✅ Browser launched successfully');
 
