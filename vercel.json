@@ -4,7 +4,6 @@
       "maxDuration": 30
     },
     "api/reports/monthly.js": {
-      "runtime": "nodejs18.x",
       "memory": 1024,
       "maxDuration": 60,
       "includeFiles": "src/reports/fonts/**"
