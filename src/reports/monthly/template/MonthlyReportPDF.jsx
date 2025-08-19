@@ -1,6 +1,7 @@
 /**
  * React-PDF Monthly Report Component
  * Professional Investment Committee PDF Reports with Raymond James Branding
+ * Optimized for Excel-like density and professional presentation
  */
 
 import React from 'react';
@@ -16,6 +17,7 @@ import {
   formatPercentDisplay, 
   formatNumberDisplay 
 } from '../shared/format.js';
+import assetClassGroups from '../../../data/assetClassGroups.js';
 
 // Register fonts for consistent rendering
 Font.register({
@@ -29,17 +31,17 @@ Font.register({
 
 // Raymond James Professional Color Scheme and Typography
 const styles = StyleSheet.create({
-  // Page layout
+  // Page layout - optimized for density
   page: {
     size: 'LETTER',
     orientation: 'landscape',
-    paddingTop: 45,
-    paddingRight: 40,
-    paddingBottom: 45,
-    paddingLeft: 40,
+    paddingTop: 35,
+    paddingRight: 30,
+    paddingBottom: 35,
+    paddingLeft: 30,
     fontFamily: 'Helvetica',
-    fontSize: 10,
-    lineHeight: 1.4,
+    fontSize: 8,
+    lineHeight: 1.2,
     color: '#1F2937'
   },
 
@@ -98,118 +100,75 @@ const styles = StyleSheet.create({
 
   metaLabel: {
     fontWeight: 600,
-    color: '#6B7280',
-    fontSize: 9
+    color: '#374151',
+    fontSize: 12
   },
 
   metaValue: {
-    fontWeight: 500,
-    color: '#1F2937',
-    fontSize: 10
-  },
-
-  summaryBox: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 24,
-    marginTop: 30,
-    maxWidth: 400
-  },
-
-  summaryGrid: {
-    display: 'flex',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-    marginTop: 16,
-    justifyContent: 'space-between'
-  },
-
-  summaryItem: {
-    textAlign: 'center',
-    flex: '0 0 45%'
-  },
-
-  metricValue: {
-    display: 'block',
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#002F6C',
-    lineHeight: 1.2
-  },
-
-  metricLabel: {
-    display: 'block',
-    fontSize: 9,
     color: '#6B7280',
-    marginTop: 4
+    fontSize: 11
   },
 
-  // Asset Class Sections
+  // Asset Class Section - compact layout
   assetClassSection: {
-    marginBottom: 32
+    marginBottom: 20
   },
 
   sectionHeader: {
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 16,
-    paddingBottom: 8,
-    borderBottomWidth: 2,
-    borderBottomColor: '#002F6C'
+    marginBottom: 12,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB'
   },
 
   assetClassTitle: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: 'bold',
-    color: '#002F6C'
+    color: '#002F6C',
+    marginBottom: 4
   },
 
   sectionMeta: {
-    fontSize: 9,
+    fontSize: 8,
     color: '#6B7280'
   },
 
   recommendedCount: {
     color: '#FFC200',
-    fontWeight: 500
+    fontWeight: '600'
   },
 
-  // Fund Tables
+  // Fund Table - Excel-like density
   fundTable: {
-    marginTop: 16,
-    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#D1D5DB'
+    borderColor: '#D1D5DB',
+    borderRadius: 2
   },
 
   tableHeader: {
     display: 'flex',
     flexDirection: 'row',
-    backgroundColor: '#4472C4',
-    borderBottomWidth: 2,
-    borderBottomColor: '#002F6C'
+    backgroundColor: '#1F2937',
+    borderBottomWidth: 1,
+    borderBottomColor: '#D1D5DB'
   },
 
   tableHeaderCell: {
-    color: '#FFFFFF',
-    padding: 8,
+    padding: 4,
     fontWeight: 'bold',
-    fontSize: 9,
+    fontSize: 7,
     textAlign: 'center',
     borderRightWidth: 1,
-    borderRightColor: '#D1D5DB'
+    borderRightColor: '#D1D5DB',
+    color: '#FFFFFF'
   },
 
   tableRow: {
     display: 'flex',
     flexDirection: 'row',
     borderBottomWidth: 0.5,
-    borderBottomColor: '#D1D5DB'
+    borderBottomColor: '#D1D5DB',
+    minHeight: 16
   },
 
   tableRowAlternate: {
@@ -226,16 +185,18 @@ const styles = StyleSheet.create({
     borderTopWidth: 2,
     borderTopColor: '#FFE69C',
     borderBottomWidth: 2,
-    borderBottomColor: '#FFE69C'
+    borderBottomColor: '#FFE69C',
+    fontWeight: 'bold'
   },
 
   tableCell: {
-    padding: 6,
-    fontSize: 9,
+    padding: 3,
+    fontSize: 7,
     borderRightWidth: 0.5,
     borderRightColor: '#D1D5DB',
     display: 'flex',
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'center'
   },
 
   tableCellBenchmark: {
@@ -243,19 +204,20 @@ const styles = StyleSheet.create({
     borderRightColor: '#FFE69C'
   },
 
-  // Column widths (based on current system)
-  colTicker: { width: 38, textAlign: 'center' },
-  colName: { width: 100, textAlign: 'left' },
-  colYtd: { width: 30, textAlign: 'right' },
-  col1y: { width: 30, textAlign: 'right' },
-  col3y: { width: 30, textAlign: 'right' },
-  col5y: { width: 30, textAlign: 'right' },
+  // Column widths - optimized for density and readability
+  colTicker: { width: 32, textAlign: 'center' },
+  colName: { width: 85, textAlign: 'left', justifyContent: 'flex-start' },
+  colYtd: { width: 28, textAlign: 'right' },
+  col1y: { width: 28, textAlign: 'right' },
+  col3y: { width: 28, textAlign: 'right' },
+  col5y: { width: 28, textAlign: 'right' },
+  colSharpe: { width: 30, textAlign: 'right' },
+  colStdDev3y: { width: 32, textAlign: 'right' },
+  colStdDev5y: { width: 32, textAlign: 'right' },
   colExpense: { width: 30, textAlign: 'right' },
-  colSharpe: { width: 35, textAlign: 'right' },
-  colScore: { width: 30, textAlign: 'right' },
-  colRank: { width: 30, textAlign: 'center' },
-  colTenure: { width: 35, textAlign: 'right' },
-  colRec: { width: 22, textAlign: 'center' },
+  colTenure: { width: 30, textAlign: 'right' },
+  colScore: { width: 28, textAlign: 'right' },
+  colRec: { width: 20, textAlign: 'center' },
 
   // Performance color coding
   rankExcellent: { backgroundColor: '#C6EFCE' },
@@ -276,21 +238,21 @@ const styles = StyleSheet.create({
 
   recommendedStar: {
     color: '#FFC200',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 'bold'
   },
 
   // Footer
   pageFooter: {
     position: 'absolute',
-    bottom: 20,
-    left: 40,
-    right: 40,
-    fontSize: 8,
+    bottom: 15,
+    left: 30,
+    right: 30,
+    fontSize: 7,
     color: '#9CA3AF',
     borderTopWidth: 0.5,
     borderTopColor: '#E5E7EB',
-    paddingTop: 8,
+    paddingTop: 6,
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -300,7 +262,7 @@ const styles = StyleSheet.create({
   footerLeft: {
     display: 'flex',
     flexDirection: 'column',
-    lineHeight: 1.3
+    lineHeight: 1.2
   },
 
   footerCenter: {
@@ -311,21 +273,21 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     display: 'flex',
     flexDirection: 'column',
-    lineHeight: 1.3
+    lineHeight: 1.2
   },
 
   // Header
   pageHeader: {
     position: 'absolute',
-    top: 16,
-    left: 40,
-    right: 40,
-    fontSize: 9,
+    top: 12,
+    left: 30,
+    right: 30,
+    fontSize: 8,
     color: '#6B7280',
     borderBottomWidth: 0.5,
     borderBottomColor: '#E5E7EB',
-    paddingBottom: 4,
-    marginBottom: 8,
+    paddingBottom: 3,
+    marginBottom: 6,
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -333,19 +295,19 @@ const styles = StyleSheet.create({
   },
 
   headerTitle: {
-    fontWeight: 500,
+    fontWeight: '500',
     color: '#002F6C'
   },
 
   headerDate: {
-    fontSize: 8,
+    fontSize: 7,
     color: '#9CA3AF'
   },
 
   // Disclaimer
   disclaimerSection: {
-    marginTop: 40,
-    padding: 24,
+    marginTop: 30,
+    padding: 20,
     backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: '#D1D5DB',
@@ -353,17 +315,17 @@ const styles = StyleSheet.create({
   },
 
   disclaimerContent: {
-    lineHeight: 1.5,
-    marginBottom: 12
+    lineHeight: 1.4,
+    marginBottom: 10
   },
 
   disclaimerFooter: {
-    marginTop: 20,
-    paddingTop: 16,
+    marginTop: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#D1D5DB',
     textAlign: 'center',
-    fontSize: 8,
+    fontSize: 7,
     color: '#9CA3AF'
   }
 });
@@ -373,6 +335,9 @@ const styles = StyleSheet.create({
  */
 function MonthlyReportPDF({ data, options = {} }) {
   const { sections, asOf, totalFunds, recommendedFunds } = data;
+  
+  // Sort sections by asset class order
+  const orderedSections = sortSectionsByAssetClassOrder(sections);
   
   return (
     <Document>
@@ -384,15 +349,18 @@ function MonthlyReportPDF({ data, options = {} }) {
         />
       </Page>
 
-      {/* Asset Class Sections */}
-      {sections.map((section, index) => (
-        <Page key={section.assetClass} size="LETTER" orientation="landscape" style={styles.page}>
+      {/* Asset Class Sections - Multiple per page for density */}
+      {groupSectionsForPages(orderedSections).map((pageSections, pageIndex) => (
+        <Page key={pageIndex} size="LETTER" orientation="landscape" style={styles.page}>
           <PageHeader asOf={asOf} />
-          <AssetClassSection 
-            section={section}
-            sectionNumber={index + 1}
-            isLastSection={index === sections.length - 1}
-          />
+          {pageSections.map((section, sectionIndex) => (
+            <AssetClassSection 
+              key={section.assetClass}
+              section={section}
+              sectionNumber={pageIndex * 3 + sectionIndex + 1}
+              isLastSection={pageIndex === groupSectionsForPages(orderedSections).length - 1 && sectionIndex === pageSections.length - 1}
+            />
+          ))}
           <PageFooter />
         </Page>
       ))}
@@ -405,6 +373,40 @@ function MonthlyReportPDF({ data, options = {} }) {
       </Page>
     </Document>
   );
+}
+
+/**
+ * Group sections for multiple asset classes per page
+ */
+function groupSectionsForPages(sections) {
+  const sectionsPerPage = 3; // Target 3 asset classes per page
+  const pages = [];
+  
+  for (let i = 0; i < sections.length; i += sectionsPerPage) {
+    pages.push(sections.slice(i, i + sectionsPerPage));
+  }
+  
+  return pages;
+}
+
+/**
+ * Sort sections by predefined asset class order
+ */
+function sortSectionsByAssetClassOrder(sections) {
+  const allAssetClasses = assetClassGroups.reduce((all, group) => {
+    return [...all, ...group.classes];
+  }, []);
+  
+  return sections.sort((a, b) => {
+    const aIndex = allAssetClasses.indexOf(a.assetClass);
+    const bIndex = allAssetClasses.indexOf(b.assetClass);
+    
+    if (aIndex === -1 && bIndex === -1) return 0;
+    if (aIndex === -1) return 1;
+    if (bIndex === -1) return -1;
+    
+    return aIndex - bIndex;
+  });
 }
 
 /**
@@ -546,7 +548,7 @@ function AssetClassSection({ section, sectionNumber, isLastSection }) {
 }
 
 /**
- * Fund Table Component
+ * Fund Table Component - Excel-like density with available data fields
  */
 function FundTable({ rows, benchmark, assetClass }) {
   const columns = [
@@ -556,11 +558,12 @@ function FundTable({ rows, benchmark, assetClass }) {
     { header: '1Y', dataKey: 'oneYearReturn', style: styles.col1y },
     { header: '3Y', dataKey: 'threeYearReturn', style: styles.col3y },
     { header: '5Y', dataKey: 'fiveYearReturn', style: styles.col5y },
-    { header: 'Expense', dataKey: 'expenseRatio', style: styles.colExpense },
     { header: 'Sharpe', dataKey: 'sharpeRatio', style: styles.colSharpe },
-    { header: 'Score', dataKey: 'score', style: styles.colScore },
-    { header: 'Rank', dataKey: 'rank', style: styles.colRank },
+    { header: '3Y Std Dev', dataKey: 'standardDeviation3y', style: styles.colStdDev3y },
+    { header: '5Y Std Dev', dataKey: 'standardDeviation5y', style: styles.colStdDev5y },
+    { header: 'Expense', dataKey: 'expenseRatio', style: styles.colExpense },
     { header: 'Tenure', dataKey: 'managerTenure', style: styles.colTenure },
+    { header: 'Score', dataKey: 'score', style: styles.colScore },
     { header: 'Rec', dataKey: 'isRecommended', style: styles.colRec }
   ];
 
@@ -604,7 +607,7 @@ function FundTable({ rows, benchmark, assetClass }) {
 }
 
 /**
- * Individual Fund Row Component
+ * Individual Fund Row Component - Compact layout
  */
 function FundRow({ row, index, columns }) {
   const isRecommended = row.isRecommended;
@@ -623,13 +626,20 @@ function FundRow({ row, index, columns }) {
         
         // Special handling for recommendation column
         if (col.dataKey === 'isRecommended') {
-          cellValue = isRecommended ? '★' : '';
+          cellValue = isRecommended ? '✓' : '';
         }
         
-        // Special handling for rank column with color coding
+        // Special handling for score column with color coding
         let cellStyles = [styles.tableCell, col.style];
-        if (col.dataKey === 'rank' && row.rank) {
-          cellStyles.push(getRankColor(row.rank));
+        if (col.dataKey === 'score' && row.score) {
+          const score = parseFloat(row.score);
+          if (!isNaN(score)) {
+            if (score >= 60) cellStyles.push(styles.rankExcellent);
+            else if (score >= 50) cellStyles.push(styles.rankGood);
+            else if (score >= 40) cellStyles.push(styles.rankAverage);
+            else if (score >= 30) cellStyles.push(styles.rankBelowAverage);
+            else cellStyles.push(styles.rankPoor);
+          }
         }
         
         // Last column - remove right border
@@ -641,9 +651,12 @@ function FundRow({ row, index, columns }) {
           <View key={col.dataKey} style={cellStyles}>
             <Text style={[
               col.style.textAlign === 'right' && styles.numericText,
-              col.dataKey === 'isRecommended' && isRecommended && styles.recommendedStar
+              col.dataKey === 'isRecommended' && isRecommended && styles.recommendedStar,
+              col.dataKey === 'ytdReturn' || col.dataKey === 'oneYearReturn' || 
+              col.dataKey === 'threeYearReturn' || col.dataKey === 'fiveYearReturn' ? 
+                getReturnColor(cellValue) : {}
             ]}>
-              {cellValue || ''}
+              {formatCellValue(cellValue, col.dataKey)}
             </Text>
           </View>
         );
@@ -653,7 +666,7 @@ function FundRow({ row, index, columns }) {
 }
 
 /**
- * Benchmark Row Component
+ * Benchmark Row Component - Professional highlighting
  */
 function BenchmarkRow({ benchmark, columns }) {
   return (
@@ -666,7 +679,7 @@ function BenchmarkRow({ benchmark, columns }) {
             cellValue = benchmark.ticker || '';
             break;
           case 'name':
-            cellValue = truncateText(benchmark.name || benchmark.ticker, 30);
+            cellValue = truncateText(benchmark.name || benchmark.ticker, 25);
             break;
           case 'ytdReturn':
             cellValue = benchmark.ytd_return ? formatPercent(benchmark.ytd_return) : 'N/A';
@@ -686,8 +699,13 @@ function BenchmarkRow({ benchmark, columns }) {
           case 'sharpeRatio':
             cellValue = benchmark.sharpe_ratio ? formatNumber(benchmark.sharpe_ratio, 2) : 'N/A';
             break;
+          case 'standardDeviation3y':
+            cellValue = benchmark.standard_deviation_3y ? formatPercent(benchmark.standard_deviation_3y) : 'N/A';
+            break;
+          case 'standardDeviation5y':
+            cellValue = benchmark.standard_deviation_5y ? formatPercent(benchmark.standard_deviation_5y) : 'N/A';
+            break;
           case 'score':
-          case 'rank':
           case 'managerTenure':
           case 'isRecommended':
             cellValue = '—';
@@ -776,10 +794,25 @@ function formatDate(dateStr) {
 }
 
 function formatPercent(value, decimals = 2) {
-  return formatPercentDisplay(value, decimals, true);
+  if (value === null || value === undefined || isNaN(value)) {
+    return 'N/A';
+  }
+  
+  // Handle percentage values that might already be formatted
+  let numValue = value;
+  if (typeof value === 'string') {
+    numValue = parseFloat(value.replace('%', ''));
+    if (isNaN(numValue)) return 'N/A';
+  }
+  
+  return formatPercentDisplay(numValue, decimals, true);
 }
 
 function formatNumber(value, decimals = 2) {
+  if (value === null || value === undefined || isNaN(value)) {
+    return 'N/A';
+  }
+  
   return formatNumberDisplay(value, decimals);
 }
 
@@ -805,21 +838,43 @@ function truncateText(text, maxLength) {
   return text.substring(0, maxLength - 3) + '...';
 }
 
-function getRankColor(rankStr) {
-  const rankMatch = rankStr.match(/^(\d+)\/(\d+)$/);
-  if (!rankMatch) return {};
+function getReturnColor(value) {
+  if (value === null || value === undefined || isNaN(value)) {
+    return {};
+  }
   
-  const rank = parseInt(rankMatch[1]);
-  const totalFunds = parseInt(rankMatch[2]);
-  if (rank <= 0 || totalFunds <= 0) return {};
+  // Handle percentage values that might already be formatted
+  let numValue = value;
+  if (typeof value === 'string') {
+    numValue = parseFloat(value.replace('%', ''));
+    if (isNaN(numValue)) return {};
+  }
   
-  const percentile = rank / totalFunds;
+  if (numValue > 0) {
+    return styles.positiveReturn;
+  } else if (numValue < 0) {
+    return styles.negativeReturn;
+  } else {
+    return styles.neutralReturn;
+  }
+}
+
+function formatCellValue(value, dataKey) {
+  if (!value && value !== 0) return '';
   
-  if (percentile <= 0.2) return styles.rankExcellent;
-  if (percentile <= 0.4) return styles.rankGood;
-  if (percentile <= 0.6) return styles.rankAverage;
-  if (percentile <= 0.8) return styles.rankBelowAverage;
-  return styles.rankPoor;
+  if (dataKey === 'ytdReturn' || dataKey === 'oneYearReturn' || 
+      dataKey === 'threeYearReturn' || dataKey === 'fiveYearReturn') {
+    return formatPercent(value);
+  } else if (dataKey === 'expenseRatio' || dataKey === 'standardDeviation3y' || 
+             dataKey === 'standardDeviation5y') {
+    return formatPercent(value);
+  } else if (dataKey === 'sharpeRatio' || dataKey === 'score') {
+    return formatNumber(value);
+  } else if (dataKey === 'managerTenure') {
+    return formatTenure(value);
+  } else {
+    return value;
+  }
 }
 
 export default MonthlyReportPDF;
