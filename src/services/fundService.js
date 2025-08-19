@@ -1,7 +1,7 @@
 // src/services/fundService.js
-import { supabase, TABLES, dbUtils, handleSupabaseError, toNumberStrict } from './supabase';
-import { resolveAssetClassForTicker } from './resolvers/assetClassResolver';
-import ychartsAPI from './ychartsAPI';
+import { supabase, TABLES, dbUtils, handleSupabaseError, toNumberStrict } from './supabase.js';
+import { resolveAssetClassForTicker } from './resolvers/assetClassResolver.js';
+import ychartsAPI from './ychartsAPI.js';
 
 class FundService {
   // expose supabase and TABLES for limited use in hooks/tests

@@ -1,5 +1,5 @@
 // src/services/resolvers/assetClassResolver.js
-import { supabase, TABLES } from '../supabase';
+import { supabase, TABLES } from '../supabase.js';
 
 const FLAG_SUPABASE_FIRST = (process.env.REACT_APP_RESOLVER_SUPABASE_FIRST || 'true') === 'true';
 const FLAG_LEGACY_SHIM = (process.env.REACT_APP_ENABLE_LEGACY_ASSETCLASS_SHIM || 'true') === 'true';

@@ -1,8 +1,8 @@
 // src/services/preferencesService.js
 // Small wrapper around IndexedDB preferences with per-user namespacing
 
-import authService from './authService';
-import { getPreference, savePreference } from './dataStore';
+import authService from './authService.js';
+import { getPreference, savePreference } from './dataStore.js';
 
 const isEnabled = () => (process.env.REACT_APP_ENABLE_SAVED_VIEWS ?? 'true') !== 'false';
 

@@ -5,7 +5,7 @@
 
 // Payload validation schema will be defined after dynamic imports
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -24,7 +24,7 @@ module.exports = async function handler(req, res) {
     
     // Import all dependencies using dynamic import for ES module compatibility
     console.log('📦 Importing dependencies...');
-    let z, renderToBuffer, React, shapeReportData, MonthlyReportPDF;
+    let z, renderToBuffer, React, shapeReportData, MonthlyReportPDF, PayloadSchema, pdfBuffer;
     
     try {
       const zodModule = await import('zod');
@@ -32,7 +32,7 @@ module.exports = async function handler(req, res) {
       console.log('✅ Zod validation library loaded');
       
       // Define payload validation schema after Zod is loaded
-      const PayloadSchema = z.object({
+      PayloadSchema = z.object({
         asOf: z.string().nullable().optional(),
         selection: z.object({
           scope: z.enum(['all', 'recommended', 'tickers']),
@@ -134,7 +134,7 @@ module.exports = async function handler(req, res) {
     
     try {
       console.log('🔄 Starting PDF rendering process...');
-      const pdfBuffer = await renderToBuffer(reportComponent);
+      pdfBuffer = await renderToBuffer(reportComponent);
       console.log(`✅ PDF generated successfully: ${pdfBuffer.length} bytes`);
       console.log('📊 Buffer details:', {
         size: pdfBuffer.length,

@@ -1,6 +1,6 @@
 // src/services/resolvers/index.js
-import { clearBenchmarkCache } from './benchmarkResolverClient';
-import { clearAssetClassResolverCaches } from './assetClassResolver';
+import { clearBenchmarkCache } from './benchmarkResolverClient.js';
+import { clearAssetClassResolverCaches } from './assetClassResolver.js';
 
 export function invalidateReferenceCaches() {
   clearBenchmarkCache();

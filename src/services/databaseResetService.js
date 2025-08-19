@@ -1,9 +1,9 @@
 // src/services/databaseResetService.js
 
-import { supabase, TABLES, isSupabaseStubbed } from './supabase';
-import { clearAllData as clearIndexedDB } from './dataStore';
-import fundRegistry from './fundRegistry';
-import { assetClassBenchmarks } from '../data/config';
+import { supabase, TABLES, isSupabaseStubbed } from './supabase.js';
+import { clearAllData as clearIndexedDB } from './dataStore.js';
+import fundRegistry from './fundRegistry.js';
+import { assetClassBenchmarks } from '../data/config.js';
 
 /**
  * Database Reset Service

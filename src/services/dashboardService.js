@@ -1,8 +1,8 @@
 // src/services/dashboardService.js
-import { supabase, TABLES } from './supabase';
-import fundService from './fundService';
-import { computeRuntimeScores, loadEffectiveWeightsResolver } from './scoring';
-import asOfStore from './asOfStore';
+import { supabase, TABLES } from './supabase.js';
+import fundService from './fundService.js';
+import { computeRuntimeScores, loadEffectiveWeightsResolver } from './scoring.js';
+import asOfStore from './asOfStore.js';
 
 // Utilities
 const toDateOnly = (d) => (typeof d === 'string' ? d.slice(0,10) : (d ? new Date(d).toISOString().slice(0,10) : null));

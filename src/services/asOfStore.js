@@ -1,5 +1,5 @@
 // src/services/asOfStore.js
-import { supabase, TABLES } from './supabase';
+import { supabase, TABLES } from './supabase.js';
 
 // Simple event-based store for As-Of state
 class AsOfStore {

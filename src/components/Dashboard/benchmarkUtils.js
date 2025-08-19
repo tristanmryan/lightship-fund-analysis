@@ -1,7 +1,7 @@
 // src/components/Dashboard/benchmarkUtils.js
 // Thin UI helper. Actual resolution uses resolver services (Supabase-first),
 // with optional config fallback under feature flags during migration.
-import { getPrimaryBenchmark, resolveAssetClass as resolveAssetClassViaResolver } from '../../services/resolvers/benchmarkResolverClient';
+import { getPrimaryBenchmark, resolveAssetClass as resolveAssetClassViaResolver } from '../../services/resolvers/benchmarkResolverClient.js';
 
 export function resolveAssetClass(fund) {
   return resolveAssetClassViaResolver(fund);

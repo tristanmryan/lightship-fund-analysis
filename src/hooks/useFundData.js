@@ -1,9 +1,9 @@
 // src/hooks/useFundData.js
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import fundService from '../services/fundService';
-import asOfStore from '../services/asOfStore';
-import ychartsAPI from '../services/ychartsAPI';
-import { computeRuntimeScores, loadEffectiveWeightsResolver } from '../services/scoring';
+import fundService from '../services/fundService.js';
+import asOfStore from '../services/asOfStore.js';
+import ychartsAPI from '../services/ychartsAPI.js';
+import { computeRuntimeScores, loadEffectiveWeightsResolver } from '../services/scoring.js';
 
 export function useFundData() {
   const [funds, setFunds] = useState([]);

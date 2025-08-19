@@ -1,8 +1,8 @@
 // src/services/scoring.js
 import { getConfig, saveConfig } from './dataStore.js';
 import { CONFIG_KEYS } from '../data/storage.js';
-import { buildWeightsResolver } from './resolvers/scoringWeightsResolver';
-import { calculateMean, calculateStdDev, calculateZScore, quantile, erf, erfinv } from './math';
+import { buildWeightsResolver } from './resolvers/scoringWeightsResolver.js';
+import { calculateMean, calculateStdDev, calculateZScore, quantile, erf, erfinv } from './math.js';
 import {
   isWinsorizationEnabled,
   isAdaptiveWinsorEnabled,
@@ -16,7 +16,7 @@ import {
   SCORE_BANDS,
   getScoreColor as getScoreColorPolicy,
   getScoreLabel as getScoreLabelPolicy
-} from './scoringPolicy';
+} from './scoringPolicy.js';
 import { METRIC_LABELS, METRIC_ORDER } from './metrics.js';
 
 /**
@@ -721,7 +721,7 @@ export async function loadEffectiveWeightsResolver() {
    * @param {number} score - Score value (0-100)
    * @returns {string} Color hex code
    */
-export { SCORE_BANDS } from './scoringPolicy';
+export { SCORE_BANDS } from './scoringPolicy.js';
 export function getScoreColor(score) { return getScoreColorPolicy(score); }
 export function getScoreLabel(score) { return getScoreLabelPolicy(score); }
   

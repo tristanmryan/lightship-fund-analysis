@@ -1,5 +1,5 @@
 // src/services/scoringProfilesService.js
-import { supabase, TABLES, dbUtils, handleSupabaseError } from './supabase';
+import { supabase, TABLES, dbUtils, handleSupabaseError } from './supabase.js';
 
 /**
  * Scoring Profiles Service

@@ -1,5 +1,5 @@
 // src/utils/dataFormatting.js
-import { getScoreLabel } from '../services/scoring';
+import { getScoreLabel } from '../services/scoring.js';
 
 /**
  * Utility functions for consistent data formatting and display

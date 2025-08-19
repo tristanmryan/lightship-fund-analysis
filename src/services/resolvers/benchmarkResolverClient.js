@@ -2,8 +2,8 @@
 // Lightweight client-facing resolver wrappers that use Supabase-first logic
 // with optional fallback to config during migration.
 
-import { supabase, TABLES } from '../supabase';
-import { assetClassBenchmarks as fallbackMap } from '../../data/config';
+import { supabase, TABLES } from '../supabase.js';
+import { assetClassBenchmarks as fallbackMap } from '../../data/config.js';
 
 const FLAG_SUPABASE_FIRST = (process.env.REACT_APP_RESOLVER_SUPABASE_FIRST || 'true') === 'true';
 const FLAG_CONFIG_FALLBACK = (process.env.REACT_APP_ENABLE_CONFIG_BENCHMARK_FALLBACK || 'true') === 'true';

@@ -1,7 +1,7 @@
 // src/services/resolvers/scoringWeightsResolver.js
-import scoringProfilesService from '../scoringProfilesService';
-import { dbUtils } from '../supabase';
-import { DEFAULT_WEIGHTS } from '../scoring';
+import scoringProfilesService from '../scoringProfilesService.js';
+import { dbUtils } from '../supabase.js';
+import { DEFAULT_WEIGHTS } from '../scoring.js';
 
 /**
  * Scoring Weights Resolver

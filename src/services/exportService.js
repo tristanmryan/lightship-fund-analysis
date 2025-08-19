@@ -1,7 +1,7 @@
 // src/services/exportService.js
 import * as XLSX from 'xlsx';
-import { toISODateTime } from '../utils/formatters';
-import { supabase, TABLES } from './supabase';
+import { toISODateTime } from '../utils/formatters.js';
+import { supabase, TABLES } from './supabase.js';
 // Avoid importing jsPDF/pdf generation in test/node by lazy-loading pdfReportService inside the function
 
 /**
@@ -829,7 +829,7 @@ export function exportCompareCSV({ funds = [], metadata = {} }) {
 export async function exportComparePDF({ funds = [], metadata = {} }) {
   try {
     // Lazy load PDF generation to avoid issues in test/node environments
-    const { generateComparePDF } = await import('../services/pdfReportService');
+    const { generateComparePDF } = await import('./pdfReportService.js');
     
     // Enhanced metadata for PDF generation
     const pdfData = {

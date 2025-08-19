@@ -1,6 +1,6 @@
 // src/hooks/useAssetClassOptions.js
 import { useEffect, useState } from 'react';
-import { supabase, TABLES } from '../services/supabase';
+import { supabase, TABLES } from '../services/supabase.js';
 
 export function useAssetClassOptions() {
   const [options, setOptions] = useState([]);

@@ -5,10 +5,10 @@
     },
     "api/reports/monthly.js": {
       "memory": 1024,
-      "maxDuration": 60,
-      "includeFiles": "src/reports/fonts/**"
+      "maxDuration": 60
     }
-  },
+  }
+,
   "headers": [
     {
       "source": "/api/(.*)",

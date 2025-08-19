@@ -1,6 +1,6 @@
 // src/services/researchNotesService.js
-import { supabase, TABLES, isSupabaseStubbed } from './supabase';
-import authService from './authService';
+import { supabase, TABLES, isSupabaseStubbed } from './supabase.js';
+import authService from './authService.js';
 
 const DECISIONS = ['approve','monitor','reject','hold'];
 
