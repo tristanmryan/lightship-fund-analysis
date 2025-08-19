@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     
     // Import all dependencies using dynamic import for ES module compatibility
     console.log('📦 Importing dependencies...');
-    let z, renderToBuffer, React, shapeReportData, MonthlyReportPDF;
+    let z, renderToBuffer, React, shapeReportData, MonthlyReportPDF, PayloadSchema;
     
     try {
       const zodModule = await import('zod');
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
       console.log('✅ Zod validation library loaded');
       
       // Define payload validation schema after Zod is loaded
-      const PayloadSchema = z.object({
+      PayloadSchema = z.object({
         asOf: z.string().nullable().optional(),
         selection: z.object({
           scope: z.enum(['all', 'recommended', 'tickers']),
