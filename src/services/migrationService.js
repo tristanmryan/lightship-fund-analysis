@@ -1,6 +1,6 @@
 // src/services/migrationService.js
-import { supabase, TABLES, dbUtils } from './supabase';
-import fundService from './fundService';
+import { supabase, TABLES, dbUtils } from './supabase.js';
+import fundService from './fundService.js';
 
 class MigrationService {
   // Check if migration is needed
@@ -38,7 +38,7 @@ class MigrationService {
   async checkIndexedDBData() {
     try {
       // Try to access IndexedDB data
-      const { getAllSnapshots } = await import('./dataStore');
+      const { getAllSnapshots } = await import('./dataStore.js');
       const snapshots = await getAllSnapshots();
       return snapshots && snapshots.length > 0;
     } catch (error) {
@@ -53,7 +53,7 @@ class MigrationService {
       console.log('Starting migration from IndexedDB to Supabase...');
 
       // Import IndexedDB services
-      const { getAllSnapshots, getConfig } = await import('./dataStore');
+      const { getAllSnapshots, getConfig } = await import('./dataStore.js');
 
       // Get all snapshots from IndexedDB
       const snapshots = await getAllSnapshots();

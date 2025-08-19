@@ -1,5 +1,5 @@
 // src/services/authService.js
-import { supabase, TABLES, handleSupabaseError } from './supabase';
+import { supabase, TABLES, handleSupabaseError } from './supabase.js';
 
 class AuthService {
   constructor() {

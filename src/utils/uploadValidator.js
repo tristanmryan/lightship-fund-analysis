@@ -5,7 +5,7 @@
  */
 
 import Papa from 'papaparse';
-import { dbUtils } from '../services/supabase';
+import { dbUtils } from '../services/supabase.js';
 
 // Constants for validation
 const FUND_REQUIRED_COLUMNS = ['fund_ticker', 'date'];
