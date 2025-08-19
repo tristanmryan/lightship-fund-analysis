@@ -167,11 +167,124 @@ export function exportToExcel(data) {
 }
 
 /**
- * Generate PDF report
+ * Generate PDF report with feature flag support for PDF v2
+ * @param {Object} data - Report data
+ * @param {Object} options - PDF generation options
+ * @returns {jsPDF|Blob} PDF document (jsPDF for v1, Blob for v2)
+ */
+export async function generatePDFReport(data, options = {}) {
+  // Check for PDF v2 feature flag
+  const envValue = process.env.REACT_APP_ENABLE_PDF_V2;
+  const usePdfV2 = envValue === 'true' || options.forceV2;
+  
+  // Debug logging
+  console.log('🔍 PDF Feature Flag Debug:', {
+    envValue,
+    usePdfV2,
+    forceV2: options.forceV2,
+    allEnv: Object.keys(process.env).filter(k => k.startsWith('REACT_APP_'))
+  });
+  
+  if (usePdfV2) {
+    try {
+      console.log('📊 Using PDF v2 (server-rendered)');
+      return await generatePDFReportV2(data, options);
+    } catch (error) {
+      console.warn('⚠️ PDF v2 failed, falling back to legacy PDF:', error);
+      // Fall back to legacy PDF
+      return await generatePDFReportLegacy(data);
+    }
+  } else {
+    console.log('📊 Using legacy PDF (client-side)');
+    return await generatePDFReportLegacy(data);
+  }
+}
+
+/**
+ * Generate PDF report using new server-side HTML-to-PDF pipeline (v2)
+ * @param {Object} data - Report data
+ * @param {Object} options - PDF generation options
+ * @returns {Blob} PDF blob
+ */
+export async function generatePDFReportV2(data, options = {}) {
+  const { funds, metadata } = data;
+
+  // Build payload for API
+  const payload = {
+    asOf: metadata?.asOf || window.__AS_OF_MONTH__ || null,
+    selection: {
+      scope: options.scope || 'all',
+      tickers: options.tickers || null
+    },
+    options: {
+      columns: options.columns || [
+        'ticker', 'name', 'asset_class', 'ytd_return', 'one_year_return',
+        'three_year_return', 'five_year_return', 'expense_ratio', 'sharpe_ratio',
+        'standard_deviation_3y', 'standard_deviation_5y', 'manager_tenure', 'is_recommended'
+      ],
+      brand: 'RJ',
+      locale: 'en-US',
+      landscape: options.landscape !== false, // Default to landscape
+      includeTOC: options.includeTOC !== false // Default to include TOC
+    }
+  };
+
+  console.log('🚀 Calling PDF v2 API with payload:', payload);
+
+  // Check if we're in development mode (localhost)
+  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  
+  if (isDevelopment) {
+    console.log('🔧 Development mode detected - testing serverless function first');
+    
+    // Try the advanced test endpoint first to verify serverless setup
+    try {
+      console.log('🧪 Testing advanced PDF endpoint...');
+      const testResponse = await fetch('/api/test-pdf-advanced', { method: 'GET' });
+      
+      if (testResponse.ok) {
+        console.log('✅ Serverless PDF system working! Using server-side generation...');
+        // If test works, proceed with real API call (fall through to production code)
+      } else {
+        throw new Error(`Test endpoint failed: ${testResponse.status}`);
+      }
+    } catch (testError) {
+      console.log('⚠️ Serverless function not available, using client-side fallback');
+      console.log('🔧 Using enhanced client-side PDF generation');
+      
+      // Import the client-side PDF generation as a fallback for development
+      const { generateClientSideProfessionalPDF } = await import('./clientPdfV2Service.js');
+      return await generateClientSideProfessionalPDF(data, options);
+    }
+  }
+
+  // Production: Call the serverless API  
+  const response = await fetch('/api/reports/monthly', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(`PDF v2 API failed: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`);
+  }
+
+  // Return the PDF blob
+  const blob = await response.blob();
+  console.log(`✅ PDF v2 generated successfully: ${blob.size} bytes`);
+
+  return blob;
+}
+
+/**
+ * Generate PDF report using legacy client-side jsPDF (v1)
  * @param {Object} data - Report data
  * @returns {jsPDF} PDF document
  */
-export function generatePDFReport(data) {
+export async function generatePDFReportLegacy(data) {
   const { funds, metadata } = data;
   
   // Prepare metadata for PDF
@@ -190,8 +303,8 @@ export function generatePDFReport(data) {
 
   // Lazy require to prevent jsdom canvas errors during tests
   // eslint-disable-next-line global-require
-  const { generateMonthlyReport } = require('./pdfReportService');
-  return generateMonthlyReport({ funds, metadata: pdfMetadata });
+  const { generateMonthlyReport } = await import('./pdfReportService.js');
+  return await generateMonthlyReport({ funds, metadata: pdfMetadata });
 }
 
 /**
@@ -622,19 +735,25 @@ export function exportTableCSV({ funds = [], columns = [], sortConfig = [], meta
 
 /**
  * Export the compare selection as CSV.
- * funds: array of fund-like objects; may include precomputed fields:
- *   exportDelta1y, exportBenchTicker, exportBenchName
+ * Enhanced version supporting mixed fund/benchmark selection and multiple delta calculations
+ * funds: array of fund-like objects from get_compare_dataset RPC
  */
 export function exportCompareCSV({ funds = [], metadata = {} }) {
   const headers = [
-    'Ticker', 'Name', 'Asset Class', 'Score',
-    'YTD', '1Y', '3Y', '5Y',
-    'Sharpe', 'Expense Ratio', 'Beta', 'Std Dev (3Y)', 'Std Dev (5Y)',
-    'Up Capture (3Y)', 'Down Capture (3Y)',
-    '1Y vs Benchmark (delta)', 'Benchmark Ticker', 'Benchmark Name'
+    'Ticker', 'Name', 'Type', 'Asset Class', 'Score', 'Percentile',
+    'YTD Return (%)', '1Y Return (%)', '3Y Return (%)', '5Y Return (%)', '10Y Return (%)',
+    'Sharpe Ratio', 'Expense Ratio (%)', 'Alpha', 'Beta', 
+    'Std Dev 3Y (%)', 'Std Dev 5Y (%)',
+    'Up Capture (%)', 'Down Capture (%)', 'Manager Tenure',
+    'YTD vs Benchmark (%)', '1Y vs Benchmark (%)', '3Y vs Benchmark (%)', '5Y vs Benchmark (%)',
+    'Benchmark Ticker', 'Benchmark Name', 'Peer Count'
   ];
 
-  const percentKeys = new Set(['YTD', '1Y', '3Y', '5Y', 'Expense Ratio', 'Up Capture (3Y)', 'Down Capture (3Y)', '1Y vs Benchmark (delta)']);
+  const percentKeys = new Set([
+    'YTD Return (%)', '1Y Return (%)', '3Y Return (%)', '5Y Return (%)', '10Y Return (%)',
+    'Expense Ratio (%)', 'Std Dev 3Y (%)', 'Std Dev 5Y (%)', 'Up Capture (%)', 'Down Capture (%)',
+    'YTD vs Benchmark (%)', '1Y vs Benchmark (%)', '3Y vs Benchmark (%)', '5Y vs Benchmark (%)'
+  ]);
 
   const get = (f, ...alts) => {
     for (const k of alts) {
@@ -645,30 +764,42 @@ export function exportCompareCSV({ funds = [], metadata = {} }) {
   };
 
   const metaRows = [
+    ['Fund Comparison Report'],
     ['Exported at', toISODateTime(metadata.exportedAt || new Date())],
-    ['Selected fund count', funds.length]
+    ['Selected items count', funds.length],
+    ['As of date', metadata.asOfDate || 'Latest'],
+    ['Benchmark comparison', metadata.benchmarkTicker || 'Asset class primary']
   ];
 
   const dataRows = funds.map(f => {
     const rowMap = {
-      'Ticker': get(f, 'Symbol', 'ticker', 'symbol') || '',
-      'Name': get(f, 'Fund Name', 'name') || '',
-      'Asset Class': get(f, 'asset_class_name', 'asset_class', 'Asset Class') || '',
-      'Score': get(f, 'scores')?.final ?? get(f, 'score') ?? '',
-      'YTD': get(f, 'ytd_return'),
-      '1Y': get(f, 'one_year_return', 'Total Return - 1 Year (%)'),
-      '3Y': get(f, 'three_year_return', 'Annualized Total Return - 3 Year (%)'),
-      '5Y': get(f, 'five_year_return', 'Annualized Total Return - 5 Year (%)'),
-      'Sharpe': get(f, 'sharpe_ratio', 'Sharpe Ratio - 3 Year'),
-      'Expense Ratio': get(f, 'expense_ratio', 'Net Exp Ratio (%)'),
+      'Ticker': get(f, 'ticker', 'Symbol', 'symbol') || '',
+      'Name': get(f, 'name', 'Fund Name') || '',
+      'Type': f.is_benchmark ? 'Benchmark' : 'Fund',
+      'Asset Class': get(f, 'asset_class', 'asset_class_name', 'Asset Class') || '',
+      'Score': !f.is_benchmark ? get(f, 'score_final', 'scores')?.final ?? get(f, 'score') : '',
+      'Percentile': !f.is_benchmark ? get(f, 'percentile') : '',
+      'YTD Return (%)': get(f, 'ytd_return'),
+      '1Y Return (%)': get(f, 'one_year_return', 'Total Return - 1 Year (%)'),
+      '3Y Return (%)': get(f, 'three_year_return', 'Annualized Total Return - 3 Year (%)'),
+      '5Y Return (%)': get(f, 'five_year_return', 'Annualized Total Return - 5 Year (%)'),
+      '10Y Return (%)': get(f, 'ten_year_return'),
+      'Sharpe Ratio': get(f, 'sharpe_ratio', 'Sharpe Ratio - 3 Year'),
+      'Expense Ratio (%)': get(f, 'expense_ratio', 'Net Exp Ratio (%)'),
+      'Alpha': get(f, 'alpha'),
       'Beta': get(f, 'beta', 'Beta - 5 Year'),
-      'Std Dev (3Y)': get(f, 'standard_deviation_3y'),
-      'Std Dev (5Y)': get(f, 'standard_deviation_5y'),
-      'Up Capture (3Y)': get(f, 'up_capture_ratio', 'Up Capture Ratio (Morningstar Standard) - 3 Year'),
-      'Down Capture (3Y)': get(f, 'down_capture_ratio', 'Down Capture Ratio (Morningstar Standard) - 3 Year'),
-      '1Y vs Benchmark (delta)': get(f, 'exportDelta1y'),
-      'Benchmark Ticker': get(f, 'exportBenchTicker'),
-      'Benchmark Name': get(f, 'exportBenchName')
+      'Std Dev 3Y (%)': get(f, 'standard_deviation_3y'),
+      'Std Dev 5Y (%)': get(f, 'standard_deviation_5y'),
+      'Up Capture (%)': get(f, 'up_capture_ratio', 'Up Capture Ratio (Morningstar Standard) - 3 Year'),
+      'Down Capture (%)': get(f, 'down_capture_ratio', 'Down Capture Ratio (Morningstar Standard) - 3 Year'),
+      'Manager Tenure': get(f, 'manager_tenure'),
+      'YTD vs Benchmark (%)': !f.is_benchmark ? get(f, 'delta_ytd') : '',
+      '1Y vs Benchmark (%)': !f.is_benchmark ? get(f, 'delta_1y', 'exportDelta1y') : '',
+      '3Y vs Benchmark (%)': !f.is_benchmark ? get(f, 'delta_3y') : '',
+      '5Y vs Benchmark (%)': !f.is_benchmark ? get(f, 'delta_5y') : '',
+      'Benchmark Ticker': get(f, 'benchmark_ticker', 'exportBenchTicker'),
+      'Benchmark Name': get(f, 'benchmark_name', 'exportBenchName'),
+      'Peer Count': get(f, 'peer_count')
     };
 
     return headers.map(h => {
@@ -689,6 +820,37 @@ export function exportCompareCSV({ funds = [], metadata = {} }) {
   ];
   const csv = buildCSV(rows);
   return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+}
+
+/**
+ * Export compare data as PDF report
+ * Enhanced for mixed fund/benchmark comparison with professional formatting
+ */
+export async function exportComparePDF({ funds = [], metadata = {} }) {
+  try {
+    // Lazy load PDF generation to avoid issues in test/node environments
+    const { generateComparePDF } = await import('../services/pdfReportService');
+    
+    // Enhanced metadata for PDF generation
+    const pdfData = {
+      funds,
+      metadata: {
+        ...metadata,
+        title: 'Fund & Benchmark Comparison Report',
+        subtitle: `Generated on ${new Date().toLocaleDateString()}`,
+        asOfDate: metadata.asOfDate || 'Latest',
+        benchmarkInfo: metadata.benchmarkTicker 
+          ? `Comparison vs ${metadata.benchmarkTicker}` 
+          : 'Comparison vs asset class primary benchmarks',
+        exportedAt: new Date()
+      }
+    };
+
+    return await generateComparePDF(pdfData);
+  } catch (error) {
+    console.error('Error generating compare PDF:', error);
+    throw new Error('Failed to generate PDF report');
+  }
 }
 
 /**
@@ -714,6 +876,33 @@ export function downloadFile(content, filename, type = 'application/octet-stream
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Download PDF with support for both v1 (jsPDF) and v2 (Blob) formats
+ * @param {jsPDF|Blob} pdfResult - PDF result from either legacy or v2 system
+ * @param {string} filename - File name
+ */
+export function downloadPDF(pdfResult, filename) {
+  if (!pdfResult) {
+    throw new Error('No PDF result provided');
+  }
+  
+  // Handle jsPDF objects (legacy v1)
+  if (pdfResult.save && typeof pdfResult.save === 'function') {
+    console.log('📄 Downloading PDF v1 (jsPDF)');
+    pdfResult.save(filename);
+    return;
+  }
+  
+  // Handle Blob objects (v2)
+  if (pdfResult instanceof Blob) {
+    console.log('📄 Downloading PDF v2 (Blob)');
+    downloadFile(pdfResult, filename, 'application/pdf');
+    return;
+  }
+  
+  throw new Error('Unsupported PDF result type');
 }
 
 /**
@@ -769,6 +958,109 @@ function getAssetClassSummary(funds) {
   });
   
   return summary;
+}
+
+/**
+ * Export Asset Class table data to CSV
+ * @param {Array} data - Asset class table data (funds + benchmark)
+ * @param {string} assetClassName - Name of the asset class
+ * @param {string} asOfDate - As of date for the data
+ */
+export function exportAssetClassTableCSV(data, assetClassName = 'Asset Class', asOfDate = null) {
+  try {
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      throw new Error('No data available to export');
+    }
+
+    // CSV headers
+    const headers = [
+      'Ticker',
+      'Name',
+      'Type',
+      'Score',
+      'Percentile',
+      'YTD Return (%)',
+      '1Y Return (%)',
+      '3Y Return (%)',
+      '5Y Return (%)',
+      '10Y Return (%)',
+      'Sharpe Ratio',
+      'Std Dev 3Y (%)',
+      'Std Dev 5Y (%)',
+      'Expense Ratio (%)',
+      'Alpha',
+      'Beta',
+      'Up Capture (%)',
+      'Down Capture (%)',
+      'Manager Tenure',
+      'Recommended'
+    ];
+
+    // Convert data to CSV rows
+    const csvRows = data.map(row => [
+      row.ticker || '',
+      row.name || '',
+      row.is_benchmark ? 'Benchmark' : 'Fund',
+      row.score_final != null && !row.is_benchmark ? row.score_final.toFixed(1) : '',
+      row.percentile != null && !row.is_benchmark ? row.percentile : '',
+      formatPercentForCSV(row.ytd_return),
+      formatPercentForCSV(row.one_year_return),
+      formatPercentForCSV(row.three_year_return),
+      formatPercentForCSV(row.five_year_return),
+      formatPercentForCSV(row.ten_year_return),
+      formatNumberForCSV(row.sharpe_ratio),
+      formatPercentForCSV(row.standard_deviation_3y),
+      formatPercentForCSV(row.standard_deviation_5y),
+      formatPercentForCSV(row.expense_ratio),
+      formatNumberForCSV(row.alpha),
+      formatNumberForCSV(row.beta),
+      formatPercentForCSV(row.up_capture_ratio),
+      formatPercentForCSV(row.down_capture_ratio),
+      formatNumberForCSV(row.manager_tenure),
+      row.is_recommended && !row.is_benchmark ? 'Yes' : 'No'
+    ]);
+
+    // Create CSV content
+    const csvContent = [
+      // Title row
+      [`${assetClassName} Performance Report`],
+      [`Generated: ${new Date().toLocaleString()}`],
+      [`As of: ${asOfDate || 'Latest'}`],
+      [], // Empty row
+      headers,
+      ...csvRows
+    ].map(row => row.map(cell => 
+      // Escape quotes and wrap in quotes if contains comma or quote
+      typeof cell === 'string' && (cell.includes(',') || cell.includes('"')) 
+        ? `"${cell.replace(/"/g, '""')}"` 
+        : cell
+    ).join(',')).join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const filename = `${assetClassName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+    downloadFile(blob, filename);
+
+  } catch (error) {
+    console.error('Error exporting asset class table CSV:', error);
+    throw new Error('Failed to export CSV data');
+  }
+}
+
+/**
+ * Format number for CSV export (return empty string for null/undefined)
+ */
+function formatNumberForCSV(value, decimals = 2) {
+  if (value == null || isNaN(value)) return '';
+  return Number(value).toFixed(decimals);
+}
+
+/**
+ * Format percentage for CSV export (return empty string for null/undefined)
+ */
+function formatPercentForCSV(value, decimals = 2) {
+  if (value == null || isNaN(value)) return '';
+  return Number(value).toFixed(decimals);
 }
 
 /**

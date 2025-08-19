@@ -1,0 +1,33 @@
+Asset Class,Assigned Benchmark,Chosen ETF Ticker,Benchmark Name
+Asset Allocation,Morningstar Mod Tgt Risk TR USD,AOM,iShares Moderate Allocation
+Convertible Bonds,Morningstar Mod Tgt Risk TR USD,CWB,Bloomberg Convertible Index
+Emerging Markets,ACWI ex USA,ACWX,MSCI All Country World ex U.S.
+Foreign Bonds,Global Aggregate,BNDW,Vanguard Total World Bond Index
+Hedged/Enhanced,HFRI Fund Weighted Composite Index,QAI,IQ Hedge Multi-Strat Index
+High Yield Bonds,U.S. Aggregate,AGG,U.S. Aggregate Bond Index
+High Yield Muni,Municipal Bond: High Yield,HYD,VanEck High Yield Muni Index
+Intermediate Muni,Municipal Bond: 7 Year (6-8),ITM,VanEck Intermediate Muni Index
+Intermediate Term Bonds,U.S. Aggregate,AGG,U.S. Aggregate Bond Index
+International Stock (Small/Mid Cap),EAFE,SCZ,MSCI EAFE Small-Cap Index
+International Stock (Large Cap),EAFE,EFA,MSCI EAFE Index
+Large Cap Blend,Russell 1000,IWB,Russell 1000
+Large Cap Growth,Russell 1000 Growth,IWF,Russell 1000 Growth
+Large Cap Value,Russell 1000 Value,IWD,Russell 1000 Value
+Long/Short,HFRI Fund Weighted Composite Index,QAI,IQ Hedge Multi-Strat Index
+Mass Muni Bonds,Municipal Bond: 7 Year (6-8),ITM,VanEck Intermediate Muni Index
+Mid-Cap Blend,Russell Midcap,IWR,Russell Midcap Index
+Mid-Cap Growth,Russell Midcap Growth,IWP,Russell Midcap Growth Index
+Mid-Cap Value,Russell Midcap Value,IWS,Russell Midcap Value Index
+Money Market,ICE BofA US 3-Month T-Bill Index,BIL,Bloomberg 1-3 Month T-Bill Index
+Multi Sector Bonds,U.S. Aggregate,AGG,U.S. Aggregate Bond Index
+Multi-Asset Income,Morningstar Mod Tgt Risk TR USD,AOM,iShares Moderate Allocation
+Non-Traditional Bonds,U.S. Aggregate,AGG,U.S. Aggregate Bond Index
+Preferred Stock,U.S. Aggregate,PGX,Invesco Preferred Index
+Real Estate,Dow Jones Global Select RE Securities Index,RWO,Dow Jones Global Real Estate Index
+Sector Funds,S&P 500,SPY,S&P 500 Index
+Short Term Bonds,1-3 Yr Gov/Credit,BSV,Vanguard Short-Term Bond Index
+Short Term Muni,Municipal Bond: 3 Year (2-4),SUB,iShares Short-Term Muni Index
+Small Cap Core,Russell 2000,VTWO,Russell 2000
+Small Cap Growth,Russell 2000 Growth,IWO,Russell 2000 Growth
+Small Cap Value,Russell 2000 Value,IWN,Russell 2000 Value
+Tactical,Morningstar Mod Tgt Risk TR USD,AOR,iShares Core Growth Allocation ETF

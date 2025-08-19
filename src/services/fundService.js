@@ -761,6 +761,107 @@ class FundService {
       return [];
     }
   }
+
+  // Get asset class table data with optional benchmark row
+  async getAssetClassTable(asOfDate, assetClassId, includeBenchmark = true) {
+    try {
+      const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
+      const dateOnly = asOf ? asOf.toISOString().slice(0, 10) : null;
+      const { data, error } = await supabase.rpc('get_asset_class_table', {
+        p_date: dateOnly,
+        p_asset_class_id: assetClassId,
+        p_include_benchmark: !!includeBenchmark
+      });
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      handleSupabaseError(error, 'getAssetClassTable');
+      return [];
+    }
+  }
+
+  // Get scores for asset class with pagination
+  async getScoresAsOf(asOfDate, assetClassId, limit = 500, after = null) {
+    try {
+      const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
+      const dateOnly = asOf ? asOf.toISOString().slice(0, 10) : null;
+      const { data, error } = await supabase.rpc('get_scores_as_of', {
+        p_date: dateOnly,
+        p_asset_class_id: assetClassId,
+        p_limit: limit,
+        p_after: after
+      });
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      handleSupabaseError(error, 'getScoresAsOf');
+      return [];
+    }
+  }
+
+  // Get batched history for multiple tickers (eliminates N+1 queries)
+  async getHistoryForTickers(tickers, asOfDate = null) {
+    try {
+      const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
+      const dateOnly = asOf ? asOf.toISOString().slice(0, 10) : null;
+      const { data, error } = await supabase.rpc('get_history_for_tickers', {
+        p_tickers: tickers || [],
+        p_to: dateOnly
+      });
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      handleSupabaseError(error, 'getHistoryForTickers');
+      return [];
+    }
+  }
+
+  // Get comparison dataset using enhanced RPC
+  async getCompareDataset(asOfDate = null, tickers = [], benchmarkTicker = null) {
+    try {
+      const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
+      const dateOnly = asOf ? asOf.toISOString().slice(0, 10) : null;
+      
+      const params = {
+        p_date: dateOnly,
+        p_tickers: tickers
+      };
+
+      // Use the version with benchmark parameter if available
+      if (benchmarkTicker) {
+        params.p_benchmark_ticker = benchmarkTicker;
+        const { data, error } = await supabase.rpc('get_compare_dataset', params);
+        if (error) throw error;
+        return data || [];
+      } else {
+        // Use backwards compatible version
+        const { data, error } = await supabase.rpc('get_compare_dataset', {
+          p_date: dateOnly,
+          p_tickers: tickers
+        });
+        if (error) throw error;
+        return data || [];
+      }
+    } catch (error) {
+      handleSupabaseError(error, 'getCompareDataset');
+      return [];
+    }
+  }
+
+  // Get all benchmarks for selection
+  async getAllBenchmarks() {
+    try {
+      const { data, error } = await supabase
+        .from(TABLES.BENCHMARKS)
+        .select('ticker, name, proxy_type')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      handleSupabaseError(error, 'getAllBenchmarks');
+      return [];
+    }
+  }
 }
 
 // Create singleton instance

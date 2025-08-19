@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@react-pdf/renderer": "^4.3.0",
+    "@sparticuz/chromium": "^119.0.2",
     "@supabase/auth-helpers-react": "^0.5.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.53.0",
@@ -10,11 +12,13 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
+    "cross-env": "^10.0.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.5.31",
     "lucide-react": "^0.525.0",
     "papaparse": "^5.5.3",
+    "puppeteer-core": "^21.5.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^6.30.1",
@@ -22,7 +26,7 @@
     "string-similarity": "^4.0.4",
     "web-vitals": "^2.1.4",
     "xlsx": "^0.18.5",
-    "cross-env": "^10.0.0"
+    "zod": "^3.23.8"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -31,7 +35,13 @@
     "test:ci": "cross-env CI=true react-scripts test --watchAll=false --runInBand --silent",
     "eject": "react-scripts eject",
     "process-data": "node scripts/buildData.mjs",
-    "setup": "node scripts/setup.js"
+    "setup": "node scripts/setup.js",
+    "seed": "node seeds/seed.js",
+    "verify": "node seeds/verify.js",
+    "cleanup": "node scripts/cleanup-database.js",
+    "test-es-modules": "node test-es-module-imports.js",
+    "bench": "node bench/bench.js",
+    "bench:full": "npm run bench -- --mode=both --concurrency=5,1"
   },
   "eslintConfig": {
     "extends": [
@@ -50,6 +60,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "devDependencies": {}
+  }
 }

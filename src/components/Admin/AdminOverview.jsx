@@ -3,7 +3,7 @@ import asOfStore from '../../services/asOfStore';
 import { supabase, TABLES } from '../../services/supabase';
 import fundService from '../../services/fundService';
 import { exportRecommendedFundsCSV, exportPrimaryBenchmarkMappingCSV, exportTableCSV } from '../../services/exportService';
-import { generatePDFReport } from '../../services/exportService';
+import { generatePDFReport, downloadPDF } from '../../services/exportService';
 
 export default function AdminOverview({ onNavigate = () => {} }) {
   const [loading, setLoading] = useState(true);
@@ -152,10 +152,10 @@ export default function AdminOverview({ onNavigate = () => {} }) {
                         return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
                       })()
                     };
-                    const pdf = generatePDFReport({ funds: funds || [], metadata });
+                    const pdf = await generatePDFReport({ funds: funds || [], metadata });
                     const { formatExportFilename } = await import('../../services/exportService');
                     const name = formatExportFilename({ scope: 'admin_pdf_all', ext: 'pdf' });
-                    pdf.save(name);
+                    downloadPDF(pdf, name);
                   } catch (e) { console.error('PDF export failed', e); }
                 }}>All funds (PDF)</button>
               </div>

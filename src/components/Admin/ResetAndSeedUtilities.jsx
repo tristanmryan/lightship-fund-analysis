@@ -1,9 +1,11 @@
 // src/components/Admin/ResetAndSeedUtilities.jsx
 import React, { useMemo, useState } from 'react';
 import DataHealth from './DataHealth';
+import RealDataImporter from './RealDataImporter';
 import Papa from 'papaparse';
 import { supabase, TABLES } from '../../services/supabase';
 import { buildCSV, downloadFile } from '../../services/exportService';
+import databaseResetService from '../../services/databaseResetService';
 
 export default function ResetAndSeedUtilities() {
   const isProd = process.env.NODE_ENV === 'production';
@@ -163,9 +165,10 @@ export default function ResetAndSeedUtilities() {
     }
   }
 
-  const [tab, setTab] = useState('seed');
+  const [tab, setTab] = useState('import');
   const [rcDate, setRcDate] = useState('');
   const [rcDry, setRcDry] = useState(null);
+  const [professionalReset, setProfessionalReset] = useState({ inProgress: false, result: null });
   return (
     <div className="card" style={{ padding: 16, marginTop: 16 }}>
       <div className="card-header">
@@ -173,9 +176,17 @@ export default function ResetAndSeedUtilities() {
         <p className="card-subtitle">Dangerous operations are disabled in production. Data Health is for dev-only diagnostics.</p>
       </div>
       <div style={{ display:'flex', gap:8, margin:'8px 0' }}>
+        <button className={`btn ${tab==='import'?'btn-primary':'btn-secondary'}`} onClick={()=>setTab('import')}>Real Data Import</button>
+        <button className={`btn ${tab==='reset'?'btn-primary':'btn-secondary'}`} onClick={()=>setTab('reset')}>Professional Reset</button>
         <button className={`btn ${tab==='seed'?'btn-primary':'btn-secondary'}`} onClick={()=>setTab('seed')}>Seed</button>
         <button className={`btn ${tab==='health'?'btn-primary':'btn-secondary'}`} onClick={()=>setTab('health')}>Data Health</button>
       </div>
+      {tab === 'import' && (
+        <RealDataImporter />
+      )}
+      {tab === 'reset' && (
+        <ProfessionalResetTab professionalReset={professionalReset} setProfessionalReset={setProfessionalReset} />
+      )}
       {tab === 'health' && (
         <DataHealth />
       )}
@@ -307,6 +318,167 @@ export default function ResetAndSeedUtilities() {
         )}
       </div>
       )}
+    </div>
+  );
+}
+
+function ProfessionalResetTab({ professionalReset, setProfessionalReset }) {
+  const isProd = process.env.NODE_ENV === 'production';
+
+  const handleProfessionalReset = async () => {
+    const confirmText = 'PROFESSIONAL RESET';
+    const userInput = window.prompt(
+      `WARNING: This will clear all sample data while preserving asset class groups, benchmark mappings, and scoring weights.\n\nType "${confirmText}" to confirm:`
+    );
+
+    if (userInput !== confirmText) {
+      return;
+    }
+
+    setProfessionalReset({ inProgress: true, result: null });
+
+    try {
+      const result = await databaseResetService.performProfessionalReset();
+      setProfessionalReset({ inProgress: false, result });
+    } catch (error) {
+      setProfessionalReset({ 
+        inProgress: false, 
+        result: { 
+          success: false, 
+          errors: [error.message],
+          completed: new Date().toISOString()
+        }
+      });
+    }
+  };
+
+  return (
+    <div>
+      {/* Professional Reset Section */}
+      <div className="card" style={{ 
+        padding: '1.5rem', 
+        marginBottom: '1rem',
+        border: '2px solid #3b82f6',
+        backgroundColor: '#eff6ff'
+      }}>
+        <div style={{ marginBottom: '1rem' }}>
+          <h3 style={{ 
+            fontSize: '1.25rem', 
+            fontWeight: '600', 
+            color: '#1e40af',
+            marginBottom: '0.5rem' 
+          }}>
+            Professional Database Reset
+          </h3>
+          <p style={{ color: '#1e40af', margin: 0 }}>
+            Clean reset for production-ready deployment with real fund data
+          </p>
+        </div>
+
+        <div style={{ 
+          backgroundColor: '#fef3c7', 
+          border: '1px solid #f59e0b',
+          borderRadius: '0.5rem',
+          padding: '1rem',
+          marginBottom: '1rem'
+        }}>
+          <h4 style={{ fontSize: '0.875rem', fontWeight: '600', margin: '0 0 0.5rem 0' }}>
+            What will be cleared:
+          </h4>
+          <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem' }}>
+            <li>All sample fund performance data</li>
+            <li>Historical snapshots and user data</li>
+            <li>Research notes and activity logs</li>
+            <li>Local IndexedDB cache</li>
+          </ul>
+        </div>
+
+        <div style={{ 
+          backgroundColor: '#d1fae5', 
+          border: '1px solid #10b981',
+          borderRadius: '0.5rem',
+          padding: '1rem',
+          marginBottom: '1rem'
+        }}>
+          <h4 style={{ fontSize: '0.875rem', fontWeight: '600', margin: '0 0 0.5rem 0' }}>
+            What will be preserved:
+          </h4>
+          <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem' }}>
+            <li>Asset class groups and definitions</li>
+            <li>Benchmark mappings and configurations</li>
+            <li>Scoring weights and methodology</li>
+            <li>Database schema and structure</li>
+          </ul>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button
+            className="btn btn-primary"
+            disabled={isProd || professionalReset.inProgress}
+            onClick={handleProfessionalReset}
+            style={{
+              backgroundColor: professionalReset.inProgress ? '#6b7280' : '#dc2626',
+              borderColor: professionalReset.inProgress ? '#6b7280' : '#dc2626'
+            }}
+          >
+            {professionalReset.inProgress ? 'Resetting...' : 'Professional Reset'}
+          </button>
+          
+          {isProd && (
+            <span style={{ color: '#dc2626', fontSize: '0.875rem' }}>
+              Disabled in production
+            </span>
+          )}
+        </div>
+
+        {/* Reset Results */}
+        {professionalReset.result && (
+          <div style={{ 
+            marginTop: '1rem',
+            padding: '1rem',
+            backgroundColor: professionalReset.result.success ? '#f0fdf4' : '#fef2f2',
+            border: `1px solid ${professionalReset.result.success ? '#16a34a' : '#dc2626'}`,
+            borderRadius: '0.5rem'
+          }}>
+            <h4 style={{ 
+              fontSize: '0.875rem', 
+              fontWeight: '600', 
+              margin: '0 0 0.5rem 0',
+              color: professionalReset.result.success ? '#16a34a' : '#dc2626'
+            }}>
+              {professionalReset.result.success ? 'Reset Completed Successfully' : 'Reset Failed'}
+            </h4>
+            
+            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+              <div>IndexedDB: {professionalReset.result.indexedDbCleared ? '✅ Cleared' : '❌ Failed'}</div>
+              <div>Supabase: {professionalReset.result.supabaseCleared ? '✅ Cleared' : '❌ Failed'}</div>
+              <div>Benchmarks: {professionalReset.result.benchmarksPreserved ? '✅ Preserved' : '❌ Failed'}</div>
+              <div>Asset Classes: {professionalReset.result.assetClassesPreserved ? '✅ Preserved' : '❌ Failed'}</div>
+            </div>
+
+            {professionalReset.result.errors && professionalReset.result.errors.length > 0 && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: '600', color: '#dc2626' }}>Errors:</div>
+                <ul style={{ margin: '0.25rem 0 0 1rem', fontSize: '0.75rem', color: '#dc2626' }}>
+                  {professionalReset.result.errors.map((error, i) => (
+                    <li key={i}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div style={{ 
+              marginTop: '0.75rem',
+              paddingTop: '0.75rem',
+              borderTop: '1px solid #e5e7eb',
+              fontSize: '0.75rem',
+              color: '#6b7280'
+            }}>
+              Completed: {new Date(professionalReset.result.completed).toLocaleString()}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

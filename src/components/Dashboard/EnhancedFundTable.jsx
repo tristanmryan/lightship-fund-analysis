@@ -510,12 +510,31 @@ const EnhancedFundTable = ({
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          gap: '0.25rem'
         }}>
           {value ? (
-            <Star size={16} style={{ color: '#f59e0b', fill: '#f59e0b' }} />
+            <>
+              <Star size={16} style={{ color: '#f59e0b', fill: '#f59e0b' }} />
+              <span style={{ 
+                fontSize: '0.75rem', 
+                fontWeight: '600', 
+                color: '#f59e0b',
+                textTransform: 'uppercase',
+                letterSpacing: '0.025em'
+              }}>
+                REC
+              </span>
+            </>
           ) : (
-            <Star size={16} style={{ color: '#d1d5db' }} />
+            <span style={{ 
+              fontSize: '0.75rem', 
+              color: '#9ca3af',
+              textTransform: 'uppercase',
+              letterSpacing: '0.025em'
+            }}>
+              --
+            </span>
           )}
         </div>
       )

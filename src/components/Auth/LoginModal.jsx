@@ -72,8 +72,26 @@ const LoginModal = ({ isOpen, onLogin, onClose }) => {
 
         <div className="modal-body">
           <p className="login-description">
-            Please enter the password to access the Lightship Fund Analysis application.
+            Please enter your password to access the Lightship Fund Analysis application.
           </p>
+
+          <div className="role-info" style={{
+            marginBottom: '1.5rem',
+            padding: '1rem',
+            backgroundColor: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: '0.5rem'
+          }}>
+            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: '600' }}>Access Levels:</h4>
+            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              <div style={{ marginBottom: '0.25rem' }}>
+                <strong>Advisor:</strong> View dashboards, asset classes, comparisons, and reports
+              </div>
+              <div>
+                <strong>Administrator:</strong> Full access including fund management and system settings
+              </div>
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit} className="login-form">
             <div className="input-group">

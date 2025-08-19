@@ -9,37 +9,55 @@ class AuthService {
   }
 
   // Simple password authentication (Phase 1)
-  async login(password) {
+  async login(password, role = 'advisor') {
     try {
       // For now, use a simple password check
       // In the future, this will be replaced with proper Supabase auth
       const correctPassword = process.env.REACT_APP_APP_PASSWORD || 'lightship2024';
+      const adminPassword = process.env.REACT_APP_ADMIN_PASSWORD || 'admin2024';
       
-      if (password === correctPassword) {
-        // Create a simple session
-        this.isAuthenticated = true;
-        this.sessionToken = this.generateSessionToken();
-        this.currentUser = {
-          id: 'admin',
-          email: 'admin@lightship.com',
-          role: 'admin',
-          name: 'Administrator'
-        };
-
-        // Store session in localStorage for persistence
-        localStorage.setItem('lightship_session', JSON.stringify({
-          token: this.sessionToken,
-          user: this.currentUser,
-          expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
-        }));
-
-        // Log the login activity
-        await this.logActivity('login', { user_id: this.currentUser.id });
-
-        return { success: true, user: this.currentUser };
+      let userRole = role;
+      let userName = 'Advisor';
+      let userId = 'advisor';
+      let userEmail = 'advisor@lightship.com';
+      
+      if (password === adminPassword) {
+        // Admin login
+        userRole = 'admin';
+        userName = 'Administrator';
+        userId = 'admin';
+        userEmail = 'admin@lightship.com';
+      } else if (password === correctPassword) {
+        // Advisor login
+        userRole = 'advisor';
+        userName = 'Advisor';
+        userId = 'advisor';
+        userEmail = 'advisor@lightship.com';
       } else {
         throw new Error('Invalid password');
       }
+
+      // Create a simple session
+      this.isAuthenticated = true;
+      this.sessionToken = this.generateSessionToken();
+      this.currentUser = {
+        id: userId,
+        email: userEmail,
+        role: userRole,
+        name: userName
+      };
+
+      // Store session in localStorage for persistence
+      localStorage.setItem('lightship_session', JSON.stringify({
+        token: this.sessionToken,
+        user: this.currentUser,
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+      }));
+
+      // Log the login activity
+      await this.logActivity('login', { user_id: this.currentUser.id, role: userRole });
+
+      return { success: true, user: this.currentUser };
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
@@ -104,11 +122,39 @@ class AuthService {
   hasPermission(permission) {
     if (!this.isAuthenticated || !this.currentUser) return false;
     
-    // For now, admin has all permissions
-    if (this.currentUser.role === 'admin') return true;
+    const { role } = this.currentUser;
     
-    // Future: implement role-based permissions
-    return false;
+    // Define role-based permissions
+    const permissions = {
+      admin: [
+        'view_admin',
+        'manage_funds',
+        'manage_scoring',
+        'view_activity_logs',
+        'export_data',
+        'import_data',
+        'modify_settings'
+      ],
+      advisor: [
+        'view_dashboard',
+        'view_asset_classes',
+        'view_compare',
+        'view_reports',
+        'export_data'
+      ]
+    };
+    
+    return permissions[role]?.includes(permission) || false;
+  }
+
+  // Check if user is admin
+  isAdmin() {
+    return this.currentUser?.role === 'admin';
+  }
+
+  // Check if user is advisor  
+  isAdvisor() {
+    return this.currentUser?.role === 'advisor';
   }
 
   // Generate session token

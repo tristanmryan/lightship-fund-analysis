@@ -131,3 +131,64 @@ class ScoringProfilesService {
 const scoringProfilesService = new ScoringProfilesService();
 export default scoringProfilesService;
 
+/**
+ * Asset Class <-> Scoring Profile Mapping Service
+ */
+export class AssetClassProfileMapping {
+  constructor() {
+    this.mappingCache = new Map();
+  }
+
+  async getAssetClasses() {
+    try {
+      const { data, error } = await supabase
+        .from(TABLES.ASSET_CLASSES)
+        .select('id, code, name, group_name, sort_group, sort_order')
+        .order('sort_group', { ascending: true })
+        .order('sort_order', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      handleSupabaseError(error, 'getAssetClasses');
+      return [];
+    }
+  }
+
+  async getProfileForAssetClass(assetClassId) {
+    if (!assetClassId) return null;
+    
+    // Check cache first
+    if (this.mappingCache.has(assetClassId)) {
+      return this.mappingCache.get(assetClassId);
+    }
+
+    try {
+      // For now, return the default profile
+      // In the future, this could be stored in a separate mapping table
+      const defaultProfile = await scoringProfilesService.getDefaultProfile();
+      this.mappingCache.set(assetClassId, defaultProfile);
+      return defaultProfile;
+    } catch (error) {
+      handleSupabaseError(error, 'getProfileForAssetClass');
+      return null;
+    }
+  }
+
+  async setProfileForAssetClass(assetClassId, profileId) {
+    // For now, this is a no-op as we're using default profile for all asset classes
+    // In the future, this would store the mapping in a database table
+    console.log('Asset class profile mapping not yet implemented:', { assetClassId, profileId });
+    
+    // Clear cache
+    this.mappingCache.delete(assetClassId);
+    
+    return true;
+  }
+
+  clearCache() {
+    this.mappingCache.clear();
+  }
+}
+
+export const assetClassProfileMapping = new AssetClassProfileMapping();
+

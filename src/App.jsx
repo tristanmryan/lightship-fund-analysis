@@ -1,6 +1,6 @@
 // App.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Home as HomeIcon, Table as TableIcon, BarChart3 as BarChartIcon, ShieldCheck, Settings, Download, RefreshCw, HelpCircle, Share2, Info } from 'lucide-react';
+import { Home as HomeIcon, BarChart3 as BarChartIcon, Settings, Download, RefreshCw, HelpCircle, Info, TrendingUp as CompareIcon } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './App.css'; // Import the CSS file
 import LoginModal from './components/Auth/LoginModal';
@@ -14,21 +14,14 @@ import {
 } from './services/scoring';
 import fundService from './services/fundService';
 import { isSupabaseStubbed } from './services/supabase';
-import {
-  getAllCombinedSnapshots,
-  getDataSummary
-} from './services/enhancedDataStore';
+
 import fundRegistry from './services/fundRegistry';
-import PerformanceHeatmap from './components/Dashboard/PerformanceHeatmap';
-import TopBottomPerformers from './components/Dashboard/TopBottomPerformers';
-import AssetClassOverview from './components/Dashboard/AssetClassOverview';
 import Home from './components/Dashboard/Home';
-import CorrelationMatrix from './components/Analytics/CorrelationMatrix';
-import RiskReturnScatter from './components/Analytics/RiskReturnScatter';
-import EnhancedPerformanceDashboard from './components/Dashboard/EnhancedPerformanceDashboard';
 import MethodologyDrawer from './components/Dashboard/MethodologyDrawer';
 import FundManagement from './components/Admin/FundManagement';
-import HealthCheck from './components/Dashboard/HealthCheck';
+import AssetClassTable from './components/Dashboard/AssetClassTable';
+import ComparisonPanel from './components/Dashboard/ComparisonPanel';
+import MonthlyReportButton from './components/Reports/MonthlyReportButton';
 import { 
   exportToExcel, 
   downloadFile
@@ -58,22 +51,9 @@ const App = () => {
     setAsOfMonth
   } = useFundData();
 
-  // Legacy state for backwards compatibility
-  const [scoredFundData] = useState([]);
+  // Navigation and UI state
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedClass, setSelectedClass] = useState('');
-  const [classSummaries] = useState({});
-  const [currentSnapshotDate] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterAssetClass, setFilterAssetClass] = useState('all');
-  const [sortBy, setSortBy] = useState('score');
-  const [sortDirection, setSortDirection] = useState('desc');
-
-  // Historical data states
-  const [snapshots, setSnapshots] = useState([]);
-  const [selectedSnapshot, setSelectedSnapshot] = useState(null);
-  const [compareSnapshot, setCompareSnapshot] = useState(null);
-  const [snapshotComparison] = useState(null);
 
   const [assetClassBenchmarks, setAssetClassBenchmarks] = useState({});
   const [availableMonths, setAvailableMonths] = useState([]);
@@ -90,10 +70,24 @@ const App = () => {
     return Array.from(classes).sort();
   }, [assetClassBenchmarks, funds]);
 
-  // Memoize review candidates calculation
-  const reviewCandidates = useMemo(() => {
-    return identifyReviewCandidates(funds || []);
-  }, [funds]);
+  // Find the selected asset class ID from fund data
+  const selectedAssetClassData = useMemo(() => {
+    if (!selectedClass || !funds || funds.length === 0) return null;
+    
+    // Find a fund with matching asset class name to get the ID
+    const matchingFund = funds.find(fund => 
+      fund.asset_class_name === selectedClass || 
+      fund.asset_class === selectedClass ||
+      fund['Asset Class'] === selectedClass
+    );
+    
+    return matchingFund ? {
+      id: matchingFund.asset_class_id,
+      name: matchingFund.asset_class_name || matchingFund.asset_class || selectedClass
+    } : { id: null, name: selectedClass };
+  }, [selectedClass, funds]);
+
+
 
 
 
@@ -106,31 +100,31 @@ const App = () => {
 
   const tabToPath = {
     dashboard: '/dashboard',
-    performance: '/performance',
-    class: '/class',
-    analysis: '/analysis',
-    analytics: '/analytics',
-    history: '/history',
-    admin: '/admin',
-    health: '/health'
+    assetclasses: '/assetclasses',
+    compare: '/compare',
+    reports: '/reports',
+    admin: '/admin'
   };
   const pathToTab = (pathname) => {
-    if (pathname.startsWith('/performance')) return 'performance';
-    if (pathname.startsWith('/class')) return 'class';
-    if (pathname.startsWith('/analysis')) return 'analysis';
-    if (pathname.startsWith('/analytics')) return 'analytics';
-    if (pathname.startsWith('/history')) return 'history';
+    if (pathname.startsWith('/assetclasses')) return 'assetclasses';
+    if (pathname.startsWith('/compare')) return 'compare';
+    if (pathname.startsWith('/reports')) return 'reports';
     if (pathname.startsWith('/admin')) return 'admin';
-    if (pathname.startsWith('/health')) return 'health';
     return 'dashboard';
   };
 
   // Redirect root to /dashboard on first load
   useEffect(() => {
-    // Alias redirects
+    // Alias redirects for old URLs
     const aliasMap = {
-      '/funds': '/performance',
-      '/scores': '/performance'
+      '/funds': '/dashboard',
+      '/scores': '/dashboard',
+      '/performance': '/dashboard',
+      '/class': '/assetclasses',
+      '/analysis': '/dashboard',
+      '/analytics': '/dashboard',
+      '/history': '/dashboard',
+      '/health': '/dashboard'
     };
     if (aliasMap[location.pathname]) {
       navigate(aliasMap[location.pathname], { replace: true });
@@ -290,21 +284,16 @@ const App = () => {
       // Ctrl/Cmd + E for export
       if ((e.ctrlKey || e.metaKey) && e.key === 'e' && (funds?.length || 0) > 0) {
         e.preventDefault();
-        const data = {
-          funds,
-          classSummaries,
-          reviewCandidates: identifyReviewCandidates(funds || []),
-          metadata: { date: currentSnapshotDate }
-        };
-        const blob = exportToExcel(data);
-        downloadFile(blob, `fund_analysis_${new Date().toISOString().split('T')[0]}.xlsx`);
+        handleExport();
       }
       // Number keys for tab navigation
-      if (e.key >= '1' && e.key <= '6' && !e.ctrlKey && !e.metaKey) {
-        const tabs = ['dashboard', 'performance', 'class', 'analysis', 'analytics', 'history'];
+      if (e.key >= '1' && e.key <= '5' && !e.ctrlKey && !e.metaKey) {
+        const tabs = ['dashboard', 'assetclasses', 'compare', 'reports', 'admin'];
         const tabIndex = parseInt(e.key) - 1;
         if (tabIndex < tabs.length) {
           const t = tabs[tabIndex];
+          // Check admin access for tab 5
+          if (t === 'admin' && currentUser?.role !== 'admin') return;
           setActiveTab(t);
           const to = tabToPath[t] || '/dashboard';
           navigate(to);
@@ -314,15 +303,13 @@ const App = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [funds, classSummaries, currentSnapshotDate, navigate]);
+  }, [funds, navigate, currentUser]);
 
   const handleExport = () => {
     if ((funds?.length || 0) === 0) return;
     const data = {
       funds,
-      classSummaries,
-      reviewCandidates: identifyReviewCandidates(funds || []),
-      metadata: { date: currentSnapshotDate }
+      metadata: { date: asOfMonth || new Date().toISOString().split('T')[0] }
     };
     const blob = exportToExcel(data);
     downloadFile(blob, `fund_analysis_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -330,12 +317,7 @@ const App = () => {
 
 
 
-  // Load snapshots when history tab is selected
-  useEffect(() => {
-    if (activeTab === 'history') {
-      loadSnapshots();
-    }
-  }, [activeTab]);
+
 
   // Handle login
   const handleLogin = (user) => {
@@ -357,21 +339,6 @@ const App = () => {
     }
   };
 
-  const loadSnapshots = async () => {
-    try {
-      const allSnapshots = await getAllCombinedSnapshots();
-      const summary = await getDataSummary();
-      console.log(
-        '📊 Historical data integration active:',
-        summary.combined.total,
-        'total snapshots available',
-        `(${summary.historical.count} historical, ${summary.user.count} user)`
-      );
-      setSnapshots(allSnapshots);
-    } catch (error) {
-      console.error('Error loading snapshots:', error);
-    }
-  };
 
 
 
@@ -379,72 +346,8 @@ const App = () => {
 
 
 
-  // Filtered and sorted funds
-  const filteredAndSortedFunds = useMemo(() => {
-    let filtered = funds || [];
-    
-    // Apply search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(fund => 
-        fund.Symbol?.toLowerCase().includes(term) ||
-        fund.displayName?.toLowerCase().includes(term) ||
-        fund['Asset Class']?.toLowerCase().includes(term)
-      );
-    }
-    
-    // Apply asset class filter
-    if (filterAssetClass !== 'all') {
-      filtered = filtered.filter(fund => fund['Asset Class'] === filterAssetClass);
-    }
-    
-    // Apply sorting
-    filtered.sort((a, b) => {
-      let aValue, bValue;
-      
-      switch (sortBy) {
-        case 'score':
-          aValue = a.scores?.final || 0;
-          bValue = b.scores?.final || 0;
-          break;
-        case 'symbol':
-          aValue = a.Symbol || '';
-          bValue = b.Symbol || '';
-          break;
-        case 'name':
-          aValue = a.displayName || '';
-          bValue = b.displayName || '';
-          break;
-        case 'ytd':
-          aValue = a['YTD'] || 0;
-          bValue = b['YTD'] || 0;
-          break;
-        case '1year':
-          aValue = a['1 Year'] || 0;
-          bValue = b['1 Year'] || 0;
-          break;
-        case 'sharpe':
-          aValue = a['Sharpe Ratio'] || 0;
-          bValue = b['Sharpe Ratio'] || 0;
-          break;
-        case 'expense':
-          aValue = a['Net Expense Ratio'] || 0;
-          bValue = b['Net Expense Ratio'] || 0;
-          break;
-        default:
-          aValue = a.scores?.final || 0;
-          bValue = b.scores?.final || 0;
-      }
-      
-      if (sortDirection === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
-    
-    return filtered;
-  }, [funds, searchTerm, filterAssetClass, sortBy, sortDirection]);
+
+
 
   // Show loading screen while checking authentication
   if (authLoading) {
@@ -492,47 +395,35 @@ const App = () => {
           <button className={activeTab === 'dashboard' ? 'active' : ''} onClick={() => { setActiveTab('dashboard'); navigate('/dashboard'); }}>
             <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
               <HomeIcon size={16} aria-hidden />
-              <span>Home</span>
+              <span>Dashboard</span>
             </span>
           </button>
-          <button className={activeTab === 'performance' ? 'active' : ''} onClick={() => { setActiveTab('performance'); navigate('/performance'); }}>
-            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-              <TableIcon size={16} aria-hidden />
-              <span>Funds</span>
-            </span>
-          </button>
-          <button className={activeTab === 'class' ? 'active' : ''} onClick={() => { setActiveTab('class'); navigate('/class'); }}>
+          <button className={activeTab === 'assetclasses' ? 'active' : ''} onClick={() => { setActiveTab('assetclasses'); navigate('/assetclasses'); }}>
             <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
               <BarChartIcon size={16} aria-hidden />
               <span>Asset Classes</span>
             </span>
           </button>
-          <button className={activeTab === 'health' ? 'active' : ''} onClick={() => { setActiveTab('health'); navigate('/health'); }}>
+          <button className={activeTab === 'compare' ? 'active' : ''} onClick={() => { setActiveTab('compare'); navigate('/compare'); }}>
             <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-              <ShieldCheck size={16} aria-hidden />
-              <span>Data Health</span>
-            </span>
-            {(() => {
-              try {
-                const total = (funds || []).length;
-                const nz = (arr) => arr.filter(v => v != null && !Number.isNaN(v)).length;
-                const ytdOk = nz((funds || []).map(f => f.ytd_return));
-                const oneYOk = nz((funds || []).map(f => f.one_year_return));
-                const sharpeOk = nz((funds || []).map(f => f.sharpe_ratio));
-                const sd3Ok = nz((funds || []).map(f => (f.standard_deviation_3y ?? f.standard_deviation)));
-                const covs = [ytdOk, oneYOk, sharpeOk, sd3Ok].map(n => total ? Math.round((n / total) * 100) : 0);
-                const minCov = covs.length ? Math.min(...covs) : 0;
-                const color = minCov >= 80 ? '#16a34a' : minCov >= 50 ? '#f59e0b' : '#dc2626';
-                return <span style={{ marginLeft: 8, background: color, width: 10, height: 10, display:'inline-block', borderRadius: 9999 }} title={`Minimum coverage: ${minCov}%`} />;
-              } catch { return null; }
-            })()}
-          </button>
-          <button className={activeTab === 'admin' ? 'active' : ''} onClick={() => { setActiveTab('admin'); navigate('/admin'); }}>
-            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-              <Settings size={16} aria-hidden />
-              <span>Admin</span>
+              <CompareIcon size={16} aria-hidden />
+              <span>Compare</span>
             </span>
           </button>
+          <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => { setActiveTab('reports'); navigate('/reports'); }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <Download size={16} aria-hidden />
+              <span>Reports</span>
+            </span>
+          </button>
+          {currentUser?.role === 'admin' && (
+            <button className={activeTab === 'admin' ? 'active' : ''} onClick={() => { setActiveTab('admin'); navigate('/admin'); }}>
+              <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+                <Settings size={16} aria-hidden />
+                <span>Admin</span>
+              </span>
+            </button>
+          )}
         </nav>
         <div className="sidebar-footer">
           <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.85)', marginBottom: '0.75rem' }}>Tip: Press Ctrl+H for help</div>
@@ -626,23 +517,8 @@ const App = () => {
         <Home />
       )}
 
-      {/* Funds Tab */}
-      {activeTab === 'performance' && (
-        <div>
-          <EnhancedPerformanceDashboard 
-            funds={funds}
-            onRefresh={refreshData}
-            isLoading={fundsLoading}
-            asOfMonth={asOfMonth}
-            onAsOfMonthChange={(val) => setAsOfMonth(val)}
-          />
-        </div>
-      )}
-
-      {/* Removed legacy Fund Scores tab in favor of Enhanced Performance */}
-
-      {/* Asset Class View Tab */}
-      {activeTab === 'class' && (
+      {/* Asset Classes Tab */}
+      {activeTab === 'assetclasses' && (
         <div>
               <div className="card-header">
                 <h2 className="card-title">Asset Class Analysis</h2>
@@ -663,329 +539,102 @@ const App = () => {
           </select>
               </div>
 
-              {selectedClass && classSummaries[selectedClass] && (
-                <div className="card">
-                  <div className="card-header">
-                    <h3 className="card-title">{selectedClass} Analysis</h3>
-                    <p className="card-subtitle">
-                      {classSummaries[selectedClass].fundCount} funds analyzed
-                    </p>
-                      </div>
-                  
-                  <div className="table-container">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Metric</th>
-                          <th>Average</th>
-                          <th>Median</th>
-                          <th>Top 25%</th>
-                          <th>Bottom 25%</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td><strong>YTD Return</strong></td>
-                          <td>{classSummaries[selectedClass].avgYTD?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].medianYTD?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].top25YTD?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].bottom25YTD?.toFixed(2)}%</td>
-                        </tr>
-                        <tr>
-                          <td><strong>1 Year Return</strong></td>
-                          <td>{classSummaries[selectedClass].avg1Y?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].median1Y?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].top251Y?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].bottom251Y?.toFixed(2)}%</td>
-                        </tr>
-                        <tr>
-                          <td><strong>3 Year Return</strong></td>
-                          <td>{classSummaries[selectedClass].avg3Y?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].median3Y?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].top253Y?.toFixed(2)}%</td>
-                          <td>{classSummaries[selectedClass].bottom253Y?.toFixed(2)}%</td>
-                        </tr>
-                        <tr>
-                          <td><strong>Sharpe Ratio</strong></td>
-                          <td>{classSummaries[selectedClass].avgSharpe?.toFixed(2)}</td>
-                          <td>{classSummaries[selectedClass].medianSharpe?.toFixed(2)}</td>
-                          <td>{classSummaries[selectedClass].top25Sharpe?.toFixed(2)}</td>
-                          <td>{classSummaries[selectedClass].bottom25Sharpe?.toFixed(2)}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                    </div>
-                      </div>
+              {selectedClass && selectedAssetClassData && (
+                <AssetClassTable 
+                  assetClassId={selectedAssetClassData.id}
+                  assetClassName={selectedAssetClassData.name}
+                />
               )}
                     </div>
           )}
 
-          {/* Analysis Tab */}
-          {activeTab === 'analysis' && (
-                    <div>
-              <div className="card-header">
-                <h2 className="card-title">Fund Analysis</h2>
-                <p className="card-subtitle">Detailed analysis and insights for fund performance</p>
-                      </div>
-              
-              {scoredFundData.length > 0 ? (
-                    <div>
-                  {/* Review Candidates */}
-                  <div className="card">
-                    <div className="card-header">
-                      <h3 className="card-title">Review Candidates</h3>
-                      <p className="card-subtitle">Funds that may need attention based on performance metrics</p>
-                      </div>
-                    {reviewCandidates.length > 0 ? (
-                      <div className="table-container">
-                        <table>
-                <thead>
-                            <tr>
-                              <th>Symbol</th>
-                              <th>Fund Name</th>
-                              <th>Asset Class</th>
-                              <th>Score</th>
-                              <th>Issues</th>
-                              <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                            {reviewCandidates.map((fund, index) => (
-                              <tr key={fund.Symbol || index}>
-                                <td><strong>{fund.Symbol}</strong></td>
-                                <td>{fund['Fund Name']}</td>
-                                <td>{fund['Asset Class']}</td>
-                                <td>
-                                  <span className="score-badge" style={{
-                                    backgroundColor: fund.score >= 0.7 ? '#059669' : 
-                                                  fund.score >= 0.5 ? '#3B82F6' : 
-                                                  fund.score >= 0.3 ? '#F59E0B' : '#DC2626',
-                                    padding: 'var(--spacing-xs) var(--spacing-sm)',
-                                    borderRadius: 'var(--border-radius)',
-                                    color: 'white',
-                                    fontWeight: '600',
-                                    fontSize: '0.875rem'
-                                  }}>
-                                    {fund.score?.toFixed(3)}
-                        </span>
-                      </td>
-                                <td>
-                                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                                    {fund.issues?.join(', ') || 'Low performance'}
-                                  </div>
-                      </td>
-                                <td>
-                                  <button
-                                    className="btn btn-secondary"
-                                    style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', fontSize: '0.75rem' }}
-                                  >
-                                    Details
-                                  </button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-        </div>
-                    ) : (
-                      <div className="alert alert-success">
-                        <strong>Great news!</strong> No funds require immediate review.
-                    </div>
-                    )}
-                          </div>
-                          
-                  {/* Asset Class Performance */}
-                  <div className="card">
-                    <div className="card-header">
-                      <h3 className="card-title">Asset Class Performance Summary</h3>
-                      <p className="card-subtitle">Performance metrics by asset class</p>
-                          </div>
-                    <div className="table-container">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Asset Class</th>
-                            <th>Fund Count</th>
-                            <th>Avg Score</th>
-                            <th>Avg YTD</th>
-                            <th>Avg 1Y</th>
-                            <th>Avg 3Y</th>
-                            <th>Avg Sharpe</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(classSummaries).map(([className, summary]) => (
-                            <tr key={className}>
-                              <td><strong>{className}</strong></td>
-                              <td>{summary.fundCount}</td>
-                              <td>{summary.averageScore?.toFixed(3)}</td>
-                              <td>{summary.avgYTD?.toFixed(2)}%</td>
-                              <td>{summary.avg1Y?.toFixed(2)}%</td>
-                              <td>{summary.avg3Y?.toFixed(2)}%</td>
-                              <td>{summary.avgSharpe?.toFixed(2)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-              </div>
-              ) : (
-                <div className="card" style={{ display:'grid', gap:12 }}>
-                  <div className="card-header" style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <Info size={18} aria-hidden />
-                    <div>
-                      <h3 className="card-title">No Data Yet</h3>
-                      <p className="card-subtitle">Import a monthly CSV or try sample data to explore this analysis.</p>
-                    </div>
-                  </div>
-                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                    <button className="btn" onClick={() => { setActiveTab('admin'); navigate('/admin'); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); }}>Go to Importer</button>
-                    <button className="btn btn-secondary" onClick={() => { setActiveTab('admin'); navigate('/admin'); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); setTimeout(()=>{ try { window.dispatchEvent(new CustomEvent('LOAD_SAMPLE_DATA')); } catch {} }, 300); }}>Use sample data</button>
-                  </div>
-                </div>
-              )}
-        </div>
-      )}
-
-      {/* Analytics Tab */}
-      {activeTab === 'analytics' && (
+      {/* Compare View Tab */}
+      {activeTab === 'compare' && (
         <div>
-              <div className="card-header">
-                <h2 className="card-title">Advanced Analytics</h2>
-                <p className="card-subtitle">Correlation analysis and risk-return insights</p>
-              </div>
+          <div className="card-header">
+            <h2 className="card-title">Fund Comparison</h2>
+            <p className="card-subtitle">Compare up to 4 funds and benchmarks side-by-side</p>
+          </div>
           
-          {scoredFundData.length > 0 ? (
-                      <div>
-                  <div className="card">
-                    <div className="card-header">
-                      <h3 className="card-title">Correlation Matrix</h3>
-                      <p className="card-subtitle">Fund performance correlations across asset classes</p>
-                        </div>
-                    <CorrelationMatrix data={scoredFundData} />
-                      </div>
-                      
-                  <div className="card">
-                    <div className="card-header">
-                      <h3 className="card-title">Risk-Return Analysis</h3>
-                      <p className="card-subtitle">Risk-adjusted performance scatter plot</p>
-                        </div>
-                    <RiskReturnScatter data={scoredFundData} />
-                      </div>
-                        </div>
-              ) : (
-                <div className="card">
-                  <div className="card-header">
-                    <h3 className="card-title">No Data Available</h3>
-                    <p className="card-subtitle">Upload fund data to see analytics</p>
-                  </div>
-            </div>
-          )}
+          <ComparisonPanel 
+            funds={funds || []}
+          />
         </div>
       )}
 
-      {/* History Tab */}
-      {activeTab === 'history' && (
+      {/* Reports Tab */}
+      {activeTab === 'reports' && (
         <div>
-              <div className="card-header">
-                <h2 className="card-title">Historical Data</h2>
-                <p className="card-subtitle">Compare fund performance over time</p>
+          <div className="card-header">
+            <h2 className="card-title">Reports</h2>
+            <p className="card-subtitle">Generate and download professional fund analysis reports</p>
+          </div>
+          
+          {/* Enhanced Reports Section with PDF Export */}
+          <MonthlyReportButton />
+          
+          {/* Legacy Excel Export Option */}
+          <div className="card" style={{ marginTop: '1.5rem' }}>
+            <div className="card-header">
+              <h3 className="card-title">Legacy Export Options</h3>
+              <p className="card-subtitle">Additional export formats for compatibility</p>
+            </div>
+            
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              <div style={{ 
+                padding: '1.5rem', 
+                border: '1px solid #e5e7eb', 
+                borderRadius: '0.5rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <h4 style={{ margin: 0, fontWeight: '600' }}>Excel Export</h4>
+                  <p style={{ margin: '0.25rem 0 0 0', color: '#6b7280', fontSize: '0.875rem' }}>
+                    Complete fund analysis with scores, metrics, and recommendations
+                  </p>
+                </div>
+                <button 
+                  onClick={handleExport}
+                  className="btn"
+                  disabled={(funds?.length || 0) === 0}
+                  style={{ display:'inline-flex', alignItems:'center', gap:6 }}
+                >
+                  <Download size={16} aria-hidden />
+                  <span>Download</span>
+                </button>
               </div>
               
-              <div className="card">
-                <div className="card-header">
-                  <h3 className="card-title">Available Snapshots</h3>
-                  <p className="card-subtitle">Select snapshots to compare historical performance</p>
+              {(funds?.length || 0) === 0 && (
+                <div className="alert alert-info">
+                  <strong>No data available.</strong> Import fund data to generate reports.
                 </div>
-                
-                <div className="input-group">
-                  <label className="input-label">Current Snapshot:</label>
-                  <select
-                    value={selectedSnapshot || ''}
-                    onChange={(e) => setSelectedSnapshot(e.target.value)}
-                    className="select-field"
-                  >
-                    <option value="">Select a snapshot...</option>
-                    {snapshots.map(snapshot => (
-                      <option key={snapshot.date} value={snapshot.date}>
-                        {snapshot.date} ({snapshot.fundCount} funds)
-                      </option>
-                    ))}
-                  </select>
-              </div>
-
-                <div className="input-group">
-                  <label className="input-label">Compare With:</label>
-                      <select
-                    value={compareSnapshot || ''}
-                    onChange={(e) => setCompareSnapshot(e.target.value)}
-                    className="select-field"
-                  >
-                    <option value="">Select comparison snapshot...</option>
-                    {snapshots.filter(s => s.date !== selectedSnapshot).map(snapshot => (
-                      <option key={snapshot.date} value={snapshot.date}>
-                        {snapshot.date} ({snapshot.fundCount} funds)
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-
-                {selectedSnapshot && compareSnapshot && snapshotComparison && (
-                  <div className="card">
-                    <div className="card-header">
-                      <h3 className="card-title">Comparison Results</h3>
-                      <p className="card-subtitle">
-                        {selectedSnapshot} vs {compareSnapshot}
-                      </p>
-                    </div>
-                    <div className="table-container">
-                      <table>
-                      <thead>
-                          <tr>
-                            <th>Metric</th>
-                            <th>{selectedSnapshot}</th>
-                            <th>{compareSnapshot}</th>
-                            <th>Change</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                          <tr>
-                            <td><strong>Total Funds</strong></td>
-                            <td>{snapshotComparison.current.fundCount}</td>
-                            <td>{snapshotComparison.previous.fundCount}</td>
-                            <td style={{ color: snapshotComparison.fundCountChange >= 0 ? '#059669' : '#DC2626' }}>
-                              {snapshotComparison.fundCountChange > 0 ? '+' : ''}{snapshotComparison.fundCountChange}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td><strong>Average Score</strong></td>
-                            <td>{snapshotComparison.current.avgScore?.toFixed(3)}</td>
-                            <td>{snapshotComparison.previous.avgScore?.toFixed(3)}</td>
-                            <td style={{ color: snapshotComparison.scoreChange >= 0 ? '#059669' : '#DC2626' }}>
-                              {snapshotComparison.scoreChange > 0 ? '+' : ''}{snapshotComparison.scoreChange?.toFixed(3)}
-                            </td>
-                          </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                        )}
-                      </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Admin Tab */}
-      {activeTab === 'admin' && (
+      {/* Admin Tab - Role-based access */}
+      {activeTab === 'admin' && currentUser?.role === 'admin' && (
         <div>
           <FundManagement />
         </div>
       )}
 
-      {/* Health Tab */}
-      {activeTab === 'health' && (
+      {/* Access denied for non-admin users */}
+      {activeTab === 'admin' && currentUser?.role !== 'admin' && (
         <div>
-          <HealthCheck />
+          <div className="card-header">
+            <h2 className="card-title">Access Denied</h2>
+            <p className="card-subtitle">Administrative privileges required</p>
+          </div>
+          
+          <div className="alert alert-warning">
+            <strong>Restricted Access:</strong> You need administrative privileges to access this section.
+            Contact your system administrator for access.
+          </div>
         </div>
       )}
 
@@ -1061,7 +710,7 @@ const App = () => {
               <div style={{ fontSize: '0.875rem', color: '#374151' }}>
                 <div style={{ marginBottom: '0.25rem' }}><kbd>Ctrl+H</kbd> - Open this help dialog</div>
                 <div style={{ marginBottom: '0.25rem' }}><kbd>Ctrl+E</kbd> - Export to Excel</div>
-                <div style={{ marginBottom: '0.25rem' }}><kbd>1-6</kbd> - Quick navigation between tabs</div>
+                <div style={{ marginBottom: '0.25rem' }}><kbd>1-5</kbd> - Quick navigation between tabs</div>
               </div>
             </div>
 
@@ -1069,28 +718,19 @@ const App = () => {
               <h3 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Tab Overview</h3>
               <div style={{ fontSize: '0.875rem', color: '#374151' }}>
                 <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>Dashboard:</strong> Visual overview with heatmaps and top/bottom performers
+                  <strong>Dashboard:</strong> Visual overview with fund performance analysis and key metrics
                 </div>
                 <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>Performance:</strong> Real-time fund performance analysis with filtering
+                  <strong>Asset Classes:</strong> Performance analysis by asset class with benchmark comparisons
                 </div>
                 <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>Fund Scores:</strong> Detailed table of all funds with scores and metrics
+                  <strong>Compare:</strong> Side-by-side comparison of up to 4 funds and benchmarks
                 </div>
                 <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>Class View:</strong> Compare funds within specific asset classes
+                  <strong>Reports:</strong> Professional export options for presentations and analysis
                 </div>
                 <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>Analysis:</strong> Smart tags and funds requiring review
-                </div>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>Analytics:</strong> Advanced visualizations including risk-return and correlations
-                </div>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>History:</strong> Track performance over time and compare snapshots
-                </div>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>Admin:</strong> Add and manage funds with automatic API data fetching
+                  <strong>Admin:</strong> Fund management and data import (admin access required)
                 </div>
               </div>
             </div>

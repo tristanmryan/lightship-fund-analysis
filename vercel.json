@@ -2,6 +2,11 @@
   "functions": {
     "api/ycharts.js": {
       "maxDuration": 30
+    },
+    "api/reports/monthly.js": {
+      "memory": 1024,
+      "maxDuration": 60,
+      "includeFiles": "src/reports/fonts/**"
     }
   },
   "headers": [
