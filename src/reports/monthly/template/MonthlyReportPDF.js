@@ -16,17 +16,17 @@ import {
 
 // Raymond James Professional Color Scheme and Typography
 const styles = StyleSheet.create({
-  // Page layout
+  // TRANSFORMED: Page layout optimized for Excel-density
   page: {
     size: 'LETTER',
     orientation: 'landscape',
-    paddingTop: 45,
-    paddingRight: 40,
-    paddingBottom: 45,
-    paddingLeft: 40,
+    paddingTop: 35,
+    paddingRight: 30,
+    paddingBottom: 35,
+    paddingLeft: 30,
     fontFamily: 'Helvetica',
-    fontSize: 10,
-    lineHeight: 1.4,
+    fontSize: 8,
+    lineHeight: 1.2,
     color: '#1F2937'
   },
 
@@ -144,14 +144,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
-    marginBottom: 16,
-    paddingBottom: 8,
+    marginBottom: 12, // TRANSFORMED: Reduced margins for density
+    paddingBottom: 6, // TRANSFORMED: Reduced padding for density
     borderBottomWidth: 2,
     borderBottomColor: '#002F6C'
   },
 
   assetClassTitle: {
-    fontSize: 16,
+    fontSize: 14, // TRANSFORMED: Reduced font size for density
     fontWeight: 'bold',
     color: '#002F6C'
   },
@@ -168,8 +168,8 @@ const styles = StyleSheet.create({
 
   // Fund Tables
   fundTable: {
-    marginTop: 16,
-    marginBottom: 16,
+    marginTop: 12, // TRANSFORMED: Reduced margins for density
+    marginBottom: 12, // TRANSFORMED: Reduced margins for density
     borderWidth: 1,
     borderColor: '#D1D5DB'
   },
@@ -184,9 +184,9 @@ const styles = StyleSheet.create({
 
   tableHeaderCell: {
     color: '#FFFFFF',
-    padding: 8,
+    padding: 4, // TRANSFORMED: Reduced padding for density
     fontWeight: 'bold',
-    fontSize: 9,
+    fontSize: 8, // TRANSFORMED: Reduced font size for density
     textAlign: 'center',
     borderRightWidth: 1,
     borderRightColor: '#D1D5DB'
@@ -217,8 +217,8 @@ const styles = StyleSheet.create({
   },
 
   tableCell: {
-    padding: 6,
-    fontSize: 9,
+    padding: 3, // TRANSFORMED: Reduced padding for density
+    fontSize: 8, // TRANSFORMED: Reduced font size for density
     borderRightWidth: 0.5,
     borderRightColor: '#D1D5DB',
     display: 'flex',
@@ -230,19 +230,20 @@ const styles = StyleSheet.create({
     borderRightColor: '#FFE69C'
   },
 
-  // Column widths (based on current system)
-  colTicker: { width: 38, textAlign: 'center' },
-  colName: { width: 100, textAlign: 'left' },
-  colYtd: { width: 30, textAlign: 'right' },
-  col1y: { width: 30, textAlign: 'right' },
-  col3y: { width: 30, textAlign: 'right' },
-  col5y: { width: 30, textAlign: 'right' },
-  colExpense: { width: 30, textAlign: 'right' },
-  colSharpe: { width: 35, textAlign: 'right' },
-  colScore: { width: 30, textAlign: 'right' },
-  colRank: { width: 30, textAlign: 'center' },
-  colTenure: { width: 35, textAlign: 'right' },
-  colRec: { width: 22, textAlign: 'center' },
+  // TRANSFORMED: Column widths optimized for Excel-density layout (13 columns)
+  colTicker: { width: 35, textAlign: 'center' },
+  colName: { width: 120, textAlign: 'left' },
+  colYtd: { width: 45, textAlign: 'right' },
+  col1y: { width: 45, textAlign: 'right' },
+  col3y: { width: 45, textAlign: 'right' },
+  col5y: { width: 45, textAlign: 'right' },
+  colSharpe: { width: 45, textAlign: 'right' },
+  colStdDev3y: { width: 45, textAlign: 'right' },
+  colStdDev5y: { width: 45, textAlign: 'right' },
+  colExpense: { width: 45, textAlign: 'right' },
+  colTenure: { width: 45, textAlign: 'right' },
+  colScore: { width: 35, textAlign: 'right' },
+  colRec: { width: 25, textAlign: 'center' },
 
   // Performance color coding
   rankExcellent: { backgroundColor: '#C6EFCE' },
@@ -261,9 +262,9 @@ const styles = StyleSheet.create({
   negativeReturn: { color: '#DC2626' },
   neutralReturn: { color: '#6B7280' },
 
-  recommendedStar: {
-    color: '#FFC200',
-    fontSize: 12,
+  recommendedCheck: {
+    color: '#059669', // Green checkmark
+    fontSize: 10,
     fontWeight: 'bold'
   },
 
@@ -536,18 +537,20 @@ function AssetClassSection({ section, sectionNumber, isLastSection }) {
  * Fund Table Component
  */
 function FundTable({ rows, benchmark, assetClass }) {
+  // TRANSFORMED: Updated to match new Excel-density 13-column layout
   const columns = [
     { header: 'Ticker', dataKey: 'ticker', style: styles.colTicker },
     { header: 'Fund Name', dataKey: 'name', style: styles.colName },
-    { header: 'YTD', dataKey: 'ytdReturn', style: styles.colYtd },
-    { header: '1Y', dataKey: 'oneYearReturn', style: styles.col1y },
-    { header: '3Y', dataKey: 'threeYearReturn', style: styles.col3y },
-    { header: '5Y', dataKey: 'fiveYearReturn', style: styles.col5y },
-    { header: 'Expense', dataKey: 'expenseRatio', style: styles.colExpense },
-    { header: 'Sharpe', dataKey: 'sharpeRatio', style: styles.colSharpe },
+    { header: 'YTD Return', dataKey: 'ytdReturn', style: styles.colYtd },
+    { header: '1Y Return', dataKey: 'oneYearReturn', style: styles.col1y },
+    { header: '3Y Return', dataKey: 'threeYearReturn', style: styles.col3y },
+    { header: '5Y Return', dataKey: 'fiveYearReturn', style: styles.col5y },
+    { header: 'Sharpe Ratio', dataKey: 'sharpeRatio', style: styles.colSharpe },
+    { header: '3Y Std Dev', dataKey: 'standardDeviation3y', style: styles.colStdDev3y },
+    { header: '5Y Std Dev', dataKey: 'standardDeviation5y', style: styles.colStdDev5y },
+    { header: 'Expense Ratio', dataKey: 'expenseRatio', style: styles.colExpense },
+    { header: 'Manager Tenure', dataKey: 'managerTenure', style: styles.colTenure },
     { header: 'Score', dataKey: 'score', style: styles.colScore },
-    { header: 'Rank', dataKey: 'rank', style: styles.colRank },
-    { header: 'Tenure', dataKey: 'managerTenure', style: styles.colTenure },
     { header: 'Rec', dataKey: 'isRecommended', style: styles.colRec }
   ];
 
@@ -605,13 +608,20 @@ function FundRow({ row, index, columns }) {
       
       // Special handling for recommendation column
       if (col.dataKey === 'isRecommended') {
-        cellValue = isRecommended ? '★' : '';
+        cellValue = isRecommended ? '✓' : '';
       }
       
-      // Special handling for rank column with color coding
+      // Special handling for score column with color coding
       let cellStyles = [styles.tableCell, col.style];
-      if (col.dataKey === 'rank' && row.rank) {
-        cellStyles.push(getRankColor(row.rank));
+      if (col.dataKey === 'score' && row.score) {
+        const score = parseFloat(row.score);
+        if (!isNaN(score)) {
+          if (score >= 70) cellStyles.push(styles.rankExcellent);
+          else if (score >= 60) cellStyles.push(styles.rankGood);
+          else if (score >= 50) cellStyles.push(styles.rankAverage);
+          else if (score >= 40) cellStyles.push(styles.rankBelowAverage);
+          else cellStyles.push(styles.rankPoor);
+        }
       }
       
       // Last column - remove right border
@@ -623,7 +633,7 @@ function FundRow({ row, index, columns }) {
         React.createElement(Text, {
           style: [
             col.style.textAlign === 'right' && styles.numericText,
-            col.dataKey === 'isRecommended' && isRecommended && styles.recommendedStar
+            col.dataKey === 'isRecommended' && isRecommended && styles.recommendedCheck
           ].filter(Boolean)
         }, cellValue || '')
       );
@@ -782,21 +792,6 @@ function truncateText(text, maxLength) {
   return text.substring(0, maxLength - 3) + '...';
 }
 
-function getRankColor(rankStr) {
-  const rankMatch = rankStr.match(/^(\d+)\/(\d+)$/);
-  if (!rankMatch) return {};
-  
-  const rank = parseInt(rankMatch[1]);
-  const totalFunds = parseInt(rankMatch[2]);
-  if (rank <= 0 || totalFunds <= 0) return {};
-  
-  const percentile = rank / totalFunds;
-  
-  if (percentile <= 0.2) return styles.rankExcellent;
-  if (percentile <= 0.4) return styles.rankGood;
-  if (percentile <= 0.6) return styles.rankAverage;
-  if (percentile <= 0.8) return styles.rankBelowAverage;
-  return styles.rankPoor;
-}
+// TRANSFORMED: Removed getRankColor function - no longer needed with new column structure
 
 export default MonthlyReportPDF;

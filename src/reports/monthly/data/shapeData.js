@@ -277,20 +277,19 @@ async function getBenchmarkPerformance(ticker, asOf) {
  */
 function prepareFundRow(fund, rank, totalInClass) {
   return {
-          ticker: fund.ticker || '',
-      name: fund.name || '',
-      assetClass: fund.asset_class_name || fund.asset_class || 'Unassigned',
-      ytdReturn: formatPercentDisplay(fund.ytd_return),
+    ticker: fund.ticker || '',
+    name: fund.name || '',
+    assetClass: fund.asset_class_name || fund.asset_class || 'Unassigned',
+    ytdReturn: formatPercentDisplay(fund.ytd_return),
     oneYearReturn: formatPercentDisplay(fund.one_year_return),
     threeYearReturn: formatPercentDisplay(fund.three_year_return),
     fiveYearReturn: formatPercentDisplay(fund.five_year_return),
-    expenseRatio: formatPercentDisplay(fund.expense_ratio),
     sharpeRatio: formatNumberDisplay(fund.sharpe_ratio, 2),
     standardDeviation3y: formatPercentDisplay(fund.standard_deviation_3y),
     standardDeviation5y: formatPercentDisplay(fund.standard_deviation_5y),
+    expenseRatio: formatPercentDisplay(fund.expense_ratio),
     managerTenure: formatTenure(fund.manager_tenure),
     score: formatNumberDisplay(fund.scores?.final || fund.score, 1),
-    rank: `${rank}/${totalInClass}`,
     isRecommended: fund.is_recommended,
     raw: fund // Keep raw data for any custom formatting needs
   };
