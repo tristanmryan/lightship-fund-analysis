@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     
     // Import all dependencies using dynamic import for ES module compatibility
     console.log('📦 Importing dependencies...');
-    let z, renderToBuffer, React, shapeReportData, MonthlyReportPDF, PayloadSchema;
+    let z, renderToBuffer, React, shapeReportData, MonthlyReportPDF, PayloadSchema, pdfBuffer;
     
     try {
       const zodModule = await import('zod');
@@ -134,7 +134,7 @@ export default async function handler(req, res) {
     
     try {
       console.log('🔄 Starting PDF rendering process...');
-      const pdfBuffer = await renderToBuffer(reportComponent);
+      pdfBuffer = await renderToBuffer(reportComponent);
       console.log(`✅ PDF generated successfully: ${pdfBuffer.length} bytes`);
       console.log('📊 Buffer details:', {
         size: pdfBuffer.length,
