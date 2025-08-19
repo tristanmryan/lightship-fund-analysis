@@ -9,6 +9,7 @@ import { supabase } from './supabase.js';
 /**
  * PDF Report Generation Service
  * Generates professional fund performance reports with Raymond James branding
+ * TRANSFORMED: Professional Excel-density layout with compact tables
  */
 
 // Report configuration with Raymond James branding - Enhanced for professional look
@@ -52,21 +53,25 @@ const REPORT_CONFIG = {
   }
 };
 
-// Column definitions optimized for landscape page width (total ≈ 450pt)
+// TRANSFORMED: Column definitions optimized for Excel-density layout
+// Using ONLY available data fields with compact widths
 const TABLE_COLUMNS = [
-  { header: 'Ticker', dataKey: 'ticker', width: 38 },
-  { header: 'Fund Name', dataKey: 'name', width: 100 },
-  { header: 'YTD', dataKey: 'ytd_return', width: 30 },
-  { header: '1Y', dataKey: 'one_year_return', width: 30 },
-  { header: '3Y', dataKey: 'three_year_return', width: 30 },
-  { header: '5Y', dataKey: 'five_year_return', width: 30 },
-  { header: 'Exp', dataKey: 'expense_ratio', width: 30 },
-  { header: 'Sharpe', dataKey: 'sharpe_ratio', width: 35 },
-  { header: 'Score', dataKey: 'score', width: 30 },
-  { header: 'Rank', dataKey: 'rank', width: 30 },
-  { header: 'Tenure', dataKey: 'manager_tenure', width: 35 },
-  { header: 'Rec', dataKey: 'is_recommended', width: 22 }
+  { header: 'Ticker', dataKey: 'ticker', width: 35 },
+  { header: 'Fund Name', dataKey: 'name', width: 120 },
+  { header: 'YTD Return', dataKey: 'ytd_return', width: 45 },
+  { header: '1Y Return', dataKey: 'one_year_return', width: 45 },
+  { header: '3Y Return', dataKey: 'three_year_return', width: 45 },
+  { header: '5Y Return', dataKey: 'five_year_return', width: 45 },
+  { header: 'Sharpe Ratio', dataKey: 'sharpe_ratio', width: 45 },
+  { header: '3Y Std Dev', dataKey: 'standard_deviation_3y', width: 45 },
+  { header: '5Y Std Dev', dataKey: 'standard_deviation_5y', width: 45 },
+  { header: 'Expense Ratio', dataKey: 'expense_ratio', width: 45 },
+  { header: 'Manager Tenure', dataKey: 'manager_tenure', width: 45 },
+  { header: 'Score', dataKey: 'score', width: 35 },
+  { header: 'Rec', dataKey: 'is_recommended', width: 25 }
 ];
+
+// Total width: ~580pt (fits landscape letter page with margins)
 
 /**
  * Main export function - Generate monthly performance report PDF
@@ -323,10 +328,10 @@ function addCoverPage(doc, metadata) {
   
   doc.setFontSize(20);
   doc.setFont('helvetica', 'normal');
-  doc.text('Lightship Fund Analysis', pageWidth / 2, 150, { align: 'center' });
+  doc.text('Lightship Wealth Strategies', pageWidth / 2, 150, { align: 'center' });
   
   doc.setFontSize(16);
-  doc.text('Performance Report', pageWidth / 2, 170, { align: 'center' });
+  doc.text('Recommended List Performance', pageWidth / 2, 170, { align: 'center' });
   
   // Date
   doc.setFontSize(14);
@@ -343,16 +348,16 @@ function addCoverPage(doc, metadata) {
   doc.setFillColor(250, 250, 250);
   doc.roundedRect(pageWidth / 2 - 150, 240, 300, 140, 5, 5, 'FD');
   
-  // Summary content
+  // TRANSFORMED: Summary content for professional Excel-density format
   doc.setFontSize(12);
   doc.setTextColor(50, 50, 50);
   const summaryY = 270;
   const lineHeight = 25;
   
-  doc.text(`Total Funds Analyzed: ${metadata?.totalFunds || 0}`, pageWidth / 2, summaryY, { align: 'center' });
-  doc.text(`Recommended Funds: ${metadata?.recommendedFunds || 0}`, pageWidth / 2, summaryY + lineHeight, { align: 'center' });
+  doc.text(`Total Funds: ${metadata?.totalFunds || 0}`, pageWidth / 2, summaryY, { align: 'center' });
+  doc.text(`Recommended: ${metadata?.recommendedFunds || 0}`, pageWidth / 2, summaryY + lineHeight, { align: 'center' });
   doc.text(`Asset Classes: ${metadata?.assetClassCount || 0}`, pageWidth / 2, summaryY + lineHeight * 2, { align: 'center' });
-  doc.text(`Average Performance: ${metadata?.averagePerformance || 'N/A'}`, pageWidth / 2, summaryY + lineHeight * 3, { align: 'center' });
+  doc.text(`Report Date: ${metadata?.date || 'N/A'}`, pageWidth / 2, summaryY + lineHeight * 3, { align: 'center' });
   
   // Footer
   doc.setFontSize(10);
@@ -400,7 +405,7 @@ function groupFundsByAssetClassOrdered(funds) {
  * Add asset class table to PDF with benchmark integration
  */
 async function addAssetClassTable(doc, assetClass, funds, benchmarkFund) {
-  let startY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 30 : REPORT_CONFIG.margins.top;
+  let startY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 20 : REPORT_CONFIG.margins.top; // TRANSFORMED: Reduced spacing between asset classes
 
   // Prepare fund data (exclude funds that are marked as benchmarks from regular list)
   const regularFunds = funds.filter(f => !f.is_benchmark);
@@ -412,12 +417,14 @@ async function addAssetClassTable(doc, assetClass, funds, benchmarkFund) {
     tableData.push(benchmarkRow);
   }
 
-  // Check if we need a new page (enhanced logic for complete asset class sections)
+  // TRANSFORMED: Enhanced page break logic for Excel-density layout
+  // Fit 3-4 asset class sections per page with compact spacing
   const pageHeight = doc.internal.pageSize.getHeight();
   const remainingSpace = pageHeight - REPORT_CONFIG.margins.bottom - startY;
-  const estimatedTableHeight = (tableData.length + 1) * 12 + 40; // rough estimate
+  const estimatedTableHeight = (tableData.length + 1) * 10 + 20; // Further reduced spacing for density
   
-  if (remainingSpace < estimatedTableHeight && remainingSpace < 150) {
+  // More aggressive page breaks to fit multiple asset classes per page
+  if (remainingSpace < estimatedTableHeight && remainingSpace < 80) {
     doc.addPage();
     startY = REPORT_CONFIG.margins.top;
   }
@@ -427,9 +434,9 @@ async function addAssetClassTable(doc, assetClass, funds, benchmarkFund) {
   const fundCount = regularFunds.length;
   const benchmarkCount = benchmarkFund ? 1 : 0;
   
-  // Create a professional header box
+  // TRANSFORMED: Compact professional header box for Excel-density layout
   const pageWidth = doc.internal.pageSize.getWidth();
-  const headerHeight = 20;
+  const headerHeight = 16; // Reduced height for density
   const headerWidth = pageWidth - REPORT_CONFIG.margins.left - REPORT_CONFIG.margins.right;
   
   // Header background
@@ -440,16 +447,16 @@ async function addAssetClassTable(doc, assetClass, funds, benchmarkFund) {
   doc.setFontSize(REPORT_CONFIG.fontSize.sectionHeader);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...REPORT_CONFIG.colors.headerText);
-  doc.text(`${assetClass}`, REPORT_CONFIG.margins.left + 5, startY + 12);
+  doc.text(`${assetClass}`, REPORT_CONFIG.margins.left + 5, startY + 10);
   
   // Fund count information on the right
   const infoText = `${fundCount} fund${fundCount !== 1 ? 's' : ''}${benchmarkCount > 0 ? ' + benchmark' : ''}`;
   const infoWidth = doc.getTextWidth(infoText);
   doc.setFontSize(REPORT_CONFIG.fontSize.body);
-  doc.text(infoText, pageWidth - REPORT_CONFIG.margins.right - infoWidth - 5, startY + 12);
+  doc.text(infoText, pageWidth - REPORT_CONFIG.margins.right - infoWidth - 5, startY + 10);
   
   // Update startY to account for header
-  startY += headerHeight + 5;
+  startY += headerHeight + 3; // Reduced spacing for density
   
   // Generate table with enhanced styling and improved error handling
   try {
@@ -475,11 +482,11 @@ async function addAssetClassTable(doc, assetClass, funds, benchmarkFund) {
       styles: {
         font: 'helvetica',
         fontSize: REPORT_CONFIG.fontSize.body,
-        cellPadding: 3,
+        cellPadding: 2, // TRANSFORMED: Reduced padding for density
         lineColor: REPORT_CONFIG.colors.borderColor,
         lineWidth: 0.5,
         overflow: 'linebreak',
-        minCellHeight: 14,
+        minCellHeight: 10, // TRANSFORMED: Reduced cell height for density
         textColor: [0, 0, 0]
       },
       headStyles: {
@@ -489,12 +496,12 @@ async function addAssetClassTable(doc, assetClass, funds, benchmarkFund) {
         fontStyle: 'bold',
         halign: 'center',
         valign: 'middle',
-        cellPadding: 4,
-        minCellHeight: 16
+        cellPadding: 3, // TRANSFORMED: Reduced header padding for density
+        minCellHeight: 12 // TRANSFORMED: Reduced header height for density
       },
       bodyStyles: {
         fontSize: REPORT_CONFIG.fontSize.body,
-        cellPadding: 3,
+        cellPadding: 2, // TRANSFORMED: Reduced padding for density
         valign: 'middle',
         lineColor: REPORT_CONFIG.colors.borderColor,
         lineWidth: 0.5
@@ -503,18 +510,19 @@ async function addAssetClassTable(doc, assetClass, funds, benchmarkFund) {
         fillColor: REPORT_CONFIG.colors.alternateRow
       },
       columnStyles: {
-        0: { cellWidth: 38, halign: 'center' },      // Ticker
-        1: { cellWidth: 100, halign: 'left' },       // Fund Name
-        2: { cellWidth: 30, halign: 'right' },       // YTD Return
-        3: { cellWidth: 30, halign: 'right' },       // 1Y Return
-        4: { cellWidth: 30, halign: 'right' },       // 3Y Return
-        5: { cellWidth: 30, halign: 'right' },       // 5Y Return
-        6: { cellWidth: 30, halign: 'right' },       // Expense Ratio
-        7: { cellWidth: 35, halign: 'right' },       // Sharpe Ratio
-        8: { cellWidth: 30, halign: 'right' },       // Score
-        9: { cellWidth: 30, halign: 'center' },      // Rank
-        10: { cellWidth: 35, halign: 'right' },      // Mgr Tenure
-        11: { cellWidth: 22, halign: 'center' }      // Rec
+        0: { cellWidth: 35, halign: 'center' },      // Ticker
+        1: { cellWidth: 120, halign: 'left' },       // Fund Name
+        2: { cellWidth: 45, halign: 'right' },       // YTD Return
+        3: { cellWidth: 45, halign: 'right' },       // 1Y Return
+        4: { cellWidth: 45, halign: 'right' },       // 3Y Return
+        5: { cellWidth: 45, halign: 'right' },       // 5Y Return
+        6: { cellWidth: 45, halign: 'right' },       // Sharpe Ratio
+        7: { cellWidth: 45, halign: 'right' },       // 3Y Std Dev
+        8: { cellWidth: 45, halign: 'right' },       // 5Y Std Dev
+        9: { cellWidth: 45, halign: 'right' },       // Expense Ratio
+        10: { cellWidth: 45, halign: 'right' },      // Manager Tenure
+        11: { cellWidth: 35, halign: 'right' },      // Score
+        12: { cellWidth: 25, halign: 'center' }      // Rec
       },
       showHead: 'everyPage',
       willDrawPage: function(data) {
@@ -541,38 +549,35 @@ async function addAssetClassTable(doc, assetClass, funds, benchmarkFund) {
           return; // Don't apply other styling to benchmark rows
         }
         
-        // Clean styling for recommended funds (column 11 = 'is_recommended')
-        if (data.column.index === 11) {
+        // Clean styling for recommended funds (column 12 = 'is_recommended')
+        if (data.column.index === 12) {
           const cellValue = data.cell.text[0];
-          if (cellValue === '★') {
+          if (cellValue === '✓') {
             data.cell.styles.fillColor = REPORT_CONFIG.colors.rankColors.excellent;
-            data.cell.styles.textColor = [0, 0, 0];
+            data.cell.styles.textColor = [0, 128, 0]; // Green checkmark
             data.cell.styles.fontStyle = 'bold';
           }
         }
         
-        // Subtle performance ranking colors (column 9 = 'rank')
-        if (data.column.index === 9) {
-          const rankStr = data.cell.text[0] || '';
-          const rankMatch = rankStr.match(/^(\d+)\/(\d+)$/);
-          if (rankMatch) {
-            const rank = parseInt(rankMatch[1]);
-            const totalFunds = parseInt(rankMatch[2]);
-            if (rank > 0 && totalFunds > 0) {
-              const percentile = rank / totalFunds;
-              if (percentile <= 0.2) {
-                data.cell.styles.fillColor = REPORT_CONFIG.colors.rankColors.excellent;
-              } else if (percentile <= 0.4) {
-                data.cell.styles.fillColor = REPORT_CONFIG.colors.rankColors.good;
-              } else if (percentile <= 0.6) {
-                data.cell.styles.fillColor = REPORT_CONFIG.colors.rankColors.average;
-              } else if (percentile <= 0.8) {
-                data.cell.styles.fillColor = REPORT_CONFIG.colors.rankColors.belowAverage;
-              } else {
-                data.cell.styles.fillColor = REPORT_CONFIG.colors.rankColors.poor;
-              }
-              data.cell.styles.textColor = [0, 0, 0];
+        // Subtle performance ranking colors (column 11 = 'score')
+        if (data.column.index === 11) {
+          const scoreStr = data.cell.text[0] || '';
+          const score = parseFloat(scoreStr);
+          
+          if (!isNaN(score)) {
+            if (score >= 70) {
+              data.cell.styles.fillColor = REPORT_CONFIG.colors.rankColors.excellent;
+            } else if (score >= 60) {
+              data.cell.styles.fillColor = REPORT_CONFIG.colors.rankColors.good;
+            } else if (score >= 50) {
+              data.cell.styles.fillColor = REPORT_CONFIG.colors.rankColors.average;
+            } else if (score >= 40) {
+              data.cell.styles.fillColor = REPORT_CONFIG.colors.rankColors.belowAverage;
+            } else {
+              data.cell.styles.fillColor = REPORT_CONFIG.colors.rankColors.poor;
             }
+            
+            data.cell.styles.textColor = [0, 0, 0];
           }
         }
       },
@@ -597,7 +602,7 @@ function createFallbackTable(doc, assetClass, tableData, startY) {
   const margin = REPORT_CONFIG.margins.left;
   const tableWidth = pageWidth - margin - REPORT_CONFIG.margins.right;
   const colWidth = tableWidth / TABLE_COLUMNS.length;
-  const rowHeight = 12;
+  const rowHeight = 10; // TRANSFORMED: Reduced row height for density
   
   // Draw header
   doc.setFillColor(...REPORT_CONFIG.colors.headerBg);
@@ -625,7 +630,7 @@ function createFallbackTable(doc, assetClass, tableData, startY) {
       headerText += '...';
     }
     
-    doc.text(headerText, x + 2, currentY + 8);
+    doc.text(headerText, x + 2, currentY + 6);
   });
   
   currentY += rowHeight;
@@ -671,7 +676,7 @@ function createFallbackTable(doc, assetClass, tableData, startY) {
       doc.setFont('helvetica', 'bold');
     }
     
-    // Draw row data with borders and text truncation
+    // TRANSFORMED: Draw row data with borders and text truncation for new column structure
     TABLE_COLUMNS.forEach((col, colIndex) => {
       const x = margin + (colIndex * colWidth);
       
@@ -688,7 +693,8 @@ function createFallbackTable(doc, assetClass, tableData, startY) {
         cellValue += '...';
       }
       
-      doc.text(cellValue, x + 2, currentY + 8);
+      // Adjust text position for reduced row height
+      doc.text(cellValue, x + 2, currentY + 6);
     });
     
     // Reset font weight after benchmark rows
@@ -705,27 +711,30 @@ function createFallbackTable(doc, assetClass, tableData, startY) {
 
 /**
  * Prepare row data for a fund
+ * TRANSFORMED: Updated to match new Excel-density column structure
  */
 function prepareRowData(fund, rank, totalInClass) {
   return {
-    ticker: fund.ticker || '',
-    name: truncateName(fund.name || ''),
-    ytd_return: formatPercent(fund.ytd_return),
-    one_year_return: formatPercent(fund.one_year_return),
-    three_year_return: formatPercent(fund.three_year_return),
-    five_year_return: formatPercent(fund.five_year_return),
-    expense_ratio: formatPercent(fund.expense_ratio),
-    sharpe_ratio: formatNumber(fund.sharpe_ratio, 2),
+    ticker: fund.ticker || fund.Symbol || '',
+    name: truncateName(fund.name || fund['Fund Name'] || ''),
+    ytd_return: formatPercent(fund.ytd_return || fund['YTD']),
+    one_year_return: formatPercent(fund.one_year_return || fund['1 Year']),
+    three_year_return: formatPercent(fund.three_year_return || fund['3 Year']),
+    five_year_return: formatPercent(fund.five_year_return || fund['5 Year']),
+    sharpe_ratio: formatNumber(fund.sharpe_ratio || fund['Sharpe Ratio'], 2),
+    standard_deviation_3y: formatPercent(fund.standard_deviation_3y || fund['StdDev3Y']),
+    standard_deviation_5y: formatPercent(fund.standard_deviation_5y || fund['StdDev5Y']),
+    expense_ratio: formatPercent(fund.expense_ratio || fund['Net Expense Ratio']),
+    manager_tenure: formatTenure(fund.manager_tenure || fund['Manager Tenure']),
     score: formatScore(fund.scores?.final || fund.score),
-    rank: `${rank}/${totalInClass}`,
-    manager_tenure: formatTenure(fund.manager_tenure),
-    is_recommended: fund.is_recommended ? '★' : '',
+    is_recommended: fund.is_recommended ? '✓' : '',
     is_benchmark: fund.is_benchmark || false
   };
 }
 
 /**
  * Prepare benchmark row data
+ * TRANSFORMED: Updated to match new Excel-density column structure
  */
 function prepareBenchmarkRowData(benchmarkFund) {
   const hasRealData = benchmarkFund.real_benchmark_data;
@@ -737,12 +746,13 @@ function prepareBenchmarkRowData(benchmarkFund) {
     one_year_return: hasRealData ? formatPercent(benchmarkFund.one_year_return) : '--',
     three_year_return: hasRealData ? formatPercent(benchmarkFund.three_year_return) : '--',
     five_year_return: hasRealData ? formatPercent(benchmarkFund.five_year_return) : '--',
-    expense_ratio: hasRealData ? formatPercent(benchmarkFund.expense_ratio) : '--',
     sharpe_ratio: hasRealData ? formatNumber(benchmarkFund.sharpe_ratio, 2) : '--',
-    score: '--',
-    rank: '--',
+    standard_deviation_3y: hasRealData ? formatPercent(benchmarkFund.standard_deviation_3y) : '--',
+    standard_deviation_5y: hasRealData ? formatPercent(benchmarkFund.standard_deviation_5y) : '--',
+    expense_ratio: hasRealData ? formatPercent(benchmarkFund.expense_ratio) : '--',
     manager_tenure: '--',
-    is_recommended: '--',
+    score: '--',
+    is_recommended: '',
     is_benchmark: true
   };
 }
@@ -825,7 +835,7 @@ function addPageNumbers(doc, totalPages) {
     doc.setTextColor(100, 100, 100);
     
     // Left side - Report identifier
-    doc.text('Raymond James | Fund Analysis Report', REPORT_CONFIG.margins.left, pageHeight - 20);
+    doc.text('Raymond James | Lightship Wealth Strategies', REPORT_CONFIG.margins.left, pageHeight - 20);
     
     // Center - Page numbers
     doc.text(
