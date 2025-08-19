@@ -2,6 +2,7 @@
   "name": "lightship-fund-analysis",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "dependencies": {
     "@react-pdf/renderer": "^4.3.0",
     "@sparticuz/chromium": "^119.0.2",

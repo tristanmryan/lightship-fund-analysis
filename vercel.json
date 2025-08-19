@@ -1,12 +1,13 @@
 {
   "functions": {
     "api/ycharts.js": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "runtime": "nodejs20.x"
     },
     "api/reports/monthly.js": {
       "memory": 1024,
       "maxDuration": 60,
-      "includeFiles": "src/reports/fonts/**"
+      "runtime": "nodejs20.x"
     }
   },
   "headers": [
