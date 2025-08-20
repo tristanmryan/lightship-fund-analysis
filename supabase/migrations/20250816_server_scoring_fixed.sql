@@ -410,6 +410,10 @@ DECLARE
   fund_scores_array jsonb[] := ARRAY[]::jsonb[];
   peer_count int;
   
+  -- Arrays for raw scores and scaling
+  raw_scores numeric[] := ARRAY[]::numeric[];
+  anchors jsonb;
+  
   -- Fund data variables
   fund_ticker text;
   fund_name text;
