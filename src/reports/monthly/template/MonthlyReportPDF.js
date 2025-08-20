@@ -424,6 +424,12 @@ const styles = StyleSheet.create({
  * Calculates optimal section heights and groups for professional appearance
  */
 function renderAssetClassPages(sections, asOf) {
+  // APPLE KEYNOTE: Defensive programming with comprehensive data validation
+  if (!sections || !Array.isArray(sections) || sections.length === 0) {
+    console.warn('Invalid sections data:', sections);
+    return []; // Return empty array if no valid sections
+  }
+  
   const pages = [];
   let currentPage = [];
   let currentPageHeight = 0;
@@ -439,8 +445,14 @@ function renderAssetClassPages(sections, asOf) {
   const AVAILABLE_HEIGHT = PAGE_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - 80; // Apple-quality page margins
   
   sections.forEach((section, index) => {
-    // Calculate section height
-    const fundCount = section.funds.length;
+    // APPLE KEYNOTE: Defensive programming with proper null/undefined checks
+    if (!section || !section.rows) {
+      console.warn('Invalid section data at index', index, section);
+      return; // Skip invalid sections
+    }
+    
+    // Calculate section height using correct property names
+    const fundCount = section.rows.length;
     const benchmarkHeight = section.benchmark ? ROW_HEIGHT : 0;
     const tableHeight = TABLE_HEADER_HEIGHT + (fundCount * ROW_HEIGHT) + benchmarkHeight;
     const totalSectionHeight = SECTION_HEADER_HEIGHT + tableHeight + SECTION_SPACING;
@@ -498,6 +510,18 @@ function createAssetClassPage(sections, asOf, pageNumber) {
  * Main Monthly Report Document
  */
 function MonthlyReportPDF({ data, options = {} }) {
+  // APPLE KEYNOTE: Defensive programming with comprehensive data validation
+  if (!data || !data.sections) {
+    console.error('Invalid data structure:', data);
+    return React.createElement(Document, null,
+      React.createElement(Page, { size: "LETTER", orientation: "landscape", style: styles.page },
+        React.createElement(Text, { style: { color: '#DC2626', fontSize: 16, textAlign: 'center', marginTop: 200 } },
+          "Error: Invalid data structure provided"
+        )
+      )
+    );
+  }
+  
   const { sections, asOf, totalFunds, recommendedFunds } = data;
   
   return React.createElement(Document, null,
@@ -634,7 +658,19 @@ function PageFooter() {
  * Asset Class Section Component
  */
 function AssetClassSection({ section, sectionNumber, isLastSection, isCompact = false }) {
+  // APPLE KEYNOTE: Defensive programming with property validation
+  if (!section) {
+    console.warn('AssetClassSection: Invalid section data');
+    return null;
+  }
+  
   const { assetClass, fundCount, recommendedCount, rows, benchmark } = section;
+  
+  // Validate required properties
+  if (!assetClass || !rows || !Array.isArray(rows)) {
+    console.warn('AssetClassSection: Missing required properties:', { assetClass, rows });
+    return null;
+  }
   
   // TRANSFORMED: Professional section styling with compact mode support
   const sectionStyles = [
@@ -649,11 +685,11 @@ function AssetClassSection({ section, sectionNumber, isLastSection, isCompact = 
   
   return React.createElement(View, { style: sectionStyles },
     React.createElement(View, { style: headerStyles },
-      React.createElement(Text, { style: styles.assetClassTitle }, assetClass),
+      React.createElement(Text, { style: styles.assetClassTitle }, assetClass || 'Unknown Asset Class'),
       React.createElement(View, { style: styles.sectionMeta },
         React.createElement(Text, { style: styles.sectionMetaText }, null,
-          fundCount + " fund" + (fundCount !== 1 ? 's' : '') +
-          (recommendedCount > 0 ? " • " + recommendedCount + " recommended" : '')
+          (fundCount || rows.length) + " fund" + ((fundCount || rows.length) !== 1 ? 's' : '') +
+          ((recommendedCount || 0) > 0 ? " • " + (recommendedCount || 0) + " recommended" : '')
         )
       )
     ),
@@ -671,6 +707,16 @@ function AssetClassSection({ section, sectionNumber, isLastSection, isCompact = 
  * Fund Table Component
  */
 function FundTable({ rows, benchmark, assetClass, isCompact = false }) {
+  // APPLE KEYNOTE: Defensive programming with data validation
+  if (!rows || !Array.isArray(rows)) {
+    console.warn('FundTable: Invalid rows data:', rows);
+    return React.createElement(View, { style: styles.fundTable },
+      React.createElement(Text, { style: { color: '#DC2626', textAlign: 'center', padding: 20 } },
+        "Error: Invalid fund data"
+      )
+    );
+  }
+  
   // TRANSFORMED: Updated to match new Excel-density 13-column layout
   const columns = [
     { header: 'Ticker', dataKey: 'ticker', style: styles.colTicker },
@@ -727,6 +773,12 @@ function FundTable({ rows, benchmark, assetClass, isCompact = false }) {
  * Individual Fund Row Component
  */
 function FundRow({ row, index, columns }) {
+  // APPLE KEYNOTE: Defensive programming with row validation
+  if (!row || !columns || !Array.isArray(columns)) {
+    console.warn('FundRow: Invalid row or columns data:', { row, columns });
+    return null;
+  }
+  
   const isRecommended = row.isRecommended;
   const isAlternate = index % 2 === 1;
   
@@ -781,6 +833,12 @@ function FundRow({ row, index, columns }) {
  * Benchmark Row Component
  */
 function BenchmarkRow({ benchmark, columns }) {
+  // APPLE KEYNOTE: Defensive programming with benchmark validation
+  if (!benchmark || !columns || !Array.isArray(columns)) {
+    console.warn('BenchmarkRow: Invalid benchmark or columns data:', { benchmark, columns });
+    return null;
+  }
+  
   return React.createElement(View, { style: [styles.tableRow, styles.benchmarkRow] },
     ...columns.map((col, colIndex) => {
       let cellValue = '';
