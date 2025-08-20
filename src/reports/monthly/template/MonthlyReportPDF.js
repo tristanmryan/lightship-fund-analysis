@@ -16,18 +16,18 @@ import {
 
 // Raymond James Professional Color Scheme and Typography
 const styles = StyleSheet.create({
-  // TRANSFORMED: Professional page layout optimized for multi-table efficiency
+  // APPLE KEYNOTE: Full-width professional layout with sophisticated typography
   page: {
     size: 'LETTER',
     orientation: 'landscape',
-    paddingTop: 30,
-    paddingRight: 25,
-    paddingBottom: 30,
-    paddingLeft: 25,
+    paddingTop: 40,
+    paddingRight: 40,
+    paddingBottom: 40,
+    paddingLeft: 40,
     fontFamily: 'Helvetica',
-    fontSize: 7,
-    lineHeight: 1.1,
-    color: '#1F2937'
+    fontSize: 8,
+    lineHeight: 1.2,
+    color: '#1A1A1A'
   },
 
   // Raymond James Branding
@@ -150,39 +150,43 @@ const styles = StyleSheet.create({
     paddingTop: 12
   },
 
-  // TRANSFORMED: Professional section header styling
+  // APPLE KEYNOTE: Sophisticated section header with modern typography
   sectionHeader: {
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
-    marginBottom: 20,
-    paddingBottom: 8,
+    marginBottom: 24,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB'
+    borderBottomColor: '#E8E8E8'
   },
   
   // Compact mode for multi-section pages
   sectionHeaderCompact: {
-    marginBottom: 15,
-    paddingBottom: 6
+    marginBottom: 18,
+    paddingBottom: 8
   },
 
+  // APPLE KEYNOTE: Sophisticated asset class title with modern typography
   assetClassTitle: {
-    fontSize: 14, // TRANSFORMED: Reduced font size for density
-    fontWeight: 'bold',
-    color: '#002F6C'
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    letterSpacing: -0.3
   },
 
+  // APPLE KEYNOTE: Sophisticated section meta styling with modern typography
   sectionMeta: {
-    fontSize: 8,
+    fontSize: 9,
     color: '#6B7280'
   },
   
   sectionMetaText: {
-    fontSize: 8,
+    fontSize: 9,
     color: '#6B7280',
-    fontWeight: 'normal'
+    fontWeight: '500',
+    letterSpacing: 0.1
   },
 
   recommendedCount: {
@@ -190,134 +194,154 @@ const styles = StyleSheet.create({
     fontWeight: 500
   },
 
-  // TRANSFORMED: Professional fund table styling
+  // APPLE KEYNOTE: Sophisticated fund table with modern depth and styling
   fundTable: {
-    marginTop: 8,
-    marginBottom: 8,
-    borderWidth: 0.5,
-    borderColor: '#E5E7EB',
-    borderRadius: 2
+    marginTop: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2
   },
 
-  // TRANSFORMED: Professional table header styling
+  // APPLE KEYNOTE: Sophisticated table header with modern design
   tableHeader: {
     display: 'flex',
     flexDirection: 'row',
-    backgroundColor: '#2E5AA0', // Professional blue
+    backgroundColor: '#2C3E50',
     borderBottomWidth: 1,
-    borderBottomColor: '#1E3A8A'
+    borderBottomColor: '#34495E',
+    borderRadius: 4
   },
 
   tableHeaderCell: {
     color: '#FFFFFF',
-    padding: 6, // Professional spacing
-    fontWeight: 'bold',
-    fontSize: 7, // Clean, readable size
+    padding: 10,
+    fontWeight: '600',
+    fontSize: 8,
     textAlign: 'center',
     borderRightWidth: 0.5,
-    borderRightColor: '#E5E7EB',
-    letterSpacing: 0.2
+    borderRightColor: '#34495E',
+    letterSpacing: 0.3
   },
 
+  // APPLE KEYNOTE: Modern table row styling with subtle borders
   tableRow: {
     display: 'flex',
     flexDirection: 'row',
     borderBottomWidth: 0.5,
-    borderBottomColor: '#D1D5DB'
+    borderBottomColor: '#E8E8E8',
+    minHeight: 24
   },
 
-  // TRANSFORMED: Professional alternating row colors
+  // APPLE KEYNOTE: Sophisticated alternating row colors with subtle depth
   tableRowAlternate: {
-    backgroundColor: '#F8FAFC' // Clean, subtle light blue
+    backgroundColor: '#F8F9FA'
   },
 
+  // APPLE KEYNOTE: Sophisticated recommended row styling with elegant accent
   tableRowRecommended: {
     borderLeftWidth: 3,
-    borderLeftColor: '#FFC200'
+    borderLeftColor: '#4CAF50',
+    backgroundColor: '#F1F8E9'
   },
 
+  // APPLE KEYNOTE: Sophisticated benchmark highlighting with elegant gold styling
   benchmarkRow: {
-    backgroundColor: '#FFF3CD',
-    borderTopWidth: 2,
-    borderTopColor: '#FFE69C',
-    borderBottomWidth: 2,
-    borderBottomColor: '#FFE69C'
+    backgroundColor: '#FFF8E1',
+    borderTopWidth: 1,
+    borderTopColor: '#FFD54F',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FFD54F',
+    borderLeftWidth: 3,
+    borderLeftColor: '#FFB300'
   },
 
-  // TRANSFORMED: Professional table cell styling
+  // APPLE KEYNOTE: Sophisticated table cell styling with modern design
   tableCell: {
-    padding: 4, // Professional spacing
-    fontSize: 7, // Clean, readable size
+    padding: 8,
+    fontSize: 8,
     borderRightWidth: 0.5,
-    borderRightColor: '#E5E7EB',
+    borderRightColor: '#E8E8E8',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'flex-start' // Default alignment
+    justifyContent: 'flex-start',
+    minHeight: 24
   },
 
+  // APPLE KEYNOTE: Sophisticated benchmark cell styling with modern design
   tableCellBenchmark: {
-    fontWeight: 'bold',
-    borderRightColor: '#FFE69C'
+    fontWeight: '600',
+    borderRightColor: '#FFD54F',
+    color: '#8D6E63'
   },
 
-  // TRANSFORMED: Professional column widths optimized for Excel-quality layout
-  colTicker: { width: 32, textAlign: 'center' },
-  colName: { width: 140, textAlign: 'left' },
-  colYtd: { width: 42, textAlign: 'right' },
-  col1y: { width: 42, textAlign: 'right' },
-  col3y: { width: 42, textAlign: 'right' },
-  col5y: { width: 42, textAlign: 'right' },
-  colSharpe: { width: 42, textAlign: 'right' },
-  colStdDev3y: { width: 42, textAlign: 'right' },
-  colStdDev5y: { width: 42, textAlign: 'right' },
-  colExpense: { width: 42, textAlign: 'right' },
-  colTenure: { width: 42, textAlign: 'right' },
-  colScore: { width: 32, textAlign: 'right' },
-  colRec: { width: 20, textAlign: 'center' },
+  // APPLE KEYNOTE: Full-width professional column layout optimized for landscape letter
+  colTicker: { width: 45, textAlign: 'center' },
+  colName: { width: 180, textAlign: 'left' },
+  colYtd: { width: 55, textAlign: 'right' },
+  col1y: { width: 55, textAlign: 'right' },
+  col3y: { width: 55, textAlign: 'right' },
+  col5y: { width: 55, textAlign: 'right' },
+  colSharpe: { width: 55, textAlign: 'right' },
+  colStdDev3y: { width: 55, textAlign: 'right' },
+  colStdDev5y: { width: 55, textAlign: 'right' },
+  colExpense: { width: 55, textAlign: 'right' },
+  colTenure: { width: 55, textAlign: 'right' },
+  colScore: { width: 45, textAlign: 'right' },
+  colRec: { width: 35, textAlign: 'center' },
 
-  // Performance color coding
-  rankExcellent: { backgroundColor: '#C6EFCE' },
-  rankGood: { backgroundColor: '#FFFF99' },
-  rankAverage: { backgroundColor: '#FFEB9C' },
-  rankBelowAverage: { backgroundColor: '#FFC7CE' },
-  rankPoor: { backgroundColor: '#FFC7CE' },
+  // APPLE KEYNOTE: Sophisticated performance color coding with modern palette
+  rankExcellent: { backgroundColor: '#E8F5E8' },
+  rankGood: { backgroundColor: '#FFF8E1' },
+  rankAverage: { backgroundColor: '#FFF3E0' },
+  rankBelowAverage: { backgroundColor: '#FFEBEE' },
+  rankPoor: { backgroundColor: '#FFEBEE' },
 
-  // Text formatting
+  // APPLE KEYNOTE: Sophisticated numeric text styling with modern typography
   numericText: {
     fontFamily: 'Helvetica',
-    fontVariant: 'tabular-nums'
+    fontVariant: 'tabular-nums',
+    fontWeight: '500',
+    color: '#1A1A1A'
   },
 
-  positiveReturn: { color: '#059669' },
-  negativeReturn: { color: '#DC2626' },
-  neutralReturn: { color: '#6B7280' },
+  // APPLE KEYNOTE: Sophisticated return color coding with modern palette
+  positiveReturn: { color: '#2E7D32' },
+  negativeReturn: { color: '#C62828' },
+  neutralReturn: { color: '#5A5A5A' },
 
-  // TRANSFORMED: Professional recommendation checkmark styling
+  // APPLE KEYNOTE: Sophisticated recommendation checkmark with modern styling
   recommendedCheck: {
-    color: '#059669', // Professional green
-    fontSize: 8,
-    fontWeight: 'bold',
+    color: '#4CAF50',
+    fontSize: 10,
+    fontWeight: '600',
     textAlign: 'center'
   },
   
-  // Special styling for fund names
+  // APPLE KEYNOTE: Sophisticated fund name styling with modern typography
   fundNameText: {
-    fontSize: 7,
-    fontWeight: 'normal',
-    color: '#1F2937'
+    fontSize: 8,
+    fontWeight: '500',
+    color: '#1A1A1A',
+    lineHeight: 1.3
   },
 
-  // TRANSFORMED: Professional page footer styling
+  // APPLE KEYNOTE: Sophisticated page footer with modern design
   pageFooter: {
     position: 'absolute',
-    bottom: 15,
-    left: 25,
-    right: 25,
-    fontSize: 7,
-    color: '#9CA3AF',
-    borderTopWidth: 0.5,
-    borderTopColor: '#E5E7EB',
-    paddingTop: 6,
+    bottom: 20,
+    left: 40,
+    right: 40,
+    fontSize: 8,
+    color: '#8A8A8A',
+    borderTopWidth: 1,
+    borderTopColor: '#E8E8E8',
+    paddingTop: 8,
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -341,18 +365,18 @@ const styles = StyleSheet.create({
     lineHeight: 1.3
   },
 
-  // TRANSFORMED: Professional page header styling
+  // APPLE KEYNOTE: Sophisticated page header with modern design
   pageHeader: {
     position: 'absolute',
-    top: 12,
-    left: 25,
-    right: 25,
-    fontSize: 8,
-    color: '#6B7280',
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#E5E7EB',
-    paddingBottom: 3,
-    marginBottom: 6,
+    top: 15,
+    left: 40,
+    right: 40,
+    fontSize: 9,
+    color: '#5A5A5A',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8E8E8',
+    paddingBottom: 8,
+    marginBottom: 8,
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -404,15 +428,15 @@ function renderAssetClassPages(sections, asOf) {
   let currentPage = [];
   let currentPageHeight = 0;
   
-  // TRANSFORMED: Professional layout constants optimized for multi-table efficiency
+  // APPLE KEYNOTE: Sophisticated layout constants optimized for full-width design
   const PAGE_HEIGHT = 612; // Letter landscape height in points
-  const HEADER_HEIGHT = 50; // Professional page header height
-  const FOOTER_HEIGHT = 35; // Professional page footer height
-  const SECTION_HEADER_HEIGHT = 22; // Professional asset class header height
-  const TABLE_HEADER_HEIGHT = 18; // Professional table header height
-  const ROW_HEIGHT = 14; // Professional fund row height
-  const SECTION_SPACING = 12; // Professional spacing between sections
-  const AVAILABLE_HEIGHT = PAGE_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - 50; // Professional page margins
+  const HEADER_HEIGHT = 60; // Apple-quality page header height
+  const FOOTER_HEIGHT = 45; // Apple-quality page footer height
+  const SECTION_HEADER_HEIGHT = 28; // Apple-quality asset class header height
+  const TABLE_HEADER_HEIGHT = 22; // Apple-quality table header height
+  const ROW_HEIGHT = 24; // Apple-quality fund row height
+  const SECTION_SPACING = 16; // Apple-quality spacing between sections
+  const AVAILABLE_HEIGHT = PAGE_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - 80; // Apple-quality page margins
   
   sections.forEach((section, index) => {
     // Calculate section height
