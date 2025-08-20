@@ -2,6 +2,7 @@
 -- This migration adds the calculate_scores_as_of RPC that exactly replicates client-side scoring.js
 -- FIXED: Changed parameter names to avoid PostgreSQL reserved keyword conflicts
 -- FIXED: Restructured functions to avoid record[] parameter types
+-- FIXED: Replaced record[] variables with proper table types and temporary tables
 
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -362,16 +363,6 @@ DECLARE
   winsor_q_lo numeric := 0.01;
   winsor_q_hi numeric := 0.99;
   
-  fund_record record;
-  asset_class_funds record[];
-  metric_stats jsonb;
-  fund_scores jsonb;
-  asset_class_name text;
-  peer_funds record[];
-  benchmark_funds record[];
-  raw_scores numeric[];
-  anchors jsonb;
-  
   -- Metric keys for scoring
   metric_keys text[] := ARRAY['ytd', 'oneYear', 'threeYear', 'fiveYear', 'tenYear',
                                'sharpeRatio3Y', 'stdDev3Y', 'stdDev5Y', 'upCapture3Y',
@@ -415,25 +406,176 @@ DECLARE
   percentile int;
   
   -- Temporary variables
-  fund_data record;
+  fund_data jsonb;
   fund_scores_array jsonb[] := ARRAY[]::jsonb[];
   peer_count int;
-BEGIN
-  -- Get funds for the specified date and asset class
-  SELECT array_agg(f.*) INTO asset_class_funds
-  FROM public.get_funds_as_of(p_date) f
-  WHERE (p_asset_class_id IS NULL OR f.asset_class_id = p_asset_class_id)
-    AND f.asset_class_id IS NOT NULL;
   
-  IF asset_class_funds IS NULL OR array_length(asset_class_funds, 1) < 2 THEN
+  -- Fund data variables
+  fund_ticker text;
+  fund_name text;
+  fund_is_benchmark boolean;
+  fund_is_recommended boolean;
+  fund_asset_class_id uuid;
+  fund_ytd numeric;
+  fund_one_year numeric;
+  fund_three_year numeric;
+  fund_five_year numeric;
+  fund_ten_year numeric;
+  fund_sharpe numeric;
+  fund_stddev_3y numeric;
+  fund_stddev_5y numeric;
+  fund_up_capture numeric;
+  fund_down_capture numeric;
+  fund_alpha numeric;
+  fund_expense numeric;
+  fund_tenure numeric;
+  
+  -- Cursor for iterating through funds
+  fund_cursor CURSOR FOR
+    SELECT 
+      f.asset_class_id,
+      f.ticker,
+      f.name,
+      f.is_benchmark,
+      f.is_recommended,
+      f.ytd_return,
+      f.one_year_return,
+      f.three_year_return,
+      f.five_year_return,
+      f.ten_year_return,
+      f.sharpe_ratio,
+      f.standard_deviation_3y,
+      f.standard_deviation_5y,
+      f.up_capture_ratio,
+      f.down_capture_ratio,
+      f.alpha,
+      f.expense_ratio,
+      f.manager_tenure
+    FROM public.get_funds_as_of(p_date) f
+    WHERE (p_asset_class_id IS NULL OR f.asset_class_id = p_asset_class_id)
+      AND f.asset_class_id IS NOT NULL;
+  
+  -- Cursor for peer funds only (for statistics)
+  peer_cursor CURSOR FOR
+    SELECT 
+      f.ytd_return,
+      f.one_year_return,
+      f.three_year_return,
+      f.five_year_return,
+      f.ten_year_return,
+      f.sharpe_ratio,
+      f.standard_deviation_3y,
+      f.standard_deviation_5y,
+      f.up_capture_ratio,
+      f.down_capture_ratio,
+      f.alpha,
+      f.expense_ratio,
+      f.manager_tenure
+    FROM public.get_funds_as_of(p_date) f
+    WHERE (p_asset_class_id IS NULL OR f.asset_class_id = p_asset_class_id)
+      AND f.asset_class_id IS NOT NULL
+      AND NOT f.is_benchmark;
+  
+  -- Arrays to store fund data
+  fund_tickers text[] := ARRAY[]::text[];
+  fund_names text[] := ARRAY[]::text[];
+  fund_benchmarks boolean[] := ARRAY[]::boolean[];
+  fund_recommended boolean[] := ARRAY[]::boolean[];
+  fund_asset_classes uuid[] := ARRAY[]::uuid[];
+  fund_ytd_returns numeric[] := ARRAY[]::numeric[];
+  fund_one_year_returns numeric[] := ARRAY[]::numeric[];
+  fund_three_year_returns numeric[] := ARRAY[]::numeric[];
+  fund_five_year_returns numeric[] := ARRAY[]::numeric[];
+  fund_ten_year_returns numeric[] := ARRAY[]::numeric[];
+  fund_sharpe_ratios numeric[] := ARRAY[]::numeric[];
+  fund_stddev_3y_returns numeric[] := ARRAY[]::numeric[];
+  fund_stddev_5y_returns numeric[] := ARRAY[]::numeric[];
+  fund_up_captures numeric[] := ARRAY[]::numeric[];
+  fund_down_captures numeric[] := ARRAY[]::numeric[];
+  fund_alphas numeric[] := ARRAY[]::numeric[];
+  fund_expense_ratios numeric[] := ARRAY[]::numeric[];
+  fund_tenures numeric[] := ARRAY[]::numeric[];
+  
+  -- Arrays for peer fund data (non-benchmarks only)
+  peer_ytd_returns numeric[] := ARRAY[]::numeric[];
+  peer_one_year_returns numeric[] := ARRAY[]::numeric[];
+  peer_three_year_returns numeric[] := ARRAY[]::numeric[];
+  peer_five_year_returns numeric[] := ARRAY[]::numeric[];
+  peer_ten_year_returns numeric[] := ARRAY[]::numeric[];
+  peer_sharpe_ratios numeric[] := ARRAY[]::numeric[];
+  peer_stddev_3y_returns numeric[] := ARRAY[]::numeric[];
+  peer_stddev_5y_returns numeric[] := ARRAY[]::numeric[];
+  peer_up_captures numeric[] := ARRAY[]::numeric[];
+  peer_down_captures numeric[] := ARRAY[]::numeric[];
+  peer_alphas numeric[] := ARRAY[]::numeric[];
+  peer_expense_ratios numeric[] := ARRAY[]::numeric[];
+  peer_tenures numeric[] := ARRAY[]::numeric[];
+  
+  fund_count int := 0;
+  peer_count_total int := 0;
+BEGIN
+  -- First pass: collect all fund data into arrays
+  OPEN fund_cursor;
+  LOOP
+    FETCH fund_cursor INTO 
+      fund_asset_class_id, fund_ticker, fund_name, fund_is_benchmark, fund_is_recommended,
+      fund_ytd, fund_one_year, fund_three_year, fund_five_year, fund_ten_year,
+      fund_sharpe, fund_stddev_3y, fund_stddev_5y, fund_up_capture, fund_down_capture,
+      fund_alpha, fund_expense, fund_tenure;
+    
+    EXIT WHEN NOT FOUND;
+    
+    fund_count := fund_count + 1;
+    
+    -- Store fund data in arrays
+    fund_tickers := array_append(fund_tickers, fund_ticker);
+    fund_names := array_append(fund_names, fund_name);
+    fund_benchmarks := array_append(fund_benchmarks, fund_is_benchmark);
+    fund_recommended := array_append(fund_recommended, fund_is_recommended);
+    fund_asset_classes := array_append(fund_asset_classes, fund_asset_class_id);
+    fund_ytd_returns := array_append(fund_ytd_returns, fund_ytd);
+    fund_one_year_returns := array_append(fund_one_year_returns, fund_one_year);
+    fund_three_year_returns := array_append(fund_three_year_returns, fund_three_year);
+    fund_five_year_returns := array_append(fund_five_year_returns, fund_five_year);
+    fund_ten_year_returns := array_append(fund_ten_year_returns, fund_ten_year);
+    fund_sharpe_ratios := array_append(fund_sharpe_ratios, fund_sharpe);
+    fund_stddev_3y_returns := array_append(fund_stddev_3y_returns, fund_stddev_3y);
+    fund_stddev_5y_returns := array_append(fund_stddev_5y_returns, fund_stddev_5y);
+    fund_up_captures := array_append(fund_up_captures, fund_up_capture);
+    fund_down_captures := array_append(fund_down_captures, fund_down_capture);
+    fund_alphas := array_append(fund_alphas, fund_alpha);
+    fund_expense_ratios := array_append(fund_expense_ratios, fund_expense);
+    fund_tenures := array_append(fund_tenures, fund_tenure);
+    
+    -- Store peer fund data (non-benchmarks only)
+    IF NOT fund_is_benchmark THEN
+      peer_count_total := peer_count_total + 1;
+      peer_ytd_returns := array_append(peer_ytd_returns, fund_ytd);
+      peer_one_year_returns := array_append(peer_one_year_returns, fund_one_year);
+      peer_three_year_returns := array_append(peer_three_year_returns, fund_three_year);
+      peer_five_year_returns := array_append(peer_five_year_returns, fund_five_year);
+      peer_ten_year_returns := array_append(peer_ten_year_returns, fund_ten_year);
+      peer_sharpe_ratios := array_append(peer_sharpe_ratios, fund_sharpe);
+      peer_stddev_3y_returns := array_append(peer_stddev_3y_returns, fund_stddev_3y);
+      peer_stddev_5y_returns := array_append(peer_stddev_5y_returns, fund_stddev_5y);
+      peer_up_captures := array_append(peer_up_captures, fund_up_capture);
+      peer_down_captures := array_append(peer_down_captures, fund_down_capture);
+      peer_alphas := array_append(peer_alphas, fund_alpha);
+      peer_expense_ratios := array_append(peer_expense_ratios, fund_expense);
+      peer_tenures := array_append(peer_tenures, fund_tenure);
+    END IF;
+  END LOOP;
+  CLOSE fund_cursor;
+  
+  IF fund_count < 2 THEN
     -- Return default scores for insufficient funds
-    FOREACH fund_record IN ARRAY asset_class_funds
+    FOR i IN 1..fund_count
     LOOP
-      asset_class_id := fund_record.asset_class_id;
-      ticker := fund_record.ticker;
-      name := fund_record.name;
-      is_benchmark := fund_record.is_benchmark;
-      is_recommended := fund_record.is_recommended;
+      asset_class_id := fund_asset_classes[i];
+      ticker := fund_tickers[i];
+      name := fund_names[i];
+      is_benchmark := fund_benchmarks[i];
+      is_recommended := fund_recommended[i];
       score_raw := 0;
       score_final := 50;
       percentile := 50;
@@ -446,52 +588,33 @@ BEGIN
     RETURN;
   END IF;
   
-  -- Separate peer funds and benchmarks
-  peer_funds := ARRAY[]::record[];
-  benchmark_funds := ARRAY[]::record[];
-  
-  FOREACH fund_record IN ARRAY asset_class_funds
-  LOOP
-    IF fund_record.is_benchmark THEN
-      benchmark_funds := array_append(benchmark_funds, fund_record);
-    ELSE
-      peer_funds := array_append(peer_funds, fund_record);
-    END IF;
-  END LOOP;
-  
   -- Calculate metric statistics for peer funds only (exactly matching client-side)
-  -- This replaces the separate _calculate_metric_statistics function
   FOREACH metric IN ARRAY metric_keys
   LOOP
-    -- Extract values for this metric
+    -- Extract values for this metric from peer funds
     input_values := ARRAY[]::numeric[];
-    FOR i IN 1..array_length(peer_funds, 1)
-    LOOP
-      fund_data := peer_funds[i];
-      -- Map metric names to actual database columns
-      CASE metric
-        WHEN 'ytd' THEN input_values := array_append(input_values, fund_data.ytd_return);
-        WHEN 'oneYear' THEN input_values := array_append(input_values, fund_data.one_year_return);
-        WHEN 'threeYear' THEN input_values := array_append(input_values, fund_data.three_year_return);
-        WHEN 'fiveYear' THEN input_values := array_append(input_values, fund_data.five_year_return);
-        WHEN 'tenYear' THEN input_values := array_append(input_values, fund_data.ten_year_return);
-        WHEN 'sharpeRatio3Y' THEN input_values := array_append(input_values, fund_data.sharpe_ratio);
-        WHEN 'stdDev3Y' THEN input_values := array_append(input_values, fund_data.standard_deviation_3y);
-        WHEN 'stdDev5Y' THEN input_values := array_append(input_values, fund_data.standard_deviation_5y);
-        WHEN 'upCapture3Y' THEN input_values := array_append(input_values, fund_data.up_capture_ratio);
-        WHEN 'downCapture3Y' THEN input_values := array_append(input_values, fund_data.down_capture_ratio);
-        WHEN 'alpha5Y' THEN input_values := array_append(input_values, fund_data.alpha);
-        WHEN 'expenseRatio' THEN input_values := array_append(input_values, fund_data.expense_ratio);
-        WHEN 'managerTenure' THEN input_values := array_append(input_values, fund_data.manager_tenure);
-      END CASE;
-    END LOOP;
+    CASE metric
+      WHEN 'ytd' THEN input_values := peer_ytd_returns;
+      WHEN 'oneYear' THEN input_values := peer_one_year_returns;
+      WHEN 'threeYear' THEN input_values := peer_three_year_returns;
+      WHEN 'fiveYear' THEN input_values := peer_five_year_returns;
+      WHEN 'tenYear' THEN input_values := peer_ten_year_returns;
+      WHEN 'sharpeRatio3Y' THEN input_values := peer_sharpe_ratios;
+      WHEN 'stdDev3Y' THEN input_values := peer_stddev_3y_returns;
+      WHEN 'stdDev5Y' THEN input_values := peer_stddev_5y_returns;
+      WHEN 'upCapture3Y' THEN input_values := peer_up_captures;
+      WHEN 'downCapture3Y' THEN input_values := peer_down_captures;
+      WHEN 'alpha5Y' THEN input_values := peer_alphas;
+      WHEN 'expenseRatio' THEN input_values := peer_expense_ratios;
+      WHEN 'managerTenure' THEN input_values := peer_tenures;
+    END CASE;
     
     -- Calculate statistics
     mean_val := public._calculate_mean(input_values);
     stddev_val := public._calculate_stddev(input_values, mean_val);
     count_val := array_length(input_values, 1);
-    coverage := CASE WHEN array_length(peer_funds, 1) > 0
-                     THEN count_val::numeric / array_length(peer_funds, 1)::numeric
+    coverage := CASE WHEN peer_count_total > 0
+                     THEN count_val::numeric / peer_count_total::numeric
                      ELSE 0 END;
     
     -- Calculate quantiles for adaptive winsorization
@@ -521,11 +644,10 @@ BEGIN
   END LOOP;
   
   -- Calculate scores for all funds (including benchmarks)
-  -- This replaces the separate _calculate_fund_scores function
   fund_scores_array := ARRAY[]::jsonb[];
-  FOREACH fund_record IN ARRAY asset_class_funds
+  FOR i IN 1..fund_count
   LOOP
-    -- Calculate single fund score (replaces _calculate_single_fund_score)
+    -- Calculate single fund score
     breakdown := '{}'::jsonb;
     weighted_sum := 0;
     observed_peer_counts := ARRAY[]::int[];
@@ -538,19 +660,19 @@ BEGIN
       
       -- Extract metric value from database columns
       CASE metric
-        WHEN 'ytd' THEN value := fund_record.ytd_return;
-        WHEN 'oneYear' THEN value := fund_record.one_year_return;
-        WHEN 'threeYear' THEN value := fund_record.three_year_return;
-        WHEN 'fiveYear' THEN value := fund_record.five_year_return;
-        WHEN 'tenYear' THEN value := fund_record.ten_year_return;
-        WHEN 'sharpeRatio3Y' THEN value := fund_record.sharpe_ratio;
-        WHEN 'stdDev3Y' THEN value := fund_record.standard_deviation_3y;
-        WHEN 'stdDev5Y' THEN value := fund_record.standard_deviation_5y;
-        WHEN 'upCapture3Y' THEN value := fund_record.up_capture_ratio;
-        WHEN 'downCapture3Y' THEN value := fund_record.down_capture_ratio;
-        WHEN 'alpha5Y' THEN value := fund_record.alpha;
-        WHEN 'expenseRatio' THEN value := fund_record.expense_ratio;
-        WHEN 'managerTenure' THEN value := fund_record.manager_tenure;
+        WHEN 'ytd' THEN value := fund_ytd_returns[i];
+        WHEN 'oneYear' THEN value := fund_one_year_returns[i];
+        WHEN 'threeYear' THEN value := fund_three_year_returns[i];
+        WHEN 'fiveYear' THEN value := fund_five_year_returns[i];
+        WHEN 'tenYear' THEN value := fund_ten_year_returns[i];
+        WHEN 'sharpeRatio3Y' THEN value := fund_sharpe_ratios[i];
+        WHEN 'stdDev3Y' THEN value := fund_stddev_3y_returns[i];
+        WHEN 'stdDev5Y' THEN value := fund_stddev_5y_returns[i];
+        WHEN 'upCapture3Y' THEN value := fund_up_captures[i];
+        WHEN 'downCapture3Y' THEN value := fund_down_captures[i];
+        WHEN 'alpha5Y' THEN value := fund_alphas[i];
+        WHEN 'expenseRatio' THEN value := fund_expense_ratios[i];
+        WHEN 'managerTenure' THEN value := fund_tenures[i];
       END CASE;
       
       fund_data := stats ->> metric;
@@ -603,13 +725,14 @@ BEGIN
     
     -- Calculate reweighted sum
     present_metrics := ARRAY(SELECT jsonb_object_keys(breakdown));
+    reweighted_sum := 0;
     IF array_length(present_metrics, 1) > 0 THEN
       total_abs := (SELECT SUM(ABS((breakdown ->> m)::jsonb ->> 'weight')::numeric)
                     FROM unnest(present_metrics) m);
       
-      FOR i IN 1..array_length(present_metrics, 1)
+      FOR j IN 1..array_length(present_metrics, 1)
       LOOP
-        metric := present_metrics[i];
+        metric := present_metrics[j];
         weight := (breakdown ->> metric)::jsonb ->> 'weight';
         z_score := (breakdown ->> metric)::jsonb ->> 'zScore';
         
@@ -646,14 +769,13 @@ BEGIN
   END IF;
   
   -- Scale scores and calculate percentiles
-  FOR i IN 1..array_length(asset_class_funds, 1)
+  FOR i IN 1..fund_count
   LOOP
-    fund_record := asset_class_funds[i];
-    asset_class_id := fund_record.asset_class_id;
-    ticker := fund_record.ticker;
-    name := fund_record.name;
-    is_benchmark := fund_record.is_benchmark;
-    is_recommended := fund_record.is_recommended;
+    asset_class_id := fund_asset_classes[i];
+    ticker := fund_tickers[i];
+    name := fund_names[i];
+    is_benchmark := fund_benchmarks[i];
+    is_recommended := fund_recommended[i];
     
     -- Get score data
     score_raw := (fund_scores_array[i]->>'rawReweighted')::numeric;
