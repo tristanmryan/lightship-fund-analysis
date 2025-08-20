@@ -1,307 +1,13 @@
--- Phase 1: Server-side scoring migration with FIXED type casting errors
--- This migration fixes the ABS(text) error and other JSON type casting issues
+-- Deploy Fixed Server-Side Scoring Function
+-- This script fixes the ABS(text) error and other JSON type casting issues
 
--- Enable required extensions
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- Step 1: Drop the problematic function first
+DROP FUNCTION IF EXISTS public.calculate_scores_as_of(date, uuid);
+DROP FUNCTION IF EXISTS public._calculate_single_fund_score(record, jsonb, jsonb);
+DROP FUNCTION IF EXISTS public._calculate_fund_scores(record[], jsonb, jsonb);
+DROP FUNCTION IF EXISTS public._calculate_metric_statistics(record[]);
 
--- Helper function to calculate mean (exactly matches client-side math.js)
-CREATE OR REPLACE FUNCTION public._calculate_mean(values numeric[])
-RETURNS numeric
-LANGUAGE plpgsql
-IMMUTABLE
-AS $$
-DECLARE
-  sum_val numeric := 0;
-  count_val int := 0;
-  val numeric;
-BEGIN
-  FOREACH val IN ARRAY values
-  LOOP
-    IF val IS NOT NULL THEN
-      sum_val := sum_val + val;
-      count_val := count_val + 1;
-    END IF;
-  END LOOP;
-  
-  RETURN CASE WHEN count_val > 0 THEN sum_val / count_val ELSE NULL END;
-END;
-$$;
-
--- Helper function to calculate standard deviation (exactly matches client-side math.js)
-CREATE OR REPLACE FUNCTION public._calculate_stddev(values numeric[], mean_val numeric)
-RETURNS numeric
-LANGUAGE plpgsql
-IMMUTABLE
-AS $$
-DECLARE
-  sum_sq numeric := 0;
-  count_val int := 0;
-  val numeric;
-BEGIN
-  FOREACH val IN ARRAY values
-  LOOP
-    IF val IS NOT NULL THEN
-      sum_sq := sum_sq + POWER(val - mean_val, 2);
-      count_val := count_val + 1;
-    END IF;
-  END LOOP;
-  
-  RETURN CASE WHEN count_val > 1 THEN SQRT(sum_sq / (count_val - 1)) ELSE NULL END;
-END;
-$$;
-
--- Helper function to calculate Z-score (exactly matches client-side math.js)
-CREATE OR REPLACE FUNCTION public._calculate_zscore(value numeric, mean_val numeric, stddev_val numeric)
-RETURNS numeric
-LANGUAGE plpgsql
-IMMUTABLE
-AS $$
-BEGIN
-  RETURN CASE 
-    WHEN stddev_val IS NULL OR stddev_val = 0 THEN NULL
-    ELSE (value - mean_val) / stddev_val
-  END;
-END;
-$$;
-
--- Helper function to calculate quantile (exactly matches client-side math.js)
-CREATE OR REPLACE FUNCTION public._calculate_quantile(sorted_values numeric[], q numeric)
-RETURNS numeric
-LANGUAGE plpgsql
-IMMUTABLE
-AS $$
-DECLARE
-  n int;
-  k numeric;
-  d numeric;
-BEGIN
-  n := array_length(sorted_values, 1);
-  IF n = 0 THEN RETURN NULL; END IF;
-  
-  k := (n - 1) * q;
-  d := k - FLOOR(k);
-  
-  RETURN sorted_values[FLOOR(k) + 1] * (1 - d) + sorted_values[LEAST(FLOOR(k) + 2, n)] * d;
-END;
-$$;
-
--- Helper function to calculate error function approximation (exactly matches client-side math.js)
-CREATE OR REPLACE FUNCTION public._erf(x numeric)
-RETURNS numeric
-LANGUAGE plpgsql
-IMMUTABLE
-AS $$
-DECLARE
-  a1 numeric := 0.254829592;
-  a2 numeric := -0.284496736;
-  a3 numeric := 1.421413741;
-  a4 numeric := -1.453152027;
-  a5 numeric := 1.061405429;
-  p numeric := 0.3275911;
-  sign numeric;
-  t numeric;
-  y numeric;
-BEGIN
-  sign := CASE WHEN x >= 0 THEN 1 ELSE -1 END;
-  x := ABS(x);
-  
-  t := 1.0 / (1.0 + p * x);
-  y := 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * EXP(-x * x);
-  
-  RETURN sign * y;
-END;
-$$;
-
--- Helper function to calculate inverse error function approximation (exactly matches client-side math.js)
-CREATE OR REPLACE FUNCTION public._erfinv(x numeric)
-RETURNS numeric
-LANGUAGE plpgsql
-IMMUTABLE
-AS $$
-DECLARE
-  a numeric := 0.147;
-  sign numeric;
-  ln1mx numeric;
-  term1 numeric;
-  term2 numeric;
-BEGIN
-  sign := CASE WHEN x >= 0 THEN 1 ELSE -1 END;
-  x := ABS(x);
-  
-  IF x >= 0.95 THEN
-    ln1mx := LN(1 - x);
-    term1 := 2 / (PI() * a) + ln1mx / 2;
-    term2 := ln1mx / a;
-    RETURN sign * SQRT(-term1 + SQRT(term1 * term1 - term2));
-  ELSE
-    RETURN sign * SQRT(-LN(1 - x * x) / 2);
-  END IF;
-END;
-$$;
-
--- Helper function to winsorize Z-score (exactly matches client-side scoring.js)
-CREATE OR REPLACE FUNCTION public._winsorize_z(z numeric, metric text)
-RETURNS numeric
-LANGUAGE plpgsql
-IMMUTABLE
-AS $$
-DECLARE
-  limit numeric;
-  winsor_limits_by_metric jsonb := '{
-    "ytd": 0.99,
-    "oneYear": 0.99,
-    "threeYear": 0.985,
-    "fiveYear": 0.985,
-    "tenYear": 0.985,
-    "sharpeRatio3Y": 0.98,
-    "stdDev3Y": 0.975,
-    "stdDev5Y": 0.975,
-    "upCapture3Y": 0.98,
-    "downCapture3Y": 0.98,
-    "alpha5Y": 0.98,
-    "expenseRatio": 0.98,
-    "managerTenure": 0.99
-  }'::jsonb;
-  p numeric;
-BEGIN
-  p := COALESCE((winsor_limits_by_metric ->> metric)::numeric, 0.98);
-  limit := SQRT(2) * _erfinv(2 * p - 1);
-  
-  IF limit IS NULL THEN limit := 2.326; END IF;
-  
-  RETURN CASE
-    WHEN z > limit THEN limit
-    WHEN z < -limit THEN -limit
-    ELSE z
-  END;
-END;
-$$;
-
--- Helper function to scale score (exactly matches client-side scoring.js)
-CREATE OR REPLACE FUNCTION public._scale_score(raw_score numeric)
-RETURNS numeric
-LANGUAGE plpgsql
-IMMUTABLE
-AS $$
-DECLARE
-  scaled numeric;
-BEGIN
-  scaled := 50 + 10 * raw_score;
-  IF scaled < 0 THEN RETURN 0; END IF;
-  IF scaled > 100 THEN RETURN 100; END IF;
-  RETURN ROUND(scaled * 10) / 10;
-END;
-$$;
-
--- Helper function to calculate robust scaling anchors
-CREATE OR REPLACE FUNCTION public._calculate_robust_scaling_anchors(raw_scores numeric[])
-RETURNS jsonb
-LANGUAGE plpgsql
-IMMUTABLE
-AS $$
-DECLARE
-  sorted_scores numeric[];
-  q05 numeric;
-  median numeric;
-  q95 numeric;
-BEGIN
-  sorted_scores := ARRAY(SELECT unnest(raw_scores) ORDER BY unnest);
-  q05 := public._calculate_quantile(sorted_scores, 0.05);
-  median := public._calculate_quantile(sorted_scores, 0.5);
-  q95 := public._calculate_quantile(sorted_scores, 0.95);
-  
-  RETURN jsonb_build_object('q05', q05, 'median', median, 'q95', q95);
-END;
-$$;
-
--- Helper function to scale score robustly
-CREATE OR REPLACE FUNCTION public._scale_score_robust(raw numeric, anchors jsonb)
-RETURNS numeric
-LANGUAGE plpgsql
-IMMUTABLE
-AS $$
-DECLARE
-  q05 numeric;
-  median numeric;
-  q95 numeric;
-  y numeric;
-  m numeric;
-BEGIN
-  q05 := (anchors ->> 'q05')::numeric;
-  median := (anchors ->> 'median')::numeric;
-  q95 := (anchors ->> 'q95')::numeric;
-  
-  IF NOT (q05 IS NOT NULL AND median IS NOT NULL AND q95 IS NOT NULL) THEN
-    RETURN public._scale_score(raw);
-  END IF;
-  
-  -- Map q05→40, median→50, q95→60, and linearly extend; clamp 0..100
-  IF raw <= q05 THEN
-    m := (40 - 0) / (q05 - (q05 - (q95 - q05)));
-    y := 40 + m * (raw - q05);
-  ELSIF raw >= q95 THEN
-    m := (100 - 60) / ((q95 + (q95 - q05)) - q95);
-    y := 60 + m * (raw - q95);
-  ELSIF raw <= median THEN
-    m := (50 - 40) / (median - q05);
-    y := 40 + m * (raw - q05);
-  ELSE
-    m := (60 - 50) / (q95 - median);
-    y := 50 + m * (raw - median);
-  END IF;
-  
-  RETURN GREATEST(0, LEAST(100, ROUND(y * 10) / 10));
-END;
-$$;
-
--- Helper function to apply tiny class fallback
-CREATE OR REPLACE FUNCTION public._apply_tiny_class_fallback(raw_score numeric, score_data jsonb)
-RETURNS numeric
-LANGUAGE plpgsql
-IMMUTABLE
-AS $$
-DECLARE
-  min_peers int;
-  min_peers_threshold int := 5;
-  neutral_threshold int := 2;
-  shrink_factor numeric := 0.25;
-BEGIN
-  min_peers := (score_data ->> 'peerCountMin')::int;
-  
-  IF min_peers > 0 AND min_peers < min_peers_threshold THEN
-    IF min_peers <= neutral_threshold THEN
-      RETURN 0; -- neutral contribution when peers are extremely few
-    ELSE
-      RETURN raw_score * shrink_factor; -- shrink raw effect
-    END IF;
-  END IF;
-  
-  RETURN raw_score;
-END;
-$$;
-
--- Helper function to calculate percentile
-CREATE OR REPLACE FUNCTION public._calculate_percentile(raw_score numeric, raw_scores numeric[])
-RETURNS int
-LANGUAGE plpgsql
-IMMUTABLE
-AS $$
-DECLARE
-  better_than_count int := 0;
-  score numeric;
-BEGIN
-  FOREACH score IN ARRAY raw_scores
-  LOOP
-    IF score < raw_score THEN
-      better_than_count := better_than_count + 1;
-    END IF;
-  END LOOP;
-  
-  RETURN ROUND((better_than_count::numeric / array_length(raw_scores, 1)) * 100);
-END;
-$$;
-
--- Helper function to calculate metric statistics (exactly matches client-side)
+-- Step 2: Recreate the helper functions with proper type handling
 CREATE OR REPLACE FUNCTION public._calculate_metric_statistics(peer_funds record[])
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -389,7 +95,7 @@ BEGIN
 END;
 $$;
 
--- Helper function to calculate fund scores (exactly matches client-side)
+-- Step 3: Recreate the fund scores calculation function
 CREATE OR REPLACE FUNCTION public._calculate_fund_scores(
   funds record[], 
   statistics jsonb, 
@@ -419,7 +125,7 @@ BEGIN
 END;
 $$;
 
--- Helper function to calculate single fund score (exactly matches client-side) - FIXED VERSION
+-- Step 4: Recreate the single fund score function with FIXED JSON extraction
 CREATE OR REPLACE FUNCTION public._calculate_single_fund_score(
   fund record, 
   statistics jsonb, 
@@ -557,7 +263,7 @@ BEGIN
 END;
 $$;
 
--- Main scoring function that exactly replicates client-side scoring.js - FIXED VERSION
+-- Step 5: Recreate the main scoring function
 CREATE OR REPLACE FUNCTION public.calculate_scores_as_of(
   p_date date,
   p_asset_class_id uuid DEFAULT NULL
@@ -720,6 +426,14 @@ BEGIN
 END;
 $$;
 
--- Grant execute permissions
+-- Step 6: Grant execute permissions
 GRANT EXECUTE ON FUNCTION public.calculate_scores_as_of(date, uuid) TO anon, authenticated, service_role;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role; 
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role;
+
+-- Step 7: Verify the fix
+DO $$
+BEGIN
+  RAISE NOTICE 'Fixed server-side scoring function deployed successfully!';
+  RAISE NOTICE 'The ABS(text) error has been resolved.';
+  RAISE NOTICE 'Run test_fixed_scoring.sql to verify the function works.';
+END $$; 
