@@ -40,32 +40,40 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
 
+  // INVESTMENT COMMITTEE: Clean, modern brand bar
   brandBar: {
-    width: 200,
-    height: 4,
-    backgroundColor: '#002F6C',
-    marginBottom: 20
+    width: 120, // Smaller, more elegant
+    height: 2, // Thinner, more refined
+    backgroundColor: '#1E40AF', // Match title color
+    marginBottom: 24,
+    borderRadius: 1 // Subtle rounded corners
   },
 
+  // INVESTMENT COMMITTEE: Clean, sharp cover page title design
   mainTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#002F6C',
-    marginBottom: 8,
-    letterSpacing: -0.5
+    fontSize: 32,
+    fontWeight: '600', // Cleaner weight
+    color: '#1E40AF', // Modern blue
+    marginBottom: 12,
+    letterSpacing: -0.3,
+    textAlign: 'center'
   },
 
   subtitle: {
-    fontSize: 20,
-    fontWeight: 500,
-    color: '#1F2937',
-    marginBottom: 6
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#374151', // Clean gray
+    marginBottom: 8,
+    letterSpacing: -0.1,
+    textAlign: 'center'
   },
 
   reportType: {
-    fontSize: 16,
-    fontWeight: 'normal',
-    color: '#6B7280'
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#6B7280',
+    textAlign: 'center',
+    letterSpacing: 0.1
   },
 
   reportMeta: {
@@ -95,14 +103,15 @@ const styles = StyleSheet.create({
     fontSize: 10
   },
 
+  // INVESTMENT COMMITTEE: Clean, minimal summary box
   summaryBox: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 24,
-    marginTop: 30,
-    maxWidth: 400
+    backgroundColor: '#FFFFFF', // Clean white background
+    borderWidth: 0.5, // Thinner border
+    borderColor: '#E5E7EB', // Lighter border
+    borderRadius: 6, // Smaller radius
+    padding: 20, // Reduced padding
+    marginTop: 32,
+    maxWidth: 380 // Slightly smaller
   },
 
   summaryGrid: {
@@ -119,19 +128,21 @@ const styles = StyleSheet.create({
     flex: '0 0 45%'
   },
 
+  // INVESTMENT COMMITTEE: Clean metric styling
   metricValue: {
     display: 'block',
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#002F6C',
-    lineHeight: 1.2
+    fontSize: 22, // Slightly smaller
+    fontWeight: '600', // Cleaner weight
+    color: '#1E40AF', // Match title color
+    lineHeight: 1.1
   },
 
   metricLabel: {
     display: 'block',
-    fontSize: 9,
+    fontSize: 8, // Smaller for cleaner look
     color: '#6B7280',
-    marginTop: 4
+    marginTop: 3,
+    fontWeight: '500'
   },
 
   // TRANSFORMED: Professional asset class section styling
@@ -194,81 +205,81 @@ const styles = StyleSheet.create({
     fontWeight: 500
   },
 
-  // INVESTMENT COMMITTEE: Clean, sharp fund table design
+  // INVESTMENT COMMITTEE: Ultra-minimal fund table design
   fundTable: {
-    marginTop: 12,
-    marginBottom: 12,
-    borderWidth: 0.5, // Thinner border
-    borderColor: '#E5E7EB', // Lighter border color
-    borderRadius: 4, // Smaller radius for cleaner look
+    marginTop: 8, // Reduced margins
+    marginBottom: 8,
+    borderWidth: 0.25, // Ultra-thin border
+    borderColor: '#E5E7EB', // Light border
+    borderRadius: 2, // Minimal radius for sharp look
     backgroundColor: '#FFFFFF'
-    // Removed shadows for cleaner appearance
+    // Ultra-clean, no shadows
   },
 
-  // INVESTMENT COMMITTEE: Sharp, clean table header design
+  // INVESTMENT COMMITTEE: Ultra-clean, minimal table header design
   tableHeader: {
     display: 'flex',
     flexDirection: 'row',
-    backgroundColor: '#374151', // Lighter, cleaner blue-grey
-    borderBottomWidth: 0.5, // Thinner border
-    borderBottomColor: '#6B7280', // Lighter border color
-    borderRadius: 4 // Smaller radius for cleaner look
+    backgroundColor: '#4B5563', // Even lighter, cleaner gray
+    borderBottomWidth: 0.25, // Ultra-thin border
+    borderBottomColor: '#9CA3AF', // Very light border
+    borderRadius: 2 // Minimal radius for sharp look
   },
 
   tableHeaderCell: {
     color: '#FFFFFF',
-    padding: 8, // Reduced padding for cleaner appearance
-    fontWeight: '500', // Lighter weight for cleaner look
-    fontSize: 7,
+    padding: 6, // Minimal padding for clean density
+    fontWeight: '500',
+    fontSize: 6, // Smaller font for cleaner look
     textAlign: 'center',
-    borderRightWidth: 0.25, // Thinner borders
-    borderRightColor: '#6B7280', // Lighter border color
-    letterSpacing: 0.1, // Minimal letter spacing
+    borderRightWidth: 0.125, // Ultra-thin borders
+    borderRightColor: '#9CA3AF', // Very light borders
+    letterSpacing: 0.05, // Minimal letter spacing
     textTransform: 'uppercase'
   },
 
-  // INVESTMENT COMMITTEE: Clean table row styling with minimal borders
+  // INVESTMENT COMMITTEE: Ultra-minimal table row styling
   tableRow: {
     display: 'flex',
     flexDirection: 'row',
-    borderBottomWidth: 0.25, // Thinner borders
-    borderBottomColor: '#F3F4F6', // Much lighter border color
-    minHeight: 24 // Match new row height
+    borderBottomWidth: 0.125, // Ultra-thin borders
+    borderBottomColor: '#F9FAFB', // Barely visible borders
+    minHeight: 20 // Reduced height for cleaner density
   },
 
-  // INVESTMENT COMMITTEE: Very light alternating row colors for clean appearance
+  // INVESTMENT COMMITTEE: Ultra-subtle alternating row colors
   tableRowAlternate: {
-    backgroundColor: '#FAFAFA' // Much lighter, barely visible
+    backgroundColor: '#FCFCFC' // Barely visible, ultra-clean
   },
 
-  // INVESTMENT COMMITTEE: Clean recommended row styling with subtle accent
+  // INVESTMENT COMMITTEE: Ultra-subtle recommended row styling
   tableRowRecommended: {
-    borderLeftWidth: 2, // Thinner accent
-    borderLeftColor: '#10B981', // Lighter green
-    backgroundColor: '#F0FDF4' // Very light background
+    borderLeftWidth: 1, // Ultra-thin accent
+    borderLeftColor: '#34D399', // Very light green
+    backgroundColor: '#F0FDF4' // Minimal background
   },
 
-  // INVESTMENT COMMITTEE: Clean benchmark highlighting with subtle accent
+  // INVESTMENT COMMITTEE: Ultra-subtle benchmark highlighting
   benchmarkRow: {
     backgroundColor: '#FEF3C7', // Light cream background
-    borderTopWidth: 0.5, // Thinner borders
+    borderTopWidth: 0.25, // Ultra-thin borders
     borderTopColor: '#F59E0B',
-    borderBottomWidth: 0.5,
+    borderBottomWidth: 0.25,
     borderBottomColor: '#F59E0B',
-    borderLeftWidth: 2, // Thinner accent
-    borderLeftColor: '#F59E0B' // Lighter gold
+    borderLeftWidth: 1, // Ultra-thin accent
+    borderLeftColor: '#F59E0B' // Clean gold
   },
 
-  // INVESTMENT COMMITTEE: Sharp, clean cell styling
+  // INVESTMENT COMMITTEE: Ultra-minimal cell styling for clean tables
   tableCell: {
-    padding: 6, // Reduced padding for cleaner density
-    fontSize: 7,
-    borderRightWidth: 0.25, // Thinner borders
-    borderRightColor: '#E5E7EB', // Lighter border color
+    padding: 4, // Minimal padding for clean density
+    fontSize: 6, // Smaller font for cleaner look
+    borderRightWidth: 0.125, // Ultra-thin borders
+    borderRightColor: '#F3F4F6', // Very light borders
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 24 // Match new row height
+    minHeight: 20 // Reduced height for cleaner density
   },
 
   // APPLE KEYNOTE: Sophisticated benchmark cell styling with modern design
@@ -434,15 +445,15 @@ function renderAssetClassPages(sections, asOf) {
   let currentPage = [];
   let currentPageHeight = 0;
   
-  // INVESTMENT COMMITTEE: Conservative layout constants to prevent table cutoff
+  // INVESTMENT COMMITTEE: Ultra-clean layout constants for minimal tables
   const PAGE_HEIGHT = 612; // Letter landscape height in points
-  const HEADER_HEIGHT = 70; // Increased header height for breathing room
-  const FOOTER_HEIGHT = 50; // Increased footer height for breathing room
-  const SECTION_HEADER_HEIGHT = 35; // Increased section header height
-  const TABLE_HEADER_HEIGHT = 26; // Increased table header height
-  const ROW_HEIGHT = 24; // Increased row height for better readability
-  const SECTION_SPACING = 25; // Increased spacing between sections
-  const SAFETY_MARGIN = 40; // Extra safety margin to prevent cutoff
+  const HEADER_HEIGHT = 70; // Header height for breathing room
+  const FOOTER_HEIGHT = 50; // Footer height for breathing room
+  const SECTION_HEADER_HEIGHT = 30; // Reduced section header height
+  const TABLE_HEADER_HEIGHT = 20; // Reduced table header height for minimal design
+  const ROW_HEIGHT = 20; // Ultra-minimal fund row height
+  const SECTION_SPACING = 20; // Reduced spacing for cleaner density
+  const SAFETY_MARGIN = 40; // Safety margin to prevent cutoff
   const AVAILABLE_HEIGHT = PAGE_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - SAFETY_MARGIN;
   
   sections.forEach((section, index) => {
