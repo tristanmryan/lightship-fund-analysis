@@ -208,11 +208,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4
   },
 
-  // INVESTMENT COMMITTEE: Refined table header typography with professional sophistication
+  // INVESTMENT COMMITTEE: Clean, professional table header typography
   tableHeader: {
     display: 'flex',
     flexDirection: 'row',
-    backgroundColor: '#1E293B', // Deeper, more sophisticated blue
+    backgroundColor: '#1E293B',
     borderBottomWidth: 1,
     borderBottomColor: '#334155',
     borderRadius: 6
@@ -220,14 +220,14 @@ const styles = StyleSheet.create({
 
   tableHeaderCell: {
     color: '#FFFFFF',
-    padding: 12,
+    padding: 10,
     fontWeight: '600',
-    fontSize: 8,
+    fontSize: 7, // Slightly smaller for cleaner appearance
     textAlign: 'center',
     borderRightWidth: 0.5,
     borderRightColor: '#334155',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase' // Professional uppercase headers
+    letterSpacing: 0.2, // Reduced for cleaner text
+    textTransform: 'uppercase'
   },
 
   // INVESTMENT COMMITTEE: Optimized row height for professional density and readability
@@ -262,15 +262,15 @@ const styles = StyleSheet.create({
     borderLeftColor: '#D97706' // Deeper, more professional gold accent
   },
 
-  // INVESTMENT COMMITTEE: Refined cell padding and typography for professional excellence
+  // INVESTMENT COMMITTEE: Clean, professional cell styling with optimized typography
   tableCell: {
-    padding: 6, // Optimized padding for better density
-    fontSize: 8,
+    padding: 8, // Increased padding for better text breathing room
+    fontSize: 7, // Slightly smaller for cleaner appearance
     borderRightWidth: 0.5,
     borderRightColor: '#E8E8E8',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center', // Center all content for consistency
     minHeight: 22 // Match row height for consistency
   },
 
@@ -281,19 +281,19 @@ const styles = StyleSheet.create({
     color: '#8D6E63'
   },
 
-  // INVESTMENT COMMITTEE: Perfectly balanced column proportions for professional readability
+  // INVESTMENT COMMITTEE: Perfectly balanced column proportions with centered performance data
   colTicker: { width: 50, textAlign: 'center' },
   colName: { width: 140, textAlign: 'left' }, // Reduced from 180 to ~25% of table width
-  colYtd: { width: 60, textAlign: 'right' }, // Increased for better numeric readability
-  col1y: { width: 60, textAlign: 'right' },
-  col3y: { width: 60, textAlign: 'right' },
-  col5y: { width: 60, textAlign: 'right' },
-  colSharpe: { width: 60, textAlign: 'right' },
-  colStdDev3y: { width: 60, textAlign: 'right' },
-  colStdDev5y: { width: 60, textAlign: 'right' },
-  colExpense: { width: 60, textAlign: 'right' },
-  colTenure: { width: 60, textAlign: 'right' },
-  colScore: { width: 50, textAlign: 'right' },
+  colYtd: { width: 60, textAlign: 'center' }, // Centered for better visual balance
+  col1y: { width: 60, textAlign: 'center' },
+  col3y: { width: 60, textAlign: 'center' },
+  col5y: { width: 60, textAlign: 'center' },
+  colSharpe: { width: 60, textAlign: 'center' },
+  colStdDev3y: { width: 60, textAlign: 'center' },
+  colStdDev5y: { width: 60, textAlign: 'center' },
+  colExpense: { width: 60, textAlign: 'center' },
+  colTenure: { width: 60, textAlign: 'center' },
+  colScore: { width: 50, textAlign: 'center' },
   colRec: { width: 40, textAlign: 'center' },
 
   // APPLE KEYNOTE: Sophisticated performance color coding with modern palette
@@ -303,12 +303,13 @@ const styles = StyleSheet.create({
   rankBelowAverage: { backgroundColor: '#FFEBEE' },
   rankPoor: { backgroundColor: '#FFEBEE' },
 
-  // INVESTMENT COMMITTEE: Refined numeric text styling with professional typography
+  // INVESTMENT COMMITTEE: Clean numeric text styling optimized for centered alignment
   numericText: {
     fontFamily: 'Helvetica',
     fontVariant: 'tabular-nums',
-    fontWeight: '600', // Stronger weight for better numeric readability
-    color: '#0F172A' // Match other text colors for consistency
+    fontWeight: '500', // Balanced weight for clean appearance
+    color: '#0F172A',
+    textAlign: 'center'
   },
 
   // APPLE KEYNOTE: Sophisticated return color coding with modern palette
@@ -324,12 +325,13 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   
-  // INVESTMENT COMMITTEE: Refined fund name styling with professional typography
+  // INVESTMENT COMMITTEE: Clean fund name styling with professional typography
   fundNameText: {
-    fontSize: 8,
-    fontWeight: '600', // Slightly stronger for better readability
-    color: '#0F172A', // Match asset class title color for consistency
-    lineHeight: 1.2 // Tighter line height for professional density
+    fontSize: 7, // Match other text sizes for consistency
+    fontWeight: '500', // Balanced weight for clean appearance
+    color: '#0F172A',
+    lineHeight: 1.2,
+    textAlign: 'left' // Keep fund names left-aligned for readability
   },
 
   // APPLE KEYNOTE: Sophisticated page footer with modern design
@@ -446,7 +448,7 @@ function renderAssetClassPages(sections, asOf) {
   const AVAILABLE_HEIGHT = PAGE_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - 80; // Professional page margins
   
   sections.forEach((section, index) => {
-    // APPLE KEYNOTE: Defensive programming with proper null/undefined checks
+    // INVESTMENT COMMITTEE: Defensive programming with proper null/undefined checks
     if (!section || !section.rows) {
       console.warn('Invalid section data at index', index, section);
       return; // Skip invalid sections
@@ -458,12 +460,9 @@ function renderAssetClassPages(sections, asOf) {
     const tableHeight = TABLE_HEADER_HEIGHT + (fundCount * ROW_HEIGHT) + benchmarkHeight;
     const totalSectionHeight = SECTION_HEADER_HEIGHT + tableHeight + SECTION_SPACING;
     
-    // Check if this section fits on current page
-    if (currentPageHeight + totalSectionHeight <= AVAILABLE_HEIGHT && currentPage.length < 4) {
-      // Add to current page
-      currentPage.push(section);
-      currentPageHeight += totalSectionHeight;
-    } else {
+    // INVESTMENT COMMITTEE: Smart layout logic - never cut off tables
+    // If this section can't fit on current page, start a new page
+    if (currentPageHeight + totalSectionHeight > AVAILABLE_HEIGHT) {
       // Create new page with current sections
       if (currentPage.length > 0) {
         pages.push(createAssetClassPage(currentPage, asOf, pages.length + 1));
@@ -472,6 +471,10 @@ function renderAssetClassPages(sections, asOf) {
       // Start new page with this section
       currentPage = [section];
       currentPageHeight = totalSectionHeight;
+    } else {
+      // Add to current page if it fits
+      currentPage.push(section);
+      currentPageHeight += totalSectionHeight;
     }
   });
   
@@ -816,11 +819,12 @@ function FundRow({ row, index, columns }) {
         cellStyles.push({ borderRightWidth: 0 });
       }
 
-      // TRANSFORMED: Professional text styling with proper alignment
+      // INVESTMENT COMMITTEE: Clean text styling with proper alignment
       const textStyles = [
-        col.style.textAlign === 'right' && styles.numericText,
         col.dataKey === 'isRecommended' && isRecommended && styles.recommendedCheck,
-        col.dataKey === 'name' && styles.fundNameText // Special styling for fund names
+        col.dataKey === 'name' && styles.fundNameText, // Special styling for fund names
+        // All other columns use centered alignment with numeric styling
+        col.dataKey !== 'name' && styles.numericText
       ].filter(Boolean);
 
       return React.createElement(View, { key: col.dataKey, style: cellStyles },
@@ -889,7 +893,7 @@ function BenchmarkRow({ benchmark, columns }) {
       return React.createElement(View, { key: col.dataKey, style: cellStyles },
         React.createElement(Text, {
           style: [
-            col.style.textAlign === 'right' && styles.numericText
+            col.dataKey === 'name' ? null : styles.numericText // Center all non-name columns
           ].filter(Boolean)
         }, cellValue)
       );
