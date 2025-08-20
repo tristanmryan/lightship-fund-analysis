@@ -147,7 +147,7 @@ LANGUAGE plpgsql
 IMMUTABLE
 AS $$
 DECLARE
-  limit numeric;
+  winsor_limit numeric;
   winsor_limits_by_metric jsonb := '{
     "ytd": 0.99,
     "oneYear": 0.99,
@@ -166,13 +166,13 @@ DECLARE
   p numeric;
 BEGIN
   p := COALESCE((winsor_limits_by_metric ->> metric)::numeric, 0.98);
-  limit := SQRT(2) * _erfinv(2 * p - 1);
+  winsor_limit := SQRT(2) * _erfinv(2 * p - 1);
   
-  IF limit IS NULL THEN limit := 2.326; END IF;
+  IF winsor_limit IS NULL THEN winsor_limit := 2.326; END IF;
   
   RETURN CASE
-    WHEN z > limit THEN limit
-    WHEN z < -limit THEN -limit
+    WHEN z > winsor_limit THEN winsor_limit
+    WHEN z < -winsor_limit THEN -winsor_limit
     ELSE z
   END;
 END;
