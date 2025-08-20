@@ -16,6 +16,8 @@ export function useFundData() {
   // Feature flag: runtime scoring for live as-of month data (default ON unless explicitly disabled)
   const ENABLE_RUNTIME_SCORING = (process.env.REACT_APP_ENABLE_RUNTIME_SCORING ?? 'true') === 'true';
   const ENABLE_REFRESH = (process.env.REACT_APP_ENABLE_REFRESH || 'false') === 'true';
+  // Feature flag: server-side scoring (default OFF for gradual rollout)
+  const USE_SERVER_SCORING = (process.env.REACT_APP_DB_SCORES || 'false') === 'true';
 
   // Load funds from database
   const loadFunds = useCallback(async (asOf = asOfMonth) => {
@@ -29,16 +31,31 @@ export function useFundData() {
         asOf = res?.active || null;
         setAsOfMonth(asOf);
       }
-      const fundData = await fundService.getAllFunds(asOf);
+
+      let fundData;
+      let scoringSource = '';
+
+      if (USE_SERVER_SCORING) {
+        // Use server-side scoring when enabled
+        fundData = await fundService.getAllFundsWithScoring(asOf);
+        scoringSource = 'server-side';
+      } else {
+        // Use client-side scoring (existing behavior)
+        fundData = await fundService.getAllFunds(asOf);
+        scoringSource = 'client-side';
+      }
+
       // Load effective weights once per refresh (resolver caches in module)
-      if (ENABLE_RUNTIME_SCORING) {
+      if (ENABLE_RUNTIME_SCORING && !USE_SERVER_SCORING) {
         await loadEffectiveWeightsResolver();
       }
-      const enriched = ENABLE_RUNTIME_SCORING ? computeRuntimeScores(fundData) : fundData;
+
+      // Apply client-side scoring only if not using server-side scoring
+      const enriched = (USE_SERVER_SCORING || !ENABLE_RUNTIME_SCORING) ? fundData : computeRuntimeScores(fundData);
       setFunds(enriched);
       setLastUpdated(new Date());
       
-      console.log(`Loaded ${fundData.length} funds from database${asOf ? ` as of ${asOf}` : ''}${ENABLE_RUNTIME_SCORING ? ' (runtime scoring enabled)' : ''}`);
+      console.log(`Loaded ${fundData.length} funds from database${asOf ? ` as of ${asOf}` : ''} (${scoringSource} scoring)`);
       // Tiny log: sample fund row
       // eslint-disable-next-line no-console
       console.log('Sample fund row', fundData?.[0]);
@@ -59,11 +76,11 @@ export function useFundData() {
     } finally {
       setLoading(false);
     }
-  }, [asOfMonth, ENABLE_RUNTIME_SCORING]);
+  }, [asOfMonth, ENABLE_RUNTIME_SCORING, USE_SERVER_SCORING]);
 
-  // Recompute runtime scores when asOfMonth or fetched funds change if flag is ON
+  // Recompute runtime scores when asOfMonth or fetched funds change if flag is ON and using client-side scoring
   useEffect(() => {
-    if (!ENABLE_RUNTIME_SCORING) return;
+    if (!ENABLE_RUNTIME_SCORING || USE_SERVER_SCORING) return;
     if (!Array.isArray(funds) || funds.length === 0) return;
     try {
       const rescored = computeRuntimeScores(funds);
@@ -72,7 +89,7 @@ export function useFundData() {
       // no-op: don't break UI on scoring issues
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [asOfMonth, funds.length, ENABLE_RUNTIME_SCORING]);
+  }, [asOfMonth, funds.length, ENABLE_RUNTIME_SCORING, USE_SERVER_SCORING]);
 
   // Refresh data from Ycharts API
   const refreshData = useCallback(async (tickers = null) => {
