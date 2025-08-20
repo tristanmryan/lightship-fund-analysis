@@ -16,17 +16,17 @@ import {
 
 // Raymond James Professional Color Scheme and Typography
 const styles = StyleSheet.create({
-  // TRANSFORMED: Page layout optimized for Excel-density
+  // TRANSFORMED: Professional page layout optimized for multi-table efficiency
   page: {
     size: 'LETTER',
     orientation: 'landscape',
-    paddingTop: 35,
-    paddingRight: 30,
-    paddingBottom: 35,
-    paddingLeft: 30,
+    paddingTop: 30,
+    paddingRight: 25,
+    paddingBottom: 30,
+    paddingLeft: 25,
     fontFamily: 'Helvetica',
-    fontSize: 8,
-    lineHeight: 1.2,
+    fontSize: 7,
+    lineHeight: 1.1,
     color: '#1F2937'
   },
 
@@ -134,20 +134,38 @@ const styles = StyleSheet.create({
     marginTop: 4
   },
 
-  // Asset Class Sections
+  // TRANSFORMED: Professional asset class section styling
   assetClassSection: {
-    marginBottom: 32
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingTop: 16
+  },
+  
+  // Compact mode for multi-section pages
+  assetClassSectionCompact: {
+    marginBottom: 16,
+    paddingBottom: 12,
+    paddingTop: 12
   },
 
+  // TRANSFORMED: Professional section header styling
   sectionHeader: {
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
-    marginBottom: 12, // TRANSFORMED: Reduced margins for density
-    paddingBottom: 6, // TRANSFORMED: Reduced padding for density
-    borderBottomWidth: 2,
-    borderBottomColor: '#002F6C'
+    marginBottom: 20,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB'
+  },
+  
+  // Compact mode for multi-section pages
+  sectionHeaderCompact: {
+    marginBottom: 15,
+    paddingBottom: 6
   },
 
   assetClassTitle: {
@@ -157,8 +175,14 @@ const styles = StyleSheet.create({
   },
 
   sectionMeta: {
-    fontSize: 9,
+    fontSize: 8,
     color: '#6B7280'
+  },
+  
+  sectionMetaText: {
+    fontSize: 8,
+    color: '#6B7280',
+    fontWeight: 'normal'
   },
 
   recommendedCount: {
@@ -166,30 +190,33 @@ const styles = StyleSheet.create({
     fontWeight: 500
   },
 
-  // Fund Tables
+  // TRANSFORMED: Professional fund table styling
   fundTable: {
-    marginTop: 12, // TRANSFORMED: Reduced margins for density
-    marginBottom: 12, // TRANSFORMED: Reduced margins for density
-    borderWidth: 1,
-    borderColor: '#D1D5DB'
+    marginTop: 8,
+    marginBottom: 8,
+    borderWidth: 0.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 2
   },
 
+  // TRANSFORMED: Professional table header styling
   tableHeader: {
     display: 'flex',
     flexDirection: 'row',
-    backgroundColor: '#4472C4',
-    borderBottomWidth: 2,
-    borderBottomColor: '#002F6C'
+    backgroundColor: '#2E5AA0', // Professional blue
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E3A8A'
   },
 
   tableHeaderCell: {
     color: '#FFFFFF',
-    padding: 4, // TRANSFORMED: Reduced padding for density
+    padding: 6, // Professional spacing
     fontWeight: 'bold',
-    fontSize: 8, // TRANSFORMED: Reduced font size for density
+    fontSize: 7, // Clean, readable size
     textAlign: 'center',
-    borderRightWidth: 1,
-    borderRightColor: '#D1D5DB'
+    borderRightWidth: 0.5,
+    borderRightColor: '#E5E7EB',
+    letterSpacing: 0.2
   },
 
   tableRow: {
@@ -199,8 +226,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#D1D5DB'
   },
 
+  // TRANSFORMED: Professional alternating row colors
   tableRowAlternate: {
-    backgroundColor: '#F8F9FA'
+    backgroundColor: '#F8FAFC' // Clean, subtle light blue
   },
 
   tableRowRecommended: {
@@ -216,13 +244,15 @@ const styles = StyleSheet.create({
     borderBottomColor: '#FFE69C'
   },
 
+  // TRANSFORMED: Professional table cell styling
   tableCell: {
-    padding: 3, // TRANSFORMED: Reduced padding for density
-    fontSize: 8, // TRANSFORMED: Reduced font size for density
+    padding: 4, // Professional spacing
+    fontSize: 7, // Clean, readable size
     borderRightWidth: 0.5,
-    borderRightColor: '#D1D5DB',
+    borderRightColor: '#E5E7EB',
     display: 'flex',
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'flex-start' // Default alignment
   },
 
   tableCellBenchmark: {
@@ -230,20 +260,20 @@ const styles = StyleSheet.create({
     borderRightColor: '#FFE69C'
   },
 
-  // TRANSFORMED: Column widths optimized for Excel-density layout (13 columns)
-  colTicker: { width: 35, textAlign: 'center' },
-  colName: { width: 120, textAlign: 'left' },
-  colYtd: { width: 45, textAlign: 'right' },
-  col1y: { width: 45, textAlign: 'right' },
-  col3y: { width: 45, textAlign: 'right' },
-  col5y: { width: 45, textAlign: 'right' },
-  colSharpe: { width: 45, textAlign: 'right' },
-  colStdDev3y: { width: 45, textAlign: 'right' },
-  colStdDev5y: { width: 45, textAlign: 'right' },
-  colExpense: { width: 45, textAlign: 'right' },
-  colTenure: { width: 45, textAlign: 'right' },
-  colScore: { width: 35, textAlign: 'right' },
-  colRec: { width: 25, textAlign: 'center' },
+  // TRANSFORMED: Professional column widths optimized for Excel-quality layout
+  colTicker: { width: 32, textAlign: 'center' },
+  colName: { width: 140, textAlign: 'left' },
+  colYtd: { width: 42, textAlign: 'right' },
+  col1y: { width: 42, textAlign: 'right' },
+  col3y: { width: 42, textAlign: 'right' },
+  col5y: { width: 42, textAlign: 'right' },
+  colSharpe: { width: 42, textAlign: 'right' },
+  colStdDev3y: { width: 42, textAlign: 'right' },
+  colStdDev5y: { width: 42, textAlign: 'right' },
+  colExpense: { width: 42, textAlign: 'right' },
+  colTenure: { width: 42, textAlign: 'right' },
+  colScore: { width: 32, textAlign: 'right' },
+  colRec: { width: 20, textAlign: 'center' },
 
   // Performance color coding
   rankExcellent: { backgroundColor: '#C6EFCE' },
@@ -262,23 +292,32 @@ const styles = StyleSheet.create({
   negativeReturn: { color: '#DC2626' },
   neutralReturn: { color: '#6B7280' },
 
+  // TRANSFORMED: Professional recommendation checkmark styling
   recommendedCheck: {
-    color: '#059669', // Green checkmark
-    fontSize: 10,
-    fontWeight: 'bold'
+    color: '#059669', // Professional green
+    fontSize: 8,
+    fontWeight: 'bold',
+    textAlign: 'center'
+  },
+  
+  // Special styling for fund names
+  fundNameText: {
+    fontSize: 7,
+    fontWeight: 'normal',
+    color: '#1F2937'
   },
 
-  // Footer
+  // TRANSFORMED: Professional page footer styling
   pageFooter: {
     position: 'absolute',
-    bottom: 20,
-    left: 40,
-    right: 40,
-    fontSize: 8,
+    bottom: 15,
+    left: 25,
+    right: 25,
+    fontSize: 7,
     color: '#9CA3AF',
     borderTopWidth: 0.5,
     borderTopColor: '#E5E7EB',
-    paddingTop: 8,
+    paddingTop: 6,
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -302,18 +341,18 @@ const styles = StyleSheet.create({
     lineHeight: 1.3
   },
 
-  // Header
+  // TRANSFORMED: Professional page header styling
   pageHeader: {
     position: 'absolute',
-    top: 16,
-    left: 40,
-    right: 40,
-    fontSize: 9,
+    top: 12,
+    left: 25,
+    right: 25,
+    fontSize: 8,
     color: '#6B7280',
     borderBottomWidth: 0.5,
     borderBottomColor: '#E5E7EB',
-    paddingBottom: 4,
-    marginBottom: 8,
+    paddingBottom: 3,
+    marginBottom: 6,
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -357,6 +396,81 @@ const styles = StyleSheet.create({
 });
 
 /**
+ * Smart layout function to group multiple asset classes per page
+ * Calculates optimal section heights and groups for professional appearance
+ */
+function renderAssetClassPages(sections, asOf) {
+  const pages = [];
+  let currentPage = [];
+  let currentPageHeight = 0;
+  
+  // TRANSFORMED: Professional layout constants optimized for multi-table efficiency
+  const PAGE_HEIGHT = 612; // Letter landscape height in points
+  const HEADER_HEIGHT = 50; // Professional page header height
+  const FOOTER_HEIGHT = 35; // Professional page footer height
+  const SECTION_HEADER_HEIGHT = 22; // Professional asset class header height
+  const TABLE_HEADER_HEIGHT = 18; // Professional table header height
+  const ROW_HEIGHT = 14; // Professional fund row height
+  const SECTION_SPACING = 12; // Professional spacing between sections
+  const AVAILABLE_HEIGHT = PAGE_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - 50; // Professional page margins
+  
+  sections.forEach((section, index) => {
+    // Calculate section height
+    const fundCount = section.funds.length;
+    const benchmarkHeight = section.benchmark ? ROW_HEIGHT : 0;
+    const tableHeight = TABLE_HEADER_HEIGHT + (fundCount * ROW_HEIGHT) + benchmarkHeight;
+    const totalSectionHeight = SECTION_HEADER_HEIGHT + tableHeight + SECTION_SPACING;
+    
+    // Check if this section fits on current page
+    if (currentPageHeight + totalSectionHeight <= AVAILABLE_HEIGHT && currentPage.length < 4) {
+      // Add to current page
+      currentPage.push(section);
+      currentPageHeight += totalSectionHeight;
+    } else {
+      // Create new page with current sections
+      if (currentPage.length > 0) {
+        pages.push(createAssetClassPage(currentPage, asOf, pages.length + 1));
+      }
+      
+      // Start new page with this section
+      currentPage = [section];
+      currentPageHeight = totalSectionHeight;
+    }
+  });
+  
+  // Add final page
+  if (currentPage.length > 0) {
+    pages.push(createAssetClassPage(currentPage, asOf, pages.length + 1));
+  }
+  
+  return pages;
+}
+
+/**
+ * Create a page with multiple asset class sections
+ */
+function createAssetClassPage(sections, asOf, pageNumber) {
+  return React.createElement(Page, { 
+    key: `page-${pageNumber}`,
+    size: "LETTER", 
+    orientation: "landscape", 
+    style: styles.page 
+  },
+    React.createElement(PageHeader, { asOf: asOf }),
+    ...sections.map((section, index) => 
+      React.createElement(AssetClassSection, {
+        key: section.assetClass,
+        section: section,
+        sectionNumber: index + 1,
+        isLastSection: index === sections.length - 1,
+        isCompact: sections.length > 1 // Enable compact mode for multi-section pages
+      })
+    ),
+    React.createElement(PageFooter)
+  );
+}
+
+/**
  * Main Monthly Report Document
  */
 function MonthlyReportPDF({ data, options = {} }) {
@@ -375,23 +489,8 @@ function MonthlyReportPDF({ data, options = {} }) {
       })
     ),
 
-    // Asset Class Sections
-    ...sections.map((section, index) => 
-      React.createElement(Page, { 
-        key: section.assetClass, 
-        size: "LETTER", 
-        orientation: "landscape", 
-        style: styles.page 
-      },
-        React.createElement(PageHeader, { asOf: asOf }),
-        React.createElement(AssetClassSection, {
-          section: section,
-          sectionNumber: index + 1,
-          isLastSection: index === sections.length - 1
-        }),
-        React.createElement(PageFooter)
-      )
-    ),
+    // TRANSFORMED: Smart multi-table layout - group multiple asset classes per page
+    ...renderAssetClassPages(sections, asOf),
     
     // Disclaimer Page
     React.createElement(Page, { 
@@ -494,8 +593,7 @@ function PageFooter() {
     
     React.createElement(View, { style: styles.footerCenter },
       React.createElement(Text, { style: { fontWeight: 500, color: '#374151' } },
-        "Page " 
-        // Note: React-PDF page numbers need special handling
+        "Page " + "1" // Note: React-PDF page numbers need special handling
       )
     ),
     
@@ -511,14 +609,25 @@ function PageFooter() {
 /**
  * Asset Class Section Component
  */
-function AssetClassSection({ section, sectionNumber, isLastSection }) {
+function AssetClassSection({ section, sectionNumber, isLastSection, isCompact = false }) {
   const { assetClass, fundCount, recommendedCount, rows, benchmark } = section;
   
-  return React.createElement(View, { style: styles.assetClassSection },
-    React.createElement(View, { style: styles.sectionHeader },
+  // TRANSFORMED: Professional section styling with compact mode support
+  const sectionStyles = [
+    styles.assetClassSection,
+    isCompact && styles.assetClassSectionCompact
+  ].filter(Boolean);
+  
+  const headerStyles = [
+    styles.sectionHeader,
+    isCompact && styles.sectionHeaderCompact
+  ].filter(Boolean);
+  
+  return React.createElement(View, { style: sectionStyles },
+    React.createElement(View, { style: headerStyles },
       React.createElement(Text, { style: styles.assetClassTitle }, assetClass),
       React.createElement(View, { style: styles.sectionMeta },
-        React.createElement(Text, null,
+        React.createElement(Text, { style: styles.sectionMetaText }, null,
           fundCount + " fund" + (fundCount !== 1 ? 's' : '') +
           (recommendedCount > 0 ? " • " + recommendedCount + " recommended" : '')
         )
@@ -528,7 +637,8 @@ function AssetClassSection({ section, sectionNumber, isLastSection }) {
     React.createElement(FundTable, {
       rows: rows,
       benchmark: benchmark,
-      assetClass: assetClass
+      assetClass: assetClass,
+      isCompact: isCompact
     })
   );
 }
@@ -536,20 +646,20 @@ function AssetClassSection({ section, sectionNumber, isLastSection }) {
 /**
  * Fund Table Component
  */
-function FundTable({ rows, benchmark, assetClass }) {
+function FundTable({ rows, benchmark, assetClass, isCompact = false }) {
   // TRANSFORMED: Updated to match new Excel-density 13-column layout
   const columns = [
     { header: 'Ticker', dataKey: 'ticker', style: styles.colTicker },
     { header: 'Fund Name', dataKey: 'name', style: styles.colName },
-    { header: 'YTD Return', dataKey: 'ytdReturn', style: styles.colYtd },
-    { header: '1Y Return', dataKey: 'oneYearReturn', style: styles.col1y },
-    { header: '3Y Return', dataKey: 'threeYearReturn', style: styles.col3y },
-    { header: '5Y Return', dataKey: 'fiveYearReturn', style: styles.col5y },
-    { header: 'Sharpe Ratio', dataKey: 'sharpeRatio', style: styles.colSharpe },
-    { header: '3Y Std Dev', dataKey: 'standardDeviation3y', style: styles.colStdDev3y },
-    { header: '5Y Std Dev', dataKey: 'standardDeviation5y', style: styles.colStdDev5y },
-    { header: 'Expense Ratio', dataKey: 'expenseRatio', style: styles.colExpense },
-    { header: 'Manager Tenure', dataKey: 'managerTenure', style: styles.colTenure },
+    { header: 'YTD', dataKey: 'ytdReturn', style: styles.colYtd },
+    { header: '1Y', dataKey: 'oneYearReturn', style: styles.col1y },
+    { header: '3Y', dataKey: 'threeYearReturn', style: styles.col3y },
+    { header: '5Y', dataKey: 'fiveYearReturn', style: styles.col5y },
+    { header: 'Sharpe', dataKey: 'sharpeRatio', style: styles.colSharpe },
+    { header: '3Y Std', dataKey: 'standardDeviation3y', style: styles.colStdDev3y },
+    { header: '5Y Std', dataKey: 'standardDeviation5y', style: styles.colStdDev5y },
+    { header: 'Expense', dataKey: 'expenseRatio', style: styles.colExpense },
+    { header: 'Tenure', dataKey: 'managerTenure', style: styles.colTenure },
     { header: 'Score', dataKey: 'score', style: styles.colScore },
     { header: 'Rec', dataKey: 'isRecommended', style: styles.colRec }
   ];
@@ -629,13 +739,15 @@ function FundRow({ row, index, columns }) {
         cellStyles.push({ borderRightWidth: 0 });
       }
 
+      // TRANSFORMED: Professional text styling with proper alignment
+      const textStyles = [
+        col.style.textAlign === 'right' && styles.numericText,
+        col.dataKey === 'isRecommended' && isRecommended && styles.recommendedCheck,
+        col.dataKey === 'name' && styles.fundNameText // Special styling for fund names
+      ].filter(Boolean);
+
       return React.createElement(View, { key: col.dataKey, style: cellStyles },
-        React.createElement(Text, {
-          style: [
-            col.style.textAlign === 'right' && styles.numericText,
-            col.dataKey === 'isRecommended' && isRecommended && styles.recommendedCheck
-          ].filter(Boolean)
-        }, cellValue || '')
+        React.createElement(Text, { style: textStyles }, cellValue || '')
       );
     })
   );
