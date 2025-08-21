@@ -1,11 +1,12 @@
--- Phase 1: Server-side scoring migration with FIXED type casting errors
+-- Phase 1: Server-side scoring migration with FIXED type casting errors and reserved keyword conflicts
 -- This migration fixes the ABS(text) error and other JSON type casting issues
+-- Also fixes PostgreSQL reserved keyword conflicts (values -> input_values, etc.)
 
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Helper function to calculate mean (exactly matches client-side math.js)
-CREATE OR REPLACE FUNCTION public._calculate_mean(values numeric[])
+CREATE OR REPLACE FUNCTION public._calculate_mean(input_values numeric[])
 RETURNS numeric
 LANGUAGE plpgsql
 IMMUTABLE
@@ -15,7 +16,7 @@ DECLARE
   count_val int := 0;
   val numeric;
 BEGIN
-  FOREACH val IN ARRAY values
+  FOREACH val IN ARRAY input_values
   LOOP
     IF val IS NOT NULL THEN
       sum_val := sum_val + val;
@@ -28,7 +29,7 @@ END;
 $$;
 
 -- Helper function to calculate standard deviation (exactly matches client-side math.js)
-CREATE OR REPLACE FUNCTION public._calculate_stddev(values numeric[], mean_val numeric)
+CREATE OR REPLACE FUNCTION public._calculate_stddev(input_values numeric[], mean_val numeric)
 RETURNS numeric
 LANGUAGE plpgsql
 IMMUTABLE
@@ -38,7 +39,7 @@ DECLARE
   count_val int := 0;
   val numeric;
 BEGIN
-  FOREACH val IN ARRAY values
+  FOREACH val IN ARRAY input_values
   LOOP
     IF val IS NOT NULL THEN
       sum_sq := sum_sq + POWER(val - mean_val, 2);
@@ -65,7 +66,7 @@ END;
 $$;
 
 -- Helper function to calculate quantile (exactly matches client-side math.js)
-CREATE OR REPLACE FUNCTION public._calculate_quantile(sorted_values numeric[], q numeric)
+CREATE OR REPLACE FUNCTION public._calculate_quantile(sorted_input_values numeric[], q numeric)
 RETURNS numeric
 LANGUAGE plpgsql
 IMMUTABLE
@@ -75,13 +76,13 @@ DECLARE
   k numeric;
   d numeric;
 BEGIN
-  n := array_length(sorted_values, 1);
+  n := array_length(sorted_input_values, 1);
   IF n = 0 THEN RETURN NULL; END IF;
   
   k := (n - 1) * q;
   d := k - FLOOR(k);
   
-  RETURN sorted_values[FLOOR(k) + 1] * (1 - d) + sorted_values[LEAST(FLOOR(k) + 2, n)] * d;
+  RETURN sorted_input_values[FLOOR(k) + 1] * (1 - d) + sorted_input_values[LEAST(FLOOR(k) + 2, n)] * d;
 END;
 $$;
 
@@ -194,7 +195,7 @@ END;
 $$;
 
 -- Helper function to calculate robust scaling anchors
-CREATE OR REPLACE FUNCTION public._calculate_robust_scaling_anchors(raw_scores numeric[])
+CREATE OR REPLACE FUNCTION public._calculate_robust_scaling_anchors(input_raw_scores numeric[])
 RETURNS jsonb
 LANGUAGE plpgsql
 IMMUTABLE
@@ -205,7 +206,7 @@ DECLARE
   median numeric;
   q95 numeric;
 BEGIN
-  sorted_scores := ARRAY(SELECT unnest(raw_scores) ORDER BY unnest);
+  sorted_scores := ARRAY(SELECT unnest(input_raw_scores) ORDER BY unnest);
   q05 := public._calculate_quantile(sorted_scores, 0.05);
   median := public._calculate_quantile(sorted_scores, 0.5);
   q95 := public._calculate_quantile(sorted_scores, 0.95);
@@ -281,7 +282,7 @@ END;
 $$;
 
 -- Helper function to calculate percentile
-CREATE OR REPLACE FUNCTION public._calculate_percentile(raw_score numeric, raw_scores numeric[])
+CREATE OR REPLACE FUNCTION public._calculate_percentile(raw_score numeric, input_raw_scores numeric[])
 RETURNS int
 LANGUAGE plpgsql
 IMMUTABLE
@@ -290,14 +291,14 @@ DECLARE
   better_than_count int := 0;
   score numeric;
 BEGIN
-  FOREACH score IN ARRAY raw_scores
+  FOREACH score IN ARRAY input_raw_scores
   LOOP
     IF score < raw_score THEN
       better_than_count := better_than_count + 1;
     END IF;
   END LOOP;
   
-  RETURN ROUND((better_than_count::numeric / array_length(raw_scores, 1)) * 100);
+  RETURN ROUND((better_than_count::numeric / array_length(input_raw_scores, 1)) * 100);
 END;
 $$;
 
@@ -313,7 +314,7 @@ DECLARE
                                'downCapture3Y', 'alpha5Y', 'expenseRatio', 'managerTenure'];
   stats jsonb := '{}'::jsonb;
   metric text;
-  values numeric[];
+  metric_values numeric[];
   mean_val numeric;
   stddev_val numeric;
   count_val int;
@@ -322,39 +323,39 @@ DECLARE
   q_hi numeric;
   min_val numeric;
   max_val numeric;
-  sorted_values numeric[];
+  sorted_metric_values numeric[];
   i int;
   fund record;
 BEGIN
   FOREACH metric IN ARRAY metric_keys
   LOOP
     -- Extract values for this metric
-    values := ARRAY[]::numeric[];
+    metric_values := ARRAY[]::numeric[];
     FOR i IN 1..array_length(peer_funds, 1)
     LOOP
       fund := peer_funds[i];
       -- Map metric names to actual database columns
       CASE metric
-        WHEN 'ytd' THEN values := array_append(values, fund.ytd_return);
-        WHEN 'oneYear' THEN values := array_append(values, fund.one_year_return);
-        WHEN 'threeYear' THEN values := array_append(values, fund.three_year_return);
-        WHEN 'fiveYear' THEN values := array_append(values, fund.five_year_return);
-        WHEN 'tenYear' THEN values := array_append(values, fund.ten_year_return);
-        WHEN 'sharpeRatio3Y' THEN values := array_append(values, fund.sharpe_ratio);
-        WHEN 'stdDev3Y' THEN values := array_append(values, fund.standard_deviation_3y);
-        WHEN 'stdDev5Y' THEN values := array_append(values, fund.standard_deviation_5y);
-        WHEN 'upCapture3Y' THEN values := array_append(values, fund.up_capture_ratio);
-        WHEN 'downCapture3Y' THEN values := array_append(values, fund.down_capture_ratio);
-        WHEN 'alpha5Y' THEN values := array_append(values, fund.alpha);
-        WHEN 'expenseRatio' THEN values := array_append(values, fund.expense_ratio);
-        WHEN 'managerTenure' THEN values := array_append(values, fund.manager_tenure);
+        WHEN 'ytd' THEN metric_values := array_append(metric_values, fund.ytd_return);
+        WHEN 'oneYear' THEN metric_values := array_append(metric_values, fund.one_year_return);
+        WHEN 'threeYear' THEN metric_values := array_append(metric_values, fund.three_year_return);
+        WHEN 'fiveYear' THEN metric_values := array_append(metric_values, fund.five_year_return);
+        WHEN 'tenYear' THEN metric_values := array_append(metric_values, fund.ten_year_return);
+        WHEN 'sharpeRatio3Y' THEN metric_values := array_append(metric_values, fund.sharpe_ratio);
+        WHEN 'stdDev3Y' THEN metric_values := array_append(metric_values, fund.standard_deviation_3y);
+        WHEN 'stdDev5Y' THEN metric_values := array_append(metric_values, fund.standard_deviation_5y);
+        WHEN 'upCapture3Y' THEN metric_values := array_append(metric_values, fund.up_capture_ratio);
+        WHEN 'downCapture3Y' THEN metric_values := array_append(metric_values, fund.down_capture_ratio);
+        WHEN 'alpha5Y' THEN metric_values := array_append(metric_values, fund.alpha);
+        WHEN 'expenseRatio' THEN metric_values := array_append(metric_values, fund.expense_ratio);
+        WHEN 'managerTenure' THEN metric_values := array_append(metric_values, fund.manager_tenure);
       END CASE;
     END LOOP;
     
     -- Calculate statistics
-    mean_val := public._calculate_mean(values);
-    stddev_val := public._calculate_stddev(values, mean_val);
-    count_val := array_length(values, 1);
+    mean_val := public._calculate_mean(metric_values);
+    stddev_val := public._calculate_stddev(metric_values, mean_val);
+    count_val := array_length(metric_values, 1);
     coverage := CASE WHEN array_length(peer_funds, 1) > 0 
                      THEN count_val::numeric / array_length(peer_funds, 1)::numeric 
                      ELSE 0 END;
@@ -363,14 +364,14 @@ BEGIN
     q_lo := NULL;
     q_hi := NULL;
     IF count_val >= 20 THEN
-      sorted_values := ARRAY(SELECT unnest(values) ORDER BY unnest);
-      q_lo := public._calculate_quantile(sorted_values, 0.01);
-      q_hi := public._calculate_quantile(sorted_values, 0.99);
+      sorted_metric_values := ARRAY(SELECT unnest(metric_values) ORDER BY unnest);
+      q_lo := public._calculate_quantile(sorted_metric_values, 0.01);
+      q_hi := public._calculate_quantile(sorted_metric_values, 0.99);
     END IF;
     
     -- Find min/max
-    min_val := (SELECT MIN(v) FROM unnest(values) v WHERE v IS NOT NULL);
-    max_val := (SELECT MAX(v) FROM unnest(values) v WHERE v IS NOT NULL);
+    min_val := (SELECT MIN(v) FROM unnest(metric_values) v WHERE v IS NOT NULL);
+    max_val := (SELECT MAX(v) FROM unnest(metric_values) v WHERE v IS NOT NULL);
     
     -- Store statistics
     stats := stats || jsonb_build_object(metric, jsonb_build_object(
