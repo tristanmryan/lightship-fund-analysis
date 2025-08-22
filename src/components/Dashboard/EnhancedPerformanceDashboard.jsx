@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import StatusIcon from '../common/StatusIcon';
 import AdvancedFilters from './AdvancedFilters';
-import EnhancedFundTable from './EnhancedFundTable';
+import ModernFundTable from './ModernFundTable';
 import PerformanceHeatmap from './PerformanceHeatmap';
 import TopBottomPerformers from './TopBottomPerformers';
 import AssetClassOverview from './AssetClassOverview';

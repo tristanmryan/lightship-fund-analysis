@@ -1,16 +1,16 @@
 // src/components/Dashboard/AssetClassTable.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Download, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getScoreColor } from '../../services/scoring';
+import { TrendingUp, TrendingDown, DollarSign, Shield, Calendar, BarChart3, Target, Star } from 'lucide-react';
 import fundService from '../../services/fundService';
 import asOfStore from '../../services/asOfStore';
 import scoringProfilesService from '../../services/scoringProfilesService';
-import { exportAssetClassTableCSV } from '../../services/exportService';
 import { fmt } from '../../utils/formatters';
+import './AssetClassTable.css';
 
 /**
- * Asset Class Table Component
- * Displays funds for a specific asset class with scores and benchmark row
+ * Modern Asset Class Table Component
+ * Redesigned to match 2025 financial dashboard design trends
+ * Features clean aesthetics, modern status indicators, and professional styling
  */
 const AssetClassTable = ({ 
   assetClassId, 
@@ -20,11 +20,10 @@ const AssetClassTable = ({
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [sortBy, setSortBy] = useState('score_final');
-  const [sortDirection, setSortDirection] = useState('desc');
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [profiles, setProfiles] = useState([]);
   const [asOfMonth, setAsOfMonth] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: 'score_final', direction: 'desc' });
 
   // Load profiles and data
   useEffect(() => {
@@ -78,7 +77,20 @@ const AssetClassTable = ({
           true // include benchmark
         );
         
-        setData(tableData || []);
+        // Clean corrupted ticker data by removing appended labels
+        const cleanedData = (tableData || []).map(row => {
+          const originalTicker = row.ticker;
+          const cleanedTicker = cleanTicker(row.ticker);
+          
+          return {
+            ...row,
+            ticker: cleanedTicker,
+            is_recommended: row.is_recommended || isRecommendedTicker(row.ticker),
+            isBenchmark: row.is_benchmark || isBenchmarkTicker(row.ticker)
+          };
+        });
+        
+        setData(cleanedData);
       } catch (err) {
         console.error('Error loading asset class table:', err);
         setError('Failed to load asset class data');
@@ -90,287 +102,475 @@ const AssetClassTable = ({
     loadData();
   }, [assetClassId, assetClassName, asOfMonth, selectedProfile]);
 
-  // Sorted data
+  // Clean corrupted ticker data
+  const cleanTicker = (ticker) => {
+    if (!ticker) return ticker;
+    return ticker
+      .replace(/Recommended$/i, '')
+      .replace(/Benchmark$/i, '')
+      .trim();
+  };
+
+  // Check if ticker indicates recommended status (legacy data)
+  const isRecommendedTicker = (ticker) => {
+    if (!ticker) return false;
+    return ticker.toLowerCase().includes('recommended');
+  };
+
+  // Check if ticker indicates benchmark status (legacy data)
+  const isBenchmarkTicker = (ticker) => {
+    if (!ticker) return false;
+    return ticker.toLowerCase().includes('benchmark');
+  };
+
+  // Modern score badge with CSS classes
+  const renderScoreBadge = (score) => {
+    if (score == null) return <span className="text-gray-400">—</span>;
+    
+    let badgeClass = '';
+    if (score >= 60) {
+      badgeClass = 'score-badge-excellent';
+    } else if (score >= 50) {
+      badgeClass = 'score-badge-good';
+    } else if (score >= 40) {
+      badgeClass = 'score-badge-fair';
+    } else if (score >= 30) {
+      badgeClass = 'score-badge-poor';
+    } else {
+      badgeClass = 'score-badge-very-poor';
+    }
+
+    return (
+      <div className={`score-badge ${badgeClass}`}>
+        <span>{score.toFixed(1)}</span>
+      </div>
+    );
+  };
+
+  // Modern return display without arrows
+  const renderReturn = (value, period) => {
+    if (value == null) return <span className="text-gray-400">—</span>;
+    
+    const isPositive = value >= 0;
+    const colorClass = isPositive ? 'text-emerald-700' : 'text-red-700';
+    
+    return (
+      <div className={`numeric-value text-right text-sm font-medium ${colorClass}`}>
+        {value.toFixed(2)}%
+      </div>
+    );
+  };
+
+  // Modern expense ratio display
+  const renderExpenseRatio = (value) => {
+    if (value == null) return <span className="text-gray-400">—</span>;
+    
+    let colorClass = 'text-gray-700';
+    if (value <= 0.5) colorClass = 'text-emerald-700';
+    else if (value <= 1.0) colorClass = 'text-amber-700';
+    else colorClass = 'text-red-700';
+    
+    return (
+      <div className="numeric-value text-right text-sm font-medium">
+        <span className={colorClass}>{value.toFixed(2)}%</span>
+      </div>
+    );
+  };
+
+  // Modern Sharpe ratio display
+  const renderSharpeRatio = (value) => {
+    if (value == null) return <span className="text-gray-400">—</span>;
+    
+    let colorClass = 'text-gray-700';
+    if (value >= 1.0) colorClass = 'text-emerald-700';
+    else if (value >= 0.5) colorClass = 'text-amber-700';
+    else colorClass = 'text-red-700';
+    
+    return (
+      <div className="numeric-value text-right text-sm font-medium">
+        <span className={colorClass}>{value.toFixed(2)}</span>
+      </div>
+    );
+  };
+
+  // Sort data
   const sortedData = useMemo(() => {
     if (!data.length) return [];
-
-    // Separate funds and benchmarks
-    const funds = data.filter(row => !row.is_benchmark);
-    const benchmarks = data.filter(row => row.is_benchmark);
-
-    // Sort funds
-    const sortedFunds = [...funds].sort((a, b) => {
-      let aVal = a[sortBy];
-      let bVal = b[sortBy];
-
-      // Handle null values
-      if (aVal == null && bVal == null) return 0;
-      if (aVal == null) return 1;
-      if (bVal == null) return -1;
-
-      // Sort numerically for numeric fields
-      if (typeof aVal === 'number' && typeof bVal === 'number') {
-        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+    
+    const sorted = [...data].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+      
+      // Handle numeric sorting
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        if (sortConfig.direction === 'desc') {
+          return bValue - aValue;
+        }
+        return aValue - bValue;
       }
-
-      // Sort alphabetically for strings
-      const result = String(aVal).localeCompare(String(bVal));
-      return sortDirection === 'asc' ? result : -result;
+      
+      // Handle string sorting
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        if (sortConfig.direction === 'desc') {
+          return bValue.localeCompare(aValue);
+        }
+        return aValue.localeCompare(bValue);
+      }
+      
+      return 0;
     });
-
-    // Return funds first, then benchmarks (benchmarks always at the end)
-    return [...sortedFunds, ...benchmarks];
-  }, [data, sortBy, sortDirection]);
-
-  const handleSort = (column) => {
-    if (sortBy === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(column);
-      setSortDirection('desc');
+    
+    // Always keep benchmark at bottom
+    const benchmark = sorted.find(row => row.isBenchmark);
+    if (benchmark) {
+      const nonBenchmark = sorted.filter(row => !row.isBenchmark);
+      return [...nonBenchmark, benchmark];
     }
-  };
+    
+    return sorted;
+  }, [data, sortConfig]);
 
-  const handleExport = () => {
-    try {
-      exportAssetClassTableCSV(sortedData, assetClassName, asOfMonth);
-    } catch (error) {
-      console.error('Error exporting data:', error);
-      // Could add user notification here
+  // Helper function to get the correct field value with fallbacks
+  const getFieldValue = (row, fieldName, fallbacks = []) => {
+    if (row[fieldName] != null) return row[fieldName];
+    
+    for (const fallback of fallbacks) {
+      if (row[fallback] != null) return row[fallback];
     }
+    
+    return null;
   };
 
-  const getSortIcon = (column) => {
-    if (sortBy !== column) return <ArrowUpDown className="w-4 h-4" />;
-    return sortDirection === 'asc' ? 
-      <ArrowUp className="w-4 h-4" /> : 
-      <ArrowDown className="w-4 h-4" />;
+  // Handle sorting
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
+    }));
   };
+
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-gray-500">Loading asset class data...</div>
+      <div className="asset-class-table">
+        <div className="loading-state flex items-center justify-center p-12">
+          <div className="text-gray-500 text-lg">Loading asset class data...</div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <div className="text-red-700">{error}</div>
+      <div className="asset-class-table">
+        <div className="error-state bg-red-50 border border-red-200 rounded-xl p-6">
+          <div className="text-red-700 text-center">{error}</div>
+        </div>
       </div>
     );
   }
 
-  if (!sortedData.length) {
+  if (!data.length) {
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-        <div className="text-gray-500">No data available for this asset class</div>
+      <div className="asset-class-table">
+        <div className="empty-state bg-gray-50 border border-gray-200 rounded-xl p-12 text-center">
+          <div className="text-gray-500 text-lg">No data available for this asset class</div>
+        </div>
       </div>
     );
   }
+
+  const nonBenchmarkCount = data.filter(r => !r.isBenchmark).length;
+  const benchmarkCount = data.filter(r => r.isBenchmark).length;
 
   return (
-    <div className="space-y-4">
-      {/* Header with controls */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h3 className="text-lg font-semibold">{assetClassName} Performance</h3>
+    <div className="asset-class-table space-y-6">
+      {/* Simple Clean Header */}
+      <div className="header-container bg-white rounded-lg border border-gray-200 shadow-sm">
+        {/* Title Row */}
+        <div className="title-row flex items-center justify-between">
+          <div className="title-section">
+            <h1 className="primary-title text-3xl font-bold text-gray-900">{assetClassName}</h1>
+            <p className="title-subtitle text-sm text-gray-600 mt-1">Performance Analysis</p>
+          </div>
           
-          {/* Scoring Profile Selector */}
           {profiles.length > 0 && (
-            <select
-              value={selectedProfile?.id || ''}
-              onChange={(e) => {
-                const profile = profiles.find(p => p.id === e.target.value);
-                setSelectedProfile(profile);
-              }}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-            >
-              {profiles.map(profile => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.name}
-                </option>
-              ))}
-            </select>
+            <div className="controls">
+              <select
+                value={selectedProfile?.id || ''}
+                onChange={(e) => {
+                  const profile = profiles.find(p => p.id === e.target.value);
+                  setSelectedProfile(profile);
+                }}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm bg-white focus:ring-2 focus:ring-blue-500"
+              >
+                {profiles.map(profile => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
         </div>
 
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-600">
-            As of: {fmt.date(asOfMonth)}
-          </span>
-          
-          <button
-            onClick={handleExport}
-            className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-          >
-            <Download className="w-4 h-4" />
-            <span>Export CSV</span>
-          </button>
+        {/* Metadata */}
+        <div className="metadata text-sm text-gray-600">
+          As of {fmt.date(asOfMonth)}
+          {selectedProfile && ` • ${selectedProfile.name} Profile`}
+        </div>
+
+        {/* Modern KPI Cards */}
+        <div className="kpi-section">
+          <div className="kpi-grid grid grid-cols-4 gap-4">
+            {/* Total Funds KPI */}
+            <div className="kpi-card kpi-card--blue">
+              <div className="kpi-header">
+                <div className="kpi-icon">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <div className="kpi-trend">
+                  <span className="trend-label">FUNDS</span>
+                </div>
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-value">{nonBenchmarkCount}</div>
+                <div className="kpi-label">Total Funds</div>
+              </div>
+            </div>
+
+            {/* Recommended Funds KPI */}
+            <div className="kpi-card kpi-card--green kpi-card--highlight">
+              <div className="kpi-header">
+                <div className="kpi-icon">
+                  <Star className="w-5 h-5" />
+                </div>
+                <div className="kpi-trend">
+                  <span className="trend-percentage">
+                    {nonBenchmarkCount > 0 ? Math.round((data.filter(r => r.is_recommended).length / nonBenchmarkCount) * 100) : 0}%
+                  </span>
+                </div>
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-value">{data.filter(r => r.is_recommended).length}</div>
+                <div className="kpi-label">Recommended</div>
+              </div>
+            </div>
+
+            {/* Benchmarks KPI */}
+            <div className="kpi-card kpi-card--amber">
+              <div className="kpi-header">
+                <div className="kpi-icon">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <div className="kpi-trend">
+                  <span className="trend-label">BENCH</span>
+                </div>
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-value">{benchmarkCount}</div>
+                <div className="kpi-label">Benchmarks</div>
+              </div>
+            </div>
+
+            {/* Average Score KPI */}
+            <div className="kpi-card kpi-card--purple kpi-card--highlight">
+              <div className="kpi-header">
+                <div className="kpi-icon">
+                  <Target className="w-5 h-5" />
+                </div>
+                <div className="kpi-trend">
+                  {(() => {
+                    const avgScore = nonBenchmarkCount > 0 
+                      ? (data.filter(r => !r.isBenchmark).reduce((sum, r) => sum + (getFieldValue(r, 'score_final', ['score', 'final_score']) || 0), 0) / nonBenchmarkCount)
+                      : 0;
+                    return (
+                      <span className={`trend-indicator ${avgScore >= 60 ? 'trend-up' : avgScore >= 40 ? 'trend-neutral' : 'trend-down'}`}>
+                        {avgScore >= 60 ? '↗' : avgScore >= 40 ? '→' : '↘'}
+                      </span>
+                    );
+                  })()}
+                </div>
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-value">
+                  {nonBenchmarkCount > 0 ? (data.filter(r => !r.isBenchmark).reduce((sum, r) => sum + (getFieldValue(r, 'score_final', ['score', 'final_score']) || 0), 0) / nonBenchmarkCount).toFixed(1) : '0.0'}
+                </div>
+                <div className="kpi-label">Portfolio Score</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Performance Table */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <button
-                  onClick={() => handleSort('ticker')}
-                  className="flex items-center space-x-1 hover:text-gray-700"
-                >
-                  <span>Ticker</span>
-                  {getSortIcon('ticker')}
-                </button>
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <button
+      {/* Modern Table */}
+      <div className="modern-card bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-100">
+            <thead className="table-header bg-gray-50">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Fund
+                </th>
+                <th 
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('score_final')}
-                  className="flex items-center space-x-1 hover:text-gray-700"
                 >
-                  <span>Score</span>
-                  {getSortIcon('score_final')}
-                </button>
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <button
+                  <div className="flex items-center justify-center space-x-1">
+                    <span>Score</span>
+                    {sortConfig.key === 'score_final' && (
+                      <span className="text-blue-600">
+                        {sortConfig.direction === 'desc' ? '↓' : '↑'}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('ytd_return')}
-                  className="flex items-center space-x-1 hover:text-gray-700"
                 >
-                  <span>YTD</span>
-                  {getSortIcon('ytd_return')}
-                </button>
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <button
+                  <div className="flex items-center justify-center space-x-1">
+                    <span>YTD</span>
+                    {sortConfig.key === 'ytd_return' && (
+                      <span className="text-blue-600">
+                        {sortConfig.direction === 'desc' ? '↓' : '↑'}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('one_year_return')}
-                  className="flex items-center space-x-1 hover:text-gray-700"
                 >
-                  <span>1Y</span>
-                  {getSortIcon('one_year_return')}
-                </button>
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <button
+                  <div className="flex items-center justify-center space-x-1">
+                    <span>1Y</span>
+                    {sortConfig.key === 'one_year_return' && (
+                      <span className="text-blue-600">
+                        {sortConfig.direction === 'desc' ? '↓' : '↑'}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('three_year_return')}
-                  className="flex items-center space-x-1 hover:text-gray-700"
                 >
-                  <span>3Y</span>
-                  {getSortIcon('three_year_return')}
-                </button>
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <button
-                  onClick={() => handleSort('five_year_return')}
-                  className="flex items-center space-x-1 hover:text-gray-700"
-                >
-                  <span>5Y</span>
-                  {getSortIcon('five_year_return')}
-                </button>
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <button
-                  onClick={() => handleSort('sharpe_ratio')}
-                  className="flex items-center space-x-1 hover:text-gray-700"
-                >
-                  <span>Sharpe</span>
-                  {getSortIcon('sharpe_ratio')}
-                </button>
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <button
+                  <div className="flex items-center justify-center space-x-1">
+                    <span>3Y</span>
+                    {sortConfig.key === 'three_year_return' && (
+                      <span className="text-blue-600">
+                        {sortConfig.direction === 'desc' ? '↓' : '↑'}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('expense_ratio')}
-                  className="flex items-center space-x-1 hover:text-gray-700"
                 >
-                  <span>ER</span>
-                  {getSortIcon('expense_ratio')}
-                </button>
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <button
-                  onClick={() => handleSort('standard_deviation_3y')}
-                  className="flex items-center space-x-1 hover:text-gray-700"
+                  <div className="flex items-center justify-center space-x-1">
+                    <span>Expense</span>
+                    {sortConfig.key === 'expense_ratio' && (
+                      <span className="text-blue-600">
+                        {sortConfig.direction === 'desc' ? '↓' : '↑'}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  onClick={() => handleSort('sharpe_ratio')}
                 >
-                  <span>Std Dev</span>
-                  {getSortIcon('standard_deviation_3y')}
-                </button>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {sortedData.map((row, index) => (
-              <tr 
-                key={`${row.ticker}-${index}`}
-                className={`
-                  ${row.is_benchmark ? 'bg-blue-50 border-t-2 border-blue-200' : 'hover:bg-gray-50'}
-                  ${row.is_recommended ? 'bg-green-50' : ''}
-                `}
-              >
-                <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {row.ticker}
-                  {row.is_benchmark && (
-                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                      Benchmark
-                    </span>
-                  )}
-                  {row.is_recommended && !row.is_benchmark && (
-                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                      Recommended
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
-                  {row.name}
-                </td>
-                <td className="px-4 py-3 text-center text-sm">
-                  {row.score_final != null && !row.is_benchmark ? (
-                    <span 
-                      className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
-                      style={{ backgroundColor: getScoreColor(row.score_final) }}
-                    >
-                      {Math.round(row.score_final)}
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
-                  {fmt.percent(row.ytd_return)}
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
-                  {fmt.percent(row.one_year_return)}
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
-                  {fmt.percent(row.three_year_return)}
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
-                  {fmt.percent(row.five_year_return)}
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
-                  {fmt.number(row.sharpe_ratio)}
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
-                  {fmt.percent(row.expense_ratio)}
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
-                  {fmt.percent(row.standard_deviation_3y)}
-                </td>
+                  <div className="flex items-center justify-center space-x-1">
+                    <span>Sharpe</span>
+                    {sortConfig.key === 'sharpe_ratio' && (
+                      <span className="text-blue-600">
+                        {sortConfig.direction === 'desc' ? '↓' : '↑'}
+                      </span>
+                    )}
+                  </div>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {sortedData.map((row, index) => {
+                const isRecommended = row.is_recommended;
+                const isBenchmark = row.isBenchmark;
+                
+                return (
+                  <tr 
+                    key={row.ticker || index}
+                    className={`
+                      table-row transition-all duration-200 hover:bg-gray-50
+                      ${isBenchmark ? 'benchmark-row' : ''}
+                      ${isRecommended ? 'recommended-row' : ''}
+                    `}
+                  >
+                    {/* Fund Column */}
+                    <td className="table-cell px-6 py-4">
+                      <div className="fund-info-container">
+                        {/* Status Indicator Container - Fixed width */}
+                        <div className="status-indicator-container">
+                          {isRecommended && (
+                            <div className="status-dot recommended" title="Recommended Fund" />
+                          )}
+                          {isBenchmark && (
+                            <div className="status-dot benchmark" title="Benchmark Fund" />
+                          )}
+                          {!isRecommended && !isBenchmark && (
+                            <div className="status-dot regular" title="Regular Fund" />
+                          )}
+                        </div>
+                        
+                        {/* Fund Info Container */}
+                        <div className="fund-text-container">
+                          <div className="fund-ticker">
+                            {row.ticker}
+                          </div>
+                          <div className="fund-name">
+                            {row.name}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    
+                    {/* Score Column */}
+                    <td className="table-cell px-6 py-4 text-center">
+                      {renderScoreBadge(getFieldValue(row, 'score_final', ['score', 'final_score']))}
+                    </td>
+                    
+                    {/* Return Columns */}
+                    <td className="table-cell px-6 py-4 text-center">
+                      {renderReturn(getFieldValue(row, 'ytd_return', ['ytd', 'Total Return - YTD (%)']), 'YTD')}
+                    </td>
+                    <td className="table-cell px-6 py-4 text-center">
+                      {renderReturn(getFieldValue(row, 'one_year_return', ['1 Year', 'Total Return - 1 Year (%)']), '1Y')}
+                    </td>
+                    <td className="table-cell px-6 py-4 text-center">
+                      {renderReturn(getFieldValue(row, 'three_year_return', ['3 Year', 'Annualized Total Return - 3 Year (%)']), '3Y')}
+                    </td>
+                    
+                    {/* Expense Ratio */}
+                    <td className="table-cell px-6 py-4 text-center">
+                      {renderExpenseRatio(getFieldValue(row, 'expense_ratio', ['Net Exp Ratio (%)']))}
+                    </td>
+                    
+                    {/* Sharpe Ratio */}
+                    <td className="table-cell px-6 py-4 text-center">
+                      {renderSharpeRatio(getFieldValue(row, 'sharpe_ratio', ['Sharpe Ratio - 3 Year', 'Sharpe Ratio']))}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Summary */}
-      <div className="text-sm text-gray-600">
-        Showing {sortedData.filter(r => !r.is_benchmark).length} funds
-        {sortedData.some(r => r.is_benchmark) && ' with 1 benchmark'}
+      {/* Footer */}
+      <div className="text-center text-sm text-gray-600 bg-gray-50 rounded-lg p-4">
+        Showing {nonBenchmarkCount} funds
+        {benchmarkCount > 0 && ` with ${benchmarkCount} benchmark${benchmarkCount > 1 ? 's' : ''}`}
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import { formatPercent, formatNumber } from '../../utils/formatters';
 import { getPrimaryBenchmark } from '../../services/resolvers/benchmarkResolverClient';
 import NotesPanel from './NotesPanel';
+import ScoreAnalysisSection from './ScoreAnalysisSection';
 import { METRICS_CONFIG } from '../../services/scoring';
 
 function MetricRow({ label, value, delta, benchTicker, tooltip }) {
@@ -181,6 +182,9 @@ export default function DrilldownCards({ fund, funds }) {
             </table>
           </div>
         </details>
+      </div>
+      <div style={{ gridColumn: '1 / -1' }}>
+        <ScoreAnalysisSection fund={fund} benchmark={benchmark} funds={funds} />
       </div>
       <div style={{ gridColumn: '1 / -1' }}>
         <NotesPanel fundId={fund?.id || null} fundTicker={fund?.ticker || fund?.Symbol || null} />

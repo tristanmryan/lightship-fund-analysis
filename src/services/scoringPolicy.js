@@ -45,11 +45,11 @@ export function getMissingPolicy() {
 }
 
 export const SCORE_BANDS = [
-  { min: 60, label: 'Strong',  color: '#16a34a' },
-  { min: 55, label: 'Healthy', color: '#22c55e' },
-  { min: 45, label: 'Neutral', color: '#6b7280' },
-  { min: 40, label: 'Caution', color: '#eab308' },
-  { min: 0,  label: 'Weak',    color: '#dc2626' }
+  { min: 60, label: 'Strong',  color: '#10b981' }, // Soft emerald
+  { min: 55, label: 'Healthy', color: '#3b82f6' }, // Soft blue
+  { min: 45, label: 'Neutral', color: '#6b7280' }, // Muted gray
+  { min: 40, label: 'Caution', color: '#f59e0b' }, // Soft amber
+  { min: 0,  label: 'Weak',    color: '#ef4444' }  // Soft red
 ];
 
 export function getScoreColor(score) {

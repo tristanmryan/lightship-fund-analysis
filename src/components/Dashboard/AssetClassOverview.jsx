@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { tooltipBoxStyle, tooltipTitleStyle } from '../common/tooltipStyles';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { getScoreColor, generateClassSummary } from '../../services/scoring';
+import FundStatusBadge from './FundStatusBadge';
 
 /**
  * Asset Class Overview Component
@@ -502,7 +503,10 @@ const AssetClassOverview = ({ funds, classSummaries = {}, benchmarkData = {} }) 
                       <div style={{ fontWeight: '600', color: '#16a34a', marginBottom: '0.25rem' }}>
                         Top Performer
                       </div>
-                      <div>{stats.topFund?.Symbol} - {stats.topFund?.displayName}</div>
+                      <div className="flex items-center gap-2">
+                        <span>{stats.topFund?.Symbol} - {stats.topFund?.displayName}</span>
+                        <FundStatusBadge fund={stats.topFund} size="small" />
+                      </div>
                       <div style={{ color: '#059669', fontWeight: '600' }}>
                         Score: {stats.topFund?.scores?.final || '-'}
                       </div>
@@ -516,7 +520,10 @@ const AssetClassOverview = ({ funds, classSummaries = {}, benchmarkData = {} }) 
                       <div style={{ fontWeight: '600', color: '#dc2626', marginBottom: '0.25rem' }}>
                         Bottom Performer
                       </div>
-                      <div>{stats.bottomFund?.Symbol} - {stats.bottomFund?.displayName}</div>
+                      <div className="flex items-center gap-2">
+                        <span>{stats.bottomFund?.Symbol} - {stats.bottomFund?.displayName}</span>
+                        <FundStatusBadge fund={stats.bottomFund} size="small" />
+                      </div>
                       <div style={{ color: '#dc2626', fontWeight: '600' }}>
                         Score: {stats.bottomFund?.scores?.final || '-'}
                       </div>
