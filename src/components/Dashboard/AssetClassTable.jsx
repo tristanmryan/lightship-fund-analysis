@@ -1,10 +1,9 @@
 // src/components/Dashboard/AssetClassTable.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Download, TrendingUp, TrendingDown, DollarSign, Shield, Calendar, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Shield, Calendar, BarChart3, Target, Star } from 'lucide-react';
 import fundService from '../../services/fundService';
 import asOfStore from '../../services/asOfStore';
 import scoringProfilesService from '../../services/scoringProfilesService';
-import { exportAssetClassTableCSV } from '../../services/exportService';
 import { fmt } from '../../utils/formatters';
 import './AssetClassTable.css';
 
@@ -124,24 +123,26 @@ const AssetClassTable = ({
     return ticker.toLowerCase().includes('benchmark');
   };
 
-  // Modern score badge with soft colors
+  // Modern score badge with CSS classes
   const renderScoreBadge = (score) => {
     if (score == null) return <span className="text-gray-400">—</span>;
     
     let badgeClass = '';
     if (score >= 60) {
-      badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      badgeClass = 'score-badge-excellent';
     } else if (score >= 50) {
-      badgeClass = 'bg-blue-50 text-blue-700 border-blue-200';
+      badgeClass = 'score-badge-good';
     } else if (score >= 40) {
-      badgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+      badgeClass = 'score-badge-fair';
+    } else if (score >= 30) {
+      badgeClass = 'score-badge-poor';
     } else {
-      badgeClass = 'bg-red-50 text-red-700 border-red-200';
+      badgeClass = 'score-badge-very-poor';
     }
 
     return (
-      <div className={`score-badge inline-flex items-center justify-center px-3 py-1.5 rounded-full text-sm font-semibold border ${badgeClass}`}>
-        {score.toFixed(1)}
+      <div className={`score-badge ${badgeClass}`}>
+        <span>{score.toFixed(1)}</span>
       </div>
     );
   };
@@ -248,13 +249,6 @@ const AssetClassTable = ({
     }));
   };
 
-  const handleExport = () => {
-    try {
-      exportAssetClassTableCSV(data, assetClassName, asOfMonth);
-    } catch (error) {
-      console.error('Error exporting data:', error);
-    }
-  };
 
   if (loading) {
     return (
@@ -291,70 +285,120 @@ const AssetClassTable = ({
 
   return (
     <div className="asset-class-table space-y-6">
-      {/* Modern Header */}
-      <div className="modern-card bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-6">
-            <h2 className="text-2xl font-bold text-gray-900">{assetClassName} Performance</h2>
-            
-            {/* Scoring Profile Selector */}
-            {profiles.length > 0 && (
-              <div className="flex items-center space-x-3">
-                <label className="text-sm font-medium text-gray-700">Scoring Profile:</label>
-                <select
-                  value={selectedProfile?.id || ''}
-                  onChange={(e) => {
-                    const profile = profiles.find(p => p.id === e.target.value);
-                    setSelectedProfile(profile);
-                  }}
-                  className="profile-select px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {profiles.map(profile => (
-                    <option key={profile.id} value={profile.id}>
-                      {profile.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+      {/* Simple Clean Header */}
+      <div className="header-container bg-white rounded-lg border border-gray-200 shadow-sm">
+        {/* Title Row */}
+        <div className="title-row flex items-center justify-between">
+          <div className="title-section">
+            <h1 className="primary-title text-3xl font-bold text-gray-900">{assetClassName}</h1>
+            <p className="title-subtitle text-sm text-gray-600 mt-1">Performance Analysis</p>
           </div>
-
-          <div className="flex items-center space-x-4">
-            <div className="date-display text-sm text-gray-600 bg-gray-50 px-4 py-2 rounded-lg">
-              As of: {fmt.date(asOfMonth)}
+          
+          {profiles.length > 0 && (
+            <div className="controls">
+              <select
+                value={selectedProfile?.id || ''}
+                onChange={(e) => {
+                  const profile = profiles.find(p => p.id === e.target.value);
+                  setSelectedProfile(profile);
+                }}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm bg-white focus:ring-2 focus:ring-blue-500"
+              >
+                {profiles.map(profile => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            
-            <button
-              onClick={handleExport}
-              className="control-button inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm font-medium"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export CSV</span>
-            </button>
-          </div>
+          )}
         </div>
 
-        {/* Summary Stats */}
-        <div className="summary-stats grid grid-cols-4 gap-6 pt-4 border-t border-gray-100">
-          <div className="summary-stat text-center">
-            <div className="summary-stat-value text-2xl font-bold text-gray-900">{nonBenchmarkCount}</div>
-            <div className="summary-stat-label text-sm text-gray-600">Total Funds</div>
-          </div>
-          <div className="summary-stat text-center">
-            <div className="summary-stat-value text-2xl font-bold text-emerald-600">
-              {data.filter(r => r.is_recommended).length}
+        {/* Metadata */}
+        <div className="metadata text-sm text-gray-600">
+          As of {fmt.date(asOfMonth)}
+          {selectedProfile && ` • ${selectedProfile.name} Profile`}
+        </div>
+
+        {/* Modern KPI Cards */}
+        <div className="kpi-section">
+          <div className="kpi-grid grid grid-cols-4 gap-4">
+            {/* Total Funds KPI */}
+            <div className="kpi-card kpi-card--blue">
+              <div className="kpi-header">
+                <div className="kpi-icon">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <div className="kpi-trend">
+                  <span className="trend-label">FUNDS</span>
+                </div>
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-value">{nonBenchmarkCount}</div>
+                <div className="kpi-label">Total Funds</div>
+              </div>
             </div>
-            <div className="summary-stat-label text-sm text-gray-600">Recommended</div>
-          </div>
-          <div className="summary-stat text-center">
-            <div className="summary-stat-value text-2xl font-bold text-blue-600">{benchmarkCount}</div>
-            <div className="summary-stat-label text-sm text-gray-600">Benchmarks</div>
-          </div>
-          <div className="summary-stat text-center">
-            <div className="summary-stat-value text-2xl font-bold text-gray-900">
-              {nonBenchmarkCount > 0 ? (data.filter(r => !r.isBenchmark).reduce((sum, r) => sum + (getFieldValue(r, 'score_final', ['score', 'final_score']) || 0), 0) / nonBenchmarkCount).toFixed(1) : '0.0'}
+
+            {/* Recommended Funds KPI */}
+            <div className="kpi-card kpi-card--green kpi-card--highlight">
+              <div className="kpi-header">
+                <div className="kpi-icon">
+                  <Star className="w-5 h-5" />
+                </div>
+                <div className="kpi-trend">
+                  <span className="trend-percentage">
+                    {nonBenchmarkCount > 0 ? Math.round((data.filter(r => r.is_recommended).length / nonBenchmarkCount) * 100) : 0}%
+                  </span>
+                </div>
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-value">{data.filter(r => r.is_recommended).length}</div>
+                <div className="kpi-label">Recommended</div>
+              </div>
             </div>
-            <div className="summary-stat-label text-sm text-gray-600">Avg Score</div>
+
+            {/* Benchmarks KPI */}
+            <div className="kpi-card kpi-card--amber">
+              <div className="kpi-header">
+                <div className="kpi-icon">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <div className="kpi-trend">
+                  <span className="trend-label">BENCH</span>
+                </div>
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-value">{benchmarkCount}</div>
+                <div className="kpi-label">Benchmarks</div>
+              </div>
+            </div>
+
+            {/* Average Score KPI */}
+            <div className="kpi-card kpi-card--purple kpi-card--highlight">
+              <div className="kpi-header">
+                <div className="kpi-icon">
+                  <Target className="w-5 h-5" />
+                </div>
+                <div className="kpi-trend">
+                  {(() => {
+                    const avgScore = nonBenchmarkCount > 0 
+                      ? (data.filter(r => !r.isBenchmark).reduce((sum, r) => sum + (getFieldValue(r, 'score_final', ['score', 'final_score']) || 0), 0) / nonBenchmarkCount)
+                      : 0;
+                    return (
+                      <span className={`trend-indicator ${avgScore >= 60 ? 'trend-up' : avgScore >= 40 ? 'trend-neutral' : 'trend-down'}`}>
+                        {avgScore >= 60 ? '↗' : avgScore >= 40 ? '→' : '↘'}
+                      </span>
+                    );
+                  })()}
+                </div>
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-value">
+                  {nonBenchmarkCount > 0 ? (data.filter(r => !r.isBenchmark).reduce((sum, r) => sum + (getFieldValue(r, 'score_final', ['score', 'final_score']) || 0), 0) / nonBenchmarkCount).toFixed(1) : '0.0'}
+                </div>
+                <div className="kpi-label">Portfolio Score</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -369,10 +413,10 @@ const AssetClassTable = ({
                   Fund
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('score_final')}
                 >
-                  <div className="flex items-center justify-end space-x-1">
+                  <div className="flex items-center justify-center space-x-1">
                     <span>Score</span>
                     {sortConfig.key === 'score_final' && (
                       <span className="text-blue-600">
@@ -491,7 +535,7 @@ const AssetClassTable = ({
                     </td>
                     
                     {/* Score Column */}
-                    <td className="table-cell px-6 py-4 text-right">
+                    <td className="table-cell px-6 py-4 text-center">
                       {renderScoreBadge(getFieldValue(row, 'score_final', ['score', 'final_score']))}
                     </td>
                     
