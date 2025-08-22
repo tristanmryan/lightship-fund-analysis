@@ -1,0 +1,436 @@
+/* Modern Asset Class Table Styles */
+/* Matches 2025 financial dashboard design trends */
+
+.asset-class-table {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Modern card shadows and borders */
+.asset-class-table .modern-card {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+/* Subtle hover effects */
+.asset-class-table .table-row {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.asset-class-table .table-row:hover {
+  background-color: #f9fafb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.asset-class-table .table-row:not(.benchmark-row):not(.recommended-row):hover {
+  background-color: #f9fafb;
+}
+
+/* Modern status indicators - Enhanced for better visibility */
+.asset-class-table .status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  cursor: help;
+  /* Ensure consistent positioning and centering */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+}
+
+.asset-class-table .status-dot:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.asset-class-table .status-dot.recommended {
+  background-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+  border: 2px solid rgba(16, 185, 129, 0.3);
+}
+
+.asset-class-table .status-dot.benchmark {
+  background-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+  border: 2px solid rgba(245, 158, 11, 0.3);
+}
+
+.asset-class-table .status-dot.regular {
+  background-color: #d1d5db;
+  box-shadow: 0 0 0 3px rgba(209, 213, 219, 0.15);
+  border: 2px solid rgba(209, 213, 219, 0.3);
+}
+
+/* Modern score badges */
+.asset-class-table .score-badge {
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  border: 1px solid;
+  transition: all 0.2s ease;
+}
+
+.asset-class-table .score-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Modern table headers */
+.asset-class-table .table-header {
+  background-color: #f9fafb;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.asset-class-table .table-header th {
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  padding: 16px 24px;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.asset-class-table .table-header th.sortable {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.asset-class-table .table-header th.sortable:hover {
+  color: #374151;
+}
+
+/* Modern table cells - Enhanced for consistent heights */
+.asset-class-table .table-cell {
+  padding: 20px 24px;
+  vertical-align: middle;
+  border-bottom: 1px solid #f3f4f6;
+  height: 80px; /* Consistent row height */
+  box-sizing: border-box;
+}
+
+/* Fund info layout - Ensure consistent alignment */
+.asset-class-table .fund-info-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  /* Ensure consistent layout */
+  position: relative;
+  /* Debug: Add border to see layout */
+  /* border: 1px solid transparent; */
+}
+
+.asset-class-table .status-indicator-container {
+  width: 24px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* Ensure consistent positioning */
+  position: relative;
+  /* Debug: Add border to see container */
+  /* border: 1px solid rgba(0,0,0,0.1); */
+}
+
+.asset-class-table .fund-text-container {
+  flex: 1;
+  min-width: 0;
+  /* Ensure consistent text alignment */
+  padding-left: 0;
+  margin-left: 0;
+}
+
+/* Modern typography - Enhanced for better hierarchy */
+.asset-class-table .fund-ticker {
+  font-weight: 700;
+  color: #111827;
+  font-size: 1rem;
+  line-height: 1.25rem;
+  letter-spacing: -0.025em;
+}
+
+.asset-class-table .fund-name {
+  color: #6b7280;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 280px;
+  font-weight: 400;
+}
+
+/* Modern numeric data */
+.asset-class-table .numeric-value {
+  text-align: right;
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+/* Modern return colors */
+.asset-class-table .return-positive {
+  color: #059669;
+}
+
+.asset-class-table .return-negative {
+  color: #dc2626;
+}
+
+/* Modern expense ratio colors */
+.asset-class-table .expense-low {
+  color: #059669;
+}
+
+.asset-class-table .expense-medium {
+  color: #d97706;
+}
+
+.asset-class-table .expense-high {
+  color: #dc2626;
+}
+
+/* Modern Sharpe ratio colors */
+.asset-class-table .sharpe-excellent {
+  color: #059669;
+}
+
+.asset-class-table .sharpe-good {
+  color: #d97706;
+}
+
+.asset-class-table .sharpe-poor {
+  color: #dc2626;
+}
+
+/* Modern summary stats */
+.asset-class-table .summary-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.asset-class-table .summary-stat {
+  text-align: center;
+}
+
+.asset-class-table .summary-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 2rem;
+  color: #111827;
+}
+
+.asset-class-table .summary-stat-label {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+/* Modern controls */
+.asset-class-table .control-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.asset-class-table .control-button:hover {
+  background-color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.asset-class-table .control-button:focus {
+  outline: none;
+  ring: 2px;
+  ring-offset: 2px;
+  ring-color: #3b82f6;
+}
+
+/* Modern select dropdown */
+.asset-class-table .profile-select {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  background-color: white;
+  color: #374151;
+  transition: all 0.2s ease;
+}
+
+.asset-class-table .profile-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Modern date display */
+.asset-class-table .date-display {
+  background-color: #f9fafb;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: #6b7280;
+}
+
+/* Enhanced benchmark row styling */
+.asset-class-table .table-row.benchmark-row {
+  background-color: rgba(245, 158, 11, 0.06);
+  border-left: 4px solid #f59e0b;
+  position: relative;
+}
+
+.asset-class-table .table-row.benchmark-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%);
+}
+
+.asset-class-table .table-row.benchmark-row:hover {
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+/* Enhanced recommended fund styling */
+.asset-class-table .table-row.recommended-row {
+  background-color: rgba(16, 185, 129, 0.04);
+  border-left: 4px solid #10b981;
+  position: relative;
+}
+
+.asset-class-table .table-row.recommended-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #10b981 0%, #34d399 100%);
+}
+
+.asset-class-table .table-row.recommended-row:hover {
+  background-color: rgba(16, 185, 129, 0.06);
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .asset-class-table .summary-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  
+  .asset-class-table .table-header th,
+  .asset-class-table .table-cell {
+    padding: 16px 20px;
+  }
+  
+  .asset-class-table .table-cell {
+    height: 72px;
+  }
+}
+
+@media (max-width: 768px) {
+  .asset-class-table .modern-card {
+    margin: 0 -16px;
+    border-radius: 0;
+  }
+  
+  .asset-class-table .summary-stats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .asset-class-table .table-header th,
+  .asset-class-table .table-cell {
+    padding: 12px 16px;
+  }
+  
+  .asset-class-table .table-cell {
+    height: 64px;
+  }
+  
+  .asset-class-table .fund-name {
+    max-width: 200px;
+  }
+  
+  .asset-class-table .status-dot {
+    width: 8px;
+    height: 8px;
+  }
+}
+
+/* Smooth animations */
+.asset-class-table * {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Focus states for accessibility */
+.asset-class-table .table-header th:focus,
+.asset-class-table .control-button:focus,
+.asset-class-table .profile-select:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Loading states */
+.asset-class-table .loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  color: #6b7280;
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+/* Error states */
+.asset-class-table .error-state {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  color: #dc2626;
+}
+
+/* Empty states */
+.asset-class-table .empty-state {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 48px 24px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+} 
