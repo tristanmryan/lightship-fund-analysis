@@ -382,10 +382,10 @@ const AssetClassTable = ({
                   </div>
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('ytd_return')}
                 >
-                  <div className="flex items-center justify-end space-x-1">
+                  <div className="flex items-center justify-center space-x-1">
                     <span>YTD</span>
                     {sortConfig.key === 'ytd_return' && (
                       <span className="text-blue-600">
@@ -395,10 +395,10 @@ const AssetClassTable = ({
                   </div>
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('one_year_return')}
                 >
-                  <div className="flex items-center justify-end space-x-1">
+                  <div className="flex items-center justify-center space-x-1">
                     <span>1Y</span>
                     {sortConfig.key === 'one_year_return' && (
                       <span className="text-blue-600">
@@ -408,10 +408,10 @@ const AssetClassTable = ({
                   </div>
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('three_year_return')}
                 >
-                  <div className="flex items-center justify-end space-x-1">
+                  <div className="flex items-center justify-center space-x-1">
                     <span>3Y</span>
                     {sortConfig.key === 'three_year_return' && (
                       <span className="text-blue-600">
@@ -421,10 +421,10 @@ const AssetClassTable = ({
                   </div>
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('expense_ratio')}
                 >
-                  <div className="flex items-center justify-end space-x-1">
+                  <div className="flex items-center justify-center space-x-1">
                     <span>Expense</span>
                     {sortConfig.key === 'expense_ratio' && (
                       <span className="text-blue-600">
@@ -434,10 +434,10 @@ const AssetClassTable = ({
                   </div>
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('sharpe_ratio')}
                 >
-                  <div className="flex items-center justify-end space-x-1">
+                  <div className="flex items-center justify-center space-x-1">
                     <span>Sharpe</span>
                     {sortConfig.key === 'sharpe_ratio' && (
                       <span className="text-blue-600">
@@ -496,23 +496,23 @@ const AssetClassTable = ({
                     </td>
                     
                     {/* Return Columns */}
-                    <td className="table-cell px-6 py-4 text-right">
+                    <td className="table-cell px-6 py-4 text-center">
                       {renderReturn(getFieldValue(row, 'ytd_return', ['ytd', 'Total Return - YTD (%)']), 'YTD')}
                     </td>
-                    <td className="table-cell px-6 py-4 text-right">
+                    <td className="table-cell px-6 py-4 text-center">
                       {renderReturn(getFieldValue(row, 'one_year_return', ['1 Year', 'Total Return - 1 Year (%)']), '1Y')}
                     </td>
-                    <td className="table-cell px-6 py-4 text-right">
+                    <td className="table-cell px-6 py-4 text-center">
                       {renderReturn(getFieldValue(row, 'three_year_return', ['3 Year', 'Annualized Total Return - 3 Year (%)']), '3Y')}
                     </td>
                     
                     {/* Expense Ratio */}
-                    <td className="table-cell px-6 py-4 text-right">
+                    <td className="table-cell px-6 py-4 text-center">
                       {renderExpenseRatio(getFieldValue(row, 'expense_ratio', ['Net Exp Ratio (%)']))}
                     </td>
                     
                     {/* Sharpe Ratio */}
-                    <td className="table-cell px-6 py-4 text-right">
+                    <td className="table-cell px-6 py-4 text-center">
                       {renderSharpeRatio(getFieldValue(row, 'sharpe_ratio', ['Sharpe Ratio - 3 Year', 'Sharpe Ratio']))}
                     </td>
                   </tr>
