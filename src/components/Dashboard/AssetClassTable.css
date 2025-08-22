@@ -24,6 +24,11 @@
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
+.asset-class-table .table-row:hover .status-dot {
+  transform: translate(-50%, -50%) scale(1.1);
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1);
+}
+
 .asset-class-table .table-row:not(.benchmark-row):not(.recommended-row):hover {
   background-color: #f9fafb;
 }
@@ -118,6 +123,10 @@
   box-sizing: border-box;
 }
 
+.asset-class-table .table-cell:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
 /* Fund info layout - Ensure consistent alignment */
 .asset-class-table .fund-info-container {
   display: flex;
@@ -174,7 +183,7 @@
 
 /* Modern numeric data */
 .asset-class-table .numeric-value {
-  text-align: right;
+  text-align: center;
   font-weight: 500;
   font-size: 0.875rem;
   line-height: 1.25rem;
@@ -302,12 +311,17 @@
 
 /* Enhanced benchmark row styling */
 .asset-class-table .table-row.benchmark-row {
-  background-color: rgba(245, 158, 11, 0.06);
+  background-color: rgba(245, 158, 11, 0.08);
   position: relative;
 }
 
 .asset-class-table .table-row.benchmark-row:hover {
-  background-color: rgba(245, 158, 11, 0.1);
+  background-color: rgba(245, 158, 11, 0.12);
+}
+
+.asset-class-table .table-row.benchmark-row .table-cell {
+  font-weight: 600;
+  border-top: 2px solid rgba(245, 158, 11, 0.3);
 }
 
 /* Enhanced recommended fund styling */

@@ -124,19 +124,21 @@ const AssetClassTable = ({
     return ticker.toLowerCase().includes('benchmark');
   };
 
-  // Modern score badge with soft colors
+  // Modern score badge aligned with global color system
   const renderScoreBadge = (score) => {
     if (score == null) return <span className="text-gray-400">—</span>;
-    
+
     let badgeClass = '';
-    if (score >= 60) {
-      badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    } else if (score >= 50) {
-      badgeClass = 'bg-blue-50 text-blue-700 border-blue-200';
+    if (score >= 80) {
+      badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+    } else if (score >= 60) {
+      badgeClass = 'bg-blue-100 text-blue-800 border-blue-300';
     } else if (score >= 40) {
-      badgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+      badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
+    } else if (score >= 20) {
+      badgeClass = 'bg-red-100 text-red-800 border-red-300';
     } else {
-      badgeClass = 'bg-red-50 text-red-700 border-red-200';
+      badgeClass = 'bg-red-200 text-red-900 border-red-400';
     }
 
     return (
@@ -154,7 +156,7 @@ const AssetClassTable = ({
     const colorClass = isPositive ? 'text-emerald-700' : 'text-red-700';
     
     return (
-      <div className={`numeric-value text-right text-sm font-medium ${colorClass}`}>
+      <div className={`numeric-value text-center text-sm font-medium ${colorClass}`}>
         {value.toFixed(2)}%
       </div>
     );
@@ -170,7 +172,7 @@ const AssetClassTable = ({
     else colorClass = 'text-red-700';
     
     return (
-      <div className="numeric-value text-right text-sm font-medium">
+      <div className="numeric-value text-center text-sm font-medium">
         <span className={colorClass}>{value.toFixed(2)}%</span>
       </div>
     );
@@ -186,7 +188,7 @@ const AssetClassTable = ({
     else colorClass = 'text-red-700';
     
     return (
-      <div className="numeric-value text-right text-sm font-medium">
+      <div className="numeric-value text-center text-sm font-medium">
         <span className={colorClass}>{value.toFixed(2)}</span>
       </div>
     );
@@ -368,11 +370,11 @@ const AssetClassTable = ({
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Fund
                 </th>
-                <th 
-                  className="sortable px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                <th
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('score_final')}
                 >
-                  <div className="flex items-center justify-end space-x-1">
+                  <div className="flex items-center justify-center space-x-1">
                     <span>Score</span>
                     {sortConfig.key === 'score_final' && (
                       <span className="text-blue-600">
@@ -381,11 +383,11 @@ const AssetClassTable = ({
                     )}
                   </div>
                 </th>
-                <th 
-                  className="sortable px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                <th
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('ytd_return')}
                 >
-                  <div className="flex items-center justify-end space-x-1">
+                  <div className="flex items-center justify-center space-x-1">
                     <span>YTD</span>
                     {sortConfig.key === 'ytd_return' && (
                       <span className="text-blue-600">
@@ -394,11 +396,11 @@ const AssetClassTable = ({
                     )}
                   </div>
                 </th>
-                <th 
-                  className="sortable px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                <th
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('one_year_return')}
                 >
-                  <div className="flex items-center justify-end space-x-1">
+                  <div className="flex items-center justify-center space-x-1">
                     <span>1Y</span>
                     {sortConfig.key === 'one_year_return' && (
                       <span className="text-blue-600">
@@ -407,11 +409,11 @@ const AssetClassTable = ({
                     )}
                   </div>
                 </th>
-                <th 
-                  className="sortable px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                <th
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('three_year_return')}
                 >
-                  <div className="flex items-center justify-end space-x-1">
+                  <div className="flex items-center justify-center space-x-1">
                     <span>3Y</span>
                     {sortConfig.key === 'three_year_return' && (
                       <span className="text-blue-600">
@@ -420,11 +422,11 @@ const AssetClassTable = ({
                     )}
                   </div>
                 </th>
-                <th 
-                  className="sortable px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                <th
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('expense_ratio')}
                 >
-                  <div className="flex items-center justify-end space-x-1">
+                  <div className="flex items-center justify-center space-x-1">
                     <span>Expense</span>
                     {sortConfig.key === 'expense_ratio' && (
                       <span className="text-blue-600">
@@ -433,11 +435,11 @@ const AssetClassTable = ({
                     )}
                   </div>
                 </th>
-                <th 
-                  className="sortable px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                <th
+                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
                   onClick={() => handleSort('sharpe_ratio')}
                 >
-                  <div className="flex items-center justify-end space-x-1">
+                  <div className="flex items-center justify-center space-x-1">
                     <span>Sharpe</span>
                     {sortConfig.key === 'sharpe_ratio' && (
                       <span className="text-blue-600">
@@ -458,7 +460,7 @@ const AssetClassTable = ({
                     key={row.ticker || index}
                     className={`
                       table-row transition-all duration-200 hover:bg-gray-50
-                      ${isBenchmark ? 'benchmark-row' : ''}
+                      ${isBenchmark ? 'benchmark-row font-semibold border-t-2 border-amber-200' : ''}
                       ${isRecommended ? 'recommended-row' : ''}
                     `}
                   >
@@ -491,28 +493,28 @@ const AssetClassTable = ({
                     </td>
                     
                     {/* Score Column */}
-                    <td className="table-cell px-6 py-4 text-right">
+                    <td className="table-cell px-6 py-4 text-center">
                       {renderScoreBadge(getFieldValue(row, 'score_final', ['score', 'final_score']))}
                     </td>
-                    
+
                     {/* Return Columns */}
-                    <td className="table-cell px-6 py-4 text-right">
+                    <td className="table-cell px-6 py-4 text-center">
                       {renderReturn(getFieldValue(row, 'ytd_return', ['ytd', 'Total Return - YTD (%)']), 'YTD')}
                     </td>
-                    <td className="table-cell px-6 py-4 text-right">
+                    <td className="table-cell px-6 py-4 text-center">
                       {renderReturn(getFieldValue(row, 'one_year_return', ['1 Year', 'Total Return - 1 Year (%)']), '1Y')}
                     </td>
-                    <td className="table-cell px-6 py-4 text-right">
+                    <td className="table-cell px-6 py-4 text-center">
                       {renderReturn(getFieldValue(row, 'three_year_return', ['3 Year', 'Annualized Total Return - 3 Year (%)']), '3Y')}
                     </td>
-                    
+
                     {/* Expense Ratio */}
-                    <td className="table-cell px-6 py-4 text-right">
+                    <td className="table-cell px-6 py-4 text-center">
                       {renderExpenseRatio(getFieldValue(row, 'expense_ratio', ['Net Exp Ratio (%)']))}
                     </td>
-                    
+
                     {/* Sharpe Ratio */}
-                    <td className="table-cell px-6 py-4 text-right">
+                    <td className="table-cell px-6 py-4 text-center">
                       {renderSharpeRatio(getFieldValue(row, 'sharpe_ratio', ['Sharpe Ratio - 3 Year', 'Sharpe Ratio']))}
                     </td>
                   </tr>
