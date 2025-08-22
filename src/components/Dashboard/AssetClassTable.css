@@ -46,7 +46,7 @@
 }
 
 .asset-class-table .status-dot:hover {
-  transform: scale(1.2);
+  transform: translate(-50%, -50%) scale(1.2);
   box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -303,18 +303,7 @@
 /* Enhanced benchmark row styling */
 .asset-class-table .table-row.benchmark-row {
   background-color: rgba(245, 158, 11, 0.06);
-  border-left: 4px solid #f59e0b;
   position: relative;
-}
-
-.asset-class-table .table-row.benchmark-row::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%);
 }
 
 .asset-class-table .table-row.benchmark-row:hover {
@@ -324,22 +313,34 @@
 /* Enhanced recommended fund styling */
 .asset-class-table .table-row.recommended-row {
   background-color: rgba(16, 185, 129, 0.04);
-  border-left: 4px solid #10b981;
   position: relative;
-}
-
-.asset-class-table .table-row.recommended-row::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: linear-gradient(180deg, #10b981 0%, #34d399 100%);
 }
 
 .asset-class-table .table-row.recommended-row:hover {
   background-color: rgba(16, 185, 129, 0.06);
+}
+
+/* First cell is the positioning context for the stripe */
+.asset-class-table .table-row .table-cell:first-child {
+  position: relative;
+}
+
+/* Recommended stripe */
+.asset-class-table .table-row.recommended-row .table-cell:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #10b981 0%, #34d399 100%);
+}
+
+/* Benchmark stripe */
+.asset-class-table .table-row.benchmark-row .table-cell:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%);
 }
 
 /* Responsive design */
@@ -391,7 +392,7 @@
 
 /* Smooth animations */
 .asset-class-table * {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color .2s, background-color .2s, box-shadow .2s, transform .2s;
 }
 
 /* Focus states for accessibility */
