@@ -232,4 +232,65 @@
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* Visual Refresh Styles */
+.visual-refresh .fund-table-header {
+  background-color: #F1F5F9;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.visual-refresh .fund-table-header th {
+  background-color: #F1F5F9;
+  color: var(--text-muted);
+  padding: calc(var(--spacing-sm)) calc(var(--spacing-md));
+}
+
+.visual-refresh .fund-table-header th.sortable:hover {
+  background-color: color-mix(in srgb, var(--surface-bg) 85%, var(--btn-primary-bg));
+}
+
+.visual-refresh .fund-table-row td {
+  padding: calc(var(--spacing-sm)) calc(var(--spacing-md));
+}
+
+.visual-refresh .fund-table-row:hover {
+  background-color: color-mix(in srgb, var(--surface-bg) 85%, var(--btn-primary-bg));
+}
+
+.visual-refresh .fund-table-row.recommended {
+  background-color: color-mix(in srgb, var(--btn-primary-bg) 12%, white);
+  border-left: 3px solid var(--btn-primary-bg);
+}
+
+.visual-refresh .fund-table-row.recommended:hover {
+  background-color: color-mix(in srgb, var(--btn-primary-bg) 8%, white);
+}
+
+.visual-refresh .fund-table-row.benchmark {
+  background-color: color-mix(in srgb, var(--btn-primary-bg) 6%, white);
+  border-left: 3px solid var(--btn-primary-bg);
+  color: var(--text-default);
+}
+
+.visual-refresh .fund-table-row.benchmark:hover {
+  background-color: color-mix(in srgb, var(--btn-primary-bg) 4%, white);
+}
+
+.visual-refresh .fund-status-badge.recommended {
+  background-color: color-mix(in srgb, var(--btn-primary-bg) 12%, white);
+  color: var(--btn-primary-bg);
+  border: 1px solid color-mix(in srgb, var(--btn-primary-bg) 20%, white);
+}
+
+.visual-refresh .fund-status-badge.benchmark {
+  background-color: color-mix(in srgb, var(--btn-primary-bg) 8%, white);
+  color: var(--btn-primary-bg);
+  border: 1px solid color-mix(in srgb, var(--btn-primary-bg) 16%, white);
+}
+
+.visual-refresh .fund-asset-class-badge {
+  background-color: var(--surface-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
 } 

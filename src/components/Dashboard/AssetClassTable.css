@@ -1077,4 +1077,85 @@
   color: #6b7280;
   font-size: 1.125rem;
   line-height: 1.75rem;
+}
+
+/* Visual Refresh Styles */
+.visual-refresh .asset-class-table .table-header {
+  background: #F1F5F9;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.visual-refresh .asset-class-table .table-header th {
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+  padding: calc(var(--spacing-sm)) calc(var(--spacing-md));
+}
+
+.visual-refresh .asset-class-table .table-header th.sortable:hover {
+  background-color: color-mix(in srgb, var(--surface-bg) 85%, var(--btn-primary-bg));
+  color: var(--text-default);
+}
+
+.visual-refresh .asset-class-table .table-cell {
+  padding: calc(var(--spacing-sm)) calc(var(--spacing-md));
+  border-bottom: 1px solid var(--border-color);
+}
+
+.visual-refresh .asset-class-table .table-cell:hover {
+  background-color: color-mix(in srgb, var(--surface-bg) 85%, var(--btn-primary-bg));
+}
+
+.visual-refresh .asset-class-table .status-dot.recommended {
+  background-color: var(--btn-primary-bg);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--btn-primary-bg) 15%, white);
+  border: 2px solid color-mix(in srgb, var(--btn-primary-bg) 30%, white);
+}
+
+.visual-refresh .asset-class-table .status-dot.benchmark {
+  background-color: var(--btn-primary-bg);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--btn-primary-bg) 15%, white);
+  border: 2px solid color-mix(in srgb, var(--btn-primary-bg) 30%, white);
+}
+
+.visual-refresh .asset-class-table .status-dot.regular {
+  background-color: var(--border-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--border-color) 15%, white);
+  border: 2px solid color-mix(in srgb, var(--border-color) 30%, white);
+}
+
+.visual-refresh .asset-class-table .control-button {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-default);
+}
+
+.visual-refresh .asset-class-table .control-button:hover {
+  background-color: var(--surface-bg);
+  border-color: var(--btn-primary-bg);
+}
+
+.visual-refresh .asset-class-table .profile-select {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-default);
+}
+
+.visual-refresh .asset-class-table .profile-select:focus {
+  border-color: var(--btn-primary-bg);
+}
+
+.visual-refresh .asset-class-table .loading-state {
+  color: var(--text-muted);
+}
+
+.visual-refresh .asset-class-table .error-state {
+  background-color: color-mix(in srgb, var(--color-error) 10%, white);
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
+}
+
+.visual-refresh .asset-class-table .empty-state {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
 } 
