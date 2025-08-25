@@ -1159,3 +1159,12 @@
   border: 1px solid var(--border-color);
   color: var(--text-muted);
 } 
+
+/* Visual Refresh Compact Mode Support */
+.visual-refresh.density-compact .asset-class-table .table-cell { 
+  padding: 6px 10px; 
+}
+
+.visual-refresh.density-compact .asset-class-table .table-header th { 
+  padding: 6px 10px; 
+} 

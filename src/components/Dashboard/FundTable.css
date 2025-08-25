@@ -294,3 +294,12 @@
   color: var(--text-muted);
   border: 1px solid var(--border-color);
 } 
+
+/* Visual Refresh Compact Mode Support */
+.visual-refresh.density-compact .fund-table-row td { 
+  padding: 6px 10px; 
+}
+
+.visual-refresh.density-compact .fund-table-header th { 
+  padding: 6px 10px; 
+} 
