@@ -1,5 +1,5 @@
-// Raymond James-inspired theme
-const theme = {
+// Legacy theme (stable for existing consumers/tests)
+const legacyTheme = {
   colors: {
     primary: '#002D72', // Deep navy blue
     primaryLight: '#005EB8', // Lighter blue
@@ -33,4 +33,26 @@ const theme = {
   shadow: '0 2px 8px 0 rgba(0,45,114,0.08)',
 };
 
-export default theme;
+// Phase‑1 refreshed tokens (flag-gated at the CSS layer / opted-in consumers)
+export const refreshTokens = {
+  colors: {
+    primary: '#1F4E79',
+    primaryLight: '#3B6EA6',
+    primaryDark: '#163A59',
+    background: '#FFFFFF',
+    backgroundSecondary: '#F9FAFB',
+    border: '#E5E7EB',
+    borderLight: '#F3F4F6',
+    text: '#111827',
+    textLight: '#6B7280',
+  },
+  fontFamily:
+    "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  spacing: {
+    md: '0.75rem',
+    lg: '1.25rem',
+  },
+};
+
+export default legacyTheme;
+
