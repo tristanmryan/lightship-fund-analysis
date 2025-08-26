@@ -558,7 +558,8 @@ $$;
 -- Main scoring function that exactly replicates client-side scoring.js
 CREATE OR REPLACE FUNCTION public.calculate_scores_as_of(
   p_date date,
-  p_asset_class_id uuid DEFAULT NULL
+  p_asset_class_id uuid DEFAULT NULL,
+  p_global boolean DEFAULT false
 )
 RETURNS TABLE(
   asset_class_id uuid,
@@ -624,11 +625,23 @@ DECLARE
   raw_scores numeric[];
   anchors jsonb;
 BEGIN
-  -- Get funds for the specified date and asset class
-  SELECT array_agg(f.*) INTO asset_class_funds
-  FROM public.get_funds_as_of(p_date) f
-  WHERE (p_asset_class_id IS NULL OR f.asset_class_id = p_asset_class_id)
-    AND f.asset_class_id IS NOT NULL;
+  IF p_global THEN
+    -- Get funds for the specified date across all asset classes
+    SELECT array_agg(f.*) INTO asset_class_funds
+    FROM public.get_funds_as_of(p_date) f
+    WHERE f.asset_class_id IS NOT NULL;
+  ELSE
+    -- Require asset class id for non-global scoring
+    IF p_asset_class_id IS NULL THEN
+      RAISE EXCEPTION 'asset_class_id required when p_global is false';
+    END IF;
+
+    -- Get funds for the specified date and asset class
+    SELECT array_agg(f.*) INTO asset_class_funds
+    FROM public.get_funds_as_of(p_date) f
+    WHERE f.asset_class_id = p_asset_class_id
+      AND f.asset_class_id IS NOT NULL;
+  END IF;
   
   IF asset_class_funds IS NULL OR array_length(asset_class_funds, 1) < 2 THEN
     -- Return default scores for insufficient funds
@@ -719,5 +732,5 @@ END;
 $$;
 
 -- Grant execute permissions
-GRANT EXECUTE ON FUNCTION public.calculate_scores_as_of(date, uuid) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.calculate_scores_as_of(date, uuid, boolean) TO anon, authenticated, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role; 
