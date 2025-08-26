@@ -78,9 +78,9 @@ node scripts/testServerScoringIntegration.js
 #### 1.2 Test Database Functions Directly
 ```sql
 -- Test server-side scoring RPC
-SELECT ticker, score_final, percentile 
-FROM calculate_scores_as_of('2025-07-31', NULL) 
-WHERE NOT is_benchmark 
+SELECT ticker, score_final, percentile
+FROM calculate_scores_as_of('2025-07-31', NULL, true)
+WHERE NOT is_benchmark
 LIMIT 5;
 
 -- Test updated asset class table
@@ -260,7 +260,7 @@ psql -h your-supabase-host -U postgres -d postgres -f supabase/migrations/202508
 ```bash
 # Error: permission denied for function
 # Solution: Check function grants
-psql -h your-supabase-host -U postgres -d postgres -c "GRANT EXECUTE ON FUNCTION calculate_scores_as_of(date, uuid) TO anon, authenticated, service_role;"
+psql -h your-supabase-host -U postgres -d postgres -c "GRANT EXECUTE ON FUNCTION calculate_scores_as_of(date, uuid, boolean) TO anon, authenticated, service_role;"
 ```
 
 #### 3. Feature Flag Not Working
@@ -281,7 +281,7 @@ npm start
 node scripts/benchmarkServerScoring.js
 
 # Verify RPC response times
-psql -h your-supabase-host -U postgres -d postgres -c "EXPLAIN ANALYZE SELECT * FROM calculate_scores_as_of('2025-07-31', NULL);"
+psql -h your-supabase-host -U postgres -d postgres -c "EXPLAIN ANALYZE SELECT * FROM calculate_scores_as_of('2025-07-31', NULL, true);"
 ```
 
 ### Debug Mode
