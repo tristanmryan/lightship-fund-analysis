@@ -87,10 +87,10 @@ class FundService {
       const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
       const dateOnly = asOf ? asOf.toISOString().slice(0,10) : null;
       
-      // Get server-side scored funds
+      // Get server-side scored funds using global scoring
       const { data: scoredFunds, error: scoringError } = await supabase.rpc('calculate_scores_as_of', {
         p_date: dateOnly,
-        p_asset_class_id: null
+        p_global: true
       });
       
       if (scoringError) {
