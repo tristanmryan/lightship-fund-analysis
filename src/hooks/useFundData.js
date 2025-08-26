@@ -51,7 +51,11 @@ export function useFundData() {
       }
 
       // Apply client-side scoring only if not using server-side scoring
-      const enriched = (USE_SERVER_SCORING || !ENABLE_RUNTIME_SCORING) ? fundData : computeRuntimeScores(fundData);
+      const enriched = (USE_SERVER_SCORING || !ENABLE_RUNTIME_SCORING) ? fundData : computeRuntimeScores(fundData, {
+        useAdvancedWeighting: true,
+        enableAdvancedFeatures: true,
+        focusArea: 'balanced' // Can be 'risk', 'performance', or 'balanced'
+      });
       setFunds(enriched);
       setLastUpdated(new Date());
       
@@ -83,7 +87,11 @@ export function useFundData() {
     if (!ENABLE_RUNTIME_SCORING || USE_SERVER_SCORING) return;
     if (!Array.isArray(funds) || funds.length === 0) return;
     try {
-      const rescored = computeRuntimeScores(funds);
+      const rescored = computeRuntimeScores(funds, {
+        useAdvancedWeighting: true,
+        enableAdvancedFeatures: true,
+        focusArea: 'balanced'
+      });
       setFunds(rescored);
     } catch (e) {
       // no-op: don't break UI on scoring issues
