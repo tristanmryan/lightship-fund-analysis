@@ -85,45 +85,59 @@ class FundService {
   async getAllFundsWithServerScoring(asOfDate = null) {
     try {
       const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
-      const dateOnly = asOf ? asOf.toISOString().slice(0,10) : null;
+      const dateOnly = asOf ? asOf.toISOString().slice(0, 10) : null;
+
+      // Base fund data is needed for asset class grouping and enrichment
+      const baseFunds = await this.getAllFunds(asOfDate);
+      if (!baseFunds.length) return [];
+
+      // Group funds by asset class and prepare RPC calls
+      const assetClassIds = Array.from(new Set(baseFunds.map(f => f.asset_class_id).filter(Boolean)));
 
       const start = Date.now();
-      // Get server-side scored funds using global scoring
-      const { data: scoredFunds, error: scoringError } = await supabase.rpc('calculate_scores_as_of', {
-        p_date: dateOnly,
-        p_global: true
-      });
+      const scoreResults = await Promise.all(
+        assetClassIds.map(acId =>
+          supabase.rpc('calculate_scores_as_of', {
+            p_date: dateOnly,
+            p_asset_class_id: acId,
+            p_global: false
+          })
+        )
+      );
+
+      // Consolidate scores, throwing if any call failed
+      let scoredFunds = [];
+      for (const result of scoreResults) {
+        if (result.error) throw result.error;
+        if (result.data) scoredFunds = scoredFunds.concat(result.data);
+      }
+
       const duration = Date.now() - start;
-      console.log(`getAllFundsWithServerScoring: scored ${scoredFunds?.length || 0} funds in ${duration}ms`);
-      if (scoredFunds && scoredFunds.length) {
+      console.log(`getAllFundsWithServerScoring: scored ${scoredFunds.length} funds across ${assetClassIds.length} asset classes in ${duration}ms`);
+      if (scoredFunds.length) {
         const sample = scoredFunds.slice(0, 5).map(f => f.score_final);
         console.log('Sample scores:', sample.join(', '));
       }
 
-      if (scoringError) {
-        console.warn('Server-side scoring failed, falling back to client-side:', scoringError);
-        return this.getAllFunds(asOfDate);
-      }
+      // Map scores by ticker, ignoring benchmark rows
+      const scoreMap = new Map();
+      (scoredFunds || []).forEach(fund => {
+        if (!fund.is_benchmark) {
+          scoreMap.set(fund.ticker, {
+            final: fund.score_final,
+            raw: fund.score_raw,
+            percentile: fund.percentile,
+            metricsUsed: fund.metrics_used,
+            totalPossibleMetrics: fund.total_possible_metrics,
+            breakdown: fund.score_breakdown
+          });
+        }
+      });
 
-      // Get base fund data for enrichment
-      const baseFunds = await this.getAllFunds(asOfDate);
-      const fundMap = new Map(baseFunds.map(f => [f.ticker, f]));
-
-      // Merge server-side scores with base fund data
-      return (scoredFunds || []).map(scored => {
-        const baseFund = fundMap.get(scored.ticker) || {};
-        return {
-          ...baseFund,
-          // Add server-side scoring data
-          scores: {
-            final: scored.score_final,
-            raw: scored.score_raw,
-            percentile: scored.percentile,
-            metricsUsed: scored.metrics_used,
-            totalPossibleMetrics: scored.total_possible_metrics,
-            breakdown: scored.score_breakdown
-          }
-        };
+      // Merge scores back onto the base fund data
+      return baseFunds.map(fund => {
+        const scores = scoreMap.get(fund.ticker);
+        return scores ? { ...fund, scores } : fund;
       });
     } catch (error) {
       console.warn('Server-side scoring failed, falling back to client-side:', error);
