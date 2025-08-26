@@ -1,6 +1,7 @@
 // src/services/scoringHistory.js
 import { supabase, TABLES } from './supabase.js';
 import { calculateScores } from './scoring.js';
+import fundService from './fundService.js';
 
 /**
  * Scoring History Tracking Service

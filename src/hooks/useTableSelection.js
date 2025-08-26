@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 
 /**
  * Table selection hook for managing row selection state
@@ -414,4 +414,281 @@ export function usePresetSelection(baseSelectionHook) {
     applyPreset,
     availablePresets: SELECTION_PRESETS
   };
-} 
+}
+
+/**
+ * Hook for managing selection across multiple tables/views
+ */
+export function useGlobalSelection() {
+  const [globalSelections, setGlobalSelections] = useState(new Map());
+
+  const registerTable = useCallback((tableId, selectionHook) => {
+    setGlobalSelections(prev => {
+      const next = new Map(prev);
+      next.set(tableId, selectionHook);
+      return next;
+    });
+  }, []);
+
+  const unregisterTable = useCallback((tableId) => {
+    setGlobalSelections(prev => {
+      const next = new Map(prev);
+      next.delete(tableId);
+      return next;
+    });
+  }, []);
+
+  const clearAllSelections = useCallback(() => {
+    globalSelections.forEach(selectionHook => {
+      selectionHook.clearSelection();
+    });
+  }, [globalSelections]);
+
+  const getGlobalStats = useCallback(() => {
+    let totalSelected = 0;
+    let totalItems = 0;
+
+    globalSelections.forEach(selectionHook => {
+      totalSelected += selectionHook.selectionStats.selected;
+      totalItems += selectionHook.selectionStats.total;
+    });
+
+    return { totalSelected, totalItems };
+  }, [globalSelections]);
+
+  return {
+    registerTable,
+    unregisterTable,
+    clearAllSelections,
+    getGlobalStats,
+    tableCount: globalSelections.size
+  };
+}
+
+/**
+ * Hook for selection persistence across page reloads
+ */
+export function usePersistedSelection(storageKey, baseSelectionHook) {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load persisted selections on mount
+  const loadPersistedSelections = useCallback(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const selections = JSON.parse(stored);
+        if (Array.isArray(selections)) {
+          // Filter out invalid selections that no longer exist in data
+          const validSelections = selections.filter(selection => 
+            baseSelectionHook.data.some(item => 
+              baseSelectionHook.getItemKey(item) === baseSelectionHook.getItemKey(selection)
+            )
+          );
+          
+          if (validSelections.length > 0) {
+            baseSelectionHook.selectMultiple(validSelections, true);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load persisted selections:', error);
+    } finally {
+      setIsLoaded(true);
+    }
+  }, [storageKey, baseSelectionHook]);
+
+  // Save selections to localStorage
+  const saveSelections = useCallback(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(baseSelectionHook.selectedItems));
+    } catch (error) {
+      console.warn('Failed to save selections:', error);
+    }
+  }, [storageKey, baseSelectionHook.selectedItems]);
+
+  // Clear persisted selections
+  const clearPersistedSelections = useCallback(() => {
+    try {
+      localStorage.removeItem(storageKey);
+    } catch (error) {
+      console.warn('Failed to clear persisted selections:', error);
+    }
+  }, [storageKey]);
+
+  // Auto-save selections when they change
+  useEffect(() => {
+    if (isLoaded && baseSelectionHook.selectedItems.length > 0) {
+      const timeoutId = setTimeout(() => {
+        saveSelections();
+      }, 500); // Debounce saves
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [baseSelectionHook.selectedItems, isLoaded, saveSelections]);
+
+  // Load on mount
+  useEffect(() => {
+    loadPersistedSelections();
+  }, [loadPersistedSelections]);
+
+  return {
+    isLoaded,
+    saveSelections,
+    clearPersistedSelections,
+    loadPersistedSelections
+  };
+}
+
+/**
+ * Hook for bulk operations on selected items
+ */
+export function useBulkOperations(selectionHook) {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [operationProgress, setOperationProgress] = useState(null);
+
+  // Bulk operation with progress tracking
+  const executeBulkOperation = useCallback(async (operation, options = {}) => {
+    if (selectionHook.selectedItems.length === 0) return;
+
+    setIsProcessing(true);
+    setOperationProgress({ completed: 0, total: selectionHook.selectedItems.length });
+
+    try {
+      const results = [];
+      
+      for (let i = 0; i < selectionHook.selectedItems.length; i++) {
+        const item = selectionHook.selectedItems[i];
+        const result = await operation(item, i);
+        results.push(result);
+        
+        setOperationProgress({ 
+          completed: i + 1, 
+          total: selectionHook.selectedItems.length,
+          currentItem: item
+        });
+
+        // Optional delay between operations
+        if (options.delay) {
+          await new Promise(resolve => setTimeout(resolve, options.delay));
+        }
+      }
+
+      return results;
+    } finally {
+      setIsProcessing(false);
+      setOperationProgress(null);
+    }
+  }, [selectionHook.selectedItems]);
+
+  // Common bulk operations for funds
+  const bulkOperations = useMemo(() => ({
+    // Update recommendation status
+    updateRecommendation: async (isRecommended) => {
+      return executeBulkOperation(async (fund) => {
+        // This would typically call an API to update the fund
+        return { fund, isRecommended, updated: true };
+      });
+    },
+
+    // Export selected items
+    exportSelected: async (format = 'csv') => {
+      return executeBulkOperation(async (fund) => {
+        // Would integrate with export service
+        return { fund, exported: true, format };
+      });
+    },
+
+    // Add to watch list
+    addToWatchlist: async () => {
+      return executeBulkOperation(async (fund) => {
+        // Would call API to add to watchlist
+        return { fund, addedToWatchlist: true };
+      });
+    }
+  }), [executeBulkOperation]);
+
+  return {
+    isProcessing,
+    operationProgress,
+    executeBulkOperation,
+    ...bulkOperations
+  };
+}
+
+/**
+ * Selection mode configurations
+ */
+export const SELECTION_MODES = {
+  none: {
+    name: 'No Selection',
+    multiSelect: false,
+    showCheckboxes: false,
+    showSelectAll: false
+  },
+  single: {
+    name: 'Single Select',
+    multiSelect: false,
+    showCheckboxes: true,
+    showSelectAll: false
+  },
+  multiple: {
+    name: 'Multiple Select',
+    multiSelect: true,
+    showCheckboxes: true,
+    showSelectAll: true
+  },
+  range: {
+    name: 'Range Select',
+    multiSelect: true,
+    showCheckboxes: true,
+    showSelectAll: true,
+    supportsShiftSelect: true
+  }
+};
+
+/**
+ * Enhanced selection presets with more fund-specific options
+ */
+export const ENHANCED_SELECTION_PRESETS = {
+  ...SELECTION_PRESETS,
+  
+  assetClassEquity: {
+    name: 'Equity Funds',
+    description: 'Select all equity-based funds',
+    condition: (fund) => {
+      const assetClass = fund.asset_class || fund.asset_class_name || '';
+      return assetClass.toLowerCase().includes('equity');
+    }
+  },
+
+  fixedIncome: {
+    name: 'Fixed Income',
+    description: 'Select all fixed income funds',
+    condition: (fund) => {
+      const assetClass = fund.asset_class || fund.asset_class_name || '';
+      return assetClass.toLowerCase().includes('bond') || 
+             assetClass.toLowerCase().includes('fixed') ||
+             assetClass.toLowerCase().includes('income');
+    }
+  },
+
+  recentlyUpdated: {
+    name: 'Recently Updated',
+    description: 'Select funds updated in last 30 days',
+    condition: (fund) => {
+      if (!fund.last_updated) return false;
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      return new Date(fund.last_updated) > thirtyDaysAgo;
+    }
+  },
+
+  underPerformers: {
+    name: 'Underperformers',
+    description: 'Select funds with negative YTD returns',
+    condition: (fund) => {
+      const ytdReturn = fund.ytd_return ?? fund['Total Return - YTD (%)'] ?? 0;
+      return ytdReturn < 0;
+    }
+  }
+}; 

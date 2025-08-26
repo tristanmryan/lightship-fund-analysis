@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Grid, List, LayoutGrid, Star, TrendingUp, TrendingDown, ArrowUpDown } from 'lucide-react';
+import { fmt } from '../../utils/formatters';
 
 const ViewToggle = ({ currentView, onViewChange }) => (
   <div className="view-toggle">
@@ -39,7 +40,8 @@ const FundCard = ({ fund, onSelect, isSelected }) => {
 
   const formatPercentage = (value) => {
     if (value == null || isNaN(value)) return 'N/A';
-    return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+    const s = value > 0 ? '+' : '';
+    return `${s}${Number(value).toFixed(2)}%`;
   };
 
   return (
@@ -54,7 +56,7 @@ const FundCard = ({ fund, onSelect, isSelected }) => {
           <div className="fund-asset-class">{fund.asset_class || fund.assetClass}</div>
         </div>
         <div className="fund-score" style={{ '--score-color': getScoreColor(fund.score) }}>
-          {fund.score?.toFixed(1) || 'N/A'}
+          {Number.isFinite(fund.score) ? fund.score.toFixed(1) : 'N/A'}
         </div>
       </div>
       
@@ -74,13 +76,13 @@ const FundCard = ({ fund, onSelect, isSelected }) => {
         <div className="metric-row">
           <span className="metric-label">3Y Sharpe</span>
           <span className="metric-value">
-            {fund.three_year_sharpe?.toFixed(2) || 'N/A'}
+            {Number.isFinite(fund.three_year_sharpe ?? fund.sharpe_ratio) ? Number(fund.three_year_sharpe ?? fund.sharpe_ratio).toFixed(2) : 'N/A'}
           </span>
         </div>
         <div className="metric-row">
           <span className="metric-label">Expense Ratio</span>
           <span className="metric-value">
-            {fund.expense_ratio ? `${(fund.expense_ratio * 100).toFixed(2)}%` : 'N/A'}
+            {Number.isFinite(fund.expense_ratio) ? fmt.percent(fund.expense_ratio, { decimals: 2 }) : 'N/A'}
           </span>
         </div>
       </div>
@@ -142,8 +144,8 @@ const FundTableRow = ({ fund, onSelect, isSelected }) => {
       </td>
       <td className="numeric">{fund.three_year_return ? formatPercentage(fund.three_year_return) : 'N/A'}</td>
       <td className="numeric">{fund.five_year_return ? formatPercentage(fund.five_year_return) : 'N/A'}</td>
-      <td className="numeric">{fund.three_year_sharpe?.toFixed(2) || 'N/A'}</td>
-      <td className="numeric">{fund.expense_ratio ? `${(fund.expense_ratio * 100).toFixed(2)}%` : 'N/A'}</td>
+      <td className="numeric">{Number.isFinite(fund.three_year_sharpe ?? fund.sharpe_ratio) ? Number(fund.three_year_sharpe ?? fund.sharpe_ratio).toFixed(2) : 'N/A'}</td>
+      <td className="numeric">{Number.isFinite(fund.expense_ratio) ? fmt.percent(fund.expense_ratio, { decimals: 2 }) : 'N/A'}</td>
       <td className="text-center">
         {fund.recommended && <Star size={16} className="recommended-icon" />}
       </td>

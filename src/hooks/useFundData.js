@@ -35,28 +35,38 @@ export function useFundData() {
       let fundData;
       let scoringSource = '';
 
-      if (USE_SERVER_SCORING) {
-        // Use server-side scoring when enabled
-        fundData = await fundService.getAllFundsWithScoring(asOf);
-        scoringSource = 'server-side';
-      } else {
-        // Use client-side scoring (existing behavior)
-        fundData = await fundService.getAllFunds(asOf);
-        scoringSource = 'client-side';
-      }
+      // Prefer server-side scoring for parity with Asset Classes tab.
+      // Attempt server-scored dataset first; the service already falls back to base funds on error.
+      fundData = await fundService.getAllFundsWithServerScoring(asOf);
+      const hasServerScores = Array.isArray(fundData) && fundData.some(f => Number.isFinite(f?.scores?.final));
+      scoringSource = hasServerScores ? 'server-side' : 'client-side';
 
       // Load effective weights once per refresh (resolver caches in module)
-      if (ENABLE_RUNTIME_SCORING && !USE_SERVER_SCORING) {
+      if (ENABLE_RUNTIME_SCORING && !hasServerScores) {
         await loadEffectiveWeightsResolver();
       }
 
-      // Apply client-side scoring only if not using server-side scoring
-      const enriched = (USE_SERVER_SCORING || !ENABLE_RUNTIME_SCORING) ? fundData : computeRuntimeScores(fundData, {
+      // Apply client-side scoring only when server-side scores are not available
+      const enriched = (hasServerScores || !ENABLE_RUNTIME_SCORING) ? fundData : computeRuntimeScores(fundData, {
         useAdvancedWeighting: true,
         enableAdvancedFeatures: true,
         focusArea: 'balanced' // Can be 'risk', 'performance', or 'balanced'
       });
-      setFunds(enriched);
+
+      // Normalize fields so all dashboards have a single logical shape
+      // - score: prefer scores.final (server/client), then legacy score/score_final
+      // - sharpe: map sharpe_ratio -> three_year_sharpe for legacy components
+      // - stdev: map standard_deviation_3y -> three_year_std_dev for legacy components
+      // - recommended: ensure boolean under common key
+      const normalized = (enriched || []).map((f) => ({
+        ...f,
+        score: (f?.scores?.final ?? f?.score ?? f?.score_final ?? null),
+        three_year_sharpe: (f?.three_year_sharpe ?? f?.sharpe_ratio ?? null),
+        three_year_std_dev: (f?.three_year_std_dev ?? f?.standard_deviation_3y ?? null),
+        recommended: (f?.recommended ?? f?.is_recommended ?? false)
+      }));
+
+      setFunds(normalized);
       setLastUpdated(new Date());
       
       console.log(`Loaded ${fundData.length} funds from database${asOf ? ` as of ${asOf}` : ''} (${scoringSource} scoring)`);

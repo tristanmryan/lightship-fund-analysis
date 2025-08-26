@@ -97,7 +97,7 @@ const RightSidebar = ({ selectedFunds = [], onClose, onRemoveFund }) => {
             <div className="metrics-grid">
               <div className="metric-item">
                 <span className="metric-label">3Y Sharpe</span>
-                <span className="metric-value">{fund.three_year_sharpe?.toFixed(2) || 'N/A'}</span>
+                <span className="metric-value">{Number.isFinite(fund.three_year_sharpe ?? fund.sharpe_ratio) ? Number(fund.three_year_sharpe ?? fund.sharpe_ratio).toFixed(2) : 'N/A'}</span>
               </div>
               <div className="metric-item">
                 <span className="metric-label">3Y Std Dev</span>
@@ -120,7 +120,7 @@ const RightSidebar = ({ selectedFunds = [], onClose, onRemoveFund }) => {
               <div className="detail-item">
                 <span className="detail-label">Expense Ratio</span>
                 <span className="detail-value">
-                  {fund.expense_ratio ? `${(fund.expense_ratio * 100).toFixed(2)}%` : 'N/A'}
+                  {Number.isFinite(fund.expense_ratio) ? (Number(fund.expense_ratio).toFixed(2) + '%') : 'N/A'}
                 </span>
               </div>
               <div className="detail-item">
@@ -197,7 +197,7 @@ const RightSidebar = ({ selectedFunds = [], onClose, onRemoveFund }) => {
                   <td className={`numeric ${(fund.one_year_return || 0) >= 0 ? 'positive' : 'negative'}`}>
                     {formatPercentage(fund.one_year_return)}
                   </td>
-                  <td className="numeric">{fund.three_year_sharpe?.toFixed(2) || 'N/A'}</td>
+                  <td className="numeric">{Number.isFinite(fund.three_year_sharpe ?? fund.sharpe_ratio) ? Number(fund.three_year_sharpe ?? fund.sharpe_ratio).toFixed(2) : 'N/A'}</td>
                 </tr>
               ))}
             </tbody>
@@ -228,17 +228,17 @@ const RightSidebar = ({ selectedFunds = [], onClose, onRemoveFund }) => {
               </div>
             )}
             
-            {(fund.three_year_sharpe || 0) > 1 && (
+            {Number(fund.three_year_sharpe ?? fund.sharpe_ratio || 0) > 1 && (
               <div className="analysis-point positive">
                 <BarChart3 size={14} />
-                <span>Excellent risk-adjusted returns (Sharpe: {fund.three_year_sharpe?.toFixed(2)})</span>
+                <span>Excellent risk-adjusted returns (Sharpe: {Number.isFinite(fund.three_year_sharpe ?? fund.sharpe_ratio) ? Number(fund.three_year_sharpe ?? fund.sharpe_ratio).toFixed(2) : 'N/A'})</span>
               </div>
             )}
             
-            {(fund.expense_ratio || 0) > 0.01 && (
+            {(Number(fund.expense_ratio || 0)) > 0.01 && (
               <div className="analysis-point negative">
                 <AlertTriangle size={14} />
-                <span>Higher expense ratio at {((fund.expense_ratio || 0) * 100).toFixed(2)}%</span>
+                <span>Higher expense ratio at {Number.isFinite(fund.expense_ratio) ? Number(fund.expense_ratio).toFixed(2) + '%' : 'N/A'}</span>
               </div>
             )}
           </div>

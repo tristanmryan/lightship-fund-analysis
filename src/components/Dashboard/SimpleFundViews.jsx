@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Grid, List, Star, ArrowUpDown, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
 import ScoringTrends from './ScoringTrends.jsx';
+import { fmt } from '../../utils/formatters';
 
 const ViewToggle = ({ currentView, onViewChange }) => (
   <div className="view-toggle-simple">
@@ -63,7 +64,8 @@ const ScoreBadge = ({ score, confidence, weightsSource, title }) => {
 
 const formatPercentage = (value) => {
   if (value == null || isNaN(value)) return 'N/A';
-  return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+  const s = value > 0 ? '+' : '';
+  return `${s}${Number(value).toFixed(2)}%`;
 };
 
 const FundTableView = ({ funds, onSort, sortColumn, sortDirection, onTrendsClick }) => {
@@ -129,10 +131,10 @@ const FundTableView = ({ funds, onSort, sortColumn, sortDirection, onTrendsClick
                 {formatPercentage(fund.three_year_return)}
               </td>
               <td className="numeric">
-                {fund.three_year_sharpe?.toFixed(2) || 'N/A'}
+                {Number.isFinite(fund.three_year_sharpe ?? fund.sharpe_ratio) ? Number(fund.three_year_sharpe ?? fund.sharpe_ratio).toFixed(2) : 'N/A'}
               </td>
               <td className="numeric">
-                {fund.expense_ratio ? `${(fund.expense_ratio * 100).toFixed(2)}%` : 'N/A'}
+                {Number.isFinite(fund.expense_ratio) ? fmt.percent(fund.expense_ratio, { decimals: 2 }) : 'N/A'}
               </td>
               <td className="text-center">
                 {fund.recommended && <Star size={16} className="recommended-star" />}
@@ -195,13 +197,13 @@ const FundCard = ({ fund, onTrendsClick }) => (
       <div className="metric-row">
         <span className="metric-label">Sharpe Ratio</span>
         <span className="metric-value">
-          {fund.three_year_sharpe?.toFixed(2) || 'N/A'}
+          {Number.isFinite(fund.three_year_sharpe ?? fund.sharpe_ratio) ? Number(fund.three_year_sharpe ?? fund.sharpe_ratio).toFixed(2) : 'N/A'}
         </span>
       </div>
       <div className="metric-row">
         <span className="metric-label">Expense Ratio</span>
         <span className="metric-value">
-          {fund.expense_ratio ? `${(fund.expense_ratio * 100).toFixed(2)}%` : 'N/A'}
+          {Number.isFinite(fund.expense_ratio) ? fmt.percent(fund.expense_ratio, { decimals: 2 }) : 'N/A'}
         </span>
       </div>
     </div>
