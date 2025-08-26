@@ -86,13 +86,20 @@ class FundService {
     try {
       const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
       const dateOnly = asOf ? asOf.toISOString().slice(0,10) : null;
-      
+
+      const start = Date.now();
       // Get server-side scored funds using global scoring
       const { data: scoredFunds, error: scoringError } = await supabase.rpc('calculate_scores_as_of', {
         p_date: dateOnly,
         p_global: true
       });
-      
+      const duration = Date.now() - start;
+      console.log(`getAllFundsWithServerScoring: scored ${scoredFunds?.length || 0} funds in ${duration}ms`);
+      if (scoredFunds && scoredFunds.length) {
+        const sample = scoredFunds.slice(0, 5).map(f => f.score_final);
+        console.log('Sample scores:', sample.join(', '));
+      }
+
       if (scoringError) {
         console.warn('Server-side scoring failed, falling back to client-side:', scoringError);
         return this.getAllFunds(asOfDate);
