@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npm run build:*)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(npx eslint:*)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []

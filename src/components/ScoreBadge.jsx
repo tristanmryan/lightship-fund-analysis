@@ -1,6 +1,7 @@
 import React from 'react';
+import ScoreTooltip from './Dashboard/ScoreTooltip';
 
-const ScoreBadge = ({ score, size = 'medium' }) => {
+const ScoreBadge = ({ score, fund, size = 'medium' }) => {
   if (score === null || score === undefined) {
     return <span className="score-badge score-badge-unknown">N/A</span>;
   }
@@ -28,11 +29,22 @@ const ScoreBadge = ({ score, size = 'medium' }) => {
 
   const sizeClass = `score-badge-${size}`;
 
-  return (
+  const badge = (
     <span className={`score-badge ${scoreClass} ${sizeClass}`}>
       {scoreText} ({score.toFixed(1)})
     </span>
   );
+
+  // Wrap with tooltip if fund data is available
+  if (fund) {
+    return (
+      <ScoreTooltip fund={fund} score={score}>
+        {badge}
+      </ScoreTooltip>
+    );
+  }
+
+  return badge;
 };
 
 export default ScoreBadge; 

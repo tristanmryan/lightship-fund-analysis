@@ -62,7 +62,7 @@ const FundDetailsModal = ({ fund, onClose }) => {
         {fund.scores && (
           <div style={{ marginBottom: '1rem' }}>
             <strong>Overall Score: </strong>
-            <ScoreBadge score={fund.scores.final} size="large" />
+            <ScoreBadge score={fund.scores.final} fund={fund} size="large" />
             <span style={{ marginLeft: '1rem', color: '#6b7280' }}>
               (Percentile: {fund.scores.percentile}%)
             </span>
