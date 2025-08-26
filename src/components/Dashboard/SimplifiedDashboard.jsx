@@ -3,9 +3,13 @@ import { useFundData } from '../../hooks/useFundData';
 import SimpleKPIHeader from './SimpleKPIHeader';
 import SimpleFilterBar from './SimpleFilterBar';
 import SimpleFundViews from './SimpleFundViews';
+import DashboardDebugPanel from './DashboardDebugPanel';
 
 const SimplifiedDashboard = () => {
   const { funds, loading, error } = useFundData();
+  const showDebug =
+    process.env.REACT_APP_ENVIRONMENT === 'development' ||
+    process.env.REACT_APP_DEBUG_MODE === 'true';
   
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -128,10 +132,14 @@ const SimplifiedDashboard = () => {
       />
 
       {/* Main Content */}
-      <SimpleFundViews 
+      <SimpleFundViews
         funds={filteredFunds}
         loading={loading}
       />
+
+      {showDebug && (
+        <DashboardDebugPanel funds={funds} loading={loading} />
+      )}
     </div>
   );
 };
