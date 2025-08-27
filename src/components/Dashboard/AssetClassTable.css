@@ -422,18 +422,17 @@
 
 /* Subtle hover effects */
 .asset-class-table .asset-table-row {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.15s ease;
   position: relative;
 }
 
 .asset-class-table .asset-table-row:hover {
-  background-color: #f9fafb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  background-color: #f8fafc;
 }
 
-.asset-class-table .asset-table-row:not(.benchmark-row):not(.recommended-row):hover {
-  background-color: #f9fafb;
+/* Override individual cell hover when row is hovered */
+.asset-class-table .asset-table-row:hover .asset-table-cell {
+  background-color: inherit;
 }
 
 /* Modern status indicators - Enhanced for better visibility */
@@ -477,10 +476,43 @@
 
 
 
-/* Modern table headers */
+/* Modern table with fixed column widths */
+.asset-class-table table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+/* Column width specifications using percentage for better alignment */
+.asset-class-table .table-header th:nth-child(1) { /* Fund */
+  width: 35%;
+}
+
+.asset-class-table .table-header th:nth-child(2), /* Score */
+.asset-class-table .table-header th:nth-child(3), /* YTD */
+.asset-class-table .table-header th:nth-child(4), /* 1Y */
+.asset-class-table .table-header th:nth-child(5), /* 3Y */
+.asset-class-table .table-header th:nth-child(6), /* Expense */
+.asset-class-table .table-header th:nth-child(7)  /* Sharpe */ {
+  width: 10.83%; /* (65% / 6 columns) */
+}
+
+/* Modern table headers - Integrated design */
 .asset-class-table .table-header {
-  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-  border-bottom: 2px solid #e5e7eb;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: none; /* Remove double border */
+  position: relative;
+}
+
+.asset-class-table .table-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(226, 232, 240, 0.8) 10%, rgba(226, 232, 240, 1) 50%, rgba(226, 232, 240, 0.8) 90%, transparent 100%);
 }
 
 .asset-class-table .table-header th {
@@ -488,10 +520,20 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: #374151;
-  padding: 16px 24px;
+  padding: 18px 16px; /* Better balanced padding */
   font-size: 0.75rem;
-  line-height: 1rem;
-  border-bottom: 1px solid #d1d5db;
+  line-height: 1.2;
+  border-bottom: 2px solid #e2e8f0; /* Single clean border to connect with body */
+  border-right: 1px solid rgba(226, 232, 240, 0.5); /* Subtle column separation */
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  position: relative;
+}
+
+.asset-class-table .table-header th:last-child {
+  border-right: none; /* No border on last column */
 }
 
 /* Center-align headers for numeric columns */
@@ -512,78 +554,97 @@
 
 .asset-class-table .table-header th.sortable:hover {
   color: #1f2937;
-  background-color: rgba(59, 130, 246, 0.05);
+  background-color: rgba(59, 130, 246, 0.08);
+  border-bottom-color: #3b82f6;
 }
 
 .asset-class-table .table-header th.sortable:active {
   transform: translateY(1px);
+  background-color: rgba(59, 130, 246, 0.12);
 }
 
 /* Modern table cells - Enhanced for consistent heights and professional spacing */
 .asset-class-table .asset-table-cell {
-  padding: 22px 24px;
+  padding: 18px 16px; /* Match header padding for alignment */
   vertical-align: middle;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid #f1f5f9;
+  border-right: 1px solid rgba(241, 245, 249, 0.6); /* Subtle column separation matching header */
   height: 84px; /* Consistent row height with better spacing */
   box-sizing: border-box;
   transition: background-color 0.2s ease, transform 0.1s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background-color: white;
+}
+
+.asset-class-table .asset-table-cell:last-child {
+  border-right: none; /* No border on last column */
+}
+
+/* Column width constraints for table cells to match headers */
+.asset-class-table .asset-table-cell:nth-child(1) { /* Fund */
+  width: 35%;
+}
+
+.asset-class-table .asset-table-cell:nth-child(2), /* Score */
+.asset-class-table .asset-table-cell:nth-child(3), /* YTD */
+.asset-class-table .asset-table-cell:nth-child(4), /* 1Y */
+.asset-class-table .asset-table-cell:nth-child(5), /* 3Y */
+.asset-class-table .asset-table-cell:nth-child(6), /* Expense */
+.asset-class-table .asset-table-cell:nth-child(7)  /* Sharpe */ {
+  width: 10.83%;
+  text-align: center;
 }
 
 .asset-class-table .asset-table-cell:hover {
-  background-color: rgba(59, 130, 246, 0.02);
+  background-color: #f8fafc;
 }
 
-/* Fund info layout - Ensure consistent alignment */
+/* Fund info layout - Uses percentage width for flexible sizing */
 .asset-class-table .fund-info-container {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
+  gap: 12px;
   width: 100%;
-  /* Ensure consistent layout */
   position: relative;
-  /* Debug: Add border to see layout */
-  /* border: 1px solid transparent; */
 }
 
 .asset-class-table .status-indicator-container {
-  width: 24px;
+  width: 20px;
   height: 40px;
   flex-shrink: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  /* Ensure consistent positioning */
   position: relative;
-  /* Debug: Add border to see container */
-  /* border: 1px solid rgba(0,0,0,0.1); */
 }
 
 .asset-class-table .fund-text-container {
   flex: 1;
   min-width: 0;
-  /* Ensure consistent text alignment */
-  padding-left: 0;
-  margin-left: 0;
+  overflow: hidden;
 }
 
 /* Modern typography - Enhanced for better hierarchy */
 .asset-class-table .fund-ticker {
   font-weight: 700;
   color: #111827;
-  font-size: 1rem;
-  line-height: 1.25rem;
+  font-size: 0.925rem;
+  line-height: 1.2rem;
   letter-spacing: -0.025em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .asset-class-table .fund-name {
   color: #6b7280;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
+  font-size: 0.8rem;
+  line-height: 1.1rem;
   margin-top: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 280px;
   font-weight: 400;
 }
 
@@ -595,6 +656,10 @@
   line-height: 1.25rem;
   font-variant-numeric: tabular-nums;
   transition: background-color 0.2s ease, transform 0.1s ease;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Center alignment for specific numeric columns */
@@ -937,11 +1002,32 @@
   
   .asset-class-table .table-header th,
   .asset-class-table .asset-table-cell {
-    padding: 16px 20px;
+    padding: 16px 14px;
   }
   
   .asset-class-table .asset-table-cell {
     height: 72px;
+  }
+  
+  /* Adjust column widths for tablet - keep percentage-based */
+  .asset-class-table .table-header th:nth-child(1),
+  .asset-class-table .asset-table-cell:nth-child(1) {
+    width: 40%;
+  }
+  
+  .asset-class-table .table-header th:nth-child(2),
+  .asset-class-table .table-header th:nth-child(3),
+  .asset-class-table .table-header th:nth-child(4),
+  .asset-class-table .table-header th:nth-child(5),
+  .asset-class-table .table-header th:nth-child(6),
+  .asset-class-table .table-header th:nth-child(7),
+  .asset-class-table .asset-table-cell:nth-child(2),
+  .asset-class-table .asset-table-cell:nth-child(3),
+  .asset-class-table .asset-table-cell:nth-child(4),
+  .asset-class-table .asset-table-cell:nth-child(5),
+  .asset-class-table .asset-table-cell:nth-child(6),
+  .asset-class-table .asset-table-cell:nth-child(7) {
+    width: 10%;
   }
 }
 
@@ -1000,15 +1086,32 @@
   
   .asset-class-table .table-header th,
   .asset-class-table .asset-table-cell {
-    padding: 12px 16px;
+    padding: 12px 10px;
   }
   
   .asset-class-table .asset-table-cell {
     height: 64px;
   }
   
-  .asset-class-table .fund-name {
-    max-width: 200px;
+  /* Adjust column widths for mobile - keep percentage-based */
+  .asset-class-table .table-header th:nth-child(1),
+  .asset-class-table .asset-table-cell:nth-child(1) {
+    width: 45%;
+  }
+  
+  .asset-class-table .table-header th:nth-child(2),
+  .asset-class-table .table-header th:nth-child(3),
+  .asset-class-table .table-header th:nth-child(4),
+  .asset-class-table .table-header th:nth-child(5),
+  .asset-class-table .table-header th:nth-child(6),
+  .asset-class-table .table-header th:nth-child(7),
+  .asset-class-table .asset-table-cell:nth-child(2),
+  .asset-class-table .asset-table-cell:nth-child(3),
+  .asset-class-table .asset-table-cell:nth-child(4),
+  .asset-class-table .asset-table-cell:nth-child(5),
+  .asset-class-table .asset-table-cell:nth-child(6),
+  .asset-class-table .asset-table-cell:nth-child(7) {
+    width: 9.17%; /* 55% / 6 columns */
   }
   
   .asset-class-table .status-dot {
