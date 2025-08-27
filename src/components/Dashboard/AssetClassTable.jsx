@@ -62,6 +62,7 @@ const AssetClassTable = ({
 
       // Handle case where asset class ID is missing (legacy data)
       if (!assetClassId) {
+        console.warn('AssetClassTable: missing assetClassId', { assetClassName });
         setLoading(false);
         setError(`Asset class "${assetClassName}" is not configured in the database yet. Please import data using the Admin tab to set up this asset class.`);
         return;
@@ -72,16 +73,15 @@ const AssetClassTable = ({
 
       try {
         const tableData = await fundService.getAssetClassTable(
-          asOfMonth, 
-          assetClassId, 
+          asOfMonth,
+          assetClassId,
           true // include benchmark
         );
-        
+
         // Clean corrupted ticker data by removing appended labels
         const cleanedData = (tableData || []).map(row => {
-          const originalTicker = row.ticker;
           const cleanedTicker = cleanTicker(row.ticker);
-          
+
           return {
             ...row,
             ticker: cleanedTicker,
@@ -89,10 +89,10 @@ const AssetClassTable = ({
             isBenchmark: row.is_benchmark || isBenchmarkTicker(row.ticker)
           };
         });
-        
+
         setData(cleanedData);
       } catch (err) {
-        console.error('Error loading asset class table:', err);
+        console.error('AssetClassTable: error loading asset class table', err);
         setError('Failed to load asset class data');
       } finally {
         setLoading(false);
@@ -195,8 +195,10 @@ const AssetClassTable = ({
 
   // Sort data
   const sortedData = useMemo(() => {
-    if (!data.length) return [];
-    
+    if (!data.length) {
+      return [];
+    }
+
     const sorted = [...data].sort((a, b) => {
       let aValue = a[sortConfig.key];
       let bValue = b[sortConfig.key];
@@ -222,12 +224,13 @@ const AssetClassTable = ({
     
     // Always keep benchmark at bottom
     const benchmark = sorted.find(row => row.isBenchmark);
+    let finalSorted = sorted;
     if (benchmark) {
       const nonBenchmark = sorted.filter(row => !row.isBenchmark);
-      return [...nonBenchmark, benchmark];
+      finalSorted = [...nonBenchmark, benchmark];
     }
-    
-    return sorted;
+
+    return finalSorted;
   }, [data, sortConfig]);
 
   // Helper function to get the correct field value with fallbacks
@@ -496,9 +499,9 @@ const AssetClassTable = ({
               {sortedData.map((row, index) => {
                 const isRecommended = row.is_recommended;
                 const isBenchmark = row.isBenchmark;
-                
+
                 return (
-                  <tr 
+                  <tr
                     key={row.ticker || index}
                     className={`
                       table-row transition-all duration-200 hover:bg-gray-50
@@ -521,7 +524,7 @@ const AssetClassTable = ({
                             <div className="status-dot regular" title="Regular Fund" />
                           )}
                         </div>
-                        
+
                         {/* Fund Info Container */}
                         <div className="fund-text-container">
                           <div className="fund-ticker">
@@ -533,12 +536,12 @@ const AssetClassTable = ({
                         </div>
                       </div>
                     </td>
-                    
+
                     {/* Score Column */}
                     <td className="table-cell px-6 py-4 text-center">
                       {renderScoreBadge(getFieldValue(row, 'score_final', ['score', 'final_score']))}
                     </td>
-                    
+
                     {/* Return Columns */}
                     <td className="table-cell px-6 py-4 text-center">
                       {renderReturn(getFieldValue(row, 'ytd_return', ['ytd', 'Total Return - YTD (%)']), 'YTD')}
@@ -549,12 +552,12 @@ const AssetClassTable = ({
                     <td className="table-cell px-6 py-4 text-center">
                       {renderReturn(getFieldValue(row, 'three_year_return', ['3 Year', 'Annualized Total Return - 3 Year (%)']), '3Y')}
                     </td>
-                    
+
                     {/* Expense Ratio */}
                     <td className="table-cell px-6 py-4 text-center">
                       {renderExpenseRatio(getFieldValue(row, 'expense_ratio', ['Net Exp Ratio (%)']))}
                     </td>
-                    
+
                     {/* Sharpe Ratio */}
                     <td className="table-cell px-6 py-4 text-center">
                       {renderSharpeRatio(getFieldValue(row, 'sharpe_ratio', ['Sharpe Ratio - 3 Year', 'Sharpe Ratio']))}
