@@ -113,11 +113,7 @@ class FundService {
       }
 
       const duration = Date.now() - start;
-      console.log(`getAllFundsWithServerScoring: scored ${scoredFunds.length} funds across ${assetClassIds.length} asset classes in ${duration}ms`);
-      if (scoredFunds.length) {
-        const sample = scoredFunds.slice(0, 5).map(f => f.score_final);
-        console.log('Sample scores:', sample.join(', '));
-      }
+      // Scoring completed; metrics available in calling context if needed
 
       // Map scores by ticker, ignoring benchmark rows
       const scoreMap = new Map();
@@ -140,7 +136,7 @@ class FundService {
         return scores ? { ...fund, scores } : fund;
       });
     } catch (error) {
-      console.warn('Server-side scoring failed, falling back to client-side:', error);
+      console.error('Server-side scoring failed, falling back to client-side:', error);
       return this.getAllFunds(asOfDate);
     }
   }
@@ -843,20 +839,9 @@ class FundService {
 
   // Get asset class table data with optional benchmark row
   async getAssetClassTable(asOfDate, assetClassId, includeBenchmark = true) {
-    console.log('fundService.getAssetClassTable: called with', {
-      asOfDate,
-      assetClassId,
-      includeBenchmark
-    });
     try {
       const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
       const dateOnly = asOf ? asOf.toISOString().slice(0, 10) : null;
-      console.log('fundService.getAssetClassTable: parsed params', {
-        dateOnly,
-        assetClassId,
-        includeBenchmark,
-        useServerScoring: this.useServerScoring
-      });
 
       let result;
       // Use server-side scoring when enabled
@@ -869,12 +854,9 @@ class FundService {
           p_asset_class_id: assetClassId,
           p_include_benchmark: !!includeBenchmark
         });
-        console.log('fundService.getAssetClassTable: RPC raw data', data);
         if (error) throw error;
         result = data || [];
       }
-
-      console.log('fundService.getAssetClassTable: returning data', result);
       return result;
     } catch (error) {
       handleSupabaseError(error, 'getAssetClassTable');
@@ -885,28 +867,21 @@ class FundService {
 
   // Get asset class table with server-side scoring
   async getAssetClassTableWithServerScoring(dateOnly, assetClassId, includeBenchmark) {
-    console.log('fundService.getAssetClassTableWithServerScoring: called with', {
-      dateOnly,
-      assetClassId,
-      includeBenchmark
-    });
     try {
       // Get server-side scored funds for the asset class
       const { data: scoredFunds, error: scoringError } = await supabase.rpc('calculate_scores_as_of', {
         p_date: dateOnly,
         p_asset_class_id: assetClassId
       });
-      console.log('fundService.getAssetClassTableWithServerScoring: scored funds', scoredFunds);
 
       if (scoringError) {
-        console.warn('Server-side scoring failed, falling back to client-side:', scoringError);
+        console.error('Server-side scoring failed, falling back to client-side:', scoringError);
         // Fallback to original method
         const { data, error } = await supabase.rpc('get_asset_class_table', {
           p_date: dateOnly,
           p_asset_class_id: assetClassId,
           p_include_benchmark: !!includeBenchmark
         });
-        console.log('fundService.getAssetClassTableWithServerScoring: fallback RPC data', data);
         if (error) throw error;
         return data || [];
       }
@@ -917,7 +892,6 @@ class FundService {
         p_asset_class_id: assetClassId,
         p_include_benchmark: !!includeBenchmark
       });
-      console.log('fundService.getAssetClassTableWithServerScoring: base table data', baseData);
 
       if (error) throw error;
 
@@ -931,8 +905,6 @@ class FundService {
           });
         }
       });
-      console.log('fundService.getAssetClassTableWithServerScoring: score map', scoreMap);
-
       // Merge server-side scores with base data
       const merged = (baseData || []).map(row => {
         if (row.is_benchmark) {
@@ -951,17 +923,15 @@ class FundService {
         return row; // Keep original if no server-side scores
       });
 
-      console.log('fundService.getAssetClassTableWithServerScoring: merged data', merged);
       return merged;
     } catch (error) {
-      console.warn('Server-side scoring failed, falling back to client-side:', error);
+      console.error('Server-side scoring failed, falling back to client-side:', error);
       // Fallback to original method
       const { data, error: fallbackError } = await supabase.rpc('get_asset_class_table', {
         p_date: dateOnly,
         p_asset_class_id: assetClassId,
         p_include_benchmark: !!includeBenchmark
       });
-      console.log('fundService.getAssetClassTableWithServerScoring: fallback RPC data', data);
       if (fallbackError) throw fallbackError;
       return data || [];
     }

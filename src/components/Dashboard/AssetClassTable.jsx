@@ -62,7 +62,6 @@ const AssetClassTable = ({
 
       // Handle case where asset class ID is missing (legacy data)
       if (!assetClassId) {
-        console.warn('AssetClassTable: missing assetClassId', { assetClassName });
         setLoading(false);
         setError(`Asset class "${assetClassName}" is not configured in the database yet. Please import data using the Admin tab to set up this asset class.`);
         return;
@@ -72,20 +71,11 @@ const AssetClassTable = ({
       setError(null);
 
       try {
-        console.log('AssetClassTable: requesting table data', {
-          asOfMonth,
-          assetClassId,
-          includeBenchmark: true
-        });
-
         const tableData = await fundService.getAssetClassTable(
           asOfMonth,
           assetClassId,
           true // include benchmark
         );
-
-        console.log('AssetClassTable: raw data received', tableData);
-        console.log('AssetClassTable: raw row count', tableData ? tableData.length : 0);
 
         // Clean corrupted ticker data by removing appended labels
         const cleanedData = (tableData || []).map(row => {
@@ -98,13 +88,8 @@ const AssetClassTable = ({
             is_recommended: row.is_recommended || isRecommendedTicker(row.ticker),
             isBenchmark: row.is_benchmark || isBenchmarkTicker(row.ticker)
           };
-
-          console.log('AssetClassTable: transformed row', { original: row, transformed: transformedRow });
           return transformedRow;
         });
-
-        console.log('AssetClassTable: cleaned data', cleanedData);
-        console.log('AssetClassTable: cleaned row count', cleanedData.length);
 
         setData(cleanedData);
       } catch (err) {
@@ -212,11 +197,8 @@ const AssetClassTable = ({
   // Sort data
   const sortedData = useMemo(() => {
     if (!data.length) {
-      console.log('AssetClassTable: no data available for sorting');
       return [];
     }
-
-    console.log('AssetClassTable: sorting data', { sortConfig, rowCount: data.length, data });
     const sorted = [...data].sort((a, b) => {
       let aValue = a[sortConfig.key];
       let bValue = b[sortConfig.key];
@@ -248,7 +230,6 @@ const AssetClassTable = ({
       finalSorted = [...nonBenchmark, benchmark];
     }
 
-    console.log('AssetClassTable: sorted data result', finalSorted);
     return finalSorted;
   }, [data, sortConfig]);
 
@@ -304,12 +285,6 @@ const AssetClassTable = ({
 
   const nonBenchmarkCount = data.filter(r => !r.isBenchmark).length;
   const benchmarkCount = data.filter(r => r.isBenchmark).length;
-  console.log('AssetClassTable: final data counts', {
-    total: data.length,
-    nonBenchmark: nonBenchmarkCount,
-    benchmark: benchmarkCount
-  });
-
   return (
     <div className="asset-class-table space-y-6">
       {/* Simple Clean Header */}
@@ -520,84 +495,74 @@ const AssetClassTable = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
-              {(() => {
-                console.log('AssetClassTable: rendering table rows', sortedData.length);
-                return sortedData.map((row, index) => {
-                  try {
-                    console.log('AssetClassTable: rendering row', index, row);
-                    const isRecommended = row.is_recommended;
-                    const isBenchmark = row.isBenchmark;
-
-                    return (
-                      <tr
-                        key={row.ticker || index}
-                        className={`
+              {sortedData.map((row, index) => {
+                const isRecommended = row.is_recommended;
+                const isBenchmark = row.isBenchmark;
+                return (
+                  <tr
+                    key={row.ticker || index}
+                    className={`
                       table-row transition-all duration-200 hover:bg-gray-50
                       ${isBenchmark ? 'benchmark-row' : ''}
                       ${isRecommended ? 'recommended-row' : ''}
                     `}
-                      >
-                        {/* Fund Column */}
-                        <td className="table-cell px-6 py-4">
-                          <div className="fund-info-container">
-                            {/* Status Indicator Container - Fixed width */}
-                            <div className="status-indicator-container">
-                              {isRecommended && (
-                                <div className="status-dot recommended" title="Recommended Fund" />
-                              )}
-                              {isBenchmark && (
-                                <div className="status-dot benchmark" title="Benchmark Fund" />
-                              )}
-                              {!isRecommended && !isBenchmark && (
-                                <div className="status-dot regular" title="Regular Fund" />
-                              )}
-                            </div>
+                  >
+                    {/* Fund Column */}
+                    <td className="table-cell px-6 py-4">
+                      <div className="fund-info-container">
+                        {/* Status Indicator Container - Fixed width */}
+                        <div className="status-indicator-container">
+                          {isRecommended && (
+                            <div className="status-dot recommended" title="Recommended Fund" />
+                          )}
+                          {isBenchmark && (
+                            <div className="status-dot benchmark" title="Benchmark Fund" />
+                          )}
+                          {!isRecommended && !isBenchmark && (
+                            <div className="status-dot regular" title="Regular Fund" />
+                          )}
+                        </div>
 
-                            {/* Fund Info Container */}
-                            <div className="fund-text-container">
-                              <div className="fund-ticker">
-                                {row.ticker}
-                              </div>
-                              <div className="fund-name">
-                                {row.name}
-                              </div>
-                            </div>
+                        {/* Fund Info Container */}
+                        <div className="fund-text-container">
+                          <div className="fund-ticker">
+                            {row.ticker}
                           </div>
-                        </td>
+                          <div className="fund-name">
+                            {row.name}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
 
-                        {/* Score Column */}
-                        <td className="table-cell px-6 py-4 text-center">
-                          {renderScoreBadge(getFieldValue(row, 'score_final', ['score', 'final_score']))}
-                        </td>
+                    {/* Score Column */}
+                    <td className="table-cell px-6 py-4 text-center">
+                      {renderScoreBadge(getFieldValue(row, 'score_final', ['score', 'final_score']))}
+                    </td>
 
-                        {/* Return Columns */}
-                        <td className="table-cell px-6 py-4 text-center">
-                          {renderReturn(getFieldValue(row, 'ytd_return', ['ytd', 'Total Return - YTD (%)']), 'YTD')}
-                        </td>
-                        <td className="table-cell px-6 py-4 text-center">
-                          {renderReturn(getFieldValue(row, 'one_year_return', ['1 Year', 'Total Return - 1 Year (%)']), '1Y')}
-                        </td>
-                        <td className="table-cell px-6 py-4 text-center">
-                          {renderReturn(getFieldValue(row, 'three_year_return', ['3 Year', 'Annualized Total Return - 3 Year (%)']), '3Y')}
-                        </td>
+                    {/* Return Columns */}
+                    <td className="table-cell px-6 py-4 text-center">
+                      {renderReturn(getFieldValue(row, 'ytd_return', ['ytd', 'Total Return - YTD (%)']), 'YTD')}
+                    </td>
+                    <td className="table-cell px-6 py-4 text-center">
+                      {renderReturn(getFieldValue(row, 'one_year_return', ['1 Year', 'Total Return - 1 Year (%)']), '1Y')}
+                    </td>
+                    <td className="table-cell px-6 py-4 text-center">
+                      {renderReturn(getFieldValue(row, 'three_year_return', ['3 Year', 'Annualized Total Return - 3 Year (%)']), '3Y')}
+                    </td>
 
-                        {/* Expense Ratio */}
-                        <td className="table-cell px-6 py-4 text-center">
-                          {renderExpenseRatio(getFieldValue(row, 'expense_ratio', ['Net Exp Ratio (%)']))}
-                        </td>
+                    {/* Expense Ratio */}
+                    <td className="table-cell px-6 py-4 text-center">
+                      {renderExpenseRatio(getFieldValue(row, 'expense_ratio', ['Net Exp Ratio (%)']))}
+                    </td>
 
-                        {/* Sharpe Ratio */}
-                        <td className="table-cell px-6 py-4 text-center">
-                          {renderSharpeRatio(getFieldValue(row, 'sharpe_ratio', ['Sharpe Ratio - 3 Year', 'Sharpe Ratio']))}
-                        </td>
-                      </tr>
-                    );
-                  } catch (renderError) {
-                    console.error('AssetClassTable: error rendering row', index, renderError, row);
-                    return null;
-                  }
-                });
-              })()}
+                    {/* Sharpe Ratio */}
+                    <td className="table-cell px-6 py-4 text-center">
+                      {renderSharpeRatio(getFieldValue(row, 'sharpe_ratio', ['Sharpe Ratio - 3 Year', 'Sharpe Ratio']))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
