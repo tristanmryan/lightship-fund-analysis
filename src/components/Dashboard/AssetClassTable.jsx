@@ -502,13 +502,13 @@ const AssetClassTable = ({
                   <tr
                     key={row.ticker || index}
                     className={`
-                      table-row transition-all duration-200 hover:bg-gray-50
+                      asset-table-row transition-all duration-200 hover:bg-gray-50
                       ${isBenchmark ? 'benchmark-row' : ''}
                       ${isRecommended ? 'recommended-row' : ''}
                     `}
                   >
                     {/* Fund Column */}
-                    <td className="table-cell px-6 py-4">
+                    <td className="asset-table-cell px-6 py-4">
                       <div className="fund-info-container">
                         {/* Status Indicator Container - Fixed width */}
                         <div className="status-indicator-container">
@@ -536,28 +536,28 @@ const AssetClassTable = ({
                     </td>
 
                     {/* Score Column */}
-                    <td className="table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell px-6 py-4 text-center">
                       {renderScoreBadge(getFieldValue(row, 'score_final', ['score', 'final_score']))}
                     </td>
 
                     {/* Return Columns */}
-                    <td className="table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell px-6 py-4 text-center">
                       {renderReturn(getFieldValue(row, 'ytd_return', ['ytd', 'Total Return - YTD (%)']), 'YTD')}
                     </td>
-                    <td className="table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell px-6 py-4 text-center">
                       {renderReturn(getFieldValue(row, 'one_year_return', ['1 Year', 'Total Return - 1 Year (%)']), '1Y')}
                     </td>
-                    <td className="table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell px-6 py-4 text-center">
                       {renderReturn(getFieldValue(row, 'three_year_return', ['3 Year', 'Annualized Total Return - 3 Year (%)']), '3Y')}
                     </td>
 
                     {/* Expense Ratio */}
-                    <td className="table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell px-6 py-4 text-center">
                       {renderExpenseRatio(getFieldValue(row, 'expense_ratio', ['Net Exp Ratio (%)']))}
                     </td>
 
                     {/* Sharpe Ratio */}
-                    <td className="table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell px-6 py-4 text-center">
                       {renderSharpeRatio(getFieldValue(row, 'sharpe_ratio', ['Sharpe Ratio - 3 Year', 'Sharpe Ratio']))}
                     </td>
                   </tr>
