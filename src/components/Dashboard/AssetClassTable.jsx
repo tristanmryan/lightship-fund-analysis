@@ -408,14 +408,14 @@ const AssetClassTable = ({
       {/* Modern Table */}
       <div className="modern-card bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-100">
-            <thead className="table-header bg-gray-50">
+          <table className="asset-class-data-table">
+            <thead className="table-header">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="table-header-cell">
                   Fund
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="table-header-cell sortable"
                   onClick={() => handleSort('score_final')}
                 >
                   <div className="flex items-center justify-center space-x-1">
@@ -428,7 +428,7 @@ const AssetClassTable = ({
                   </div>
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="table-header-cell sortable"
                   onClick={() => handleSort('ytd_return')}
                 >
                   <div className="flex items-center justify-center space-x-1">
@@ -441,7 +441,7 @@ const AssetClassTable = ({
                   </div>
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="table-header-cell sortable"
                   onClick={() => handleSort('one_year_return')}
                 >
                   <div className="flex items-center justify-center space-x-1">
@@ -454,7 +454,7 @@ const AssetClassTable = ({
                   </div>
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="table-header-cell sortable"
                   onClick={() => handleSort('three_year_return')}
                 >
                   <div className="flex items-center justify-center space-x-1">
@@ -467,7 +467,7 @@ const AssetClassTable = ({
                   </div>
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="table-header-cell sortable"
                   onClick={() => handleSort('expense_ratio')}
                 >
                   <div className="flex items-center justify-center space-x-1">
@@ -480,7 +480,7 @@ const AssetClassTable = ({
                   </div>
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="table-header-cell sortable"
                   onClick={() => handleSort('sharpe_ratio')}
                 >
                   <div className="flex items-center justify-center space-x-1">
@@ -494,7 +494,7 @@ const AssetClassTable = ({
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
+            <tbody className="table-body">
               {sortedData.map((row, index) => {
                 const isRecommended = row.is_recommended;
                 const isBenchmark = row.isBenchmark;
@@ -508,7 +508,7 @@ const AssetClassTable = ({
                     `}
                   >
                     {/* Fund Column */}
-                    <td className="asset-table-cell px-6 py-4">
+                    <td className="asset-table-cell">
                       <div className="fund-info-container">
                         {/* Status Indicator Container - Fixed width */}
                         <div className="status-indicator-container">
@@ -536,28 +536,28 @@ const AssetClassTable = ({
                     </td>
 
                     {/* Score Column */}
-                    <td className="asset-table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell">
                       {renderScoreBadge(getFieldValue(row, 'score_final', ['score', 'final_score']))}
                     </td>
 
                     {/* Return Columns */}
-                    <td className="asset-table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell">
                       {renderReturn(getFieldValue(row, 'ytd_return', ['ytd', 'Total Return - YTD (%)']), 'YTD')}
                     </td>
-                    <td className="asset-table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell">
                       {renderReturn(getFieldValue(row, 'one_year_return', ['1 Year', 'Total Return - 1 Year (%)']), '1Y')}
                     </td>
-                    <td className="asset-table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell">
                       {renderReturn(getFieldValue(row, 'three_year_return', ['3 Year', 'Annualized Total Return - 3 Year (%)']), '3Y')}
                     </td>
 
                     {/* Expense Ratio */}
-                    <td className="asset-table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell">
                       {renderExpenseRatio(getFieldValue(row, 'expense_ratio', ['Net Exp Ratio (%)']))}
                     </td>
 
                     {/* Sharpe Ratio */}
-                    <td className="asset-table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell">
                       {renderSharpeRatio(getFieldValue(row, 'sharpe_ratio', ['Sharpe Ratio - 3 Year', 'Sharpe Ratio']))}
                     </td>
                   </tr>
