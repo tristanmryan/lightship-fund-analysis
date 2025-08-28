@@ -179,6 +179,46 @@
   line-height: 1.5;
 }
 
+/* ===== DEBUG: Highly visible styles to verify CSS loading ===== */
+/* These are temporary and use high specificity + !important to override globals */
+/* ===== END DEBUG ===== */
+
+/* ===== STRUCTURE FIX: Ensure proper table semantics and reset positioning ===== */
+.asset-class-table .asset-class-data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
+}
+
+/* Reset any accidental sticky/absolute/floats applied globally */
+.asset-class-table .asset-class-data-table thead.table-header {
+  position: static !important;
+  display: table-header-group !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  z-index: auto !important;
+}
+
+.asset-class-table .asset-class-data-table thead.table-header th,
+.asset-class-table .asset-class-data-table tbody.table-body td,
+.asset-class-table .asset-class-data-table tbody.table-body th {
+  position: static !important;
+  float: none !important;
+}
+
+.asset-class-table .asset-class-data-table tbody.table-body {
+  display: table-row-group !important;
+}
+
+/* Avoid header detaching due to overflow containers */
+.asset-class-table .modern-card > .overflow-x-auto {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+/* ===== END STRUCTURE FIX ===== */
+
 /* 🏗️ MODERN DASHBOARD HEADER */
 .asset-class-table .header-container {
   background: linear-gradient(135deg, 
