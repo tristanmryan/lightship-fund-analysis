@@ -1,10 +1,10 @@
 // src/components/Dashboard/ComparisonPanel.jsx
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, X, TrendingUp, TrendingDown, Minus, Download, FileText, BarChart3 } from 'lucide-react';
+import { Search, X, TrendingUp, TrendingDown, Minus, Download, BarChart3 } from 'lucide-react';
 import { computeBenchmarkDelta } from './benchmarkUtils';
 import { formatPercent, formatNumber } from '../../utils/formatters';
 import preferencesService from '../../services/preferencesService';
-import { exportCompareCSV, exportComparePDF, downloadFile, shouldConfirmLargeExport, formatExportFilename } from '../../services/exportService';
+import { exportCompareCSV, downloadFile, shouldConfirmLargeExport, formatExportFilename } from '../../services/exportService';
 import fundService from '../../services/fundService';
 import { useFundData } from '../../hooks/useFundData';
 
@@ -285,11 +285,8 @@ const ComparisonPanel = ({ funds = [], initialSavedSets = null }) => {
       benchmarkTicker: selectedBenchmark
     };
 
-    if (format === 'pdf') {
-      handlePDFExport(exportData, metadata);
-    } else {
-      handleCSVExport(exportData, metadata);
-    }
+    // PDF export disabled in minimal system; only CSV available
+    handleCSVExport(exportData, metadata);
   }
 
   function handleCSVExport(data, metadata) {
@@ -301,19 +298,7 @@ const ComparisonPanel = ({ funds = [], initialSavedSets = null }) => {
     downloadFile(blob, filename, 'text/csv;charset=utf-8');
   }
 
-  async function handlePDFExport(data, metadata) {
-    try {
-      const blob = await exportComparePDF({
-        funds: data,
-        metadata
-      });
-      const filename = formatExportFilename({ scope: 'compare', ext: 'pdf' });
-      downloadFile(blob, filename, 'application/pdf');
-    } catch (error) {
-      console.error('PDF export failed:', error);
-      setNotice('PDF export failed. Please try again.');
-    }
-  }
+  // PDF export removed in minimal system
 
   return (
     <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8 }} data-compare-export>
@@ -581,25 +566,7 @@ const ComparisonPanel = ({ funds = [], initialSavedSets = null }) => {
               <Download size={14} />
               CSV
             </button>
-            <button
-              onClick={() => handleExport('pdf')}
-              disabled={selected.length === 0}
-              style={{ 
-                padding: '6px 12px', 
-                backgroundColor: selected.length > 0 ? '#dc2626' : '#9ca3af',
-                color: 'white', 
-                border: 'none', 
-                borderRadius: 4, 
-                fontSize: '0.875rem',
-                cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4
-              }}
-            >
-              <FileText size={14} />
-              PDF
-            </button>
+            {/* PDF button removed in minimal system */}
           </div>
         </div>
       </div>

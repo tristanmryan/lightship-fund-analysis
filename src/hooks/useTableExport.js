@@ -9,7 +9,6 @@ import {
   shouldConfirmLargeExport,
   exportTableCSV,
   exportCompareCSV,
-  exportComparePDF,
   exportAssetClassTableCSV,
   exportCurrentView
 } from '../services/exportService';
@@ -303,16 +302,7 @@ export function useTableExport({
         });
         downloadFile(result, exportFilename, 'text/csv');
       } else if (format === 'pdf') {
-        result = await exportComparePDF({ 
-          funds: data, 
-          metadata: exportMetadata 
-        });
-        exportFilename = filename || formatExportFilename({ 
-          scope: 'comparison', 
-          asOf: metadata.asOf,
-          ext: 'pdf' 
-        });
-        downloadPDF(result, exportFilename);
+        throw new Error('Compare PDF export is not available in the minimal system');
       }
 
       handleExportComplete(`compare-${format}`, result, exportFilename);

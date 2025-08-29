@@ -5,11 +5,13 @@ import { generatePDFReport, exportToExcel, exportToCSV, downloadFile, downloadPD
 import { useFundData } from '../../hooks/useFundData';
 
 const MonthlyReportButton = () => {
-  const { funds, loading, error } = useFundData();
+  const { funds, loading, error, asOfMonth } = useFundData();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingType, setGeneratingType] = useState('');
+  const [showPdfOptions, setShowPdfOptions] = useState(false);
+  const [pdfScope, setPdfScope] = useState('all'); // 'all' | 'recommended'
 
-  const handleGenerateReport = async (type) => {
+  const handleGenerateReport = async (type, opts = {}) => {
     if (loading || funds.length === 0) {
       alert('Please wait for fund data to load or add some funds first.');
       return;
@@ -30,13 +32,28 @@ const MonthlyReportButton = () => {
         assetClassCount: new Set(funds.map(f => f.asset_class).filter(Boolean)).size,
         averagePerformance: calculateAveragePerformance(funds)
       };
+      // Ensure as-of month is passed through for server-side shaping
+      metadata.asOf = asOfMonth || (typeof window !== 'undefined' ? (window.__AS_OF_MONTH__ || null) : null);
 
       const reportData = { funds, metadata };
       const dateStr = new Date().toISOString().split('T')[0];
 
       switch (type) {
         case 'pdf':
-          const pdf = await generatePDFReport(reportData);
+          // Determine selection based on options
+          const selectionScope = opts.scope || 'all';
+          const highlightRecommended = selectionScope !== 'recommended';
+          console.log('[UI] Generating PDF with scope:', selectionScope, {
+            totalFunds: funds.length,
+            recommended: funds.filter(f => f.is_recommended).length,
+            asOf: metadata.asOf || null
+          });
+          const pdf = await generatePDFReport(reportData, {
+            scope: selectionScope,
+            highlightRecommended,
+            landscape: true,
+            includeTOC: true
+          });
           const pdfFileName = `Raymond_James_Lightship_Report_${dateStr}.pdf`;
           downloadPDF(pdf, pdfFileName);
           break;
@@ -80,6 +97,9 @@ const MonthlyReportButton = () => {
       setGeneratingType('');
     }
   };
+
+  const totalFunds = (funds || []).length;
+  const recommendedCount = (funds || []).filter(f => f.is_recommended).length;
 
   // Calculate average performance
   const calculateAveragePerformance = (funds) => {
@@ -261,7 +281,7 @@ const MonthlyReportButton = () => {
               Investment committee-ready report with Raymond James branding, asset class sections, and benchmark comparisons
             </p>
             <button
-              onClick={() => handleGenerateReport('pdf')}
+              onClick={() => setShowPdfOptions(true)}
               disabled={isGenerating}
               style={{
                 padding: '0.75rem 1.5rem',
@@ -367,7 +387,7 @@ const MonthlyReportButton = () => {
           </div>
         </div>
       </div>
-
+      
       <div className="export-info">
         <h4>Report Features:</h4>
         <ul>
@@ -375,7 +395,69 @@ const MonthlyReportButton = () => {
           <li><strong>Excel Report:</strong> Multi-sheet workbook with summary, all funds, recommended funds, and performance details</li>
           <li><strong>CSV Export:</strong> Simple data export for external analysis</li>
         </ul>
-      </div>
+    </div>
+
+      {/* PDF Export Options Modal */}
+      {showPdfOptions && (
+        <div className="modal-overlay" onClick={() => setShowPdfOptions(false)}>
+          <div className="modal-content" role="dialog" aria-modal="true" aria-labelledby="pdf-options-title" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 id="pdf-options-title">PDF Export Options</h3>
+            </div>
+            <div className="modal-body">
+              <p style={{ color: '#6b7280', marginBottom: '0.75rem' }}>Choose which funds to include in the PDF report.</p>
+              <div role="radiogroup" aria-label="PDF export scope" style={{ display: 'grid', gap: '0.5rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="radio"
+                    name="pdf-scope"
+                    value="all"
+                    checked={pdfScope === 'all'}
+                    onChange={() => setPdfScope('all')}
+                  />
+                  <span>All funds</span>
+                  <span style={{ marginLeft: 'auto', color: '#6b7280' }}>{totalFunds} total</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="radio"
+                    name="pdf-scope"
+                    value="recommended"
+                    checked={pdfScope === 'recommended'}
+                    onChange={() => setPdfScope('recommended')}
+                  />
+                  <span>Recommended only</span>
+                  <span style={{ marginLeft: 'auto', color: '#6b7280' }}>{recommendedCount} recommended</span>
+                </label>
+              </div>
+              <div style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#6b7280' }}>
+                {pdfScope === 'recommended' ? (
+                  <span>Note: Row highlighting is disabled when exporting recommended-only.</span>
+                ) : (
+                  <span>Recommended funds will be subtly highlighted.</span>
+                )}
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setShowPdfOptions(false)}>
+                Cancel
+              </button>
+              <button
+                className="btn"
+                onClick={async () => {
+                  console.log('[UI] PDF modal confirmed. Scope selected:', pdfScope);
+                  setShowPdfOptions(false);
+                  await handleGenerateReport('pdf', { scope: pdfScope });
+                }}
+                disabled={isGenerating || (pdfScope === 'recommended' && recommendedCount === 0)}
+                title={pdfScope === 'recommended' && recommendedCount === 0 ? 'No recommended funds available' : 'Generate PDF'}
+              >
+                Generate PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

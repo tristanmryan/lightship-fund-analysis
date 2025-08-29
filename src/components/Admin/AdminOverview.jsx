@@ -150,7 +150,8 @@ export default function AdminOverview({ onNavigate = () => {} }) {
                       averagePerformance: (() => {
                         const vals = (funds || []).map(f => f.ytd_return).filter(v => v != null && !Number.isNaN(v));
                         return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
-                      })()
+                      })(),
+                      asOf: asOfStore.getActiveMonth() || null
                     };
                     const pdf = await generatePDFReport({ funds: funds || [], metadata });
                     const { formatExportFilename } = await import('../../services/exportService');

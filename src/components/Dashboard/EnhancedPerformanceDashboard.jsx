@@ -976,12 +976,13 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
                       averagePerformance: (() => {
                         const vals = filteredFunds.map(f => f.ytd_return).filter(v => v != null && !Number.isNaN(v));
                         return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
-                      })()
+                      })(),
+                      asOf: asOfMonthProp || (typeof window !== 'undefined' ? (window.__AS_OF_MONTH__ || null) : null)
                     };
                     console.log('🚀 Starting PDF generation for all funds...');
                     const pdf = await generatePDFReport({ funds: filteredFunds, metadata }, { forceV2: true });
                     const name = formatExportFilename({ scope: 'pdf', asOf: (asOfMonthProp || window.__AS_OF_MONTH__ || null), ext: 'pdf' });
-                    downloadFile(pdf, name);
+                    downloadPDF(pdf, name);
                   } catch (e) { /* eslint-disable no-console */ console.error('PDF export failed', e); }
                 }}>
                   PDF Report (.pdf)

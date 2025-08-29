@@ -1,4 +1,4 @@
-// src/services/exportService.js
+﻿// src/services/exportService.js
 import * as XLSX from 'xlsx';
 import { toISODateTime } from '../utils/formatters.js';
 import { supabase, TABLES } from './supabase.js';
@@ -192,7 +192,7 @@ export function exportToExcel(data, options = {}) {
         fund.alpha != null ? Number(fund.alpha).toFixed(2) : '',
         fund.beta != null ? Number(fund.beta).toFixed(2) : '',
         fund.manager_tenure != null ? Number(fund.manager_tenure).toFixed(1) : '',
-        fund.is_recommended ? '✓ Recommended' : 'Not Recommended',
+        fund.is_recommended ? 'âœ“ Recommended' : 'Not Recommended',
         formatDate(fund.last_updated || new Date(), { format: 'short' })
       ];
     } else {
@@ -301,13 +301,13 @@ export function exportToExcel(data, options = {}) {
  * @param {Object} options - PDF generation options
  * @returns {jsPDF|Blob} PDF document (jsPDF for v1, Blob for v2)
  */
-export async function generatePDFReport(data, options = {}) {
-  // Check for PDF v2 feature flag
+async function _obsolete_generatePDFReportLegacyWrapper(data, options = {}) {
+  // Prefer PDF v2 by default unless explicitly disabled
   const envValue = process.env.REACT_APP_ENABLE_PDF_V2;
-  const usePdfV2 = envValue === 'true' || options.forceV2;
+  const usePdfV2 = options.forceV2 || (envValue !== 'false');
   
   // Debug logging
-  console.log('🔍 PDF Feature Flag Debug:', {
+  console.log('ðŸ” PDF Feature Flag Debug:', {
     envValue,
     usePdfV2,
     forceV2: options.forceV2,
@@ -316,17 +316,22 @@ export async function generatePDFReport(data, options = {}) {
   
   if (usePdfV2) {
     try {
-      console.log('📊 Using PDF v2 (server-rendered)');
+      console.log('ðŸ“Š Using PDF v2 (server-rendered)');
       return await generatePDFReportV2(data, options);
     } catch (error) {
-      console.warn('⚠️ PDF v2 failed, falling back to legacy PDF:', error);
-      // Fall back to legacy PDF
-      return await generatePDFReportLegacy(data);
+      console.warn('âš ï¸ PDF v2 failed, falling back to legacy PDF:', error);
+      // Legacy removed: bubble error (wrapper unused)
+      return await generatePDFReportV2(data, options);
     }
   } else {
-    console.log('📊 Using legacy PDF (client-side)');
-    return await generatePDFReportLegacy(data);
+    console.log('ðŸ“Š Using legacy PDF (client-side)');
+    return await generatePDFReportV2(data, options);
   }
+}
+
+// Minimal single-path PDF generator
+export async function generatePDFReport(data, options = {}) {
+  return await generatePDFReportV2(data, options);
 }
 
 /**
@@ -335,7 +340,7 @@ export async function generatePDFReport(data, options = {}) {
  * @param {Object} options - PDF generation options
  * @returns {Blob} PDF blob
  */
-export async function generatePDFReportV2(data, options = {}) {
+export async function __obsolete_generatePDFReportV2_old(data, options = {}) {
   const { funds, metadata } = data;
 
   // Build payload for API
@@ -358,28 +363,28 @@ export async function generatePDFReportV2(data, options = {}) {
     }
   };
 
-  console.log('🚀 Calling PDF v2 API with payload:', payload);
+  console.log('ðŸš€ Calling PDF v2 API with payload:', payload);
 
   // Check if we're in development mode (localhost)
   const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   
-  if (isDevelopment) {
-    console.log('🔧 Development mode detected - testing serverless function first');
+  if (false) {
+    console.log('ðŸ”§ Development mode detected - testing serverless function first');
     
     // Try the advanced test endpoint first to verify serverless setup
     try {
-      console.log('🧪 Testing advanced PDF endpoint...');
+      console.log('ðŸ§ª Testing advanced PDF endpoint...');
       const testResponse = await fetch('/api/test-pdf-advanced', { method: 'GET' });
       
       if (testResponse.ok) {
-        console.log('✅ Serverless PDF system working! Using server-side generation...');
+        console.log('âœ… Serverless PDF system working! Using server-side generation...');
         // If test works, proceed with real API call (fall through to production code)
       } else {
         throw new Error(`Test endpoint failed: ${testResponse.status}`);
       }
     } catch (testError) {
-      console.log('⚠️ Serverless function not available, using client-side fallback');
-      console.log('🔧 Using enhanced client-side PDF generation');
+      console.log('âš ï¸ Serverless function not available, using client-side fallback');
+      console.log('ðŸ”§ Using enhanced client-side PDF generation');
       
       // Import the client-side PDF generation as a fallback for development
       const { generateClientSideProfessionalPDF } = await import('./clientPdfV2Service.js');
@@ -403,38 +408,57 @@ export async function generatePDFReportV2(data, options = {}) {
 
   // Return the PDF blob
   const blob = await response.blob();
-  console.log(`✅ PDF v2 generated successfully: ${blob.size} bytes`);
+  console.log(`âœ… PDF v2 generated successfully: ${blob.size} bytes`);
 
   return blob;
 }
 
-/**
- * Generate PDF report using legacy client-side jsPDF (v1)
- * @param {Object} data - Report data
- * @returns {jsPDF} PDF document
- */
-export async function generatePDFReportLegacy(data) {
-  const { funds, metadata } = data;
-  
-  // Prepare metadata for PDF
-  const pdfMetadata = {
-    ...metadata,
-    date: metadata?.date || new Date().toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    }),
-    totalFunds: funds.length,
-    recommendedFunds: funds.filter(f => f.is_recommended).length,
-    assetClassCount: new Set(funds.map(f => f.asset_class).filter(Boolean)).size,
-    averagePerformance: calculateAverage(funds.map(f => f.ytd_return).filter(v => v != null))
+// Minimal single-path v2 generator
+export async function generatePDFReportV2(data, options = {}) {
+  const { metadata } = data;
+  const payload = {
+    asOf: (metadata && metadata.asOf) || (typeof window !== 'undefined' ? (window.__AS_OF_MONTH__ || null) : null),
+    selection: {
+      scope: options.scope || 'all',
+      tickers: options.tickers || null
+    },
+    options: {
+      columns: options.columns || [
+        'ticker', 'name', 'asset_class', 'ytd_return', 'one_year_return',
+        'three_year_return', 'five_year_return', 'expense_ratio', 'sharpe_ratio',
+        'standard_deviation_3y', 'standard_deviation_5y', 'manager_tenure', 'is_recommended'
+      ],
+      brand: 'RJ',
+      locale: 'en-US',
+      landscape: options.landscape !== false,
+      includeTOC: options.includeTOC !== false
+    }
   };
 
-  // Lazy require to prevent jsdom canvas errors during tests
-  // eslint-disable-next-line global-require
-  const { generateMonthlyReport } = await import('./pdfReportService.js');
-  return await generateMonthlyReport({ funds, metadata: pdfMetadata });
+  try {
+    console.log('[ExportService] Sending monthly PDF payload:', {
+      asOf: payload.asOf,
+      selection: payload.selection,
+      options: {
+        landscape: payload.options.landscape,
+        includeTOC: payload.options.includeTOC
+      }
+    });
+  } catch {}
+
+  const response = await fetch('/api/reports/monthly', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(`PDF v2 API failed: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`);
+  }
+  return await response.blob();
 }
+
+// Legacy jsPDF path removed
 
 /**
  * Export data to CSV
@@ -965,32 +989,7 @@ export function exportCompareCSV({ funds = [], metadata = {} }) {
  * Export compare data as PDF report
  * Enhanced for mixed fund/benchmark comparison with professional formatting
  */
-export async function exportComparePDF({ funds = [], metadata = {} }) {
-  try {
-    // Lazy load PDF generation to avoid issues in test/node environments
-    const { generateComparePDF } = await import('./pdfReportService.js');
-    
-    // Enhanced metadata for PDF generation
-    const pdfData = {
-      funds,
-      metadata: {
-        ...metadata,
-        title: 'Fund & Benchmark Comparison Report',
-        subtitle: `Generated on ${new Date().toLocaleDateString()}`,
-        asOfDate: metadata.asOfDate || 'Latest',
-        benchmarkInfo: metadata.benchmarkTicker 
-          ? `Comparison vs ${metadata.benchmarkTicker}` 
-          : 'Comparison vs asset class primary benchmarks',
-        exportedAt: new Date()
-      }
-    };
-
-    return await generateComparePDF(pdfData);
-  } catch (error) {
-    console.error('Error generating compare PDF:', error);
-    throw new Error('Failed to generate PDF report');
-  }
-}
+// exportComparePDF removed in minimal system
 
 /**
  * Helper to centralize large export confirmation threshold
@@ -1022,26 +1021,34 @@ export function downloadFile(content, filename, type = 'application/octet-stream
  * @param {jsPDF|Blob} pdfResult - PDF result from either legacy or v2 system
  * @param {string} filename - File name
  */
-export function downloadPDF(pdfResult, filename) {
+function _obsolete_downloadPDFLegacy(pdfResult, filename) {
   if (!pdfResult) {
     throw new Error('No PDF result provided');
   }
   
   // Handle jsPDF objects (legacy v1)
   if (pdfResult.save && typeof pdfResult.save === 'function') {
-    console.log('📄 Downloading PDF v1 (jsPDF)');
+    console.log('ðŸ“„ Downloading PDF v1 (jsPDF)');
     pdfResult.save(filename);
     return;
   }
   
   // Handle Blob objects (v2)
   if (pdfResult instanceof Blob) {
-    console.log('📄 Downloading PDF v2 (Blob)');
+    console.log('ðŸ“„ Downloading PDF v2 (Blob)');
     downloadFile(pdfResult, filename, 'application/pdf');
     return;
   }
   
   throw new Error('Unsupported PDF result type');
+}
+
+// Minimal-only downloader for Blob PDFs
+export function downloadPDF(pdfBlob, filename) {
+  if (!(pdfBlob instanceof Blob)) {
+    throw new Error('No PDF blob provided');
+  }
+  downloadFile(pdfBlob, filename, 'application/pdf');
 }
 
 /**
@@ -1358,10 +1365,10 @@ function getPriorityFromDecision(decision) {
 
 function getDecisionSymbol(decision) {
   const symbols = {
-    approve: '✓',
-    reject: '✗',
-    monitor: '⚠',
-    hold: '⏸'
+    approve: 'âœ“',
+    reject: 'âœ—',
+    monitor: 'âš ',
+    hold: 'â¸'
   };
   return ENABLE_VISUAL_REFRESH ? (symbols[decision] || '') : '';
 }
