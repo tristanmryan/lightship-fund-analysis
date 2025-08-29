@@ -10,8 +10,11 @@ import TopBottomPerformers from './TopBottomPerformers';
 import AssetClassOverview from './AssetClassOverview';
 import researchNotesService from '../../services/researchNotesService';
 import { exportToExcel, downloadFile, formatExportFilename } from '../../services/exportService';
+import SimplifiedDashboard from './SimplifiedDashboard';
+import './SimplifiedDashboard.css';
 
-export default function Home() {
+// Original dashboard component
+function OriginalHome() {
   const [asOf, setAsOf] = React.useState(asOfStore.getActiveMonth() || null);
   const [kpis, setKpis] = React.useState({ funds: 0, recommended: 0, minCoverage: 0, alertsCount: 0, snapshotDate: null, freshnessDays: null });
   const [triage, setTriage] = React.useState([]);
@@ -268,3 +271,16 @@ export default function Home() {
   );
 }
 
+// Main export function that handles feature flag routing
+export default function Home() {
+  // Check for visual refresh feature flag
+  const enableVisualRefresh = process.env.REACT_APP_ENABLE_VISUAL_REFRESH === 'true';
+  
+  // If visual refresh is enabled, use the simplified dashboard
+  if (enableVisualRefresh) {
+    return <SimplifiedDashboard />;
+  }
+
+  // Otherwise, use the original dashboard
+  return <OriginalHome />;
+}

@@ -38,6 +38,172 @@
   --spacing-xl: 2rem;
   --spacing-2xl: 3rem;
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --surface-bg: #F8FAFC;
+  --surface-card: #FFFFFF;
+  --text-default: #1E293B;
+  --text-muted: #64748B;
+  --border-color: #E2E8F0;
+  --btn-primary-bg: #002D72;
+  --btn-primary-hover: #005EB8;
+  --btn-primary-text: #FFFFFF;
+}
+
+/* Visual Refresh Design Layer */
+.visual-refresh {
+  --color-primary: #1F4E79;
+  --color-primary-light: #2E5F8A;
+  --color-primary-dark: #1A3D5F;
+  --color-border: #D1D5DB;
+  --color-text-light: #6B7280;
+  --spacing-md: 0.75rem;
+  --spacing-lg: 1.25rem;
+  --surface-bg: #F8FAFC;
+  --surface-card: #FFFFFF;
+  --text-default: #0F172A;
+  --text-muted: #64748B;
+  --border-color: #E5E7EB;
+  --btn-primary-bg: #1F4E79;
+  --btn-primary-hover: #1A3D5F;
+  --btn-primary-text: #FFFFFF;
+}
+
+/* Tabular numerals for data tables */
+.visual-refresh body,
+.visual-refresh table,
+.visual-refresh .fund-table,
+.visual-refresh .performance-table {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Visual Refresh Sidebar Styles */
+.visual-refresh .sidebar {
+  background: var(--color-primary);
+}
+
+.visual-refresh .sidebar-nav button.active {
+  background: color-mix(in srgb, var(--btn-primary-bg) 16%, white);
+}
+
+.visual-refresh .sidebar-nav button:hover {
+  opacity: 0.9;
+}
+
+/* Visual Refresh Header Styles */
+.visual-refresh .dashboard-header {
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.visual-refresh .dashboard-header h2 {
+  color: var(--text-default);
+}
+
+/* Visual Refresh Primary Button Styles */
+.visual-refresh .btn {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border-color: var(--btn-primary-bg);
+}
+
+.visual-refresh .btn:hover {
+  background: var(--btn-primary-hover);
+  border-color: var(--btn-primary-hover);
+}
+
+/* Visual Refresh Secondary Button Styles */
+.visual-refresh .btn-secondary {
+  background: var(--surface-card);
+  color: var(--btn-primary-bg);
+  border: 1px solid var(--border-color);
+}
+
+.visual-refresh .btn-secondary:hover {
+  background: var(--surface-bg);
+  border-color: var(--btn-primary-bg);
+}
+
+/* Visual Refresh Content Card Styles */
+.visual-refresh .content-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+}
+
+/* Visual Refresh Footer Styles */
+.visual-refresh .footer {
+  background: var(--surface-card);
+  border-top: 1px solid var(--border-color);
+  color: var(--text-muted);
+}
+
+/* Visual Refresh Modal Styles */
+.visual-refresh .modal-content {
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+}
+
+.visual-refresh .modal-header {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.visual-refresh .modal-header h3 {
+  color: var(--text-default);
+}
+
+/* Visual Refresh Form Control Styles */
+.visual-refresh .select-control {
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-default);
+}
+
+.visual-refresh .select-control:focus {
+  border-color: var(--btn-primary-bg);
+}
+
+/* Visual Refresh Table Header Styles */
+.visual-refresh thead {
+  background: #F1F5F9;
+  color: var(--text-muted);
+}
+
+.visual-refresh thead th {
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Visual Refresh Fund Table Header Styles */
+.visual-refresh .fund-table-header {
+  background-color: #F1F5F9;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.visual-refresh .fund-table-header th {
+  background-color: #F1F5F9;
+  color: var(--text-muted);
+}
+
+.visual-refresh .fund-table-header th.sortable:hover {
+  background-color: #E2E8F0;
+}
+
+/* Visual Refresh Asset Class Table Header Styles */
+.visual-refresh .asset-class-table .table-header {
+  background: #F1F5F9;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.visual-refresh .asset-class-table .table-header th {
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.visual-refresh .asset-class-table .table-header th.sortable:hover {
+  background-color: rgba(31, 78, 121, 0.05);
+}
+
+/* Visual Refresh Main Header Styles */
+.visual-refresh .header {
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-color);
 }
 
 /* Visual refresh overrides when html.visual-refresh is present */
@@ -1696,4 +1862,213 @@ tbody td {
     width: 100%;
     max-width: 300px;
   }
+}
+
+/* Visual Refresh Accessibility & UX Polish */
+/* Strong, brand-aligned focus states */
+.visual-refresh :focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--btn-primary-bg) 70%, white);
+  outline-offset: 2px;
+  border-radius: 8px;
+  transition: outline-color 120ms ease, box-shadow 120ms ease;
+}
+
+/* Smooth, consistent transitions */
+.visual-refresh .btn,
+.visual-refresh .btn-secondary {
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
+}
+
+/* Card elevation */
+.visual-refresh .content-card {
+  box-shadow: 0 1px 3px rgba(2,6,23,0.06), 0 1px 2px rgba(2,6,23,0.04);
+  transition: box-shadow 160ms ease, transform 160ms ease;
+}
+
+.visual-refresh .content-card:hover {
+  box-shadow: 0 8px 24px rgba(2,6,23,0.08);
+  transform: translateY(-1px);
+}
+
+/* Sticky table headers for long lists */
+.visual-refresh table thead th {
+  position: sticky;
+  top: 0;
+  background: #F1F5F9;
+  z-index: 1;
+}
+
+/* Visual Refresh Toolbar Helpers */
+.visual-refresh .toolbar {
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between;
+  gap: var(--spacing-md); 
+  padding: var(--spacing-md);
+  background: var(--surface-card); 
+  border-bottom: 1px solid var(--border-color);
+}
+
+.visual-refresh .toolbar .title-group h1,
+.visual-refresh .toolbar .title-group h2 {
+  color: var(--text-default);
+  margin: 0;
+}
+
+.visual-refresh .toolbar .actions { 
+  display: flex; 
+  gap: var(--spacing-sm); 
+  flex-wrap: wrap; 
+}
+
+/* Visual Refresh Sidebar Polish */
+.visual-refresh .sidebar { 
+  padding: var(--spacing-md) 0; 
+}
+
+.visual-refresh .sidebar-nav { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 2px; 
+}
+
+.visual-refresh .sidebar-nav button,
+.visual-refresh .sidebar-nav a {
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: #fff;
+  opacity: 0.9;
+  transition: background-color 120ms ease, opacity 120ms ease;
+}
+
+.visual-refresh .sidebar-nav .active {
+  background: color-mix(in srgb, var(--btn-primary-bg) 18%, white);
+  opacity: 1;
+}
+
+.visual-refresh .sidebar-nav button:hover,
+.visual-refresh .sidebar-nav a:hover { 
+  opacity: 1; 
+}
+
+/* Visual Refresh Density Toggle */
+.visual-refresh .density-toggle { 
+  display: inline-flex; 
+  gap: 4px; 
+  margin-left: var(--spacing-sm); 
+}
+
+.visual-refresh .density-toggle .active { 
+  border-color: var(--btn-primary-bg); 
+  color: var(--btn-primary-bg); 
+}
+
+/* Compact Tables */
+.visual-refresh.density-compact .fund-table-row td,
+.visual-refresh.density-compact .asset-class-table .table-cell,
+.visual-refresh.density-compact table td {
+  padding-top: 6px; 
+  padding-bottom: 6px;
+}
+
+.visual-refresh.density-compact .fund-table-header th,
+.visual-refresh.density-compact .asset-class-table .table-header th,
+.visual-refresh.density-compact table thead th {
+  padding-top: 6px; 
+  padding-bottom: 6px;
+}
+
+/* Icon sizing inside buttons */
+.visual-refresh .btn svg,
+.visual-refresh .btn-secondary svg {
+  width: 18px; height: 18px; vertical-align: -2px;
+}
+/* Space icon from text when both exist */
+.visual-refresh .btn svg:not(:only-child),
+.visual-refresh .btn-secondary svg:not(:only-child) {
+  margin-right: 6px;
+}
+
+/* Badges (generic + states) */
+.visual-refresh .badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 8px; font-size: 12px; line-height: 18px;
+  border-radius: 999px; border: 1px solid var(--border-color);
+  background: var(--surface-bg); color: var(--text-muted);
+}
+.visual-refresh .badge.success {
+  background: color-mix(in srgb, #16a34a 10%, white);
+  border-color: color-mix(in srgb, #16a34a 20%, white);
+  color: #166534;
+}
+.visual-refresh .badge.warning {
+  background: color-mix(in srgb, #f59e0b 12%, white);
+  border-color: color-mix(in srgb, #f59e0b 24%, white);
+  color: #7c4a03;
+}
+.visual-refresh .badge.info {
+  background: color-mix(in srgb, var(--btn-primary-bg) 10%, white);
+  border-color: color-mix(in srgb, var(--btn-primary-bg) 20%, white);
+  color: var(--btn-primary-bg);
+}
+
+/* Empty states */
+.visual-refresh .empty-state {
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 32px 24px; text-align: center;
+  color: var(--text-muted);
+}
+.visual-refresh .empty-state .title { color: var(--text-default); font-weight: 600; margin-bottom: 8px; }
+.visual-refresh .empty-state .actions { margin-top: 12px; display: inline-flex; gap: 8px; }
+
+/* Numeric alignment helpers (light-touch) */
+.visual-refresh td.numeric, .visual-refresh th.numeric { text-align: right; }
+
+/* KPI Metrics Strip */
+.visual-refresh .kpi-strip { 
+  display: flex; 
+  gap: 8px; 
+  flex-wrap: wrap; 
+  padding: 0 var(--spacing-md) var(--spacing-sm); 
+}
+
+.visual-refresh .kpi-chip {
+  display: inline-flex; 
+  align-items: center; 
+  gap: 8px;
+  background: var(--surface-card); 
+  border: 1px solid var(--border-color);
+  border-radius: 999px; 
+  padding: 6px 10px;
+}
+
+.visual-refresh .kpi-chip .label { 
+  color: var(--text-muted); 
+  font-weight: 500; 
+}
+
+.visual-refresh .kpi-chip .value { 
+  color: var(--text-default); 
+  font-variant-numeric: tabular-nums; 
+}
+
+/* Chart Polish */
+.visual-refresh .chart-container { 
+  padding: 8px 8px 4px; 
+  background: var(--surface-card); 
+  border: 1px solid var(--border-color); 
+  border-radius: 12px; 
+}
+
+.visual-refresh .chart-legend { 
+  font-size: 12px; 
+  color: var(--text-muted); 
+}
+
+.visual-refresh .chart-title { 
+  margin: 0 0 6px; 
+  color: var(--text-default); 
+  font-weight: 600; 
 }

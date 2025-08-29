@@ -4,6 +4,8 @@ import { formatPercent, formatNumber } from '../../utils/formatters';
 import { getPrimaryBenchmark } from '../../services/resolvers/benchmarkResolverClient';
 import NotesPanel from './NotesPanel';
 import ScoreAnalysisSection from './ScoreAnalysisSection';
+import ScoringMethodologyPanel from './ScoringMethodologyPanel';
+import ScoreTooltip from './ScoreTooltip';
 import { METRICS_CONFIG } from '../../services/scoring';
 
 function MetricRow({ label, value, delta, benchTicker, tooltip }) {
@@ -114,7 +116,9 @@ export default function DrilldownCards({ fund, funds }) {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
       <div className="card" style={{ padding: 12 }}>
         <div style={{ fontWeight: 600, marginBottom: 8 }}>Overview</div>
-        <MetricRow label="Score" value={scoreValue == null ? '—' : formatNumber(scoreValue, 1)} />
+        <ScoreTooltip fund={fund} score={scoreValue}>
+          <MetricRow label="Score" value={scoreValue == null ? '—' : formatNumber(scoreValue, 1)} />
+        </ScoreTooltip>
         {topReasons.length > 0 && (
           <div style={{ marginTop: 8 }}>
             <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Top reasons (impact within asset class)</div>
@@ -182,6 +186,9 @@ export default function DrilldownCards({ fund, funds }) {
             </table>
           </div>
         </details>
+      </div>
+      <div style={{ gridColumn: '1 / -1' }}>
+        <ScoringMethodologyPanel fund={fund} benchmark={benchmark} />
       </div>
       <div style={{ gridColumn: '1 / -1' }}>
         <ScoreAnalysisSection fund={fund} benchmark={benchmark} funds={funds} />

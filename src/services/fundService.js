@@ -85,41 +85,58 @@ class FundService {
   async getAllFundsWithServerScoring(asOfDate = null) {
     try {
       const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
-      const dateOnly = asOf ? asOf.toISOString().slice(0,10) : null;
-      
-      // Get server-side scored funds
-      const { data: scoredFunds, error: scoringError } = await supabase.rpc('calculate_scores_as_of', {
-        p_date: dateOnly,
-        p_asset_class_id: null
-      });
-      
-      if (scoringError) {
-        console.warn('Server-side scoring failed, falling back to client-side:', scoringError);
-        return this.getAllFunds(asOfDate);
+      const dateOnly = asOf ? asOf.toISOString().slice(0, 10) : null;
+
+      // Base fund data is needed for asset class grouping and enrichment
+      const baseFunds = await this.getAllFunds(asOfDate);
+      if (!baseFunds.length) return [];
+
+      // Group funds by asset class and prepare RPC calls
+      const assetClassIds = Array.from(new Set(baseFunds.map(f => f.asset_class_id).filter(Boolean)));
+
+      const start = Date.now();
+      const scoreResults = await Promise.all(
+        assetClassIds.map(acId =>
+          supabase.rpc('calculate_scores_as_of', {
+            p_date: dateOnly,
+            p_asset_class_id: acId,
+            p_global: false
+          })
+        )
+      );
+
+      // Consolidate scores, throwing if any call failed
+      let scoredFunds = [];
+      for (const result of scoreResults) {
+        if (result.error) throw result.error;
+        if (result.data) scoredFunds = scoredFunds.concat(result.data);
       }
 
-      // Get base fund data for enrichment
-      const baseFunds = await this.getAllFunds(asOfDate);
-      const fundMap = new Map(baseFunds.map(f => [f.ticker, f]));
+      const duration = Date.now() - start;
+      // Scoring completed; metrics available in calling context if needed
 
-      // Merge server-side scores with base fund data
-      return (scoredFunds || []).map(scored => {
-        const baseFund = fundMap.get(scored.ticker) || {};
-        return {
-          ...baseFund,
-          // Add server-side scoring data
-          scores: {
-            final: scored.score_final,
-            raw: scored.score_raw,
-            percentile: scored.percentile,
-            metricsUsed: scored.metrics_used,
-            totalPossibleMetrics: scored.total_possible_metrics,
-            breakdown: scored.score_breakdown
-          }
-        };
+      // Map scores by ticker, ignoring benchmark rows
+      const scoreMap = new Map();
+      (scoredFunds || []).forEach(fund => {
+        if (!fund.is_benchmark) {
+          scoreMap.set(fund.ticker, {
+            final: fund.score_final,
+            raw: fund.score_raw,
+            percentile: fund.percentile,
+            metricsUsed: fund.metrics_used,
+            totalPossibleMetrics: fund.total_possible_metrics,
+            breakdown: fund.score_breakdown
+          });
+        }
+      });
+
+      // Merge scores back onto the base fund data
+      return baseFunds.map(fund => {
+        const scores = scoreMap.get(fund.ticker);
+        return scores ? { ...fund, scores } : fund;
       });
     } catch (error) {
-      console.warn('Server-side scoring failed, falling back to client-side:', error);
+      console.error('Server-side scoring failed, falling back to client-side:', error);
       return this.getAllFunds(asOfDate);
     }
   }
@@ -825,10 +842,11 @@ class FundService {
     try {
       const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
       const dateOnly = asOf ? asOf.toISOString().slice(0, 10) : null;
-      
+
+      let result;
       // Use server-side scoring when enabled
       if (this.useServerScoring) {
-        return this.getAssetClassTableWithServerScoring(dateOnly, assetClassId, includeBenchmark);
+        result = await this.getAssetClassTableWithServerScoring(dateOnly, assetClassId, includeBenchmark);
       } else {
         // Use existing client-side logic
         const { data, error } = await supabase.rpc('get_asset_class_table', {
@@ -837,10 +855,12 @@ class FundService {
           p_include_benchmark: !!includeBenchmark
         });
         if (error) throw error;
-        return data || [];
+        result = data || [];
       }
+      return result;
     } catch (error) {
       handleSupabaseError(error, 'getAssetClassTable');
+      console.error('fundService.getAssetClassTable: error', error);
       return [];
     }
   }
@@ -853,9 +873,9 @@ class FundService {
         p_date: dateOnly,
         p_asset_class_id: assetClassId
       });
-      
+
       if (scoringError) {
-        console.warn('Server-side scoring failed, falling back to client-side:', scoringError);
+        console.error('Server-side scoring failed, falling back to client-side:', scoringError);
         // Fallback to original method
         const { data, error } = await supabase.rpc('get_asset_class_table', {
           p_date: dateOnly,
@@ -872,7 +892,7 @@ class FundService {
         p_asset_class_id: assetClassId,
         p_include_benchmark: !!includeBenchmark
       });
-      
+
       if (error) throw error;
 
       // Create map of server-side scores
@@ -885,13 +905,12 @@ class FundService {
           });
         }
       });
-
       // Merge server-side scores with base data
-      return (baseData || []).map(row => {
+      const merged = (baseData || []).map(row => {
         if (row.is_benchmark) {
           return row; // Benchmarks don't get scores
         }
-        
+
         const scores = scoreMap.get(row.ticker);
         if (scores) {
           return {
@@ -900,11 +919,13 @@ class FundService {
             percentile: scores.percentile
           };
         }
-        
+
         return row; // Keep original if no server-side scores
       });
+
+      return merged;
     } catch (error) {
-      console.warn('Server-side scoring failed, falling back to client-side:', error);
+      console.error('Server-side scoring failed, falling back to client-side:', error);
       // Fallback to original method
       const { data, error: fallbackError } = await supabase.rpc('get_asset_class_table', {
         p_date: dateOnly,

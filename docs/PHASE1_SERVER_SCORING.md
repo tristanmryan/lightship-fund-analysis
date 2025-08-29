@@ -12,7 +12,7 @@ Phase 1 implements server-side scoring migration that exactly replicates the cli
 
 ### Core Components
 
-1. **`calculate_scores_as_of(date, asset_class_id)`** - Main scoring RPC
+1. **`calculate_scores_as_of(date, asset_class_id, global)`** - Main scoring RPC
 2. **Mathematical Helper Functions** - Exact replicas of client-side math.js
 3. **Updated `get_asset_class_table()`** - Integrated scoring support
 4. **Feature Flag Integration** - `REACT_APP_DB_SCORES` for gradual rollout
@@ -133,12 +133,13 @@ The server-side scoring is automatically integrated when the feature flag is ena
 
 ### API Endpoints
 
-#### `calculate_scores_as_of(date, asset_class_id)`
+#### `calculate_scores_as_of(date, asset_class_id, global)`
 
-Returns scored funds for a specific date and asset class:
+Returns scored funds for a specific date and asset class. Pass `true` for `global` to compute statistics across all asset classes:
 
 ```sql
-SELECT * FROM calculate_scores_as_of('2025-07-31', 'asset-class-uuid');
+SELECT * FROM calculate_scores_as_of('2025-07-31', 'asset-class-uuid', false);
+SELECT * FROM calculate_scores_as_of('2025-07-31', NULL, true); -- Global scoring
 ```
 
 **Returns:**
@@ -191,7 +192,7 @@ If the rollback script fails, manual intervention may be required:
 
 ```sql
 -- Drop all server-side scoring functions
-DROP FUNCTION IF EXISTS calculate_scores_as_of(date, uuid);
+DROP FUNCTION IF EXISTS calculate_scores_as_of(date, uuid, boolean);
 DROP FUNCTION IF EXISTS _calculate_mean(numeric[]);
 -- ... (drop all helper functions)
 

@@ -57,7 +57,7 @@ test('exportCompareCSV includes benchmark delta fields and raw numbers', async (
   const blob = exportCompareCSV({ funds, metadata: { exportedAt: new Date('2025-02-02T00:00:00Z') } });
   const text = await decodeBlobText(blob);
   const lines = text.split('\r\n');
-  const headerIndex = lines.findIndex(l => l.includes('"Ticker"') && l.includes('"1Y vs Benchmark (delta)"'));
+  const headerIndex = lines.findIndex(l => l.includes('"Ticker"') && l.includes('"1Y vs Benchmark (%)"'));
   expect(headerIndex).toBeGreaterThan(0);
   const data = lines[headerIndex + 1];
   expect(data).toContain('"0.0987"'); // 9.87% => 0.0987

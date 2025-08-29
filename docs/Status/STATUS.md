@@ -24,7 +24,7 @@
 ## Phase 1 Architecture
 
 ### Server-side Scoring Components
-- **`calculate_scores_as_of(date, asset_class_id)`** - Main scoring RPC
+- **`calculate_scores_as_of(date, asset_class_id, global)`** - Main scoring RPC
 - **Mathematical Functions** - Exact replicas of client-side math.js functions
 - **Scoring Logic** - Complete implementation of scoring.js algorithm
 - **Helper Functions** - Winsorization, robust scaling, tiny class fallbacks
@@ -78,7 +78,7 @@
 - **Recommended Funds:** 20 (first 20 funds marked)
 
 ### New RPCs Added
-- ✅ `calculate_scores_as_of(date, asset_class_id)` - Server-side scoring
+- ✅ `calculate_scores_as_of(date, asset_class_id, global)` - Server-side scoring
 - ✅ Updated `get_asset_class_table()` - Integrated scoring support
 
 ### Available Scripts

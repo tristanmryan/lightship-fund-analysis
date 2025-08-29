@@ -2,7 +2,17 @@
   "permissions": {
     "allow": [
       "Bash(npm run build:*)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(npx eslint:*)",
+      "Bash(npm test:*)",
+      "Bash(node:*)",
+      "Bash(set REACT_APP_SUPABASE_URL=https://hpnqxituxtjlxzxoclmi.supabase.co)",
+      "Bash(set:*)",
+      "Bash(cross-env:*)",
+      "Bash(npm run setup:*)",
+      "Bash(timeout:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run:*)"
     ],
     "deny": [],
     "ask": []

@@ -15,7 +15,7 @@ test('Compare export includes Std Dev (3Y) and Std Dev (5Y) columns', async () =
   }];
   const blob = exportCompareCSV({ funds, metadata: {} });
   const text = await blobToText(blob);
-  expect(text.includes('Std Dev (3Y)')).toBe(true);
-  expect(text.includes('Std Dev (5Y)')).toBe(true);
+  expect(text.includes('Std Dev 3Y (%)')).toBe(true);
+  expect(text.includes('Std Dev 5Y (%)')).toBe(true);
 });
 

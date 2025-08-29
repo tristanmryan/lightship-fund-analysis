@@ -305,7 +305,8 @@ $$;
 -- Helper function to calculate metric statistics for a specific asset class and date
 CREATE OR REPLACE FUNCTION public._calculate_metric_statistics_for_asset_class(
   p_date date,
-  p_asset_class_id uuid
+  p_asset_class_id uuid DEFAULT NULL,
+  p_global boolean DEFAULT false
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -329,10 +330,11 @@ DECLARE
   sorted_metric_values numeric[];
   total_funds int;
 BEGIN
-  -- Get total count of peer funds (non-benchmarks) for this asset class
+  -- Get total count of peer funds (non-benchmarks)
   SELECT COUNT(*) INTO total_funds
   FROM public.get_funds_as_of(p_date) f
-  WHERE f.asset_class_id = p_asset_class_id 
+  WHERE (p_global OR f.asset_class_id = p_asset_class_id)
+    AND f.asset_class_id IS NOT NULL
     AND f.is_benchmark = false;
   
   IF total_funds < 2 THEN
@@ -344,7 +346,7 @@ BEGIN
     -- Extract values for this metric from peer funds only
     SELECT array_agg(value) INTO metric_values
     FROM (
-      SELECT 
+      SELECT
         CASE metric
           WHEN 'ytd' THEN f.ytd_return
           WHEN 'oneYear' THEN f.one_year_return
@@ -361,7 +363,8 @@ BEGIN
           WHEN 'managerTenure' THEN f.manager_tenure
         END as value
       FROM public.get_funds_as_of(p_date) f
-      WHERE f.asset_class_id = p_asset_class_id 
+      WHERE (p_global OR f.asset_class_id = p_asset_class_id)
+        AND f.asset_class_id IS NOT NULL
         AND f.is_benchmark = false
         AND CASE metric
           WHEN 'ytd' THEN f.ytd_return IS NOT NULL
@@ -572,7 +575,8 @@ $$;
 -- Main scoring function that exactly replicates client-side scoring.js - FIXED VERSION
 CREATE OR REPLACE FUNCTION public.calculate_scores_as_of(
   p_date date,
-  p_asset_class_id uuid DEFAULT NULL
+  p_asset_class_id uuid DEFAULT NULL,
+  p_global boolean DEFAULT false
 )
 RETURNS TABLE(
   asset_class_id uuid,
@@ -631,7 +635,7 @@ DECLARE
   fund_cursor CURSOR FOR
     SELECT f.*
     FROM public.get_funds_as_of(p_date) f
-    WHERE (p_asset_class_id IS NULL OR f.asset_class_id = p_asset_class_id)
+    WHERE (p_global OR f.asset_class_id = p_asset_class_id)
       AND f.asset_class_id IS NOT NULL;
   
   fund_record record;
@@ -646,10 +650,14 @@ DECLARE
   fund_count int;
   peer_count int;
 BEGIN
+  IF NOT p_global AND p_asset_class_id IS NULL THEN
+    RAISE EXCEPTION 'asset_class_id required when p_global is false';
+  END IF;
+
   -- First, count funds to check if we have enough
   SELECT COUNT(*) INTO fund_count
   FROM public.get_funds_as_of(p_date) f
-  WHERE (p_asset_class_id IS NULL OR f.asset_class_id = p_asset_class_id)
+  WHERE (p_global OR f.asset_class_id = p_asset_class_id)
     AND f.asset_class_id IS NOT NULL;
   
   IF fund_count < 2 THEN
@@ -676,12 +684,12 @@ BEGIN
   -- Count peer funds (non-benchmarks) for statistics
   SELECT COUNT(*) INTO peer_count
   FROM public.get_funds_as_of(p_date) f
-  WHERE (p_asset_class_id IS NULL OR f.asset_class_id = p_asset_class_id)
+  WHERE (p_global OR f.asset_class_id = p_asset_class_id)
     AND f.asset_class_id IS NOT NULL
     AND f.is_benchmark = false;
   
   -- Calculate metric statistics for peer funds only (exactly matching client-side)
-  metric_stats := public._calculate_metric_statistics_for_asset_class(p_date, p_asset_class_id);
+  metric_stats := public._calculate_metric_statistics_for_asset_class(p_date, p_asset_class_id, p_global);
   
   -- Get raw scores for scaling - first pass
   raw_scores := ARRAY[]::numeric[];
@@ -777,5 +785,5 @@ END;
 $$;
 
 -- Grant execute permissions
-GRANT EXECUTE ON FUNCTION public.calculate_scores_as_of(date, uuid) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.calculate_scores_as_of(date, uuid, boolean) TO anon, authenticated, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role; 

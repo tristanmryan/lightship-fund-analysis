@@ -8,6 +8,7 @@ import {
 import { getScoreColor, METRICS_CONFIG } from '../../services/scoring';
 import { computeBenchmarkDelta } from './benchmarkUtils';
 import Sparkline from './Sparkline';
+import ScoreTooltip from './ScoreTooltip';
 import fundService from '../../services/fundService';
 import { exportTableCSV, downloadFile, shouldConfirmLargeExport, formatExportFilename } from '../../services/exportService';
 
@@ -23,7 +24,8 @@ const EnhancedFundTable = ({
   initialSortConfig = null,
   initialSelectedColumns = null,
   onStateChange,
-  registerExportHandler
+  registerExportHandler,
+  presetSelector = null // Optional preset selector component to render with table controls
 }) => {
   const [sortConfig, setSortConfig] = useState(() => initialSortConfig || [
     { key: 'score', direction: 'desc' }
@@ -230,20 +232,22 @@ const EnhancedFundTable = ({
       sortable: true,
       width: '80px',
       tooltip: '0–100 weighted Z-score within asset class',
-      render: (value) => (
-        <div
-          title="Final score across peers in asset class (0–100)"
-          style={{
-            padding: '0.25rem 0.5rem',
-            borderRadius: '0.375rem',
-            textAlign: 'center',
-            color: 'white',
-            fontWeight: '600',
-            backgroundColor: getScoreColor(value)
-          }}
-        >
-          {value?.toFixed(1) || '0.0'}
-        </div>
+      render: (value, fund) => (
+        <ScoreTooltip fund={fund} score={value}>
+          <div
+            style={{
+              padding: '0.25rem 0.5rem',
+              borderRadius: '0.375rem',
+              textAlign: 'center',
+              color: 'white',
+              fontWeight: '600',
+              backgroundColor: getScoreColor(value),
+              cursor: 'help'
+            }}
+          >
+            {value?.toFixed(1) || '0.0'}
+          </div>
+        </ScoreTooltip>
       )
     },
     ytdReturn: {
@@ -680,18 +684,29 @@ const EnhancedFundTable = ({
       direction: cfg.direction,
       label: columnDefinitions[cfg.key]?.label || cfg.key
     }));
+    
+    // Enhanced metadata for export
+    const enhancedMetadata = {
+      chartPeriod,
+      exportedAt: new Date(),
+      selectedColumns: selectedColumns.join(', '),
+      totalColumns: Object.keys(columnDefinitions).length,
+      visibleColumns: selectedColumns.length,
+      sortOrder: metaSort.map(s => `${s.label} (${s.direction})`).join(', ') || 'Default',
+      asOf: window.__AS_OF_MONTH__ || 'Latest',
+      visualRefresh: ENABLE_VISUAL_REFRESH,
+      kind: 'Enhanced Table Export'
+    };
+    
     const blob = exportTableCSV({
       funds: sortedFunds,
       columns: cols,
       sortConfig: metaSort,
-      metadata: {
-        chartPeriod,
-        exportedAt: new Date()
-      }
+      metadata: enhancedMetadata
     });
-    const filename = formatExportFilename({ scope: 'table', asOf: (window.__AS_OF_MONTH__ || null), ext: 'csv' });
+    const filename = formatExportFilename({ scope: 'table_enhanced', asOf: (window.__AS_OF_MONTH__ || null), ext: 'csv' });
     downloadFile(blob, filename, 'text/csv;charset=utf-8');
-  }, [sortedFunds, sortConfig, chartPeriod, columnDefinitions, buildExportColumns]);
+  }, [sortedFunds, sortConfig, chartPeriod, columnDefinitions, buildExportColumns, selectedColumns]);
 
   useEffect(() => {
     if (typeof registerExportHandler === 'function') {
@@ -728,13 +743,20 @@ const EnhancedFundTable = ({
           >
             Use sample data
           </button>
+          </div>
         </div>
       </div>
     );
   }
 
+  const ENABLE_VISUAL_REFRESH = (process.env.REACT_APP_ENABLE_VISUAL_REFRESH || 'false') === 'true';
+  const isLargeTable = sortedFunds.length > 100;
+  
   return (
-    <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', border: '1px solid #e5e7eb' }}>
+    <div 
+      className={ENABLE_VISUAL_REFRESH && isLargeTable ? 'fund-table-optimized' : ''}
+      style={{ backgroundColor: 'white', borderRadius: '0.5rem', border: '1px solid #e5e7eb' }}
+    >
       {/* Table Controls */}
       <div style={{ 
         padding: '1rem', 
@@ -758,7 +780,11 @@ const EnhancedFundTable = ({
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {/* Render preset selector if provided */}
+          {presetSelector}
+          
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
             onClick={exportCSV}
             disabled={sortedFunds.length === 0}
@@ -867,7 +893,10 @@ const EnhancedFundTable = ({
                       position: 'sticky',
                       top: 0,
                       backgroundColor: '#f9fafb',
-                      minWidth: column.width
+                      minWidth: column.width,
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      transform: 'translateX(0)',
+                      opacity: 1
                     }}
                     title={column.tooltip || ''}
                   >
@@ -932,7 +961,10 @@ const EnhancedFundTable = ({
                         style={{
                           padding: '0.75rem 0.5rem',
                           fontSize: '0.875rem',
-                          verticalAlign: 'middle'
+                          verticalAlign: 'middle',
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          transform: 'translateX(0)',
+                          opacity: 1
                         }}
                       >
                         {column.render ? column.render(value, fund, sortedFunds) : value}

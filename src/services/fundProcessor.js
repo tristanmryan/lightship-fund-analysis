@@ -1,4 +1,5 @@
 import { calculateScores, generateClassSummary } from './scoring.js';
+import { getFundDisplayName } from '../data/fundNameMapping.js';
 
 /**
  * Enhanced fund data processor with validation
@@ -69,7 +70,7 @@ export function processRawFunds(rawFunds, options = {}) {
     return {
       ...fund,
       cleanSymbol,
-      displayName: recommendedFund?.name || fund['Fund Name'] || fund.Symbol,
+      displayName: getFundDisplayName(fund.Symbol),
       isRecommended: !!recommendedFund,
       isBenchmark: !!benchmark,
       assetClass: recommendedFund?.assetClass || fund.asset_class || fund['Asset Class'] || 'Unknown',

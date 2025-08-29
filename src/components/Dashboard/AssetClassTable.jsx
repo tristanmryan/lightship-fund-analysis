@@ -72,27 +72,28 @@ const AssetClassTable = ({
 
       try {
         const tableData = await fundService.getAssetClassTable(
-          asOfMonth, 
-          assetClassId, 
+          asOfMonth,
+          assetClassId,
           true // include benchmark
         );
-        
+
         // Clean corrupted ticker data by removing appended labels
         const cleanedData = (tableData || []).map(row => {
           const originalTicker = row.ticker;
           const cleanedTicker = cleanTicker(row.ticker);
-          
-          return {
+
+          const transformedRow = {
             ...row,
             ticker: cleanedTicker,
             is_recommended: row.is_recommended || isRecommendedTicker(row.ticker),
             isBenchmark: row.is_benchmark || isBenchmarkTicker(row.ticker)
           };
+          return transformedRow;
         });
-        
+
         setData(cleanedData);
       } catch (err) {
-        console.error('Error loading asset class table:', err);
+        console.error('AssetClassTable: error loading asset class table', err);
         setError('Failed to load asset class data');
       } finally {
         setLoading(false);
@@ -195,8 +196,9 @@ const AssetClassTable = ({
 
   // Sort data
   const sortedData = useMemo(() => {
-    if (!data.length) return [];
-    
+    if (!data.length) {
+      return [];
+    }
     const sorted = [...data].sort((a, b) => {
       let aValue = a[sortConfig.key];
       let bValue = b[sortConfig.key];
@@ -222,12 +224,13 @@ const AssetClassTable = ({
     
     // Always keep benchmark at bottom
     const benchmark = sorted.find(row => row.isBenchmark);
+    let finalSorted = sorted;
     if (benchmark) {
       const nonBenchmark = sorted.filter(row => !row.isBenchmark);
-      return [...nonBenchmark, benchmark];
+      finalSorted = [...nonBenchmark, benchmark];
     }
-    
-    return sorted;
+
+    return finalSorted;
   }, [data, sortConfig]);
 
   // Helper function to get the correct field value with fallbacks
@@ -282,7 +285,6 @@ const AssetClassTable = ({
 
   const nonBenchmarkCount = data.filter(r => !r.isBenchmark).length;
   const benchmarkCount = data.filter(r => r.isBenchmark).length;
-
   return (
     <div className="asset-class-table space-y-6">
       {/* Simple Clean Header */}
@@ -406,14 +408,14 @@ const AssetClassTable = ({
       {/* Modern Table */}
       <div className="modern-card bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-100">
-            <thead className="table-header bg-gray-50">
+          <table className="asset-class-data-table">
+            <thead className="table-header">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="table-header-cell">
                   Fund
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="table-header-cell sortable"
                   onClick={() => handleSort('score_final')}
                 >
                   <div className="flex items-center justify-center space-x-1">
@@ -426,7 +428,7 @@ const AssetClassTable = ({
                   </div>
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="table-header-cell sortable"
                   onClick={() => handleSort('ytd_return')}
                 >
                   <div className="flex items-center justify-center space-x-1">
@@ -439,7 +441,7 @@ const AssetClassTable = ({
                   </div>
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="table-header-cell sortable"
                   onClick={() => handleSort('one_year_return')}
                 >
                   <div className="flex items-center justify-center space-x-1">
@@ -452,7 +454,7 @@ const AssetClassTable = ({
                   </div>
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="table-header-cell sortable"
                   onClick={() => handleSort('three_year_return')}
                 >
                   <div className="flex items-center justify-center space-x-1">
@@ -465,7 +467,7 @@ const AssetClassTable = ({
                   </div>
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="table-header-cell sortable"
                   onClick={() => handleSort('expense_ratio')}
                 >
                   <div className="flex items-center justify-center space-x-1">
@@ -478,7 +480,7 @@ const AssetClassTable = ({
                   </div>
                 </th>
                 <th 
-                  className="sortable px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 transition-colors"
+                  className="table-header-cell sortable"
                   onClick={() => handleSort('sharpe_ratio')}
                 >
                   <div className="flex items-center justify-center space-x-1">
@@ -492,22 +494,21 @@ const AssetClassTable = ({
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
+            <tbody className="table-body">
               {sortedData.map((row, index) => {
                 const isRecommended = row.is_recommended;
                 const isBenchmark = row.isBenchmark;
-                
                 return (
-                  <tr 
+                  <tr
                     key={row.ticker || index}
                     className={`
-                      table-row transition-all duration-200 hover:bg-gray-50
+                      asset-table-row transition-all duration-200 hover:bg-gray-50
                       ${isBenchmark ? 'benchmark-row' : ''}
                       ${isRecommended ? 'recommended-row' : ''}
                     `}
                   >
                     {/* Fund Column */}
-                    <td className="table-cell px-6 py-4">
+                    <td className="asset-table-cell">
                       <div className="fund-info-container">
                         {/* Status Indicator Container - Fixed width */}
                         <div className="status-indicator-container">
@@ -521,7 +522,7 @@ const AssetClassTable = ({
                             <div className="status-dot regular" title="Regular Fund" />
                           )}
                         </div>
-                        
+
                         {/* Fund Info Container */}
                         <div className="fund-text-container">
                           <div className="fund-ticker">
@@ -533,30 +534,30 @@ const AssetClassTable = ({
                         </div>
                       </div>
                     </td>
-                    
+
                     {/* Score Column */}
-                    <td className="table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell">
                       {renderScoreBadge(getFieldValue(row, 'score_final', ['score', 'final_score']))}
                     </td>
-                    
+
                     {/* Return Columns */}
-                    <td className="table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell">
                       {renderReturn(getFieldValue(row, 'ytd_return', ['ytd', 'Total Return - YTD (%)']), 'YTD')}
                     </td>
-                    <td className="table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell">
                       {renderReturn(getFieldValue(row, 'one_year_return', ['1 Year', 'Total Return - 1 Year (%)']), '1Y')}
                     </td>
-                    <td className="table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell">
                       {renderReturn(getFieldValue(row, 'three_year_return', ['3 Year', 'Annualized Total Return - 3 Year (%)']), '3Y')}
                     </td>
-                    
+
                     {/* Expense Ratio */}
-                    <td className="table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell">
                       {renderExpenseRatio(getFieldValue(row, 'expense_ratio', ['Net Exp Ratio (%)']))}
                     </td>
-                    
+
                     {/* Sharpe Ratio */}
-                    <td className="table-cell px-6 py-4 text-center">
+                    <td className="asset-table-cell">
                       {renderSharpeRatio(getFieldValue(row, 'sharpe_ratio', ['Sharpe Ratio - 3 Year', 'Sharpe Ratio']))}
                     </td>
                   </tr>

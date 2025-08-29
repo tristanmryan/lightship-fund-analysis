@@ -302,7 +302,6 @@ const styles = StyleSheet.create({
   colExpense: { width: 60, textAlign: 'center' },
   colTenure: { width: 60, textAlign: 'center' },
   colScore: { width: 50, textAlign: 'center' },
-  colRec: { width: 40, textAlign: 'center' },
 
   // APPLE KEYNOTE: Sophisticated performance color coding with modern palette
   rankExcellent: { backgroundColor: '#E8F5E8' },
@@ -324,14 +323,13 @@ const styles = StyleSheet.create({
   positiveReturn: { color: '#2E7D32' },
   negativeReturn: { color: '#C62828' },
   neutralReturn: { color: '#5A5A5A' },
-
-  // INVESTMENT COMMITTEE: Refined recommendation checkmark with professional excellence
-  recommendedCheck: {
-    color: '#059669', // Match recommended row border color for consistency
-    fontSize: 11, // Slightly larger for better visibility
-    fontWeight: '700', // Stronger weight for professional appearance
-    textAlign: 'center'
+  
+  // Bold text for benchmark row values
+  benchmarkText: {
+    fontWeight: '700'
   },
+
+  // Recommendation checkmark column removed; row highlighting retained
   
   // INVESTMENT COMMITTEE: Clean fund name styling with professional typography
   fundNameText: {
@@ -434,7 +432,7 @@ const styles = StyleSheet.create({
  * Smart layout function to group multiple asset classes per page
  * Calculates optimal section heights and groups for professional appearance
  */
-function renderAssetClassPages(sections, asOf) {
+function renderAssetClassPages(sections, asOf, options = {}) {
   // APPLE KEYNOTE: Defensive programming with comprehensive data validation
   if (!sections || !Array.isArray(sections) || sections.length === 0) {
     console.warn('Invalid sections data:', sections);
@@ -476,7 +474,7 @@ function renderAssetClassPages(sections, asOf) {
     if (currentPageHeight + totalSectionHeight > SAFE_HEIGHT) {
       // Create new page with current sections
       if (currentPage.length > 0) {
-        pages.push(createAssetClassPage(currentPage, asOf, pages.length + 1));
+        pages.push(createAssetClassPage(currentPage, asOf, pages.length + 1, options));
       }
       
       // Start new page with this section
@@ -491,7 +489,7 @@ function renderAssetClassPages(sections, asOf) {
   
   // Add final page
   if (currentPage.length > 0) {
-    pages.push(createAssetClassPage(currentPage, asOf, pages.length + 1));
+    pages.push(createAssetClassPage(currentPage, asOf, pages.length + 1, options));
   }
   
   return pages;
@@ -500,7 +498,7 @@ function renderAssetClassPages(sections, asOf) {
 /**
  * Create a page with multiple asset class sections
  */
-function createAssetClassPage(sections, asOf, pageNumber) {
+function createAssetClassPage(sections, asOf, pageNumber, options = {}) {
   return React.createElement(Page, { 
     key: `page-${pageNumber}`,
     size: "LETTER", 
@@ -514,7 +512,8 @@ function createAssetClassPage(sections, asOf, pageNumber) {
         section: section,
         sectionNumber: index + 1,
         isLastSection: index === sections.length - 1,
-        isCompact: sections.length > 1 // Enable compact mode for multi-section pages
+        isCompact: sections.length > 1, // Enable compact mode for multi-section pages
+        options: options
       })
     ),
     React.createElement(PageFooter)
@@ -538,7 +537,12 @@ function MonthlyReportPDF({ data, options = {} }) {
   }
   
   const { sections, asOf, totalFunds, recommendedFunds } = data;
-  
+  // Disable recommended highlighting when all rows are recommended (recommended-only reports)
+  const computedOptions = {
+    ...options,
+    highlightRecommended: options.highlightRecommended !== false && !(Number(totalFunds) === Number(recommendedFunds))
+  };
+
   return React.createElement(Document, null,
     // Cover Page
     React.createElement(Page, { 
@@ -546,14 +550,11 @@ function MonthlyReportPDF({ data, options = {} }) {
       orientation: "landscape", 
       style: styles.page 
     },
-      React.createElement(CoverPage, {
-        data: data,
-        options: options
-      })
+      React.createElement(CoverPage, { data: data, options: computedOptions })
     ),
 
     // TRANSFORMED: Smart multi-table layout - group multiple asset classes per page
-    ...renderAssetClassPages(sections, asOf),
+    ...renderAssetClassPages(sections, asOf, computedOptions),
     
     // Disclaimer Page
     React.createElement(Page, { 
@@ -611,7 +612,7 @@ function CoverPage({ data, options }) {
         ),
         React.createElement(View, { style: styles.summaryItem },
           React.createElement(Text, { style: styles.metricValue }, 
-            Math.round((recommendedFunds / totalFunds) * 100) + "%"
+            (totalFunds > 0 ? Math.round((recommendedFunds / totalFunds) * 100) : 0) + "%"
           ),
           React.createElement(Text, { style: styles.metricLabel }, "Recommended %")
         )
@@ -672,7 +673,7 @@ function PageFooter() {
 /**
  * Asset Class Section Component
  */
-function AssetClassSection({ section, sectionNumber, isLastSection, isCompact = false }) {
+function AssetClassSection({ section, sectionNumber, isLastSection, isCompact = false, options = {} }) {
   // APPLE KEYNOTE: Defensive programming with property validation
   if (!section) {
     console.warn('AssetClassSection: Invalid section data');
@@ -713,7 +714,8 @@ function AssetClassSection({ section, sectionNumber, isLastSection, isCompact = 
       rows: rows,
       benchmark: benchmark,
       assetClass: assetClass,
-      isCompact: isCompact
+      isCompact: isCompact,
+      options: options
     })
   );
 }
@@ -721,7 +723,7 @@ function AssetClassSection({ section, sectionNumber, isLastSection, isCompact = 
 /**
  * Fund Table Component
  */
-function FundTable({ rows, benchmark, assetClass, isCompact = false }) {
+function FundTable({ rows, benchmark, assetClass, isCompact = false, options = {} }) {
   // APPLE KEYNOTE: Defensive programming with data validation
   if (!rows || !Array.isArray(rows)) {
     console.warn('FundTable: Invalid rows data:', rows);
@@ -745,8 +747,7 @@ function FundTable({ rows, benchmark, assetClass, isCompact = false }) {
     { header: '5Y Std', dataKey: 'standardDeviation5y', style: styles.colStdDev5y },
     { header: 'Expense', dataKey: 'expenseRatio', style: styles.colExpense },
     { header: 'Tenure', dataKey: 'managerTenure', style: styles.colTenure },
-    { header: 'Score', dataKey: 'score', style: styles.colScore },
-    { header: 'Rec', dataKey: 'isRecommended', style: styles.colRec }
+    { header: 'Score', dataKey: 'score', style: styles.colScore }
   ];
 
   return React.createElement(View, { style: styles.fundTable },
@@ -772,7 +773,8 @@ function FundTable({ rows, benchmark, assetClass, isCompact = false }) {
         key: row.ticker,
         row: row,
         index: index,
-        columns: columns
+        columns: columns,
+        options: options
       })
     ),
     
@@ -787,14 +789,15 @@ function FundTable({ rows, benchmark, assetClass, isCompact = false }) {
 /**
  * Individual Fund Row Component
  */
-function FundRow({ row, index, columns }) {
+function FundRow({ row, index, columns, options = {} }) {
   // APPLE KEYNOTE: Defensive programming with row validation
   if (!row || !columns || !Array.isArray(columns)) {
     console.warn('FundRow: Invalid row or columns data:', { row, columns });
     return null;
   }
   
-  const isRecommended = row.isRecommended;
+  const highlightRecommended = options.highlightRecommended !== false;
+  const isRecommended = highlightRecommended && row.isRecommended;
   const isAlternate = index % 2 === 1;
   
   const rowStyles = [
@@ -808,9 +811,7 @@ function FundRow({ row, index, columns }) {
       let cellValue = row[col.dataKey];
       
       // Special handling for recommendation column
-      if (col.dataKey === 'isRecommended') {
-        cellValue = isRecommended ? '✓' : '';
-      }
+      // No explicit recommended column; rows are highlighted when recommended
       
       // Special handling for score column with color coding
       let cellStyles = [styles.tableCell, col.style];
@@ -832,7 +833,7 @@ function FundRow({ row, index, columns }) {
 
       // INVESTMENT COMMITTEE: Clean text styling with proper alignment
       const textStyles = [
-        col.dataKey === 'isRecommended' && isRecommended && styles.recommendedCheck,
+        
         col.dataKey === 'name' && styles.fundNameText, // Special styling for fund names
         // All other columns use centered alignment with numeric styling
         col.dataKey !== 'name' && styles.numericText
@@ -861,7 +862,8 @@ function BenchmarkRow({ benchmark, columns }) {
       
       switch (col.dataKey) {
         case 'ticker':
-          cellValue = benchmark.ticker || '';
+          // Hide benchmark ticker for presentation
+          cellValue = '';
           break;
         case 'name':
           cellValue = truncateText(benchmark.name || benchmark.ticker, 30);
@@ -887,7 +889,6 @@ function BenchmarkRow({ benchmark, columns }) {
         case 'score':
         case 'rank':
         case 'managerTenure':
-        case 'isRecommended':
           cellValue = '—';
           break;
         default:
@@ -901,10 +902,16 @@ function BenchmarkRow({ benchmark, columns }) {
         colIndex === columns.length - 1 && { borderRightWidth: 0 }
       ].filter(Boolean);
 
+      // Ensure benchmark score appears even if default case handled earlier
+      if (col.dataKey === 'score') {
+        cellValue = benchmark.score != null ? formatNumber(benchmark.score, 1) : 'N/A';
+      }
+
       return React.createElement(View, { key: col.dataKey, style: cellStyles },
         React.createElement(Text, {
           style: [
-            col.dataKey === 'name' ? null : styles.numericText // Center all non-name columns
+            col.dataKey === 'name' ? null : styles.numericText, // Center all non-name columns
+            styles.benchmarkText
           ].filter(Boolean)
         }, cellValue)
       );
@@ -1002,6 +1009,6 @@ function truncateText(text, maxLength) {
   return text.substring(0, maxLength - 3) + '...';
 }
 
-// TRANSFORMED: Removed getRankColor function - no longer needed with new column structure
+  // TRANSFORMED: Removed getRankColor function - no longer needed with new column structure
 
 export default MonthlyReportPDF;

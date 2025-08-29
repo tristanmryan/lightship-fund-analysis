@@ -6,7 +6,7 @@
 // Payload validation schema will be defined after dynamic imports
 
 export default async function handler(req, res) {
-  // CORS headers
+  // CORS headers (permissive for simplified system)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -20,6 +20,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    // No token guard (simplified path)
     console.log('🚀 Starting React-PDF generation process...');
     
     // Import all dependencies using dynamic import for ES module compatibility
@@ -94,6 +95,7 @@ export default async function handler(req, res) {
     // Now validate payload after all dependencies are loaded
     console.log('🔍 Validating request payload...');
     const payload = PayloadSchema.parse(req.body);
+    try { console.log('[API] Selection received (post-validate):', payload.selection); } catch {}
     console.log('✅ Payload validated:', { scope: payload.selection?.scope, asOf: payload.asOf });
     
     console.log(`📊 Processing PDF request: ${payload.selection.scope}, asOf: ${payload.asOf || 'latest'}`);

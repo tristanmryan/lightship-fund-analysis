@@ -99,7 +99,7 @@ function CoverPage({ data, options, theme }) {
           </div>
           <div className="summary-item">
             <span className="metric-value">
-              {Math.round((recommendedFunds / totalFunds) * 100)}%
+              {totalFunds > 0 ? Math.round((recommendedFunds / totalFunds) * 100) : 0}%
             </span>
             <span className="metric-label">Recommended %</span>
           </div>
@@ -160,7 +160,7 @@ function ExecutiveSummary({ data, theme }) {
     assetClass: section.assetClass,
     total: section.fundCount,
     recommended: section.recommendedCount,
-    percentage: Math.round((section.recommendedCount / section.fundCount) * 100)
+    percentage: section.fundCount > 0 ? Math.round((section.recommendedCount / section.fundCount) * 100) : 0
   }));
   
   return (
@@ -174,7 +174,7 @@ function ExecutiveSummary({ data, theme }) {
             This report analyzes <strong>{totalFunds} funds</strong> across{' '}
             <strong>{sections.length} asset classes</strong> as of{' '}
             <strong>{formatDate(data.asOf)}</strong>. Of these,{' '}
-            <strong>{recommendedFunds} funds ({Math.round((recommendedFunds / totalFunds) * 100)}%)</strong>{' '}
+            <strong>{recommendedFunds} funds ({totalFunds > 0 ? Math.round((recommendedFunds / totalFunds) * 100) : 0}%)</strong>{' '}
             are currently recommended.
           </p>
         </div>
@@ -269,7 +269,7 @@ function FundTable({ rows, benchmark, assetClass, theme }) {
             <th className="col-score">Score</th>
             <th className="col-rank">Rank</th>
             <th className="col-tenure">Tenure</th>
-            <th className="col-rec">Rec</th>
+            
           </tr>
         </thead>
         <tbody>
@@ -315,7 +315,7 @@ function FundRow({ row, index, theme }) {
       <td className="col-score numeric">{row.score}</td>
       <td className="col-rank center">{row.rank}</td>
       <td className="col-tenure center">{row.managerTenure}</td>
-      <td className="col-rec center">{isRecommended ? '★' : ''}</td>
+      
     </tr>
   );
 }
@@ -337,7 +337,7 @@ function BenchmarkRow({ benchmark, theme }) {
       <td className="col-score center">—</td>
       <td className="col-rank center">—</td>
       <td className="col-tenure center">—</td>
-      <td className="col-rec center">—</td>
+      
     </tr>
   );
 }

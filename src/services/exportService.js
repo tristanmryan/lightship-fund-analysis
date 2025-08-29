@@ -1,4 +1,4 @@
-// src/services/exportService.js
+﻿// src/services/exportService.js
 import * as XLSX from 'xlsx';
 import { toISODateTime } from '../utils/formatters.js';
 import { supabase, TABLES } from './supabase.js';
@@ -7,33 +7,124 @@ import { supabase, TABLES } from './supabase.js';
 /**
  * Export Service
  * Handles generation of Excel, PDF, and other report formats for the API-driven approach
+ * Enhanced with visual refresh formatting and improved data presentation
  */
 
+// Enhanced formatting utilities
+const ENABLE_VISUAL_REFRESH = (process.env.REACT_APP_ENABLE_VISUAL_REFRESH || 'false') === 'true';
+
 /**
- * Export data to Excel with multiple sheets
+ * Enhanced formatting functions for visual refresh
+ */
+function formatCurrency(value, options = {}) {
+  if (value == null || isNaN(value)) return options.emptyValue || '';
+  const { symbol = '$', decimals = 2, includeSymbol = ENABLE_VISUAL_REFRESH } = options;
+  const formatted = Number(value).toFixed(decimals);
+  return includeSymbol ? `${symbol}${formatted}` : formatted;
+}
+
+function formatPercentage(value, options = {}) {
+  if (value == null || isNaN(value)) return options.emptyValue || '';
+  const { decimals = 2, includeSymbol = ENABLE_VISUAL_REFRESH, multiplier = 1 } = options;
+  const adjusted = Number(value) * multiplier;
+  const formatted = adjusted.toFixed(decimals);
+  return includeSymbol ? `${formatted}%` : formatted;
+}
+
+function formatDate(date, options = {}) {
+  if (!date) return options.emptyValue || '';
+  const { format = 'short', includeTime = false } = options;
+  
+  try {
+    const d = date instanceof Date ? date : new Date(date);
+    if (format === 'iso') return d.toISOString();
+    if (format === 'short') return d.toLocaleDateString();
+    if (format === 'long') return d.toLocaleDateString('en-US', { 
+      year: 'numeric', month: 'long', day: 'numeric' 
+    });
+    if (includeTime) return d.toLocaleString();
+    return d.toLocaleDateString();
+  } catch {
+    return options.emptyValue || '';
+  }
+}
+
+function enhancedColumnHeader(key, label, options = {}) {
+  if (!ENABLE_VISUAL_REFRESH) return label;
+  
+  const enhancements = {
+    expenseRatio: 'Expense Ratio (%)',
+    ytdReturn: 'YTD Return (%)',
+    oneYearReturn: '1-Year Return (%)',
+    threeYearReturn: '3-Year Return (%)',
+    fiveYearReturn: '5-Year Return (%)',
+    sharpeRatio: 'Sharpe Ratio (3Y)',
+    standardDeviation: 'Standard Deviation (%)',
+    beta: 'Beta (vs Benchmark)',
+    alpha: 'Alpha (vs Benchmark)',
+    managerTenure: 'Manager Tenure (Years)'
+  };
+  
+  return enhancements[key] || label;
+}
+
+/**
+ * Export data to Excel with multiple sheets and enhanced formatting
  * @param {Object} data - Data to export
+ * @param {Object} options - Export options including preset info
  * @returns {Blob} Excel file blob
  */
-export function exportToExcel(data) {
+export function exportToExcel(data, options = {}) {
   const {
     funds = []
   } = data;
+  
+  const {
+    selectedPreset = null,
+    activeFilters = {},
+    visibleColumns = [],
+    metadata = {}
+  } = options;
 
   // Create workbook
   const wb = XLSX.utils.book_new();
 
-  // Sheet 1: Summary
+  // Sheet 1: Enhanced Summary with preset and filter info
+  const presetInfo = selectedPreset ? {
+    core: '7 essential columns (Symbol, Name, Asset Class, Score, YTD Return, Expense Ratio, Recommended)',
+    extended: '12 key columns (Core + 1Y/3Y Returns, Sharpe Ratio, Beta, Sparkline)',
+    all: 'All available columns from the dataset'
+  }[selectedPreset] || 'Custom column selection' : 'Standard export';
+
+  const filterSummary = Object.entries(activeFilters)
+    .filter(([key, value]) => {
+      if (Array.isArray(value)) return value.length > 0;
+      if (value && typeof value === 'object') return Object.values(value).some(v => v !== '' && v !== 'all');
+      return value !== '' && value !== 'all' && value != null;
+    })
+    .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : JSON.stringify(value)}`)
+    .join('; ');
+
   const overviewData = [
     ['Raymond James - Lightship Fund Analysis Report'],
-    ['Generated:', new Date().toLocaleString()],
+    ['Generated:', formatDate(new Date(), { includeTime: true })],
+    ['Visual Refresh:', ENABLE_VISUAL_REFRESH ? 'Enabled (Enhanced Formatting)' : 'Disabled'],
+    ['As of Date:', metadata.asOf || window.__AS_OF_MONTH__ || 'Latest'],
     [''],
-    ['Summary Statistics'],
+    ['EXPORT CONFIGURATION'],
+    ['Column Preset:', selectedPreset ? selectedPreset.toUpperCase() : 'Standard'],
+    ['Preset Description:', presetInfo],
+    ['Active Filters:', filterSummary || 'None applied'],
+    ['Visible Columns:', visibleColumns.length ? visibleColumns.map(c => c.label || c.key).join(', ') : 'All columns'],
+    [''],
+    ['SUMMARY STATISTICS'],
     ['Total Funds:', funds.length],
     ['Recommended Funds:', funds.filter(f => f.is_recommended).length],
     ['Asset Classes:', new Set(funds.map(f => f.asset_class).filter(Boolean)).size],
-    ['Average YTD Return:', calculateAverage(funds.map(f => f.ytd_return).filter(v => v != null))],
+    ['Average YTD Return:', formatPercentage(calculateAverage(funds.map(f => f.ytd_return).filter(v => v != null)), { includeSymbol: true, decimals: 2 })],
+    ['Average Expense Ratio:', formatPercentage(calculateAverage(funds.map(f => f.expense_ratio).filter(v => v != null)), { includeSymbol: true, decimals: 3 })],
     [''],
-    ['Asset Class Distribution']
+    ['ASSET CLASS DISTRIBUTION']
   ];
 
   // Add asset class summary
@@ -50,8 +141,24 @@ export function exportToExcel(data) {
   const ws_overview = XLSX.utils.aoa_to_sheet(overviewData);
   XLSX.utils.book_append_sheet(wb, ws_overview, 'Summary');
 
-  // Sheet 2: All Funds
-  const fundHeaders = [
+  // Sheet 2: Enhanced All Funds with improved headers
+  const fundHeaders = ENABLE_VISUAL_REFRESH ? [
+    'Ticker Symbol',
+    'Fund Name',
+    'Asset Class',
+    'YTD Return (%)',
+    '1-Year Return (%)',
+    '3-Year Return (%)',
+    '5-Year Return (%)',
+    'Expense Ratio (%)',
+    'Sharpe Ratio (3Y)',
+    'Standard Deviation (%)',
+    'Alpha (vs Benchmark)',
+    'Beta (vs Benchmark)',
+    'Manager Tenure (Years)',
+    'Recommended Status',
+    'Data Last Updated'
+  ] : [
     'Ticker',
     'Fund Name',
     'Asset Class',
@@ -69,23 +176,45 @@ export function exportToExcel(data) {
     'Last Updated'
   ];
 
-  const fundRows = funds.map(fund => [
-    fund.ticker,
-    fund.name,
-    fund.asset_class,
-    fund.ytd_return,
-    fund.one_year_return,
-    fund.three_year_return,
-    fund.five_year_return,
-    fund.expense_ratio,
-    fund.sharpe_ratio,
-    fund.standard_deviation,
-    fund.alpha,
-    fund.beta,
-    fund.manager_tenure,
-    fund.is_recommended ? 'Yes' : 'No',
-    fund.last_updated || new Date().toLocaleDateString()
-  ]);
+  const fundRows = funds.map(fund => {
+    if (ENABLE_VISUAL_REFRESH) {
+      return [
+        fund.ticker || '',
+        fund.name || '',
+        fund.asset_class || 'Unassigned',
+        formatPercentage(fund.ytd_return, { includeSymbol: false }), // Keep numeric for Excel
+        formatPercentage(fund.one_year_return, { includeSymbol: false }),
+        formatPercentage(fund.three_year_return, { includeSymbol: false }),
+        formatPercentage(fund.five_year_return, { includeSymbol: false }),
+        formatPercentage(fund.expense_ratio, { includeSymbol: false, decimals: 3 }),
+        fund.sharpe_ratio != null ? Number(fund.sharpe_ratio).toFixed(2) : '',
+        formatPercentage(fund.standard_deviation, { includeSymbol: false }),
+        fund.alpha != null ? Number(fund.alpha).toFixed(2) : '',
+        fund.beta != null ? Number(fund.beta).toFixed(2) : '',
+        fund.manager_tenure != null ? Number(fund.manager_tenure).toFixed(1) : '',
+        fund.is_recommended ? 'âœ“ Recommended' : 'Not Recommended',
+        formatDate(fund.last_updated || new Date(), { format: 'short' })
+      ];
+    } else {
+      return [
+        fund.ticker,
+        fund.name,
+        fund.asset_class,
+        fund.ytd_return,
+        fund.one_year_return,
+        fund.three_year_return,
+        fund.five_year_return,
+        fund.expense_ratio,
+        fund.sharpe_ratio,
+        fund.standard_deviation,
+        fund.alpha,
+        fund.beta,
+        fund.manager_tenure,
+        fund.is_recommended ? 'Yes' : 'No',
+        fund.last_updated || new Date().toLocaleDateString()
+      ];
+    }
+  });
 
   const ws_funds = XLSX.utils.aoa_to_sheet([fundHeaders, ...fundRows]);
   
@@ -172,13 +301,13 @@ export function exportToExcel(data) {
  * @param {Object} options - PDF generation options
  * @returns {jsPDF|Blob} PDF document (jsPDF for v1, Blob for v2)
  */
-export async function generatePDFReport(data, options = {}) {
-  // Check for PDF v2 feature flag
+async function _obsolete_generatePDFReportLegacyWrapper(data, options = {}) {
+  // Prefer PDF v2 by default unless explicitly disabled
   const envValue = process.env.REACT_APP_ENABLE_PDF_V2;
-  const usePdfV2 = envValue === 'true' || options.forceV2;
+  const usePdfV2 = options.forceV2 || (envValue !== 'false');
   
   // Debug logging
-  console.log('🔍 PDF Feature Flag Debug:', {
+  console.log('ðŸ” PDF Feature Flag Debug:', {
     envValue,
     usePdfV2,
     forceV2: options.forceV2,
@@ -187,17 +316,22 @@ export async function generatePDFReport(data, options = {}) {
   
   if (usePdfV2) {
     try {
-      console.log('📊 Using PDF v2 (server-rendered)');
+      console.log('ðŸ“Š Using PDF v2 (server-rendered)');
       return await generatePDFReportV2(data, options);
     } catch (error) {
-      console.warn('⚠️ PDF v2 failed, falling back to legacy PDF:', error);
-      // Fall back to legacy PDF
-      return await generatePDFReportLegacy(data);
+      console.warn('âš ï¸ PDF v2 failed, falling back to legacy PDF:', error);
+      // Legacy removed: bubble error (wrapper unused)
+      return await generatePDFReportV2(data, options);
     }
   } else {
-    console.log('📊 Using legacy PDF (client-side)');
-    return await generatePDFReportLegacy(data);
+    console.log('ðŸ“Š Using legacy PDF (client-side)');
+    return await generatePDFReportV2(data, options);
   }
+}
+
+// Minimal single-path PDF generator
+export async function generatePDFReport(data, options = {}) {
+  return await generatePDFReportV2(data, options);
 }
 
 /**
@@ -206,7 +340,7 @@ export async function generatePDFReport(data, options = {}) {
  * @param {Object} options - PDF generation options
  * @returns {Blob} PDF blob
  */
-export async function generatePDFReportV2(data, options = {}) {
+export async function __obsolete_generatePDFReportV2_old(data, options = {}) {
   const { funds, metadata } = data;
 
   // Build payload for API
@@ -229,28 +363,28 @@ export async function generatePDFReportV2(data, options = {}) {
     }
   };
 
-  console.log('🚀 Calling PDF v2 API with payload:', payload);
+  console.log('ðŸš€ Calling PDF v2 API with payload:', payload);
 
   // Check if we're in development mode (localhost)
   const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   
-  if (isDevelopment) {
-    console.log('🔧 Development mode detected - testing serverless function first');
+  if (false) {
+    console.log('ðŸ”§ Development mode detected - testing serverless function first');
     
     // Try the advanced test endpoint first to verify serverless setup
     try {
-      console.log('🧪 Testing advanced PDF endpoint...');
+      console.log('ðŸ§ª Testing advanced PDF endpoint...');
       const testResponse = await fetch('/api/test-pdf-advanced', { method: 'GET' });
       
       if (testResponse.ok) {
-        console.log('✅ Serverless PDF system working! Using server-side generation...');
+        console.log('âœ… Serverless PDF system working! Using server-side generation...');
         // If test works, proceed with real API call (fall through to production code)
       } else {
         throw new Error(`Test endpoint failed: ${testResponse.status}`);
       }
     } catch (testError) {
-      console.log('⚠️ Serverless function not available, using client-side fallback');
-      console.log('🔧 Using enhanced client-side PDF generation');
+      console.log('âš ï¸ Serverless function not available, using client-side fallback');
+      console.log('ðŸ”§ Using enhanced client-side PDF generation');
       
       // Import the client-side PDF generation as a fallback for development
       const { generateClientSideProfessionalPDF } = await import('./clientPdfV2Service.js');
@@ -274,38 +408,57 @@ export async function generatePDFReportV2(data, options = {}) {
 
   // Return the PDF blob
   const blob = await response.blob();
-  console.log(`✅ PDF v2 generated successfully: ${blob.size} bytes`);
+  console.log(`âœ… PDF v2 generated successfully: ${blob.size} bytes`);
 
   return blob;
 }
 
-/**
- * Generate PDF report using legacy client-side jsPDF (v1)
- * @param {Object} data - Report data
- * @returns {jsPDF} PDF document
- */
-export async function generatePDFReportLegacy(data) {
-  const { funds, metadata } = data;
-  
-  // Prepare metadata for PDF
-  const pdfMetadata = {
-    ...metadata,
-    date: metadata?.date || new Date().toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    }),
-    totalFunds: funds.length,
-    recommendedFunds: funds.filter(f => f.is_recommended).length,
-    assetClassCount: new Set(funds.map(f => f.asset_class).filter(Boolean)).size,
-    averagePerformance: calculateAverage(funds.map(f => f.ytd_return).filter(v => v != null))
+// Minimal single-path v2 generator
+export async function generatePDFReportV2(data, options = {}) {
+  const { metadata } = data;
+  const payload = {
+    asOf: (metadata && metadata.asOf) || (typeof window !== 'undefined' ? (window.__AS_OF_MONTH__ || null) : null),
+    selection: {
+      scope: options.scope || 'all',
+      tickers: options.tickers || null
+    },
+    options: {
+      columns: options.columns || [
+        'ticker', 'name', 'asset_class', 'ytd_return', 'one_year_return',
+        'three_year_return', 'five_year_return', 'expense_ratio', 'sharpe_ratio',
+        'standard_deviation_3y', 'standard_deviation_5y', 'manager_tenure', 'is_recommended'
+      ],
+      brand: 'RJ',
+      locale: 'en-US',
+      landscape: options.landscape !== false,
+      includeTOC: options.includeTOC !== false
+    }
   };
 
-  // Lazy require to prevent jsdom canvas errors during tests
-  // eslint-disable-next-line global-require
-  const { generateMonthlyReport } = await import('./pdfReportService.js');
-  return await generateMonthlyReport({ funds, metadata: pdfMetadata });
+  try {
+    console.log('[ExportService] Sending monthly PDF payload:', {
+      asOf: payload.asOf,
+      selection: payload.selection,
+      options: {
+        landscape: payload.options.landscape,
+        includeTOC: payload.options.includeTOC
+      }
+    });
+  } catch {}
+
+  const response = await fetch('/api/reports/monthly', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(`PDF v2 API failed: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`);
+  }
+  return await response.blob();
 }
+
+// Legacy jsPDF path removed
 
 /**
  * Export data to CSV
@@ -687,21 +840,31 @@ function downloadBlob(csvString, filename) {
 }
 
 /**
- * Export the currently visible table as CSV.
+ * Export the currently visible table as CSV with enhanced formatting.
  * Expect funds to already be sorted in UI order.
  * columns: [{ key, label, isPercent?: boolean, valueGetter: (fund) => any }]
  * sortConfig is used to render a human description only.
  */
 export function exportTableCSV({ funds = [], columns = [], sortConfig = [], metadata = {} }) {
-  const visibleColumnLabels = columns.map(c => c.label);
+  const visibleColumnLabels = columns.map(c => ENABLE_VISUAL_REFRESH ? 
+    enhancedColumnHeader(c.key, c.label) : c.label
+  );
 
+  // Enhanced metadata with preset and filter information
   const metaRows = [
-    ['Exported at', toISODateTime(metadata.exportedAt || new Date())],
-    ['Chart period', metadata.chartPeriod || ''],
+    ['Lightship Fund Analysis - Table Export'],
+    ['Exported at', formatDate(metadata.exportedAt || new Date(), { includeTime: true })],
+    ['Visual Refresh', ENABLE_VISUAL_REFRESH ? 'Enabled (Enhanced Formatting)' : 'Disabled'],
+    ['Chart period', metadata.chartPeriod || 'Not specified'],
+    ['Selected preset', metadata.selectedPreset || 'Standard'],
+    ['Active filters', metadata.filterSummary || 'None applied'],
     ['Visible columns', visibleColumnLabels.join(', ')],
-    ['Sort description', (sortConfig || []).map(s => `${s.label || s.key} (${s.direction})`).join(', ')],
+    ['Sort order', (sortConfig || []).map(s => `${s.label || s.key} (${s.direction})`).join(', ') || 'Default'],
     ['Row count', funds.length],
-    ['Note', 'Percent columns are decimals (e.g., 0.1234 = 12.34%).']
+    ['As of date', metadata.asOf || window.__AS_OF_MONTH__ || 'Latest'],
+    ['Export type', metadata.kind || 'Table data'],
+    ['Note', 'Percentage values are displayed as decimals (e.g., 0.1234 = 12.34%)'],
+    ['Formatting', ENABLE_VISUAL_REFRESH ? 'Enhanced headers and data presentation' : 'Standard formatting']
   ];
 
   // Always include Std Dev horizons at the end of the export, even if hidden on screen
@@ -826,32 +989,7 @@ export function exportCompareCSV({ funds = [], metadata = {} }) {
  * Export compare data as PDF report
  * Enhanced for mixed fund/benchmark comparison with professional formatting
  */
-export async function exportComparePDF({ funds = [], metadata = {} }) {
-  try {
-    // Lazy load PDF generation to avoid issues in test/node environments
-    const { generateComparePDF } = await import('./pdfReportService.js');
-    
-    // Enhanced metadata for PDF generation
-    const pdfData = {
-      funds,
-      metadata: {
-        ...metadata,
-        title: 'Fund & Benchmark Comparison Report',
-        subtitle: `Generated on ${new Date().toLocaleDateString()}`,
-        asOfDate: metadata.asOfDate || 'Latest',
-        benchmarkInfo: metadata.benchmarkTicker 
-          ? `Comparison vs ${metadata.benchmarkTicker}` 
-          : 'Comparison vs asset class primary benchmarks',
-        exportedAt: new Date()
-      }
-    };
-
-    return await generateComparePDF(pdfData);
-  } catch (error) {
-    console.error('Error generating compare PDF:', error);
-    throw new Error('Failed to generate PDF report');
-  }
-}
+// exportComparePDF removed in minimal system
 
 /**
  * Helper to centralize large export confirmation threshold
@@ -883,26 +1021,34 @@ export function downloadFile(content, filename, type = 'application/octet-stream
  * @param {jsPDF|Blob} pdfResult - PDF result from either legacy or v2 system
  * @param {string} filename - File name
  */
-export function downloadPDF(pdfResult, filename) {
+function _obsolete_downloadPDFLegacy(pdfResult, filename) {
   if (!pdfResult) {
     throw new Error('No PDF result provided');
   }
   
   // Handle jsPDF objects (legacy v1)
   if (pdfResult.save && typeof pdfResult.save === 'function') {
-    console.log('📄 Downloading PDF v1 (jsPDF)');
+    console.log('ðŸ“„ Downloading PDF v1 (jsPDF)');
     pdfResult.save(filename);
     return;
   }
   
   // Handle Blob objects (v2)
   if (pdfResult instanceof Blob) {
-    console.log('📄 Downloading PDF v2 (Blob)');
+    console.log('ðŸ“„ Downloading PDF v2 (Blob)');
     downloadFile(pdfResult, filename, 'application/pdf');
     return;
   }
   
   throw new Error('Unsupported PDF result type');
+}
+
+// Minimal-only downloader for Blob PDFs
+export function downloadPDF(pdfBlob, filename) {
+  if (!(pdfBlob instanceof Blob)) {
+    throw new Error('No PDF blob provided');
+  }
+  downloadFile(pdfBlob, filename, 'application/pdf');
 }
 
 /**
@@ -1061,6 +1207,170 @@ function formatNumberForCSV(value, decimals = 2) {
 function formatPercentForCSV(value, decimals = 2) {
   if (value == null || isNaN(value)) return '';
   return Number(value).toFixed(decimals);
+}
+
+/**
+ * Export NotesPanel filtered/searched data to CSV
+ * @param {Object} options - Export options
+ * @param {Array} options.notes - Filtered notes data
+ * @param {string} options.fundTicker - Fund ticker
+ * @param {string} options.searchTerm - Applied search term
+ * @param {string} options.selectedPriority - Applied priority filter
+ * @param {Object} options.metadata - Export metadata
+ * @returns {Blob} CSV blob
+ */
+export function exportNotesCSV({ notes = [], fundTicker = '', searchTerm = '', selectedPriority = 'all', metadata = {} }) {
+  const headers = [
+    'Created Date',
+    'Fund Ticker',
+    'Decision',
+    'Priority',
+    'Note Content',
+    'Created By',
+    'Override Linked',
+    'Character Count'
+  ];
+
+  // Enhanced metadata rows
+  const metaRows = [
+    ['Research Notes Export'],
+    ['Generated:', formatDate(new Date(), { includeTime: true })],
+    ['Fund Ticker:', fundTicker || 'All Funds'],
+    ['Total Notes:', notes.length],
+    ['Search Term:', searchTerm || 'None'],
+    ['Priority Filter:', selectedPriority === 'all' ? 'All Priorities' : `${selectedPriority} priority`],
+    ['Export Type:', metadata.exportType || 'Filtered Notes'],
+    ['Feature Flags:', `Visual Refresh: ${ENABLE_VISUAL_REFRESH ? 'Enabled' : 'Disabled'}`],
+    [] // Empty row
+  ];
+
+  // Convert notes to CSV rows with enhanced formatting
+  const dataRows = notes.map(note => {
+    const priority = getPriorityFromDecision(note.decision || '');
+    return [
+      formatDate(note.created_at, { format: 'long' }),
+      fundTicker || note.fund_ticker || '',
+      note.decision ? `${getDecisionSymbol(note.decision)} ${note.decision}` : '',
+      `${priority.toUpperCase()} PRIORITY`,
+      (note.body || '').replace(/[\r\n]+/g, ' ').trim(), // Clean line breaks
+      note.created_by || '',
+      note.override_id ? 'Yes' : 'No',
+      (note.body || '').length
+    ];
+  });
+
+  const rows = [...metaRows, headers, ...dataRows];
+  const csv = buildCSV(rows);
+  return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+}
+
+/**
+ * Export Current View with preset and filter information
+ * @param {Object} options - Export options
+ * @returns {Blob} Enhanced CSV with current view state
+ */
+export function exportCurrentView(options = {}) {
+  const {
+    funds = [],
+    columns = [],
+    sortConfig = [],
+    selectedPreset = 'core',
+    activeFilters = {},
+    metadata = {}
+  } = options;
+
+  // Enhanced metadata with preset and filter info
+  const presetInfo = {
+    core: '7 essential columns',
+    extended: '12 key columns', 
+    all: 'All available columns'
+  };
+
+  const filterSummary = Object.entries(activeFilters)
+    .filter(([key, value]) => {
+      if (Array.isArray(value)) return value.length > 0;
+      if (value && typeof value === 'object') return Object.values(value).some(v => v !== '' && v !== 'all');
+      return value !== '' && value !== 'all' && value != null;
+    })
+    .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+    .join(', ');
+
+  const enhancedMetaRows = [
+    ['Lightship Fund Analysis - Current View Export'],
+    ['Generated:', formatDate(new Date(), { includeTime: true })],
+    ['Visual Refresh:', ENABLE_VISUAL_REFRESH ? 'Enabled' : 'Disabled'],
+    [''],
+    ['VIEW CONFIGURATION'],
+    ['Selected Preset:', `${selectedPreset.toUpperCase()} (${presetInfo[selectedPreset] || 'Custom'})`],
+    ['Visible Columns:', columns.map(c => enhancedColumnHeader(c.key, c.label)).join(', ')],
+    ['Applied Filters:', filterSummary || 'None'],
+    ['Sort Order:', (sortConfig || []).map(s => `${s.label || s.key} (${s.direction})`).join(', ') || 'Default'],
+    ['Total Rows:', funds.length],
+    ['As of Date:', metadata.asOf || window.__AS_OF_MONTH__ || 'Latest'],
+    [''],
+    ['EXPORT DETAILS'],
+    ['Data Structure:', 'Same as standard export with enhanced formatting'],
+    ['Percentage Values:', 'Displayed as decimals (e.g., 0.1234 = 12.34%)'],
+    ['Currency Values:', ENABLE_VISUAL_REFRESH ? 'Include symbols when applicable' : 'Numeric only'],
+    ['Date Format:', 'ISO standard for data integrity'],
+    ['']
+  ];
+
+  // Enhanced headers with visual refresh formatting
+  const enhancedHeaders = columns.map(col => 
+    enhancedColumnHeader(col.key, col.label, { preset: selectedPreset })
+  );
+
+  // Enhanced data formatting
+  const enhancedDataRows = funds.map(fund => {
+    return columns.map(col => {
+      const rawValue = typeof col.valueGetter === 'function' ? col.valueGetter(fund) : null;
+      
+      if (rawValue === null || rawValue === undefined || rawValue === '') return '';
+      
+      // Apply enhanced formatting based on column type
+      const percentColumns = ['ytdReturn', 'oneYearReturn', 'threeYearReturn', 'fiveYearReturn', 'expenseRatio', 'standardDeviation'];
+      const currencyColumns = ['expenseRatio']; // Expense ratios can be treated as currency in some contexts
+      
+      if (percentColumns.includes(col.key)) {
+        return formatPercentage(rawValue, { 
+          includeSymbol: false, // Keep numeric for CSV compatibility
+          multiplier: col.isPercent ? 1 : 100 
+        });
+      }
+      
+      if (typeof rawValue === 'number') {
+        return rawValue;
+      }
+      
+      return String(rawValue);
+    });
+  });
+
+  const rows = [...enhancedMetaRows, enhancedHeaders, ...enhancedDataRows];
+  const csv = buildCSV(rows);
+  return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+}
+
+// Helper functions for notes export
+function getPriorityFromDecision(decision) {
+  switch (decision) {
+    case 'reject': return 'high';
+    case 'monitor': return 'medium';
+    case 'approve': 
+    case 'hold': return 'low';
+    default: return 'medium';
+  }
+}
+
+function getDecisionSymbol(decision) {
+  const symbols = {
+    approve: 'âœ“',
+    reject: 'âœ—',
+    monitor: 'âš ',
+    hold: 'â¸'
+  };
+  return ENABLE_VISUAL_REFRESH ? (symbols[decision] || '') : '';
 }
 
 /**

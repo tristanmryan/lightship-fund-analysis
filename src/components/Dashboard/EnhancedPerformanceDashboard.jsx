@@ -15,7 +15,7 @@ import ComparisonPanel from './ComparisonPanel';
 import DrilldownCards from './DrilldownCards';
 import preferencesService from '../../services/preferencesService';
 import fundService from '../../services/fundService';
-import { generatePDFReport, downloadFile, downloadPDF, exportToExcel, formatExportFilename, exportElementToPNG, copyElementPNGToClipboard } from '../../services/exportService';
+import { generatePDFReport, downloadFile, downloadPDF, exportToExcel, formatExportFilename, exportElementToPNG, copyElementPNGToClipboard, exportCurrentView } from '../../services/exportService';
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -277,6 +277,25 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
     setViewMode('details');
   }, []);
 
+  // Column presets for progressive disclosure
+  const COLUMN_PRESETS = {
+    core: {
+      name: 'Core',
+      description: '7 essential columns',
+      columns: ['symbol', 'name', 'assetClass', 'score', 'ytdReturn', 'expenseRatio', 'recommended']
+    },
+    extended: {
+      name: 'Extended', 
+      description: '12 key columns',
+      columns: ['symbol', 'name', 'assetClass', 'score', 'ytdReturn', 'expenseRatio', 'recommended', 'oneYearReturn', 'threeYearReturn', 'sharpeRatio', 'beta', 'sparkline']
+    },
+    all: {
+      name: 'All',
+      description: 'Show all available columns', 
+      columns: null // null means show all VALID_COLUMN_KEYS
+    }
+  };
+
   // Valid table column keys and defaults (must match EnhancedFundTable)
   const DEFAULT_TABLE_COLUMNS = [
     'symbol', 'name', 'assetClass', 'score', 'ytdReturn', 'oneYearReturn',
@@ -290,16 +309,151 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
     'managerTenure','recommended'
   ];
 
+  // Column preset state
+  const [selectedPreset, setSelectedPreset] = useState(() => {
+    const saved = localStorage.getItem('fundTablePreset');
+    return (saved && Object.keys(COLUMN_PRESETS).includes(saved)) ? saved : 'core';
+  });
+
+  const ENABLE_VISUAL_REFRESH = (process.env.REACT_APP_ENABLE_VISUAL_REFRESH || 'false') === 'true';
+
+  // Loading state for preset changes
+  const [presetLoading, setPresetLoading] = useState(false);
+
+  // Sync preset with table state when columns change externally 
+  React.useEffect(() => {
+    if (!tableState.selectedColumns) return;
+    
+    // Check if current columns match any preset
+    for (const [key, preset] of Object.entries(COLUMN_PRESETS)) {
+      const presetColumns = preset.columns === null ? VALID_COLUMN_KEYS : preset.columns;
+      if (JSON.stringify(tableState.selectedColumns.sort()) === JSON.stringify(presetColumns.sort())) {
+        if (selectedPreset !== key) {
+          setSelectedPreset(key);
+          localStorage.setItem('fundTablePreset', key);
+        }
+        return;
+      }
+    }
+    
+    // If no preset matches, set to custom (or keep current if not changing)
+    // This handles cases where user manually changes columns
+  }, [tableState.selectedColumns, selectedPreset]);
+
+  // Get columns for current preset
+  const getPresetColumns = useCallback((preset) => {
+    const presetConfig = COLUMN_PRESETS[preset];
+    if (!presetConfig) return DEFAULT_TABLE_COLUMNS;
+    if (presetConfig.columns === null) return VALID_COLUMN_KEYS; // 'all' preset
+    return presetConfig.columns.filter(col => VALID_COLUMN_KEYS.includes(col));
+  }, []);
+
+  // Handle preset change with smooth loading animation
+  const handlePresetChange = useCallback(async (preset) => {
+    if (presetLoading) return; // Prevent multiple simultaneous changes
+    
+    setPresetLoading(true);
+    
+    // Small delay to show loading state and allow CSS transitions
+    await new Promise(resolve => setTimeout(resolve, 150));
+    
+    setSelectedPreset(preset);
+    localStorage.setItem('fundTablePreset', preset);
+    
+    // Update selected columns based on preset
+    const newColumns = getPresetColumns(preset);
+    const newState = { ...tableState, selectedColumns: newColumns };
+    setTableState(newState);
+    
+    // Notify parent of state change for persistence
+    if (typeof handleTableStateChange === 'function') {
+      handleTableStateChange(newState);
+    }
+    
+    // Allow animation to complete before clearing loading
+    setTimeout(() => setPresetLoading(false), 200);
+  }, [getPresetColumns, tableState, handleTableStateChange, presetLoading]);
+
   // Render view mode content
   const renderViewContent = () => {
     switch (viewMode) {
       case 'table':
-        // Sanitize any saved/initial table state before passing to table
+        // Use preset columns if no initial columns are set, otherwise use saved state
+        const effectiveColumns = initialTableState.selectedColumns || getPresetColumns(selectedPreset);
         const sanitized = sanitizeTableState(
-          { sortConfig: initialTableState.sortConfig, selectedColumns: initialTableState.selectedColumns },
+          { sortConfig: initialTableState.sortConfig, selectedColumns: effectiveColumns },
           VALID_COLUMN_KEYS,
           DEFAULT_TABLE_COLUMNS
         );
+        
+        // Create preset selector component to pass to table
+        const presetSelectorComponent = ENABLE_VISUAL_REFRESH ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: '#374151',
+              whiteSpace: 'nowrap'
+            }}>Presets:</span>
+            <div style={{ display: 'flex', gap: '0.375rem' }}>
+              {Object.entries(COLUMN_PRESETS).map(([key, preset]) => {
+                const isActive = selectedPreset === key;
+                const isLoading = presetLoading && isActive;
+                
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handlePresetChange(key)}
+                    disabled={presetLoading}
+                    style={{
+                      padding: '0.375rem 0.75rem',
+                      border: isActive ? '2px solid #3b82f6' : '1px solid #d1d5db',
+                      borderRadius: '0.375rem',
+                      backgroundColor: isActive ? '#eff6ff' : 'white',
+                      color: isActive ? '#3b82f6' : '#374151',
+                      fontSize: '0.8125rem',
+                      fontWeight: isActive ? '600' : '500',
+                      cursor: presetLoading ? 'wait' : 'pointer',
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                      position: 'relative',
+                      opacity: presetLoading && !isActive ? 0.6 : 1,
+                      transform: isLoading ? 'scale(0.98)' : 'scale(1)',
+                      whiteSpace: 'nowrap',
+                      minWidth: '60px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title={`${preset.description} (${preset.columns ? preset.columns.length : VALID_COLUMN_KEYS.length} columns)`}
+                  >
+                    {isLoading ? (
+                      <div style={{
+                        width: '14px',
+                        height: '14px',
+                        border: '2px solid #3b82f6',
+                        borderTop: '2px solid transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                    ) : (
+                      <>
+                        <span>{preset.name}</span>
+                        <span style={{
+                          fontSize: '0.6875rem',
+                          opacity: 0.7,
+                          marginLeft: '0.25rem'
+                        }}>
+                          ({preset.columns ? preset.columns.length : VALID_COLUMN_KEYS.length})
+                        </span>
+                      </>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null;
+        
         return (
           <EnhancedFundTable 
             funds={filteredFunds}
@@ -309,6 +463,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
             initialSelectedColumns={sanitized.selectedColumns}
             onStateChange={handleTableStateChange}
             registerExportHandler={(fn) => { tableExportRef.current = fn; }}
+            presetSelector={presetSelectorComponent}
           />
         );
       
@@ -331,14 +486,16 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
           <>
             <div className="card" ref={(el)=>{ window.__HEATMAP_NODE__ = el; }}>
               <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <h3 className="card-title" style={{ margin:0 }}>Performance Heatmap</h3>
+                <h3 className="card-title chart-title" style={{ margin:0 }}>Performance Heatmap</h3>
                 <div style={{ display:'flex', gap:8 }}>
                   <button className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }} title="How to read the heatmap">i</button>
                   <button className="btn" onClick={async (e)=>{ e.preventDefault(); const node = window.__HEATMAP_NODE__; await exportElementToPNG(node, 'heatmap.png'); }} title="Export heatmap as PNG">Export PNG</button>
                   <button className="btn btn-secondary" onClick={async (e)=>{ e.preventDefault(); const node = window.__HEATMAP_NODE__; const ok = await copyElementPNGToClipboard(node); if (!ok) alert('Copy not supported in this browser.'); }} title="Copy heatmap to clipboard">Copy</button>
                 </div>
               </div>
-              <PerformanceHeatmap funds={filteredFunds} />
+              <div className="chart-container">
+                <PerformanceHeatmap funds={filteredFunds} />
+              </div>
             </div>
             {asOfMonthProp && (guard.fund === 0 || guard.fund === null) && (guard.bench > 0) && (
               <div style={{ background:'#fffbeb', border:'1px solid #fde68a', color:'#92400e', borderRadius:6, padding:'8px 12px', marginTop: 8 }}>
@@ -376,14 +533,16 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         return (
           <div className="card" ref={(el)=>{ window.__OVERVIEW_NODE__ = el; }}>
             <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <h3 className="card-title" style={{ margin:0 }}>Asset Class Overview</h3>
+              <h3 className="card-title chart-title" style={{ margin:0 }}>Asset Class Overview</h3>
               <div style={{ display:'flex', gap:8 }}>
                 <button className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }} title="How class metrics are computed">i</button>
                 <button className="btn" onClick={async (e)=>{ e.preventDefault(); const node = window.__OVERVIEW_NODE__; await exportElementToPNG(node, 'class-overview.png'); }} title="Export overview as PNG">Export PNG</button>
                 <button className="btn btn-secondary" onClick={async (e)=>{ e.preventDefault(); const node = window.__OVERVIEW_NODE__; const ok = await copyElementPNGToClipboard(node); if (!ok) alert('Copy not supported in this browser.'); }} title="Copy overview to clipboard">Copy</button>
               </div>
             </div>
-            <AssetClassOverview funds={filteredFunds} />
+            <div className="chart-container">
+              <AssetClassOverview funds={filteredFunds} />
+            </div>
           </div>
         );
       
@@ -405,14 +564,16 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         return (
           <div className="card" ref={(el)=>{ window.__PERFORMERS_NODE__ = el; }}>
             <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <h3 className="card-title" style={{ margin:0 }}>Top & Bottom Performers</h3>
+              <h3 className="card-title chart-title" style={{ margin:0 }}>Top & Bottom Performers</h3>
               <div style={{ display:'flex', gap:8 }}>
                 <button className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }} title="How performers are ranked">i</button>
                 <button className="btn" onClick={async (e)=>{ e.preventDefault(); const node = window.__PERFORMERS_NODE__; await exportElementToPNG(node, 'performers.png'); }} title="Export performers as PNG">Export PNG</button>
                 <button className="btn btn-secondary" onClick={async (e)=>{ e.preventDefault(); const node = window.__PERFORMERS_NODE__; const ok = await copyElementPNGToClipboard(node); if (!ok) alert('Copy not supported in this browser.'); }} title="Copy performers to clipboard">Copy</button>
               </div>
             </div>
-            <TopBottomPerformers funds={filteredFunds} />
+            <div className="chart-container">
+              <TopBottomPerformers funds={filteredFunds} />
+            </div>
           </div>
         );
       
@@ -434,21 +595,25 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         return (
           <div className="card" ref={(el)=>{ window.__COMPARE_NODE__ = el; }}>
             <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <h3 className="card-title" style={{ margin:0 }}>Compare Funds</h3>
+              <h3 className="card-title chart-title" style={{ margin:0 }}>Compare Funds</h3>
               <div style={{ display:'flex', gap:8 }}>
                 <button className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); try { window.dispatchEvent(new CustomEvent('OPEN_METHODOLOGY')); } catch {} }} title="How comparison works">i</button>
                 <button className="btn" onClick={async (e)=>{ e.preventDefault(); const node = window.__COMPARE_NODE__; await exportElementToPNG(node, 'compare.png'); }} title="Export compare as PNG">Export PNG</button>
                 <button className="btn btn-secondary" onClick={async (e)=>{ e.preventDefault(); const node = window.__COMPARE_NODE__; const ok = await copyElementPNGToClipboard(node); if (!ok) alert('Copy not supported in this browser.'); }} title="Copy compare to clipboard">Copy</button>
               </div>
             </div>
-            <ComparisonPanel funds={filteredFunds} />
+            <div className="chart-container">
+              <ComparisonPanel funds={filteredFunds} />
+            </div>
           </div>
         );
       case 'details':
         return (
           <div className="card" style={{ padding: 16 }}>
             {selectedFund ? (
-              <DrilldownCards fund={selectedFund} funds={filteredFunds} />
+              <div className="chart-container">
+                <DrilldownCards fund={selectedFund} funds={filteredFunds} />
+              </div>
             ) : (
               <div style={{ color: '#6b7280' }}>Select a fund to view drilldown details.</div>
             )}
@@ -497,6 +662,13 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
     }
   }, [asOfMonthProp, viewMode, activeFilters]);
 
+  // Density control state
+  const [density, setDensity] = React.useState(() => localStorage.getItem('tableDensity') || 'comfortable');
+  React.useEffect(() => {
+    document.documentElement.classList.toggle('density-compact', density === 'compact');
+    localStorage.setItem('tableDensity', density);
+  }, [density]);
+
   // On load, parse share hash if present
   React.useEffect(() => {
     try {
@@ -535,16 +707,10 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
       ) : (
         <>
       {/* Header */}
-      <div style={{
-        backgroundColor: 'white',
-        borderBottom: '1px solid #e5e7eb',
-        padding: '1.5rem 2rem',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
+      <header className="dashboard-header">
+        <div className="toolbar">
+          {/* left: title + subtitle */}
+          <div className="title-group">
             <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>
               Performance Dashboard
             </h1>
@@ -555,9 +721,53 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
               <Info size={14} />
               Benchmark deltas require same-day performance rows to exist for both the fund and its benchmark ticker.
             </div>
+            
+            {/* KPI Metrics Strip */}
+            <div className="kpi-strip" role="list">
+              <div className="kpi-chip" role="listitem">
+                <span className="label">Funds</span>
+                <span className="value">{filteredFunds.length}</span>
+              </div>
+              <div className="kpi-chip" role="listitem">
+                <span className="label">Asset Classes</span>
+                <span className="value">
+                  {(() => {
+                    const classes = new Set(filteredFunds.map(f => f.asset_class).filter(Boolean));
+                    return classes.size || '—';
+                  })()}
+                </span>
+              </div>
+              <div className="kpi-chip" role="listitem">
+                <span className="label">Avg Expense</span>
+                <span className="value">
+                  {(() => {
+                    const expenses = filteredFunds
+                      .map(f => f.expense_ratio)
+                      .filter(v => v != null && !Number.isNaN(v) && v > 0);
+                    if (expenses.length === 0) return '—';
+                    const avg = expenses.reduce((sum, exp) => sum + exp, 0) / expenses.length;
+                    return `${avg.toFixed(2)}%`;
+                  })()}
+                </span>
+              </div>
+              <div className="kpi-chip" role="listitem">
+                <span className="label">Avg Z‑Score</span>
+                <span className="value">
+                  {(() => {
+                    const scores = filteredFunds
+                      .map(f => f.z_score)
+                      .filter(v => v != null && !Number.isNaN(v));
+                    if (scores.length === 0) return '—';
+                    const avg = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+                    return avg.toFixed(2);
+                  })()}
+                </span>
+              </div>
+            </div>
           </div>
           
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          {/* right: as-of selector + Refresh/Export/Help/Methodology buttons */}
+          <div className="actions">
             {/* As-of month selector */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>As of</label>
@@ -590,7 +800,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
                 ))}
               </select>
             </div>
-            <button className="btn" onClick={copyShareLink} title="Copy link to this view" style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+            <button className="btn btn-secondary" onClick={copyShareLink} title="Copy link to this view" style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
               <Share2 size={16} aria-hidden />
               <span>Share</span>
             </button>
@@ -598,7 +808,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
             {nonEomSample && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 12, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', padding: '2px 6px', borderRadius: 9999 }}>
-                  This month isn’t end‑of‑month; values may be incomplete
+                  This month isn't end‑of‑month; values may be incomplete
                 </span>
                 <label style={{ fontSize: 12, color: '#374151' }}>
                   <input type="checkbox" checked={showNonEom} onChange={(e) => setShowNonEom(e.target.checked)} /> Show non-EOM
@@ -611,9 +821,10 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
                 <StatusIcon level={dataHealth.minCov >= 80 ? 'good' : dataHealth.minCov >= 50 ? 'fair' : 'poor'} />
                 <span>Data Health: {dataHealth.label} • {dataHealth.minCov}%</span>
               </div>
-              <a href="#" className="btn btn-link" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'health' } })); }} style={{ fontSize: 12 }}>Open Data Health</a>
+              <a href="#" className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'health' } })); }} style={{ fontSize: 12 }}>Open Data Health</a>
             </div>
             <button
+              className="btn"
               onClick={onRefresh}
               disabled={isLoading || (process.env.REACT_APP_ENABLE_REFRESH || 'false') !== 'true'}
               style={{
@@ -642,6 +853,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
             {/* Export menu */}
             <div style={{ position: 'relative' }}>
               <button
+                className="btn"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -681,11 +893,74 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
                   <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: 'pointer' }} onClick={() => { if (tableExportRef.current) tableExportRef.current(); }}>
                     Table (CSV)
                   </button>
+                  <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: 'pointer', borderTop: '1px solid #e5e7eb', fontWeight: '600', color: '#3b82f6' }} onClick={() => {
+                    try {
+                      // Get current columns from table state
+                      const currentColumns = tableState.selectedColumns || getPresetColumns(selectedPreset);
+                      const columns = currentColumns.map(key => ({
+                        key,
+                        label: key,
+                        isPercent: ['ytdReturn', 'oneYearReturn', 'threeYearReturn', 'fiveYearReturn', 'expenseRatio', 'standardDeviation'].includes(key),
+                        valueGetter: (fund) => fund[key]
+                      }));
+                      
+                      const filterSummary = Object.entries(activeFilters || {})
+                        .filter(([key, value]) => {
+                          if (Array.isArray(value)) return value.length > 0;
+                          if (value && typeof value === 'object') return Object.values(value).some(v => v !== '' && v !== 'all');
+                          return value !== '' && value !== 'all' && value != null;
+                        })
+                        .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : JSON.stringify(value)}`)
+                        .join('; ');
+                      
+                      const blob = exportCurrentView({
+                        funds: filteredFunds,
+                        columns,
+                        sortConfig: tableState.sortConfig || [],
+                        selectedPreset,
+                        activeFilters: activeFilters || {},
+                        metadata: {
+                          asOf: asOfMonthProp || window.__AS_OF_MONTH__ || null,
+                          chartPeriod,
+                          filterSummary,
+                          exportedAt: new Date()
+                        }
+                      });
+                      
+                      const name = formatExportFilename({ 
+                        scope: `current_view_${selectedPreset}${filterSummary ? '_filtered' : ''}`, 
+                        asOf: asOfMonthProp || window.__AS_OF_MONTH__ || null, 
+                        ext: 'csv' 
+                      });
+                      downloadFile(blob, name, 'text/csv;charset=utf-8');
+                    } catch (e) { console.error('Current view export failed', e); }
+                  }}>
+                    ✨ Export Current View (Enhanced)
+                  </button>
                 )}
                 <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: 'pointer' }} onClick={() => {
                   try {
-                    const wbBlob = exportToExcel({ funds: filteredFunds });
-                    const name = formatExportFilename({ scope: 'excel', asOf: (asOfMonthProp || window.__AS_OF_MONTH__ || null), ext: 'xlsx' });
+                    // Get current filter summary
+                    const filterSummary = Object.entries(activeFilters || {})
+                      .filter(([key, value]) => {
+                        if (Array.isArray(value)) return value.length > 0;
+                        if (value && typeof value === 'object') return Object.values(value).some(v => v !== '' && v !== 'all');
+                        return value !== '' && value !== 'all' && value != null;
+                      })
+                      .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : JSON.stringify(value)}`)
+                      .join('; ');
+                    
+                    const wbBlob = exportToExcel({ funds: filteredFunds }, {
+                      selectedPreset,
+                      activeFilters: activeFilters || {},
+                      visibleColumns: tableState.selectedColumns ? tableState.selectedColumns.map(key => ({ key, label: key })) : [],
+                      metadata: {
+                        asOf: asOfMonthProp || window.__AS_OF_MONTH__ || null,
+                        filterSummary,
+                        chartPeriod
+                      }
+                    });
+                    const name = formatExportFilename({ scope: 'excel_enhanced', asOf: (asOfMonthProp || window.__AS_OF_MONTH__ || null), ext: 'xlsx' });
                     downloadFile(wbBlob, name);
                   } catch (e) { /* eslint-disable no-console */ console.error('Excel export failed', e); }
                 }}>
@@ -701,45 +976,36 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
                       averagePerformance: (() => {
                         const vals = filteredFunds.map(f => f.ytd_return).filter(v => v != null && !Number.isNaN(v));
                         return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
-                      })()
+                      })(),
+                      asOf: asOfMonthProp || (typeof window !== 'undefined' ? (window.__AS_OF_MONTH__ || null) : null)
                     };
                     console.log('🚀 Starting PDF generation for all funds...');
                     const pdf = await generatePDFReport({ funds: filteredFunds, metadata }, { forceV2: true });
-                    const name = formatExportFilename({ scope: 'pdf_all', asOf: (asOfMonthProp || window.__AS_OF_MONTH__ || null), ext: 'pdf' });
-                    console.log('📄 Generated PDF, attempting download...', { type: typeof pdf, isBlob: pdf instanceof Blob });
+                    const name = formatExportFilename({ scope: 'pdf', asOf: (asOfMonthProp || window.__AS_OF_MONTH__ || null), ext: 'pdf' });
                     downloadPDF(pdf, name);
                   } catch (e) { /* eslint-disable no-console */ console.error('PDF export failed', e); }
                 }}>
-                  PDF (all)
-                </button>
-                <button role="menuitem" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', cursor: (filteredFunds.filter(f => f.is_recommended || f.recommended).length > 0) ? 'pointer' : 'not-allowed', opacity: (filteredFunds.filter(f => f.is_recommended || f.recommended).length > 0) ? 1 : 0.5 }} disabled={(filteredFunds.filter(f => f.is_recommended || f.recommended).length === 0)} onClick={async () => {
-                  const rec = (filteredFunds || []).filter(f => f.is_recommended || f.recommended);
-                  if (rec.length === 0) return;
-                  try {
-                    const metadata = {
-                      date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-                      totalFunds: rec.length,
-                      recommendedFunds: rec.length,
-                      assetClassCount: new Set(rec.map(f => f.asset_class_name || f.asset_class || f['Asset Class']).filter(Boolean)).size,
-                      averagePerformance: (() => {
-                        const vals = rec.map(f => f.ytd_return).filter(v => v != null && !Number.isNaN(v));
-                        return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
-                      })()
-                    };
-                    console.log('🚀 Starting PDF generation for recommended funds...');
-                    const pdf = await generatePDFReport({ funds: rec, metadata }, { forceV2: true });
-                    const name = formatExportFilename({ scope: 'pdf_recommended', asOf: (asOfMonthProp || window.__AS_OF_MONTH__ || null), ext: 'pdf' });
-                    console.log('📄 Generated PDF, attempting download...', { type: typeof pdf, isBlob: pdf instanceof Blob });
-                    downloadPDF(pdf, name);
-                  } catch (e) { /* eslint-disable no-console */ console.error('PDF export failed', e); }
-                }}>
-                  PDF — Recommended
+                  PDF Report (.pdf)
                 </button>
               </div>
             </div>
+
+            {/* Density Toggle */}
+            <div className="density-toggle" aria-label="Table density">
+              <button
+                className={`btn-secondary ${density === 'comfortable' ? 'active' : ''}`}
+                onClick={() => setDensity('comfortable')}
+                type="button"
+              >Comfort</button>
+              <button
+                className={`btn-secondary ${density === 'compact' ? 'active' : ''}`}
+                onClick={() => setDensity('compact')}
+                type="button"
+              >Compact</button>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
       {/* Empty-month guardrail banners (table/overview views) */}
       {viewMode !== 'heatmap' && asOfMonthProp && (guard.fund === 0 || guard.fund === null) && (guard.bench > 0) && (
         <div style={{ background:'#fffbeb', border:'1px solid #fde68a', color:'#92400e', borderRadius:6, padding:'8px 12px', margin:'8px 16px' }}>
@@ -753,7 +1019,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         </div>
       )}
 
-      <div style={{ padding: '2rem' }}>
+      <div className="content-card" style={{ padding: '2rem' }}>
         {/* Summary Statistics Cards */}
         <div style={{ 
           display: 'grid', 
@@ -844,6 +1110,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
             ].map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
+                className="btn-secondary"
                 onClick={() => setViewMode(key)}
                 style={{
                   display: 'flex',
@@ -869,6 +1136,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
             {['1M','3M','6M','1Y','YTD'].map(p => (
               <button
                 key={p}
+                className="btn-secondary"
                 onClick={() => setChartPeriod(p)}
                 style={{
                   padding: '6px 10px',
@@ -898,7 +1166,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
             }}>
               <Filter size={16} />
               {getFilterSummary()} filter{getFilterSummary() !== 1 ? 's' : ''} active
-              <button onClick={()=> window.location.reload()} style={{ marginLeft: 8, background: 'transparent', border: 'none', color: '#1d4ed8', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.875rem' }}>Clear all</button>
+              <button className="btn-secondary" onClick={()=> window.location.reload()} style={{ marginLeft: 8, background: 'transparent', border: 'none', color: '#1d4ed8', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.875rem' }}>Clear all</button>
             </div>
           )}
         </div>
@@ -928,6 +1196,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
               </div>
             </div>
             <button
+              className="btn-secondary"
               onClick={() => handleFundSelect(summaryStats.topPerformer)}
               style={{
                 padding: '0.5rem 1rem',
@@ -961,6 +1230,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
               Try adjusting your filter criteria or clearing some filters to see more results.
             </p>
             <button
+              className="btn-secondary"
               onClick={() => window.location.reload()} // This would clear filters in a real implementation
               style={{
                 padding: '0.5rem 1rem',
@@ -997,6 +1267,40 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        
+        /* Column transition animations - only apply when visual refresh is enabled */
+        .column-transition-enter {
+          opacity: 0;
+          transform: translateX(-20px) scale(0.95);
+        }
+        
+        .column-transition-enter-active {
+          opacity: 1;
+          transform: translateX(0) scale(1);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .column-transition-exit {
+          opacity: 1;
+          transform: translateX(0) scale(1);
+        }
+        
+        .column-transition-exit-active {
+          opacity: 0;
+          transform: translateX(20px) scale(0.95);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Performance optimizations for large tables */
+        .fund-table-optimized {
+          contain: layout style;
+          will-change: transform;
+        }
+        
+        .fund-table-optimized th,
+        .fund-table-optimized td {
+          contain: layout;
         }
       `}</style>
     </div>
