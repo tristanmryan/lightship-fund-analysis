@@ -1051,6 +1051,156 @@ export function downloadPDF(pdfBlob, filename) {
   downloadFile(pdfBlob, filename, 'application/pdf');
 }
 
+// --- Advisor Portfolio Exports (Phase 2) ---
+
+export function exportAdvisorPortfolioCSV({ snapshotDate, advisorId, summary = {}, portfolio = {} }) {
+  const rows = [];
+  rows.push([`Advisor Portfolio Export`]);
+  rows.push([`Snapshot Date`, snapshotDate || '']);
+  rows.push([`Advisor ID`, advisorId || '']);
+  rows.push([`Clients`, summary?.client_count ?? '']);
+  rows.push([`Unique Holdings`, portfolio?.uniqueHoldings ?? '']);
+  rows.push([`Total AUM (USD)`, Number(portfolio?.totalAum || 0)]);
+  const adoption = (portfolio?.totalAum || 0) > 0 ? (portfolio?.recommendedAum || 0) / (portfolio.totalAum || 1) : 0;
+  rows.push([`% In Recommended`, Number((adoption * 100).toFixed(2))]);
+  rows.push(['']);
+
+  // Allocation section
+  rows.push([`Allocation by Asset Class`]);
+  rows.push(['Asset Class', 'Amount (USD)', '% of AUM']);
+  (portfolio?.allocation || []).forEach(a => {
+    rows.push([
+      a.asset_class || 'Unclassified',
+      Number(a.amount || 0),
+      Number(((a.pct || 0) * 100).toFixed(2))
+    ]);
+  });
+
+  rows.push(['']);
+  rows.push([`Top Positions`]);
+  rows.push(['Ticker', 'Amount (USD)', '% of AUM', 'Recommended']);
+  (portfolio?.positions || []).forEach(p => {
+    rows.push([
+      p.ticker || '',
+      Number(p.amount || 0),
+      Number(((p.pct || 0) * 100).toFixed(2)),
+      p.is_recommended ? 'Yes' : 'No'
+    ]);
+  });
+
+  const csv = buildCSV(rows);
+  return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+}
+
+export async function generateAdvisorPortfolioPDF({ snapshotDate, advisorId, summary = {}, portfolio = {} }) {
+  // Lightweight PDF via jsPDF + autoTable
+  const { jsPDF } = await import('jspdf');
+  await import('jspdf-autotable');
+  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+
+  const title = 'Advisor Portfolio Summary';
+  doc.setFontSize(16);
+  doc.text(title, 40, 40);
+  doc.setFontSize(11);
+  doc.text(`Snapshot: ${snapshotDate || ''}`, 40, 62);
+  doc.text(`Advisor: ${advisorId || ''}`, 40, 78);
+
+  const totalAum = Number(portfolio?.totalAum || 0);
+  const uniqueHoldings = Number(portfolio?.uniqueHoldings || 0);
+  const clients = Number(summary?.client_count || 0);
+  const adoptionPct = totalAum > 0 ? ((portfolio?.recommendedAum || 0) / totalAum) * 100 : 0;
+  const kpiRows = [
+    ['Total AUM (USD)', Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(totalAum)],
+    ['Unique Holdings', String(uniqueHoldings)],
+    ['Clients', String(clients)],
+    ['% In Recommended', `${adoptionPct.toFixed(1)}%`]
+  ];
+  doc.autoTable({ startY: 95, head: [['Metric', 'Value']], body: kpiRows, styles: { fontSize: 9 } });
+
+  // Allocation table
+  const allocHead = [['Asset Class', 'Amount (USD)', '% of AUM']];
+  const allocBody = (portfolio?.allocation || []).map(a => [
+    a.asset_class || 'Unclassified',
+    Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(a.amount || 0)),
+    `${(((a.pct || 0) * 100).toFixed(1))}%`
+  ]);
+  doc.autoTable({ head: allocHead, body: allocBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
+
+  // Positions table (top 20 to keep size)
+  const posHead = [['Ticker', 'Amount (USD)', '% of AUM', 'Recommended']];
+  const posBody = (portfolio?.positions || []).slice(0, 20).map(p => [
+    p.ticker || '',
+    Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(p.amount || 0)),
+    `${(((p.pct || 0) * 100).toFixed(1))}%`,
+    p.is_recommended ? 'Yes' : 'No'
+  ]);
+  doc.autoTable({ head: posHead, body: posBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
+
+  return doc.output('blob');
+}
+
+// Export current fund utilization view to CSV
+export function exportUtilizationCSV({ snapshotDate, assetClass = null, rows = [] }) {
+  const header = ['Ticker', 'Asset Class', 'Total AUM (USD)', 'Advisors Using', 'Clients Using', 'Avg Position (USD)'];
+  const body = (rows || []).map(r => [
+    r.ticker || '',
+    r.asset_class || '',
+    Number(r.total_aum || 0),
+    Number(r.advisors_using || 0),
+    Number(r.clients_using || 0),
+    Number(r.avg_position_usd || 0)
+  ]);
+  const csv = buildCSV([header, ...body]);
+  return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+}
+
+// Excel export for Advisor Portfolio
+export function exportAdvisorPortfolioExcel({ snapshotDate, advisorId, summary = {}, portfolio = {} }) {
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Summary
+  const adoption = (portfolio?.totalAum || 0) > 0 ? (portfolio?.recommendedAum || 0) / (portfolio.totalAum || 1) : 0;
+  const summaryRows = [
+    ['Advisor Portfolio Summary'],
+    ['Snapshot Date', snapshotDate || ''],
+    ['Advisor ID', advisorId || ''],
+    ['Clients', summary?.client_count ?? ''],
+    ['Unique Holdings', portfolio?.uniqueHoldings ?? ''],
+    ['Total AUM (USD)', Number(portfolio?.totalAum || 0)],
+    ['% In Recommended', Number((adoption * 100).toFixed(2))]
+  ];
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+  // Sheet 2: Allocation
+  const allocRows = [['Asset Class', 'Amount (USD)', '% of AUM']];
+  (portfolio?.allocation || []).forEach(a => {
+    allocRows.push([
+      a.asset_class || 'Unclassified',
+      Number(a.amount || 0),
+      Number(((a.pct || 0) * 100).toFixed(2))
+    ]);
+  });
+  const wsAlloc = XLSX.utils.aoa_to_sheet(allocRows);
+  XLSX.utils.book_append_sheet(wb, wsAlloc, 'Allocation');
+
+  // Sheet 3: Positions
+  const posRows = [['Ticker', 'Amount (USD)', '% of AUM', 'Recommended']];
+  (portfolio?.positions || []).forEach(p => {
+    posRows.push([
+      p.ticker || '',
+      Number(p.amount || 0),
+      Number(((p.pct || 0) * 100).toFixed(2)),
+      p.is_recommended ? 'Yes' : 'No'
+    ]);
+  });
+  const wsPos = XLSX.utils.aoa_to_sheet(posRows);
+  XLSX.utils.book_append_sheet(wb, wsPos, 'Positions');
+
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  return new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
 /**
  * Calculate average of numbers
  * @param {Array} numbers - Array of numbers

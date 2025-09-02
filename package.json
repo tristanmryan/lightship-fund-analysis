@@ -43,7 +43,8 @@
     "cleanup": "node scripts/cleanup-database.js",
     "test-es-modules": "node test-es-module-imports.js",
     "bench": "node bench/bench.js",
-    "bench:full": "npm run bench -- --mode=both --concurrency=5,1"
+    "bench:full": "npm run bench -- --mode=both --concurrency=5,1",
+    "import:samples": "node scripts/importSamples.mjs --snapshot=2025-08-31"
   },
   "eslintConfig": {
     "extends": [

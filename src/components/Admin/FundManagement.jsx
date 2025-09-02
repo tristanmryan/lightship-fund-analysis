@@ -6,6 +6,8 @@ import AdminOverview from './AdminOverview';
 import ManualAddFund from './ManualAddFund';
 import FundOverridesAdmin from './FundOverridesAdmin';
 import MonthlySnapshotUpload from './MonthlySnapshotUpload';
+import MVRefreshControl from './MVRefreshControl.jsx';
+import HoldingsTradesImport from './HoldingsTradesImport.jsx';
 import SnapshotManager from './SnapshotManager';
 import SeedRecommendedFunds from './SeedRecommendedFunds';
 import SeedBenchmarks from './SeedBenchmarks';
@@ -218,6 +220,8 @@ const FundManagement = () => {
         {activeTab === 'data' && (
           <>
             <MonthlySnapshotUpload />
+            <MVRefreshControl />
+            <HoldingsTradesImport />
             <SnapshotManager />
             <SeedRecommendedFunds />
             <SeedBenchmarks />

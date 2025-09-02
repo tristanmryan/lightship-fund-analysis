@@ -1,6 +1,6 @@
 // App.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Home as HomeIcon, BarChart3 as BarChartIcon, Settings, Download, RefreshCw, HelpCircle, Info, TrendingUp as CompareIcon } from 'lucide-react';
+import { Home as HomeIcon, BarChart3 as BarChartIcon, Settings, Download, RefreshCw, HelpCircle, Info, TrendingUp as CompareIcon, Users as AdvisorsIcon } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './App.css'; // Import the CSS file
 import LoginModal from './components/Auth/LoginModal';
@@ -22,6 +22,7 @@ import FundManagement from './components/Admin/FundManagement';
 import AssetClassTable from './components/Dashboard/AssetClassTable';
 import ComparisonPanel from './components/Dashboard/ComparisonPanel';
 import MonthlyReportButton from './components/Reports/MonthlyReportButton';
+import PortfolioDashboard from './components/Advisor/PortfolioDashboard.jsx';
 import { 
   exportToExcel, 
   downloadFile
@@ -103,12 +104,14 @@ const App = () => {
     assetclasses: '/assetclasses',
     compare: '/compare',
     reports: '/reports',
+    advisors: '/advisors',
     admin: '/admin'
   };
   const pathToTab = (pathname) => {
     if (pathname.startsWith('/assetclasses')) return 'assetclasses';
     if (pathname.startsWith('/compare')) return 'compare';
     if (pathname.startsWith('/reports')) return 'reports';
+    if (pathname.startsWith('/advisors')) return 'advisors';
     if (pathname.startsWith('/admin')) return 'admin';
     return 'dashboard';
   };
@@ -398,6 +401,12 @@ const App = () => {
               <span>Dashboard</span>
             </span>
           </button>
+            <button className={activeTab === 'advisors' ? 'active' : ''} onClick={() => { setActiveTab('advisors'); navigate('/advisors'); }}>
+              <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+                <AdvisorsIcon size={16} aria-hidden />
+                <span>Advisors</span>
+              </span>
+            </button>
           <button className={activeTab === 'assetclasses' ? 'active' : ''} onClick={() => { setActiveTab('assetclasses'); navigate('/assetclasses'); }}>
             <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
               <BarChartIcon size={16} aria-hidden />
@@ -613,6 +622,17 @@ const App = () => {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Advisors Tab */}
+      {activeTab === 'advisors' && (
+        <div>
+          <div className="card-header">
+            <h2 className="card-title">Advisor Portfolios</h2>
+            <p className="card-subtitle">Holdings intelligence by advisor and snapshot</p>
+          </div>
+          <PortfolioDashboard />
         </div>
       )}
 

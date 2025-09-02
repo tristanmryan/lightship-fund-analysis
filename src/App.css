@@ -675,6 +675,34 @@ tbody td {
   }
 }
 
+/* Responsive utility grids for Advisor views */
+.kpi-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 1024px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+  .kpi-4 {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .kpi-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Animation for loading spinner */
 @keyframes spin {
   from {
