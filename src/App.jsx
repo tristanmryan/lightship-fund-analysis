@@ -1,6 +1,6 @@
 // App.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Home as HomeIcon, BarChart3 as BarChartIcon, Settings, Download, RefreshCw, HelpCircle, Info, TrendingUp as CompareIcon, Users as AdvisorsIcon } from 'lucide-react';
+import { Home as HomeIcon, BarChart3 as BarChartIcon, Settings, Download, RefreshCw, HelpCircle, Info, TrendingUp as CompareIcon, Users as AdvisorsIcon, Activity as FlowsIcon } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './App.css'; // Import the CSS file
 import LoginModal from './components/Auth/LoginModal';
@@ -23,6 +23,7 @@ import AssetClassTable from './components/Dashboard/AssetClassTable';
 import ComparisonPanel from './components/Dashboard/ComparisonPanel';
 import MonthlyReportButton from './components/Reports/MonthlyReportButton';
 import PortfolioDashboard from './components/Advisor/PortfolioDashboard.jsx';
+import TradeFlowDashboard from './components/Analytics/TradeFlowDashboard.jsx';
 import { 
   exportToExcel, 
   downloadFile
@@ -104,6 +105,7 @@ const App = () => {
     assetclasses: '/assetclasses',
     compare: '/compare',
     reports: '/reports',
+    flows: '/flows',
     advisors: '/advisors',
     admin: '/admin'
   };
@@ -111,6 +113,7 @@ const App = () => {
     if (pathname.startsWith('/assetclasses')) return 'assetclasses';
     if (pathname.startsWith('/compare')) return 'compare';
     if (pathname.startsWith('/reports')) return 'reports';
+    if (pathname.startsWith('/flows')) return 'flows';
     if (pathname.startsWith('/advisors')) return 'advisors';
     if (pathname.startsWith('/admin')) return 'admin';
     return 'dashboard';
@@ -413,18 +416,24 @@ const App = () => {
               <span>Asset Classes</span>
             </span>
           </button>
-          <button className={activeTab === 'compare' ? 'active' : ''} onClick={() => { setActiveTab('compare'); navigate('/compare'); }}>
-            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-              <CompareIcon size={16} aria-hidden />
-              <span>Compare</span>
-            </span>
-          </button>
-          <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => { setActiveTab('reports'); navigate('/reports'); }}>
-            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-              <Download size={16} aria-hidden />
-              <span>Reports</span>
-            </span>
-          </button>
+            <button className={activeTab === 'compare' ? 'active' : ''} onClick={() => { setActiveTab('compare'); navigate('/compare'); }}>
+              <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+                <CompareIcon size={16} aria-hidden />
+                <span>Compare</span>
+              </span>
+            </button>
+            <button className={activeTab === 'flows' ? 'active' : ''} onClick={() => { setActiveTab('flows'); navigate('/flows'); }}>
+              <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+                <FlowsIcon size={16} aria-hidden />
+                <span>Flows</span>
+              </span>
+            </button>
+            <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => { setActiveTab('reports'); navigate('/reports'); }}>
+              <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+                <Download size={16} aria-hidden />
+                <span>Reports</span>
+              </span>
+            </button>
           {currentUser?.role === 'admin' && (
             <button className={activeTab === 'admin' ? 'active' : ''} onClick={() => { setActiveTab('admin'); navigate('/admin'); }}>
               <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
@@ -633,6 +642,17 @@ const App = () => {
             <p className="card-subtitle">Holdings intelligence by advisor and snapshot</p>
           </div>
           <PortfolioDashboard />
+        </div>
+      )}
+
+      {/* Flows Tab */}
+      {activeTab === 'flows' && (
+        <div>
+          <div className="card-header">
+            <h2 className="card-title">Trade Flows</h2>
+            <p className="card-subtitle">Firm-wide fund flow intelligence</p>
+          </div>
+          <TradeFlowDashboard />
         </div>
       )}
 

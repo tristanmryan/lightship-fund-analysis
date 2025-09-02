@@ -31,7 +31,7 @@ Transform the existing fund analytics application into a comprehensive advisor i
 - Current focus: Confirm CSV field mappings from RJ samples and finalize Phase 1 data validations + privacy approach.
 - Immediate owners: Data ingestion & schema (Codex), RJ export verification (Tristan).
   - Near-term milestone: Phase 1 design freeze for schema + import validations.
-\- 2025-09-02: Phase 2 kickoff – Implemented Advisor Portfolio Dashboard (UI + data hooks).
+\- 2025-09-02: Phase 2 kickoff - Implemented Advisor Portfolio Dashboard (UI + data hooks).
   - New service: src/services/advisorService.js (dates, advisors, metrics RPC, holdings aggregation, allocation, concentration, adoption).
   - New component: src/components/Advisor/PortfolioDashboard.jsx (date/advisor selectors; AUM, holdings, clients, % in recommended; allocation table; concentration alerts; gap analysis basics).
   - App navigation: Added “Advisors” tab and route wiring in src/App.jsx.
@@ -57,6 +57,18 @@ Transform the existing fund analytics application into a comprehensive advisor i
       - Added trade_activity.price: supabase/migrations/20250902_trade_activity_add_price.sql.
       - Unique index for upsert by external_trade_id: supabase/migrations/20250902_trade_activity_unique_extid.sql.
     - Advisor Adoption Trend:
+\- 2025-09-02: Phase 3 kickoff - Trade Flow Intelligence
+  - UI scaffolded: src/components/Analytics/TradeFlowDashboard.jsx (NetFlowChart, AdvisorSentimentGauge, TopMovers, FlowHeatmap)
+  - Service: src/services/flowsService.js (months, flows, top movers, advisor participation, asset-class aggregation, trend)
+  - Exports: CSV exportTradeFlowsCSV; PDF generateTradeFlowsPDF in src/services/exportService.js
+  - App nav: New Flows tab wired in src/App.jsx
+  - RPCs added: supabase/migrations/20250902_trade_flow_rpcs.sql
+    - get_top_movers(p_month, p_direction, p_asset_class, p_limit)
+    - get_advisor_participation(p_month, p_ticker)
+    - get_flow_by_asset_class(p_month)
+  - Filters implemented: month, asset class, ticker (ticker narrows movers and sentiment)
+  - Fallbacks: UI falls back to `get_fund_flows` and light client aggregation if RPCs are unavailable
+  - Next: validate performance and penny-accuracy with sample trade months; paginate `get_fund_flows` if needed
       - MV + RPCs: supabase/migrations/20250902_advisor_adoption_mv.sql (advisor_adoption_mv + get_advisor_adoption_trend + refresh function).
       - Service: getAdvisorAdoptionTrend in src/services/advisorService.js.
       - UI: AdoptionTrendChart in src/components/Advisor/PortfolioDashboard.jsx.
@@ -257,7 +269,7 @@ portfolio_analytics_mv:
 
 ---
 
-## Phase 3: Trade Flow Intelligence (Weeks 5–6) — Kickoff Summary
+## Phase 3: Trade Flow Intelligence (Weeks 5-6) - Kickoff Summary
 
 ### Objectives
 - Build Trade Flow Dashboard (fund-level net flows, advisor activity, top movers) backed by `fund_flows_mv` and new RPCs as needed.
@@ -275,6 +287,31 @@ portfolio_analytics_mv:
 3) Implement dashboard views and filters (period selector, asset class filter, ticker search).
 4) Add CSV/PDF export of flows summary.
 5) Verification: import sample trades, validate top movers and net flow numbers vs. CSV.
+
+### Status Checklist (Live)
+- [x] UI components scaffolded and wired to data (NetFlowChart, AdvisorSentimentGauge, TopMovers, FlowHeatmap)
+- [x] Filters: month (period), asset class, ticker
+- [x] Exports: CSV and PDF for flows summary
+- [x] Service wrapper: src/services/flowsService.js (RPC-first with fallbacks)
+- [x] New RPCs: get_top_movers, get_advisor_participation, get_flow_by_asset_class
+- [x] App navigation: Flows tab added
+- [ ] Performance validation on large months (consider pagination in `get_fund_flows` usage)
+- [ ] Accuracy validation: penny-level net flows vs. import CSV
+- [ ] What-if presets (3M/6M/12M) and compare months (optional)
+- [ ] Drill-through to advisor list for selected ticker/month (optional)
+- [ ] Accessibility sweep (labels, keyboard nav) for new views
+
+### How to Validate (Phase 3)
+- Use Admin Data Maintenance to delete a trade month; reimport the same month; confirm:
+  - fund_flows_mv refreshes and Flows dashboard reflects changes after import completion
+  - Top movers align with aggregated CSV (sum BUY principals minus SELL principals)
+  - Advisor participation counts (buying/selling) match advisor-level signed principal
+- Test filters:
+  - Asset class filter reduces Top Movers to mapped funds only
+  - Ticker filter restricts movers to the symbol and updates participation
+- Export checks:
+  - CSV contains trend, sentiment, top inflows/outflows, and heatmap sections
+  - PDF renders the same sections with legible tables
 
 ### Risks / Notes
 - Data consistency: ensure delete+reimport flows update the dashboard promptly.

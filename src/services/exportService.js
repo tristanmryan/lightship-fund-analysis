@@ -1154,6 +1154,133 @@ export function exportUtilizationCSV({ snapshotDate, assetClass = null, rows = [
   return new Blob([csv], { type: 'text/csv;charset=utf-8' });
 }
 
+/**
+ * Export Trade Flows CSV
+ */
+export function exportTradeFlowsCSV({ month, assetClass = null, ticker = null, topInflows = [], topOutflows = [], heatmap = [], trend = [], sentiment = {} }) {
+  const metaRows = [
+    ['Lightship - Trade Flow Dashboard Export'],
+    ['Generated:', (new Date()).toISOString()],
+    ['Month:', month || 'Latest'],
+    ['Asset Class Filter:', assetClass || 'All'],
+    ['Ticker Filter:', ticker || 'None'],
+    []
+  ];
+
+  const section = (title) => [[title], []];
+
+  const trendRows = [
+    ['Month', 'Net Flow (USD)'],
+    ...((trend || []).map(r => [r.month, Number(r.net_flow || 0)]))
+  ];
+
+  const sentimentRows = [
+    ['Sentiment'],
+    ['Advisors Buying', Number(sentiment.advisors_buying || 0)],
+    ['Advisors Selling', Number(sentiment.advisors_selling || 0)],
+    ['Advisors Neutral', Number(sentiment.advisors_neutral || 0)],
+    ['Advisors Total', Number(sentiment.advisors_total || 0)]
+  ];
+
+  const inflowRows = [
+    ['Top Inflows'],
+    ['Ticker', 'Inflows', 'Outflows', 'Net', 'Advisors'],
+    ...((topInflows || []).map(r => [r.ticker, Number(r.inflows || 0), Number(r.outflows || 0), Number(r.net_flow || 0), Number(r.advisors_trading || 0)]))
+  ];
+
+  const outflowRows = [
+    ['Top Outflows'],
+    ['Ticker', 'Inflows', 'Outflows', 'Net', 'Advisors'],
+    ...((topOutflows || []).map(r => [r.ticker, Number(r.inflows || 0), Number(r.outflows || 0), Number(r.net_flow || 0), Number(r.advisors_trading || 0)]))
+  ];
+
+  const heatmapRows = [
+    ['Asset Class Heatmap'],
+    ['Asset Class', 'Inflows', 'Outflows', 'Net', 'Funds Traded', 'Advisors Trading (sum)'],
+    ...((heatmap || []).map(r => [r.asset_class, Number(r.inflows || 0), Number(r.outflows || 0), Number(r.net_flow || 0), Number(r.funds_traded || 0), Number(r.advisors_trading || 0)]))
+  ];
+
+  const rows = [
+    ...metaRows,
+    ...section('Net Flow Trend'),
+    ...trendRows,
+    ...section('Advisor Participation'),
+    ...sentimentRows,
+    ...section('Top Movers - Inflows'),
+    ...inflowRows,
+    ...section('Top Movers - Outflows'),
+    ...outflowRows,
+    ...section('Flow Heatmap by Asset Class'),
+    ...heatmapRows
+  ];
+  const csv = buildCSV(rows);
+  return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+}
+
+export async function generateTradeFlowsPDF({ month, assetClass = null, ticker = null, topInflows = [], topOutflows = [], heatmap = [], trend = [], sentiment = {} }) {
+  const { jsPDF } = await import('jspdf');
+  await import('jspdf-autotable');
+  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+
+  // Header
+  doc.setFontSize(16);
+  doc.text('Trade Flow Summary', 40, 40);
+  doc.setFontSize(11);
+  doc.text(`Month: ${month || 'Latest'}`, 40, 60);
+  if (assetClass) doc.text(`Asset Class: ${assetClass}`, 40, 76);
+  if (ticker) doc.text(`Ticker: ${ticker}`, 40, 92);
+
+  // Sentiment
+  const sRows = [
+    ['Advisors Buying', String(Number(sentiment.advisors_buying || 0))],
+    ['Advisors Selling', String(Number(sentiment.advisors_selling || 0))],
+    ['Advisors Neutral', String(Number(sentiment.advisors_neutral || 0))],
+    ['Advisors Total', String(Number(sentiment.advisors_total || 0))]
+  ];
+  doc.autoTable({ startY: 110, head: [['Sentiment', 'Value']], body: sRows, styles: { fontSize: 9 } });
+
+  // Trend
+  const trendHead = [['Month', 'Net Flow (USD)']];
+  const trendBody = (trend || []).map(r => [r.month || '', new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0))]);
+  doc.autoTable({ head: trendHead, body: trendBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
+
+  // Top inflows
+  const inflowHead = [['Ticker', 'Inflows', 'Outflows', 'Net', 'Advisors']];
+  const inflowBody = (topInflows || []).map(r => [
+    r.ticker || '',
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
+    String(Number(r.advisors_trading || 0))
+  ]);
+  doc.autoTable({ head: inflowHead, body: inflowBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
+
+  // Top outflows
+  const outflowHead = [['Ticker', 'Inflows', 'Outflows', 'Net', 'Advisors']];
+  const outflowBody = (topOutflows || []).map(r => [
+    r.ticker || '',
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
+    String(Number(r.advisors_trading || 0))
+  ]);
+  doc.autoTable({ head: outflowHead, body: outflowBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
+
+  // Heatmap by asset class
+  const hmHead = [['Asset Class', 'Inflows', 'Outflows', 'Net', 'Funds Traded', 'Advisors Trading (sum)']];
+  const hmBody = (heatmap || []).map(r => [
+    r.asset_class || 'Unclassified',
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
+    String(Number(r.funds_traded || 0)),
+    String(Number(r.advisors_trading || 0))
+  ]);
+  doc.autoTable({ head: hmHead, body: hmBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
+
+  return doc.output('blob');
+}
+
 // Excel export for Advisor Portfolio
 export function exportAdvisorPortfolioExcel({ snapshotDate, advisorId, summary = {}, portfolio = {} }) {
   const wb = XLSX.utils.book_new();
