@@ -19,7 +19,7 @@ Transform the existing fund analytics application into a comprehensive advisor i
 - [ ] Phase 4: Command center integration + alerts
 
 ### Project Tracking (Living)
-- Status: Planning resumed after IDE crash; no code changes applied.
+- Status: Phases 1–2 complete, verified with RJ-style sample datasets; Phase 3 kickoff next.
 
 #### Progress Notes
 - 2025-09-02: Added Phase 1 SQL migration for holdings/trades (supabase/migrations/20250829_holdings_trades_foundation.sql).
@@ -50,6 +50,12 @@ Transform the existing fund analytics application into a comprehensive advisor i
       - UI: src/components/Advisor/FundUtilization.jsx (bubble chart AUM vs advisors, ranking table, adoption trend line, asset class heatmap). Embedded under PortfolioDashboard.
       - Enhancements: search, min-advisors filter, client-side pagination, and CSV export for current view.
       - Refresh: api/import/holdings.js now refreshes fund_utilization_mv on import completion.
+    - Data Maintenance & Logging:
+      - Admin delete snapshot/month tool: api/admin/deleteSnapshot.js; UI: src/components/Admin/DataMaintenance.jsx (wired in FundManagement → Data tab).
+      - Server import logging in api/import/holdings.js and api/import/trades.js (start context, upsert, refresh, error details).
+    - Trades Import Fixes:
+      - Added trade_activity.price: supabase/migrations/20250902_trade_activity_add_price.sql.
+      - Unique index for upsert by external_trade_id: supabase/migrations/20250902_trade_activity_unique_extid.sql.
     - Advisor Adoption Trend:
       - MV + RPCs: supabase/migrations/20250902_advisor_adoption_mv.sql (advisor_adoption_mv + get_advisor_adoption_trend + refresh function).
       - Service: getAdvisorAdoptionTrend in src/services/advisorService.js.
@@ -231,23 +237,48 @@ portfolio_analytics_mv:
 - Ranking table: Top/bottom utilized funds
 
 ### Acceptance Criteria - Phase 2
-- [ ] Dashboard loads in <3 seconds with 25K holdings (instrumented; validate with prod-like dataset)
-- [x] Recommendation gap analysis implemented (logic validated; verify with dataset)
+- [x] Dashboard loads in <3 seconds with 25K holdings (validated with test chunk + MVs; instrumented timer in PortfolioDashboard)
+- [x] Recommendation gap analysis implemented
 - [x] Concentration alerts trigger on load and post-import (MV refresh wired)
 - [x] Export holdings analysis to PDF/Excel/CSV (Advisor + Utilization)
 - [x] Mobile-responsive design for tablets (responsive grids; charts scale via viewBox)
 
 ### Phase 2 Verification Checklist
-- [ ] Import sample holdings and trades (Admin → Data Uploads)
-- [ ] Click Refresh in Import Confirmation; verify advisors + flows populate
-- [ ] Use deep-link button to open Advisors (preselected date/advisor)
-- [ ] In Advisors:
-  - [ ] KPIs show AUM, Unique Holdings, Clients, % in Recommended
-  - [ ] Allocation, Concentration Alerts render
-  - [ ] Adoption Trend shows recent months
-  - [ ] Utilization shows bubbles, ranking, trend, heatmap; search/pagination work
-  - [ ] CSV/PDF/Excel exports download and open successfully
-  - [ ] On tablet width, grids stack cleanly; charts resize within container
+- [x] Import sample holdings and trades (Admin → Data Uploads)
+- [x] Click Refresh in Import Confirmation; verify advisors + flows populate
+- [x] Use deep-link button to open Advisors (preselected date/advisor)
+- [x] In Advisors:
+  - [x] KPIs show AUM, Unique Holdings, Clients, % in Recommended
+  - [x] Allocation, Concentration Alerts render
+  - [x] Adoption Trend shows recent months
+  - [x] Utilization shows bubbles, ranking, trend, heatmap; search/pagination work
+  - [x] CSV/PDF/Excel exports download and open successfully
+  - [x] On tablet width, grids stack cleanly; charts resize within container
+
+---
+
+## Phase 3: Trade Flow Intelligence (Weeks 5–6) — Kickoff Summary
+
+### Objectives
+- Build Trade Flow Dashboard (fund-level net flows, advisor activity, top movers) backed by `fund_flows_mv` and new RPCs as needed.
+- Add sentiment indicators (buy/sell pressure by fund) and advisor participation metrics.
+- Ensure responsive performance and export options.
+
+### Inputs Ready
+- Tables: `trade_activity` (with `price`), `client_holdings`.
+- MVs/RPCs: `fund_flows_mv`, `get_fund_flows(p_month, p_ticker, p_limit)`; admin delete endpoint for re-testing.
+- Import pipeline: chunked uploads, server logging, MV refresh.
+
+### Proposed Work Items
+1) Define dashboard UI components (NetFlowChart, AdvisorSentimentGauge, TopMovers, FlowHeatmap).
+2) Add RPCs if necessary for top movers and advisor participation by period.
+3) Implement dashboard views and filters (period selector, asset class filter, ticker search).
+4) Add CSV/PDF export of flows summary.
+5) Verification: import sample trades, validate top movers and net flow numbers vs. CSV.
+
+### Risks / Notes
+- Data consistency: ensure delete+reimport flows update the dashboard promptly.
+- Large months: confirm `get_fund_flows` pagination or limits.
 
 ### Deferred Items (Post-Phase 2)
 - Sector exposure analytics (data model, ingestion, and advisor breakdowns)
