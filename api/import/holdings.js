@@ -48,9 +48,9 @@ export default async function handler(req, res) {
       // Refresh advisor metrics and fund utilization MVs (flows MV depends on trades)
       if (refresh !== false) {
         log('refreshing materialized views');
-        await supabaseServer.rpc('refresh_advisor_metrics_mv').catch(e => log('refresh_advisor_metrics_mv error', e?.message || e));
-        await supabaseServer.rpc('refresh_fund_utilization_mv').catch(e => log('refresh_fund_utilization_mv error', e?.message || e));
-        await supabaseServer.rpc('refresh_advisor_adoption_mv').catch(e => log('refresh_advisor_adoption_mv error', e?.message || e));
+        try { await supabaseServer.rpc('refresh_advisor_metrics_mv'); } catch (e) { log('refresh_advisor_metrics_mv error', e?.message || e); }
+        try { await supabaseServer.rpc('refresh_fund_utilization_mv'); } catch (e) { log('refresh_fund_utilization_mv error', e?.message || e); }
+        try { await supabaseServer.rpc('refresh_advisor_adoption_mv'); } catch (e) { log('refresh_advisor_adoption_mv error', e?.message || e); }
       }
     }
 
@@ -64,4 +64,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: e.message || 'Import failed', code: e?.code || null, details: e?.details || null });
   }
 }
-

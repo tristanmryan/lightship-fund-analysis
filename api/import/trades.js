@@ -55,7 +55,7 @@ export default async function handler(req, res) {
       // Refresh flows MV when requested
       if (refresh !== false) {
         log('refresh flows mv');
-        await supabaseServer.rpc('refresh_fund_flows_mv').catch(e => log('refresh_fund_flows_mv error', e?.message || e));
+        try { await supabaseServer.rpc('refresh_fund_flows_mv'); } catch (e) { log('refresh_fund_flows_mv error', e?.message || e); }
       }
     }
 
@@ -71,4 +71,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: e.message || 'Import failed', code: e?.code || null, details: e?.details || null });
   }
 }
-
