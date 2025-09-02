@@ -163,15 +163,36 @@ export default function HoldingsTradesImport() {
     try {
       setHoldingsBusy(true);
       setHoldingsResult(null);
-      const csv = await fileToText(holdingsFile);
-      const resp = await fetch('/api/import/holdings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ snapshotDate: holdingsDate, csv, dryRun })
-      });
-      const json = await resp.json();
-      if (!resp.ok) throw new Error(json.error || 'Import failed');
-      setHoldingsResult(json);
+      const text = await fileToText(holdingsFile);
+      // Parse CSV client-side to avoid Vercel 4.5MB body limit; send in chunks
+      const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+      const allRows = Array.isArray(parsed.data) ? parsed.data : [];
+      if (dryRun) {
+        // Small sample dry-run using server CSV parsing if file is small; otherwise send first 200 rows
+        const sampleRows = allRows.slice(0, 200);
+        const resp = await fetch('/api/import/holdings', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ snapshotDate: holdingsDate, rows: sampleRows, dryRun: true })
+        });
+        const json = await resp.json();
+        if (!resp.ok) throw new Error(json.error || 'Import (dry-run) failed');
+        setHoldingsResult(json);
+      } else {
+        const chunkSize = 1000;
+        let total = 0;
+        for (let i = 0; i < allRows.length; i += chunkSize) {
+          const chunk = allRows.slice(i, i + chunkSize);
+          const isLast = i + chunkSize >= allRows.length;
+          const resp = await fetch('/api/import/holdings', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ snapshotDate: holdingsDate, rows: chunk, refresh: isLast })
+          });
+          const json = await resp.json();
+          if (!resp.ok) throw new Error(json.error || 'Import failed');
+          total += json?.rows || 0;
+          setHoldingsResult({ ok: true, snapshotDate: holdingsDate, rows: total, partial: !isLast });
+        }
+      }
     } catch (e) {
       setHoldingsResult({ error: e.message || String(e) });
     } finally {
@@ -184,15 +205,34 @@ export default function HoldingsTradesImport() {
     try {
       setTradesBusy(true);
       setTradesResult(null);
-      const csv = await fileToText(tradesFile);
-      const resp = await fetch('/api/import/trades', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ csv, dryRun })
-      });
-      const json = await resp.json();
-      if (!resp.ok) throw new Error(json.error || 'Import failed');
-      setTradesResult(json);
+      const text = await fileToText(tradesFile);
+      const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+      const allRows = Array.isArray(parsed.data) ? parsed.data : [];
+      if (dryRun) {
+        const sampleRows = allRows.slice(0, 200);
+        const resp = await fetch('/api/import/trades', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rows: sampleRows, dryRun: true })
+        });
+        const json = await resp.json();
+        if (!resp.ok) throw new Error(json.error || 'Import (dry-run) failed');
+        setTradesResult(json);
+      } else {
+        const chunkSize = 1000;
+        let total = 0;
+        for (let i = 0; i < allRows.length; i += chunkSize) {
+          const chunk = allRows.slice(i, i + chunkSize);
+          const isLast = i + chunkSize >= allRows.length;
+          const resp = await fetch('/api/import/trades', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rows: chunk, refresh: isLast })
+          });
+          const json = await resp.json();
+          if (!resp.ok) throw new Error(json.error || 'Import failed');
+          total += json?.rows || 0;
+          setTradesResult({ ok: true, rows: total, partial: !isLast });
+        }
+      }
     } catch (e) {
       setTradesResult({ error: e.message || String(e) });
     } finally {

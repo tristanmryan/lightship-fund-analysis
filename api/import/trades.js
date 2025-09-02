@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
   try {
     const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
-    const { rows, csv, dryRun } = payload;
+    const { rows, csv, dryRun, refresh } = payload;
     const dataRows = Array.isArray(rows) ? rows : (csv ? parseCsv(csv) : []);
     if (!Array.isArray(dataRows) || dataRows.length === 0) {
       return res.status(400).json({ error: 'Provide rows[] or csv text with headers' });
@@ -38,8 +38,10 @@ export default async function handler(req, res) {
         if (error) throw error;
       }
 
-      // Refresh flows MV
-      await supabaseServer.rpc('refresh_fund_flows_mv').catch(() => {});
+      // Refresh flows MV when requested
+      if (refresh !== false) {
+        await supabaseServer.rpc('refresh_fund_flows_mv').catch(() => {});
+      }
     }
 
     const advisors = new Set(mapped.map(x => x.advisor_id)).size;

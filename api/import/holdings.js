@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
   try {
     const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
-    const { snapshotDate, rows, csv, dryRun } = payload;
+    const { snapshotDate, rows, csv, dryRun, refresh } = payload;
     if (!snapshotDate) return res.status(400).json({ error: 'snapshotDate is required (YYYY-MM-DD)' });
 
     const dataRows = Array.isArray(rows) ? rows : (csv ? parseCsv(csv) : []);
@@ -29,10 +29,12 @@ export default async function handler(req, res) {
         .upsert(mapped, { onConflict: 'snapshot_date,advisor_id,client_id,ticker' });
       if (error) throw error;
 
-      // Refresh advisor metrics and fund utilization MVs (flows MV depends on trades)
-      await supabaseServer.rpc('refresh_advisor_metrics_mv').catch(() => {});
-      await supabaseServer.rpc('refresh_fund_utilization_mv').catch(() => {});
-      await supabaseServer.rpc('refresh_advisor_adoption_mv').catch(() => {});
+      // Refresh advisor metrics/utilization/adoption MVs once per batch when requested
+      if (refresh !== false) {
+        await supabaseServer.rpc('refresh_advisor_metrics_mv').catch(() => {});
+        await supabaseServer.rpc('refresh_fund_utilization_mv').catch(() => {});
+        await supabaseServer.rpc('refresh_advisor_adoption_mv').catch(() => {});
+      }
     }
 
     const advisors = new Set(mapped.map(x => x.advisor_id)).size;
