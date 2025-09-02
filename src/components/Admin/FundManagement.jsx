@@ -15,6 +15,7 @@ import DataDiagnostics from './DataDiagnostics';
 import ResetAndSeedUtilities from './ResetAndSeedUtilities';
 import ScoringWeights from './ScoringWeights';
 import { useAssetClassOptions } from '../../hooks/useAssetClassOptions';
+import DataMaintenance from './DataMaintenance.jsx';
 
 const FundManagement = () => {
   const { 
@@ -222,6 +223,7 @@ const FundManagement = () => {
             <MonthlySnapshotUpload />
             <MVRefreshControl />
             <HoldingsTradesImport />
+            <DataMaintenance />
             <SnapshotManager />
             <SeedRecommendedFunds />
             <SeedBenchmarks />
