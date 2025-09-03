@@ -408,8 +408,7 @@ export async function __obsolete_generatePDFReportV2_old(data, options = {}) {
 
   // Return the PDF blob
   const blob = await response.blob();
-  console.log([PDF] PDF v2 generated successfully:  bytes);
-
+  console.log(`[PDF] PDF v2 generated successfully: ${blob.size} bytes`);
   return blob;
 }
 
