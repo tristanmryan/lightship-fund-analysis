@@ -192,5 +192,56 @@ export default {
   getTopMovers,
   getAdvisorParticipation,
   getFlowByAssetClass,
-  getNetFlowTrend
+  getNetFlowTrend,
+  async getAdvisorBreakdown({ month, ticker, limit = 200 }) {
+    const m = month ? toMonthStart(month) : null;
+    const t = (ticker || '').trim().toUpperCase();
+    if (!m || !t) return [];
+    // Prefer RPC
+    try {
+      const { data, error } = await supabase.rpc('get_advisor_breakdown', {
+        p_month: m,
+        p_ticker: t,
+        p_limit: limit
+      });
+      if (!error && Array.isArray(data)) return data;
+    } catch {}
+    // Fallback: query trades filtered server-side and aggregate client-side
+    const { data: trades, error } = await supabase
+      .from('trade_activity')
+      .select('advisor_id, trade_type, principal_amount, trade_date, cancelled')
+      .eq('ticker', t);
+    if (error) throw error;
+    const targetKey = (() => { const d = new Date(m); return `${d.getUTCFullYear()}-${d.getUTCMonth()}`; })();
+    const monthKey = (d) => { const dt = new Date(d); return `${dt.getUTCFullYear()}-${dt.getUTCMonth()}`; };
+    const map = new Map();
+    for (const r of trades || []) {
+      if (r.cancelled) continue;
+      if (monthKey(r.trade_date) !== targetKey) continue;
+      const id = r.advisor_id;
+      const cur = map.get(id) || { advisor_id: id, buy_trades: 0, sell_trades: 0, net_principal: 0 };
+      if (r.trade_type === 'BUY') cur.buy_trades += 1; else if (r.trade_type === 'SELL') cur.sell_trades += 1;
+      const signed = Number(r.principal_amount || 0) * (r.trade_type === 'SELL' ? -1 : 1);
+      cur.net_principal += signed;
+      map.set(id, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => Math.abs(b.net_principal) - Math.abs(a.net_principal)).slice(0, limit);
+  },
+  async getFundFlowsMap(month, limit = 1000) {
+    const rows = await getFundFlows(month, null, limit);
+    const map = new Map();
+    for (const r of rows || []) map.set(String(r.ticker).toUpperCase(), r);
+    return map;
+  },
+  monthOffset(month, offset = -1) {
+    try {
+      const d = month ? new Date(month) : new Date();
+      const y = d.getUTCFullYear();
+      const m = d.getUTCMonth();
+      const nd = new Date(Date.UTC(y, m + offset, 1));
+      const yy = nd.getUTCFullYear();
+      const mm = String(nd.getUTCMonth() + 1).padStart(2, '0');
+      return `${yy}-${mm}-01`;
+    } catch { return null; }
+  }
 };

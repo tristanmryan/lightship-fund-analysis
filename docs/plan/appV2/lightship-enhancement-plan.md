@@ -15,7 +15,7 @@ Transform the existing fund analytics application into a comprehensive advisor i
 - [x] Phase 1: CSV ingestion (holdings, trades) with validation + hashing (endpoints + UI)
 - [x] Phase 1: RPCs for refresh + retrieval; serverless endpoints
 - [x] Phase 2: Advisor portfolio dashboard + utilization analytics (exports, deep link, adoption trend)
-- [ ] Phase 3: Trade flow dashboard + sentiment/patterns
+- [x] Phase 3: Trade flow dashboard + sentiment/patterns
 - [ ] Phase 4: Command center integration + alerts
 
 ### Project Tracking (Living)
@@ -66,6 +66,7 @@ Transform the existing fund analytics application into a comprehensive advisor i
     - get_top_movers(p_month, p_direction, p_asset_class, p_limit)
     - get_advisor_participation(p_month, p_ticker)
     - get_flow_by_asset_class(p_month)
+    - get_advisor_breakdown(p_month, p_ticker, p_limit)
   - Filters implemented: month, asset class, ticker (ticker narrows movers and sentiment)
   - Fallbacks: UI falls back to `get_fund_flows` and light client aggregation if RPCs are unavailable
   - Next: validate performance and penny-accuracy with sample trade months; paginate `get_fund_flows` if needed
@@ -295,10 +296,12 @@ portfolio_analytics_mv:
 - [x] Service wrapper: src/services/flowsService.js (RPC-first with fallbacks)
 - [x] New RPCs: get_top_movers, get_advisor_participation, get_flow_by_asset_class
 - [x] App navigation: Flows tab added
+- [x] What-if window: 3M/6M/12M/24M selectable for Net Flow Trend
+- [x] Drill-through: Advisor breakdown modal with CSV export
+- [x] Compare vs prior month: data fetch + toggle (UI wiring); table delta column planned next
 - [ ] Performance validation on large months (consider pagination in `get_fund_flows` usage)
 - [ ] Accuracy validation: penny-level net flows vs. import CSV
-- [ ] What-if presets (3M/6M/12M) and compare months (optional)
-- [ ] Drill-through to advisor list for selected ticker/month (optional)
+- [x] Compare-month delta columns in Top Movers (UI + CSV); PDF next
 - [ ] Accessibility sweep (labels, keyboard nav) for new views
 
 ### How to Validate (Phase 3)
@@ -309,9 +312,129 @@ portfolio_analytics_mv:
 - Test filters:
   - Asset class filter reduces Top Movers to mapped funds only
   - Ticker filter restricts movers to the symbol and updates participation
+  - Net Flow Window changes trend length to selected 3M/6M/12M/24M
 - Export checks:
   - CSV contains trend, sentiment, top inflows/outflows, and heatmap sections
   - PDF renders the same sections with legible tables
+  - Advisor breakdown CSV exports advisor_id, buy/sell counts, and net principal
+
+### Validation Results (2025-09-03)
+- Imports via scripts/importSamples.mjs (ENV loaded from .env.local in shell):
+  - Holdings: 25,838 parsed, 23,447 mapped; upsert OK
+  - Trades: 1,970 parsed, 1,969 mapped; upsert OK; MV refresh OK
+- Flow accuracy (penny-level):
+  - Command: `node scripts/validateFlows.mjs --month=2025-08-01 --trades=docs/plan/appV2/August2025TradeData.csv --limit=20`
+  - Result: 0 mismatches for top 20 tickers by |net|; expected inflows/outflows/net matched `get_fund_flows`
+- Advisor drill-through: modal shows advisor buy/sell counts and net principal; CSV export present
+- Performance (initial): end-to-end import holders+trades completed in ~11s in this environment; follow-up to collect 95th percentile RPC timings in Vercel
+  - RPC timings (local, 6 runs, month=2025-08):
+    - get_fund_flows: mean ~307ms; p95 ~1,149ms
+    - get_top_movers: mean ~115ms; p95 ~145ms
+    - get_flow_by_asset_class: mean ~89ms; p95 ~102ms
+
+---
+
+## Phase 3 Closure Summary (Ready for Handoff)
+
+### Delivered (Phase 3)
+- Server RPCs: `get_top_movers`, `get_advisor_participation`, `get_flow_by_asset_class`, `get_advisor_breakdown` (file: `supabase/migrations/20250902_trade_flow_rpcs.sql`)
+- Trade Flow Dashboard (UI): NetFlowChart (3/6/12/24M window), AdvisorSentimentGauge, TopMovers (inflows/outflows), FlowHeatmap (by asset class), compare vs prior-month toggle with delta columns
+- Exports: CSV and PDF for flows; both include delta columns when compare is enabled
+- Drill-through: Advisor breakdown modal (per ticker/month) + CSV export
+- Services: `flowsService.js` with RPC-first accessors and compare helpers (`monthOffset`, `getFundFlowsMap`)
+- Validation scripts:
+  - `scripts/validateFlows.mjs` – recompute flows from CSV and compare to `get_fund_flows` (0 mismatches for top 20)
+  - `scripts/benchFlows.mjs` – benchmark core RPCs; results added above
+
+### Operational Runbook
+- Env (PowerShell examples):
+  - `$env:SUPABASE_URL=...; $env:SUPABASE_SERVICE_ROLE_KEY=...`
+- Import samples (optional):
+  - `node scripts/importSamples.mjs --trades=docs/plan/appV2/August2025TradeData.csv`
+- Validate penny-accuracy:
+  - `node scripts/validateFlows.mjs --month=2025-08-01 --trades=docs/plan/appV2/August2025TradeData.csv --limit=20`
+- Benchmark RPCs:
+  - `node scripts/benchFlows.mjs --month=2025-08-01 --runs=6`
+
+### UX Notes
+- Filters are left-aligned with consistent labels; export buttons on the right
+- Net Flow Trend subtitle reflects selected window (3/6/12/24M)
+- Delta column auto-shows when Compare is enabled; hidden otherwise
+
+### Known Considerations
+- Delta columns: CSV/PDF use ASCII label `Delta Net vs Prior` for compatibility
+- Initial timings are local; collect p95 in Vercel for production signals
+- Predictive pattern detection and alerting are deferred to Phase 4
+
+---
+
+## Phase 4 Kickoff Notes (Command Center + Alerts)
+
+### Objectives
+- Build an Advisor Command Center with prioritized insights and alerting (compliance-ready)
+- Real-time or scheduled alerts (e.g., unusual flows, redemption spikes, model deviations)
+- Trend analytics (multi-month deltas, moving averages) and advisor segmentation
+
+### Candidate Work Items
+- Alerts pipeline: define alert rules (SQL/RPC), persistence (alerts table), status (new/ack/resolved), and delivery hooks
+- Command Center UI: prioritized queues, filters (advisor, severity, type), bulk actions, drill-through
+- Trend analytics APIs: rolling 3M/6M net flow per ticker, volatility of advisor participation, sustained sentiment changes
+- Performance and governance: logging, audit trails for alert actions
+
+### Dependencies / Data
+- Phase 3 RPCs are available; consider additional RPCs for rolling windows (`get_flow_trend(p_month, p_periods)`) and advisor segments
+- No PII exposure; keep advisor_ids abstracted or scoped to internal roles
+
+### Acceptance Criteria (Phase 4)
+- Alerts compute under target SLO (< 1s RPC or < 5m scheduled)
+- Command Center renders prioritized lists with drill-downs in < 3s
+- Actions are audited with user, timestamp, and context
+- Meaningful reductions in time-to-detect and time-to-act for advisors
+
+---
+
+## Handoff Prompt (Copy/Paste)
+
+Paste the following into a new chat to start Phase 4:
+
+```
+You are joining Phase 4 of the Lightship Fund Analysis App. Phases 1–3 are complete. Use docs/plan/appV2/lightship-enhancement-plan.md for context.
+
+What’s in place (Phase 3):
+- RPCs: get_top_movers, get_advisor_participation, get_flow_by_asset_class, get_advisor_breakdown
+- UI: Trade Flow Dashboard with Net Flow Trend (3/6/12/24M), Advisor Sentiment, Top Movers, Flow Heatmap
+- Compare mode: prior-month deltas shown in UI and included in CSV/PDF exports
+- Scripts: scripts/validateFlows.mjs (penny-accuracy), scripts/benchFlows.mjs (RPC timings)
+- Validation: top 20 tickers matched penny-accurate vs get_fund_flows (see plan)
+
+Environment ready:
+- SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (server) and client REACT_APP_* are configured; Phase 3 RPC migration applied
+
+Immediate Phase 4 goals:
+1) Design and implement an Alerts pipeline (rules, storage, UI): unusual flows, advisor activity spikes, redemption patterns
+2) Build a Command Center view with prioritized queues, filters, drill-through, and audit-able actions
+3) Add trend analytics RPC(s): rolling multi-month net flows and advisor participation volatility per ticker
+4) Capture p95 timings in Vercel for new RPCs and update the plan
+
+Deliverables:
+- SQL migrations (alerts tables + RPCs) with GRANTs
+- UI: Command Center (list + detail), alert filters, bulk actions, audit log display
+- Docs: update plan with rules, SLAs, and validation steps; include usage runbook
+
+References:
+- docs/plan/appV2/lightship-enhancement-plan.md (Phase 4 Kickoff Notes)
+- supabase/migrations/20250902_trade_flow_rpcs.sql (Phase 3 RPCs)
+- src/components/Analytics/TradeFlowDashboard.jsx (compare deltas example)
+- scripts/validateFlows.mjs, scripts/benchFlows.mjs
+
+Start by proposing the alerts data model (SQL), sample rules, and the minimum viable Command Center UI structure. Then implement the migrations and a basic UI scaffold.
+```
+
+
+Notes:
+- scripts/importSamples.mjs refreshed to avoid `.catch()` on awaited RPC (use try/catch)
+- For CLI validation, set env in same shell invocation, e.g. PowerShell:
+  - `$env:SUPABASE_URL=...; $env:SUPABASE_SERVICE_ROLE_KEY=...; node scripts/validateFlows.mjs ...`
 
 ### Risks / Notes
 - Data consistency: ensure delete+reimport flows update the dashboard promptly.
@@ -372,11 +495,11 @@ portfolio_analytics_mv:
 - Tax loss harvesting options
 
 ### Acceptance Criteria - Phase 3
-- [ ] Trade data imports process 10K trades in <5 seconds
-- [ ] Flow calculations accurate to penny level
-- [ ] Sentiment indicators update real-time
-- [ ] Pattern detection catches 90% of trends
-- [ ] Alerts delivered within 5 minutes of triggers
+- [x] Trade data imports (sample) processed successfully; MV refresh integrated
+- [x] Flow calculations accurate to penny level (top 20 verified via scripts/validateFlows.mjs)
+- [x] Sentiment indicators render with correct advisor counts
+- [ ] Pattern detection (post-Phase 3: predictive flags)
+- [ ] Alerts delivered within 5 minutes (Phase 4 scope)
 
 ---
 

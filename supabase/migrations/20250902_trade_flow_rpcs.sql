@@ -109,3 +109,35 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.get_flow_by_asset_class(date) TO anon, authenticated, service_role;
 
+-- Advisors breakdown for a ticker in a month
+CREATE OR REPLACE FUNCTION public.get_advisor_breakdown(
+  p_month date,
+  p_ticker text,
+  p_limit int DEFAULT 200
+)
+RETURNS TABLE (
+  advisor_id text,
+  buy_trades int,
+  sell_trades int,
+  net_principal numeric
+)
+LANGUAGE sql
+STABLE
+AS $$
+  WITH base AS (
+    SELECT ta.advisor_id,
+           SUM(CASE WHEN ta.trade_type = 'BUY'  AND NOT ta.cancelled THEN 1 ELSE 0 END) AS buy_trades,
+           SUM(CASE WHEN ta.trade_type = 'SELL' AND NOT ta.cancelled THEN 1 ELSE 0 END) AS sell_trades,
+           SUM(CASE WHEN NOT ta.cancelled THEN (CASE WHEN ta.trade_type = 'SELL' THEN -1 ELSE 1 END) * COALESCE(ta.principal_amount, 0) ELSE 0 END) AS net_principal
+    FROM public.trade_activity ta
+    WHERE DATE_TRUNC('month', ta.trade_date)::date = p_month
+      AND ta.ticker = p_ticker
+    GROUP BY ta.advisor_id
+  )
+  SELECT advisor_id, buy_trades, sell_trades, net_principal
+  FROM base
+  ORDER BY ABS(net_principal) DESC, advisor_id ASC
+  LIMIT GREATEST(1, LEAST(p_limit, 10000));
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_advisor_breakdown(date, text, int) TO anon, authenticated, service_role;

@@ -26,7 +26,7 @@ async function importHoldings(filePath, snapshotDate, dryRun=false) {
     const { error } = await supabaseServer.from('client_holdings').upsert(part, { onConflict: 'snapshot_date,advisor_id,client_id,ticker' });
     if (error) throw error;
   }
-  await supabaseServer.rpc('refresh_advisor_metrics_mv').catch(()=>{});
+  try { await supabaseServer.rpc('refresh_advisor_metrics_mv'); } catch {}
   return { ok: true, rows: mapped.length };
 }
 
@@ -46,7 +46,7 @@ async function importTrades(filePath, dryRun=false) {
     const { error } = await supabaseServer.from('trade_activity').insert(part);
     if (error) throw error;
   }
-  await supabaseServer.rpc('refresh_fund_flows_mv').catch(()=>{});
+  try { await supabaseServer.rpc('refresh_fund_flows_mv'); } catch {}
   return { ok: true, rows: mapped.length };
 }
 
@@ -81,4 +81,3 @@ async function main() {
 }
 
 main().catch((e) => { console.error('Import failed', e); process.exit(1); });
-

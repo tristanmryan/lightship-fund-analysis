@@ -1,4 +1,4 @@
-﻿// src/services/exportService.js
+// src/services/exportService.js
 import * as XLSX from 'xlsx';
 import { toISODateTime } from '../utils/formatters.js';
 import { supabase, TABLES } from './supabase.js';
@@ -192,7 +192,7 @@ export function exportToExcel(data, options = {}) {
         fund.alpha != null ? Number(fund.alpha).toFixed(2) : '',
         fund.beta != null ? Number(fund.beta).toFixed(2) : '',
         fund.manager_tenure != null ? Number(fund.manager_tenure).toFixed(1) : '',
-        fund.is_recommended ? 'âœ“ Recommended' : 'Not Recommended',
+        fund.is_recommended ? 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ Recommended' : 'Not Recommended',
         formatDate(fund.last_updated || new Date(), { format: 'short' })
       ];
     } else {
@@ -307,7 +307,7 @@ async function _obsolete_generatePDFReportLegacyWrapper(data, options = {}) {
   const usePdfV2 = options.forceV2 || (envValue !== 'false');
   
   // Debug logging
-  console.log('ðŸ” PDF Feature Flag Debug:', {
+  console.log('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â PDF Feature Flag Debug:', {
     envValue,
     usePdfV2,
     forceV2: options.forceV2,
@@ -316,15 +316,15 @@ async function _obsolete_generatePDFReportLegacyWrapper(data, options = {}) {
   
   if (usePdfV2) {
     try {
-      console.log('ðŸ“Š Using PDF v2 (server-rendered)');
+      console.log('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â  Using PDF v2 (server-rendered)');
       return await generatePDFReportV2(data, options);
     } catch (error) {
-      console.warn('âš ï¸ PDF v2 failed, falling back to legacy PDF:', error);
+      console.warn('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â PDF v2 failed, falling back to legacy PDF:', error);
       // Legacy removed: bubble error (wrapper unused)
       return await generatePDFReportV2(data, options);
     }
   } else {
-    console.log('ðŸ“Š Using legacy PDF (client-side)');
+    console.log('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â  Using legacy PDF (client-side)');
     return await generatePDFReportV2(data, options);
   }
 }
@@ -363,28 +363,28 @@ export async function __obsolete_generatePDFReportV2_old(data, options = {}) {
     }
   };
 
-  console.log('ðŸš€ Calling PDF v2 API with payload:', payload);
+  console.log('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Calling PDF v2 API with payload:', payload);
 
   // Check if we're in development mode (localhost)
   const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   
   if (false) {
-    console.log('ðŸ”§ Development mode detected - testing serverless function first');
+    console.log('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ Development mode detected - testing serverless function first');
     
     // Try the advanced test endpoint first to verify serverless setup
     try {
-      console.log('ðŸ§ª Testing advanced PDF endpoint...');
+      console.log('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âª Testing advanced PDF endpoint...');
       const testResponse = await fetch('/api/test-pdf-advanced', { method: 'GET' });
       
       if (testResponse.ok) {
-        console.log('âœ… Serverless PDF system working! Using server-side generation...');
+        console.log('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ Serverless PDF system working! Using server-side generation...');
         // If test works, proceed with real API call (fall through to production code)
       } else {
         throw new Error(`Test endpoint failed: ${testResponse.status}`);
       }
     } catch (testError) {
-      console.log('âš ï¸ Serverless function not available, using client-side fallback');
-      console.log('ðŸ”§ Using enhanced client-side PDF generation');
+      console.log('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Serverless function not available, using client-side fallback');
+      console.log('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ Using enhanced client-side PDF generation');
       
       // Import the client-side PDF generation as a fallback for development
       const { generateClientSideProfessionalPDF } = await import('./clientPdfV2Service.js');
@@ -408,7 +408,7 @@ export async function __obsolete_generatePDFReportV2_old(data, options = {}) {
 
   // Return the PDF blob
   const blob = await response.blob();
-  console.log(`âœ… PDF v2 generated successfully: ${blob.size} bytes`);
+  console.log(`ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ PDF v2 generated successfully: ${blob.size} bytes`);
 
   return blob;
 }
@@ -1028,14 +1028,14 @@ function _obsolete_downloadPDFLegacy(pdfResult, filename) {
   
   // Handle jsPDF objects (legacy v1)
   if (pdfResult.save && typeof pdfResult.save === 'function') {
-    console.log('ðŸ“„ Downloading PDF v1 (jsPDF)');
+    console.log('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¾ Downloading PDF v1 (jsPDF)');
     pdfResult.save(filename);
     return;
   }
   
   // Handle Blob objects (v2)
   if (pdfResult instanceof Blob) {
-    console.log('ðŸ“„ Downloading PDF v2 (Blob)');
+    console.log('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¾ Downloading PDF v2 (Blob)');
     downloadFile(pdfResult, filename, 'application/pdf');
     return;
   }
@@ -1182,16 +1182,18 @@ export function exportTradeFlowsCSV({ month, assetClass = null, ticker = null, t
     ['Advisors Total', Number(sentiment.advisors_total || 0)]
   ];
 
+  const hasDeltaIn = (topInflows || []).some(r => Object.prototype.hasOwnProperty.call(r || {}, 'delta_net'));
   const inflowRows = [
     ['Top Inflows'],
-    ['Ticker', 'Inflows', 'Outflows', 'Net', 'Advisors'],
-    ...((topInflows || []).map(r => [r.ticker, Number(r.inflows || 0), Number(r.outflows || 0), Number(r.net_flow || 0), Number(r.advisors_trading || 0)]))
+    hasDeltaIn ? ['Ticker','Inflows','Outflows','Net','Delta Net vs Prior','Advisors'] : ['Ticker','Inflows','Outflows','Net','Advisors'],
+    ...((topInflows || []).map(r => hasDeltaIn ? [r.ticker, Number(r.inflows||0), Number(r.outflows||0), Number(r.net_flow||0), Number(r.delta_net||0), Number(r.advisors_trading||0)] : [r.ticker, Number(r.inflows||0), Number(r.outflows||0), Number(r.net_flow||0), Number(r.advisors_trading||0)]))
   ];
-
+  const hasDeltaOut = (topOutflows || []).some(r => Object.prototype.hasOwnProperty.call(r || {}, 'delta_net'));
   const outflowRows = [
     ['Top Outflows'],
-    ['Ticker', 'Inflows', 'Outflows', 'Net', 'Advisors'],
-    ...((topOutflows || []).map(r => [r.ticker, Number(r.inflows || 0), Number(r.outflows || 0), Number(r.net_flow || 0), Number(r.advisors_trading || 0)]))
+    hasDeltaOut ? ['Ticker','Inflows','Outflows','Net','Delta Net vs Prior','Advisors'] : ['Ticker','Inflows','Outflows','Net','Advisors'],
+    ...((topOutflows || []).map(r => hasDeltaOut ? [r.ticker, Number(r.inflows||0), Number(r.outflows||0), Number(r.net_flow||0), Number(r.delta_net||0), Number(r.advisors_trading||0)] : [r.ticker, Number(r.inflows||0), Number(r.outflows||0), Number(r.net_flow||0), Number(r.advisors_trading||0)]))
+  ];
   ];
 
   const heatmapRows = [
@@ -1214,6 +1216,18 @@ export function exportTradeFlowsCSV({ month, assetClass = null, ticker = null, t
     ...heatmapRows
   ];
   const csv = buildCSV(rows);
+  return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+}
+
+export function exportTickerAdvisorBreakdownCSV({ ticker, rows = [] }) {
+  const header = ['Advisor', 'Buy Trades', 'Sell Trades', 'Net Principal (USD)'];
+  const body = (rows || []).map(r => [
+    r.advisor_id || '',
+    Number(r.buy_trades || 0),
+    Number(r.sell_trades || 0),
+    Number(r.net_principal || 0)
+  ]);
+  const csv = buildCSV([['Advisor Breakdown', ticker || ''], [], header, ...body]);
   return new Blob([csv], { type: 'text/csv;charset=utf-8' });
 }
 
@@ -1245,8 +1259,16 @@ export async function generateTradeFlowsPDF({ month, assetClass = null, ticker =
   doc.autoTable({ head: trendHead, body: trendBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
 
   // Top inflows
-  const inflowHead = [['Ticker', 'Inflows', 'Outflows', 'Net', 'Advisors']];
-  const inflowBody = (topInflows || []).map(r => [
+  const inflowHasDelta = Array.isArray(topInflows) && topInflows.some(r => Object.prototype.hasOwnProperty.call(r || {}, 'delta_net'));
+  const inflowHead = [ inflowHasDelta ? ['Ticker', 'Inflows', 'Outflows', 'Net', 'Delta Net vs Prior', 'Advisors'] : ['Ticker', 'Inflows', 'Outflows', 'Net', 'Advisors'] ];
+  const inflowBody = (topInflows || []).map(r => inflowHasDelta ? [
+    r.ticker || '',
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.delta_net || 0)),
+    String(Number(r.advisors_trading || 0))
+  ] : [
     r.ticker || '',
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
@@ -1256,17 +1278,23 @@ export async function generateTradeFlowsPDF({ month, assetClass = null, ticker =
   doc.autoTable({ head: inflowHead, body: inflowBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
 
   // Top outflows
-  const outflowHead = [['Ticker', 'Inflows', 'Outflows', 'Net', 'Advisors']];
-  const outflowBody = (topOutflows || []).map(r => [
+  const outflowHasDelta = Array.isArray(topOutflows) && topOutflows.some(r => Object.prototype.hasOwnProperty.call(r || {}, 'delta_net'));
+  const outflowHead = [ outflowHasDelta ? ['Ticker', 'Inflows', 'Outflows', 'Net', 'Delta Net vs Prior', 'Advisors'] : ['Ticker', 'Inflows', 'Outflows', 'Net', 'Advisors'] ];
+  const outflowBody = (topOutflows || []).map(r => outflowHasDelta ? [
+    r.ticker || '',
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.delta_net || 0)),
+    String(Number(r.advisors_trading || 0))
+  ] : [
     r.ticker || '',
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
     String(Number(r.advisors_trading || 0))
   ]);
-  doc.autoTable({ head: outflowHead, body: outflowBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
-
-  // Heatmap by asset class
+  doc.autoTable({ head: outflowHead, body: outflowBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });  // Heatmap by asset class
   const hmHead = [['Asset Class', 'Inflows', 'Outflows', 'Net', 'Funds Traded', 'Advisors Trading (sum)']];
   const hmBody = (heatmap || []).map(r => [
     r.asset_class || 'Unclassified',
@@ -1642,10 +1670,10 @@ function getPriorityFromDecision(decision) {
 
 function getDecisionSymbol(decision) {
   const symbols = {
-    approve: 'âœ“',
-    reject: 'âœ—',
-    monitor: 'âš ',
-    hold: 'â¸'
+    approve: 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ',
+    reject: 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â',
+    monitor: 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ',
+    hold: 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸'
   };
   return ENABLE_VISUAL_REFRESH ? (symbols[decision] || '') : '';
 }
