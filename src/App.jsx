@@ -1,6 +1,6 @@
 // App.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Home as HomeIcon, BarChart3 as BarChartIcon, Settings, Download, RefreshCw, HelpCircle, Info, TrendingUp as CompareIcon, Users as AdvisorsIcon, Activity as FlowsIcon } from 'lucide-react';
+import { Home as HomeIcon, BarChart3 as BarChartIcon, Settings, Download, RefreshCw, HelpCircle, Info, TrendingUp as CompareIcon, Users as AdvisorsIcon, Activity as FlowsIcon, Bell as BellIcon } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './App.css'; // Import the CSS file
 import LoginModal from './components/Auth/LoginModal';
@@ -24,6 +24,7 @@ import ComparisonPanel from './components/Dashboard/ComparisonPanel';
 import MonthlyReportButton from './components/Reports/MonthlyReportButton';
 import PortfolioDashboard from './components/Advisor/PortfolioDashboard.jsx';
 import TradeFlowDashboard from './components/Analytics/TradeFlowDashboard.jsx';
+import CommandCenter from './components/CommandCenter/CommandCenter.jsx';
 import { 
   exportToExcel, 
   downloadFile
@@ -107,6 +108,7 @@ const App = () => {
     reports: '/reports',
     flows: '/flows',
     advisors: '/advisors',
+    command: '/command',
     admin: '/admin'
   };
   const pathToTab = (pathname) => {
@@ -115,6 +117,7 @@ const App = () => {
     if (pathname.startsWith('/reports')) return 'reports';
     if (pathname.startsWith('/flows')) return 'flows';
     if (pathname.startsWith('/advisors')) return 'advisors';
+    if (pathname.startsWith('/command')) return 'command';
     if (pathname.startsWith('/admin')) return 'admin';
     return 'dashboard';
   };
@@ -404,6 +407,12 @@ const App = () => {
               <span>Dashboard</span>
             </span>
           </button>
+            <button className={activeTab === 'command' ? 'active' : ''} onClick={() => { setActiveTab('command'); navigate('/command'); }}>
+              <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+                <BellIcon size={16} aria-hidden />
+                <span>Command Center</span>
+              </span>
+            </button>
             <button className={activeTab === 'advisors' ? 'active' : ''} onClick={() => { setActiveTab('advisors'); navigate('/advisors'); }}>
               <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
                 <AdvisorsIcon size={16} aria-hidden />
@@ -653,6 +662,17 @@ const App = () => {
             <p className="card-subtitle">Firm-wide fund flow intelligence</p>
           </div>
           <TradeFlowDashboard />
+        </div>
+      )}
+
+      {/* Command Center Tab */}
+      {activeTab === 'command' && (
+        <div>
+          <div className="card-header">
+            <h2 className="card-title">Alerts Command Center</h2>
+            <p className="card-subtitle">Prioritized queues, filters, drill-through, and actions</p>
+          </div>
+          <CommandCenter />
         </div>
       )}
 

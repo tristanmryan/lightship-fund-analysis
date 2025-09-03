@@ -35,6 +35,20 @@ export default function TradeFlowDashboard() {
     return () => { cancel = true; };
   }, []);
 
+  // Support deep-link drillthrough from Command Center
+  useEffect(() => {
+    const handler = (ev) => {
+      try {
+        const m = ev?.detail?.month;
+        const t = ev?.detail?.ticker;
+        if (m) setMonth(m);
+        if (t) setTicker(String(t).toUpperCase());
+      } catch {}
+    };
+    window.addEventListener('NAVIGATE_FLOWS', handler);
+    return () => window.removeEventListener('NAVIGATE_FLOWS', handler);
+  }, []);
+
   // Load data when filters change
   useEffect(() => {
     if (!month) return;

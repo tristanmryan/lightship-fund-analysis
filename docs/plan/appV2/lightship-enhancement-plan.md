@@ -16,12 +16,20 @@ Transform the existing fund analytics application into a comprehensive advisor i
 - [x] Phase 1: RPCs for refresh + retrieval; serverless endpoints
 - [x] Phase 2: Advisor portfolio dashboard + utilization analytics (exports, deep link, adoption trend)
 - [x] Phase 3: Trade flow dashboard + sentiment/patterns
-- [ ] Phase 4: Command center integration + alerts
+- [x] Phase 4: Command center integration + alerts (MVP)
 
 ### Project Tracking (Living)
-- Status: Phases 1–2 complete, verified with RJ-style sample datasets; Phase 3 kickoff next.
+- Status: Phases 1–3 complete and verified; Phase 4 MVP shipped (alerts + Command Center + trend analytics + p95 capture). Follow-ups: rules admin hardening, cron scheduling, PDF/CSV alert exports.
 
 #### Progress Notes
+\- 2025-09-03: Phase 4 (MVP) — Alerts + Command Center
+  - SQL: supabase/migrations/20250903_alerts_and_trend_analytics.sql (alert_rules, alerts, alert_actions; refresh/get/ack/resolve RPCs; get_trend_analytics)
+  - SQL (idempotence): supabase/migrations/20250903_alert_rules_unique.sql (UNIQUE index on (name, rule_type))
+  - UI: Command Center (prioritized queues, filters, bulk actions, drill-through to Flows, audit log); Rules Admin (MVP)
+  - Client: src/services/alertsService.js (alerts CRUD, trend, refresh)
+  - Metrics p95: api/metrics.js + supabase/migrations/20250903_metrics_timings.sql; client instrumentation (flagged by REACT_APP_METRICS_ENABLED)
+  - Bench: scripts/benchAlerts.mjs
+  - Docs: docs/plan/appV2/alerts_model_and_rules.md (rules, SLAs, validation, runbook)
 - 2025-09-02: Added Phase 1 SQL migration for holdings/trades (supabase/migrations/20250829_holdings_trades_foundation.sql).
 - 2025-09-02: Added MV refresh controls in Admin and local row-level error reporting + downloadable error reports in imports.
   - Added serverless import endpoints: api/import/holdings.js, api/import/trades.js (with dry-run).
