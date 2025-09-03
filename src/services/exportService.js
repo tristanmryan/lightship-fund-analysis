@@ -1,4 +1,4 @@
-﻿// src/services/exportService.js
+// src/services/exportService.js
 import * as XLSX from 'xlsx';
 import { toISODateTime } from '../utils/formatters.js';
 import { supabase, TABLES } from './supabase.js';
@@ -192,7 +192,7 @@ export function exportToExcel(data, options = {}) {
         fund.alpha != null ? Number(fund.alpha).toFixed(2) : '',
         fund.beta != null ? Number(fund.beta).toFixed(2) : '',
         fund.manager_tenure != null ? Number(fund.manager_tenure).toFixed(1) : '',
-        fund.is_recommended ? 'âœ“ Recommended' : 'Not Recommended',
+        fund.is_recommended ? 'Recommended' : 'Not Recommended',
         formatDate(fund.last_updated || new Date(), { format: 'short' })
       ];
     } else {
@@ -307,8 +307,8 @@ async function _obsolete_generatePDFReportLegacyWrapper(data, options = {}) {
   const usePdfV2 = options.forceV2 || (envValue !== 'false');
   
   // Debug logging
-  console.log('ðŸ” PDF Feature Flag Debug:', {
-    envValue,
+  // Debug logging
+  console.log('[PDF] Feature flag debug:', {
     usePdfV2,
     forceV2: options.forceV2,
     allEnv: Object.keys(process.env).filter(k => k.startsWith('REACT_APP_'))
@@ -316,15 +316,15 @@ async function _obsolete_generatePDFReportLegacyWrapper(data, options = {}) {
   
   if (usePdfV2) {
     try {
-      console.log('ðŸ“Š Using PDF v2 (server-rendered)');
+      console.log('[PDF] Using PDF v2 (server-rendered)');
       return await generatePDFReportV2(data, options);
     } catch (error) {
-      console.warn('âš ï¸ PDF v2 failed, falling back to legacy PDF:', error);
+      console.warn('[PDF] PDF v2 failed, falling back to legacy PDF:', error);
       // Legacy removed: bubble error (wrapper unused)
       return await generatePDFReportV2(data, options);
     }
   } else {
-    console.log('ðŸ“Š Using legacy PDF (client-side)');
+    console.log('[PDF] Using legacy PDF (client-side)');
     return await generatePDFReportV2(data, options);
   }
 }
@@ -363,28 +363,28 @@ export async function __obsolete_generatePDFReportV2_old(data, options = {}) {
     }
   };
 
-  console.log('ðŸš€ Calling PDF v2 API with payload:', payload);
+  console.log('[PDF] Calling PDF v2 API with payload:', payload);
 
   // Check if we're in development mode (localhost)
   const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   
   if (false) {
-    console.log('ðŸ”§ Development mode detected - testing serverless function first');
+    console.log('[PDF] Development mode: testing serverless function first');
     
     // Try the advanced test endpoint first to verify serverless setup
     try {
-      console.log('ðŸ§ª Testing advanced PDF endpoint...');
+      console.log('[PDF] Testing advanced PDF endpoint...');
       const testResponse = await fetch('/api/test-pdf-advanced', { method: 'GET' });
       
       if (testResponse.ok) {
-        console.log('âœ… Serverless PDF system working! Using server-side generation...');
+        console.log('[PDF] Serverless PDF working � using server-side generation');
         // If test works, proceed with real API call (fall through to production code)
       } else {
         throw new Error(`Test endpoint failed: ${testResponse.status}`);
       }
     } catch (testError) {
-      console.log('âš ï¸ Serverless function not available, using client-side fallback');
-      console.log('ðŸ”§ Using enhanced client-side PDF generation');
+      console.log('[PDF] Serverless function unavailable � using client-side fallback');
+      console.log('[PDF] Using enhanced client-side PDF generation');
       
       // Import the client-side PDF generation as a fallback for development
       const { generateClientSideProfessionalPDF } = await import('./clientPdfV2Service.js');
@@ -408,8 +408,7 @@ export async function __obsolete_generatePDFReportV2_old(data, options = {}) {
 
   // Return the PDF blob
   const blob = await response.blob();
-  console.log(`âœ… PDF v2 generated successfully: ${blob.size} bytes`);
-
+  console.log(`[PDF] PDF v2 generated successfully: ${blob.size} bytes`);
   return blob;
 }
 
@@ -1028,14 +1027,14 @@ function _obsolete_downloadPDFLegacy(pdfResult, filename) {
   
   // Handle jsPDF objects (legacy v1)
   if (pdfResult.save && typeof pdfResult.save === 'function') {
-    console.log('ðŸ“„ Downloading PDF v1 (jsPDF)');
+    console.log('[PDF] Downloading PDF v1 (jsPDF)');
     pdfResult.save(filename);
     return;
   }
   
   // Handle Blob objects (v2)
   if (pdfResult instanceof Blob) {
-    console.log('ðŸ“„ Downloading PDF v2 (Blob)');
+    console.log('[PDF] Downloading PDF v2 (Blob)');
     downloadFile(pdfResult, filename, 'application/pdf');
     return;
   }
@@ -1049,6 +1048,310 @@ export function downloadPDF(pdfBlob, filename) {
     throw new Error('No PDF blob provided');
   }
   downloadFile(pdfBlob, filename, 'application/pdf');
+}
+
+// --- Advisor Portfolio Exports (Phase 2) ---
+
+export function exportAdvisorPortfolioCSV({ snapshotDate, advisorId, summary = {}, portfolio = {} }) {
+  const rows = [];
+  rows.push([`Advisor Portfolio Export`]);
+  rows.push([`Snapshot Date`, snapshotDate || '']);
+  rows.push([`Advisor ID`, advisorId || '']);
+  rows.push([`Clients`, summary?.client_count ?? '']);
+  rows.push([`Unique Holdings`, portfolio?.uniqueHoldings ?? '']);
+  rows.push([`Total AUM (USD)`, Number(portfolio?.totalAum || 0)]);
+  const adoption = (portfolio?.totalAum || 0) > 0 ? (portfolio?.recommendedAum || 0) / (portfolio.totalAum || 1) : 0;
+  rows.push([`% In Recommended`, Number((adoption * 100).toFixed(2))]);
+  rows.push(['']);
+
+  // Allocation section
+  rows.push([`Allocation by Asset Class`]);
+  rows.push(['Asset Class', 'Amount (USD)', '% of AUM']);
+  (portfolio?.allocation || []).forEach(a => {
+    rows.push([
+      a.asset_class || 'Unclassified',
+      Number(a.amount || 0),
+      Number(((a.pct || 0) * 100).toFixed(2))
+    ]);
+  });
+
+  rows.push(['']);
+  rows.push([`Top Positions`]);
+  rows.push(['Ticker', 'Amount (USD)', '% of AUM', 'Recommended']);
+  (portfolio?.positions || []).forEach(p => {
+    rows.push([
+      p.ticker || '',
+      Number(p.amount || 0),
+      Number(((p.pct || 0) * 100).toFixed(2)),
+      p.is_recommended ? 'Yes' : 'No'
+    ]);
+  });
+
+  const csv = buildCSV(rows);
+  return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+}
+
+export async function generateAdvisorPortfolioPDF({ snapshotDate, advisorId, summary = {}, portfolio = {} }) {
+  // Lightweight PDF via jsPDF + autoTable
+  const { jsPDF } = await import('jspdf');
+  await import('jspdf-autotable');
+  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+
+  const title = 'Advisor Portfolio Summary';
+  doc.setFontSize(16);
+  doc.text(title, 40, 40);
+  doc.setFontSize(11);
+  doc.text(`Snapshot: ${snapshotDate || ''}`, 40, 62);
+  doc.text(`Advisor: ${advisorId || ''}`, 40, 78);
+
+  const totalAum = Number(portfolio?.totalAum || 0);
+  const uniqueHoldings = Number(portfolio?.uniqueHoldings || 0);
+  const clients = Number(summary?.client_count || 0);
+  const adoptionPct = totalAum > 0 ? ((portfolio?.recommendedAum || 0) / totalAum) * 100 : 0;
+  const kpiRows = [
+    ['Total AUM (USD)', Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(totalAum)],
+    ['Unique Holdings', String(uniqueHoldings)],
+    ['Clients', String(clients)],
+    ['% In Recommended', `${adoptionPct.toFixed(1)}%`]
+  ];
+  doc.autoTable({ startY: 95, head: [['Metric', 'Value']], body: kpiRows, styles: { fontSize: 9 } });
+
+  // Allocation table
+  const allocHead = [['Asset Class', 'Amount (USD)', '% of AUM']];
+  const allocBody = (portfolio?.allocation || []).map(a => [
+    a.asset_class || 'Unclassified',
+    Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(a.amount || 0)),
+    `${(((a.pct || 0) * 100).toFixed(1))}%`
+  ]);
+  doc.autoTable({ head: allocHead, body: allocBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
+
+  // Positions table (top 20 to keep size)
+  const posHead = [['Ticker', 'Amount (USD)', '% of AUM', 'Recommended']];
+  const posBody = (portfolio?.positions || []).slice(0, 20).map(p => [
+    p.ticker || '',
+    Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(p.amount || 0)),
+    `${(((p.pct || 0) * 100).toFixed(1))}%`,
+    p.is_recommended ? 'Yes' : 'No'
+  ]);
+  doc.autoTable({ head: posHead, body: posBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
+
+  return doc.output('blob');
+}
+
+// Export current fund utilization view to CSV
+export function exportUtilizationCSV({ snapshotDate, assetClass = null, rows = [] }) {
+  const header = ['Ticker', 'Asset Class', 'Total AUM (USD)', 'Advisors Using', 'Clients Using', 'Avg Position (USD)'];
+  const body = (rows || []).map(r => [
+    r.ticker || '',
+    r.asset_class || '',
+    Number(r.total_aum || 0),
+    Number(r.advisors_using || 0),
+    Number(r.clients_using || 0),
+    Number(r.avg_position_usd || 0)
+  ]);
+  const csv = buildCSV([header, ...body]);
+  return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+}
+
+/**
+ * Export Trade Flows CSV
+ */
+export function exportTradeFlowsCSV({ month, assetClass = null, ticker = null, topInflows = [], topOutflows = [], heatmap = [], trend = [], sentiment = {} }) {
+  const metaRows = [
+    ['Lightship - Trade Flow Dashboard Export'],
+    ['Generated:', (new Date()).toISOString()],
+    ['Month:', month || 'Latest'],
+    ['Asset Class Filter:', assetClass || 'All'],
+    ['Ticker Filter:', ticker || 'None'],
+    []
+  ];
+
+  const section = (title) => [[title], []];
+
+  const trendRows = [
+    ['Month', 'Net Flow (USD)'],
+    ...((trend || []).map(r => [r.month, Number(r.net_flow || 0)]))
+  ];
+
+  const sentimentRows = [
+    ['Sentiment'],
+    ['Advisors Buying', Number(sentiment.advisors_buying || 0)],
+    ['Advisors Selling', Number(sentiment.advisors_selling || 0)],
+    ['Advisors Neutral', Number(sentiment.advisors_neutral || 0)],
+    ['Advisors Total', Number(sentiment.advisors_total || 0)]
+  ];
+
+  const hasDeltaIn = (topInflows || []).some(r => Object.prototype.hasOwnProperty.call(r || {}, 'delta_net'));
+  const inflowRows = [
+    ['Top Inflows'],
+    hasDeltaIn ? ['Ticker','Inflows','Outflows','Net','Delta Net vs Prior','Advisors'] : ['Ticker','Inflows','Outflows','Net','Advisors'],
+    ...((topInflows || []).map(r => hasDeltaIn ? [r.ticker, Number(r.inflows||0), Number(r.outflows||0), Number(r.net_flow||0), Number(r.delta_net||0), Number(r.advisors_trading||0)] : [r.ticker, Number(r.inflows||0), Number(r.outflows||0), Number(r.net_flow||0), Number(r.advisors_trading||0)]))
+  ];
+  const hasDeltaOut = (topOutflows || []).some(r => Object.prototype.hasOwnProperty.call(r || {}, 'delta_net'));
+  const outflowRows = [
+    ['Top Outflows'],
+    hasDeltaOut ? ['Ticker','Inflows','Outflows','Net','Delta Net vs Prior','Advisors'] : ['Ticker','Inflows','Outflows','Net','Advisors'],
+    ...((topOutflows || []).map(r => hasDeltaOut ? [r.ticker, Number(r.inflows||0), Number(r.outflows||0), Number(r.net_flow||0), Number(r.delta_net||0), Number(r.advisors_trading||0)] : [r.ticker, Number(r.inflows||0), Number(r.outflows||0), Number(r.net_flow||0), Number(r.advisors_trading||0)]))
+  ];
+
+  const heatmapRows = [
+    ['Asset Class Heatmap'],
+    ['Asset Class', 'Inflows', 'Outflows', 'Net', 'Funds Traded', 'Advisors Trading (sum)'],
+    ...((heatmap || []).map(r => [r.asset_class, Number(r.inflows || 0), Number(r.outflows || 0), Number(r.net_flow || 0), Number(r.funds_traded || 0), Number(r.advisors_trading || 0)]))
+  ];
+
+  const rows = [
+    ...metaRows,
+    ...section('Net Flow Trend'),
+    ...trendRows,
+    ...section('Advisor Participation'),
+    ...sentimentRows,
+    ...section('Top Movers - Inflows'),
+    ...inflowRows,
+    ...section('Top Movers - Outflows'),
+    ...outflowRows,
+    ...section('Flow Heatmap by Asset Class'),
+    ...heatmapRows
+  ];
+  const csv = buildCSV(rows);
+  return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+}
+
+export function exportTickerAdvisorBreakdownCSV({ ticker, rows = [] }) {
+  const header = ['Advisor', 'Buy Trades', 'Sell Trades', 'Net Principal (USD)'];
+  const body = (rows || []).map(r => [
+    r.advisor_id || '',
+    Number(r.buy_trades || 0),
+    Number(r.sell_trades || 0),
+    Number(r.net_principal || 0)
+  ]);
+  const csv = buildCSV([['Advisor Breakdown', ticker || ''], [], header, ...body]);
+  return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+}
+
+export async function generateTradeFlowsPDF({ month, assetClass = null, ticker = null, topInflows = [], topOutflows = [], heatmap = [], trend = [], sentiment = {} }) {
+  const { jsPDF } = await import('jspdf');
+  await import('jspdf-autotable');
+  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+
+  // Header
+  doc.setFontSize(16);
+  doc.text('Trade Flow Summary', 40, 40);
+  doc.setFontSize(11);
+  doc.text(`Month: ${month || 'Latest'}`, 40, 60);
+  if (assetClass) doc.text(`Asset Class: ${assetClass}`, 40, 76);
+  if (ticker) doc.text(`Ticker: ${ticker}`, 40, 92);
+
+  // Sentiment
+  const sRows = [
+    ['Advisors Buying', String(Number(sentiment.advisors_buying || 0))],
+    ['Advisors Selling', String(Number(sentiment.advisors_selling || 0))],
+    ['Advisors Neutral', String(Number(sentiment.advisors_neutral || 0))],
+    ['Advisors Total', String(Number(sentiment.advisors_total || 0))]
+  ];
+  doc.autoTable({ startY: 110, head: [['Sentiment', 'Value']], body: sRows, styles: { fontSize: 9 } });
+
+  // Trend
+  const trendHead = [['Month', 'Net Flow (USD)']];
+  const trendBody = (trend || []).map(r => [r.month || '', new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0))]);
+  doc.autoTable({ head: trendHead, body: trendBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
+
+  // Top inflows
+  const inflowHasDelta = Array.isArray(topInflows) && topInflows.some(r => Object.prototype.hasOwnProperty.call(r || {}, 'delta_net'));
+  const inflowHead = [ inflowHasDelta ? ['Ticker', 'Inflows', 'Outflows', 'Net', 'Delta Net vs Prior', 'Advisors'] : ['Ticker', 'Inflows', 'Outflows', 'Net', 'Advisors'] ];
+  const inflowBody = (topInflows || []).map(r => inflowHasDelta ? [
+    r.ticker || '',
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.delta_net || 0)),
+    String(Number(r.advisors_trading || 0))
+  ] : [
+    r.ticker || '',
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
+    String(Number(r.advisors_trading || 0))
+  ]);
+  doc.autoTable({ head: inflowHead, body: inflowBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
+
+  // Top outflows
+  const outflowHasDelta = Array.isArray(topOutflows) && topOutflows.some(r => Object.prototype.hasOwnProperty.call(r || {}, 'delta_net'));
+  const outflowHead = [ outflowHasDelta ? ['Ticker', 'Inflows', 'Outflows', 'Net', 'Delta Net vs Prior', 'Advisors'] : ['Ticker', 'Inflows', 'Outflows', 'Net', 'Advisors'] ];
+  const outflowBody = (topOutflows || []).map(r => outflowHasDelta ? [
+    r.ticker || '',
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.delta_net || 0)),
+    String(Number(r.advisors_trading || 0))
+  ] : [
+    r.ticker || '',
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
+    String(Number(r.advisors_trading || 0))
+  ]);
+  doc.autoTable({ head: outflowHead, body: outflowBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });  // Heatmap by asset class
+  const hmHead = [['Asset Class', 'Inflows', 'Outflows', 'Net', 'Funds Traded', 'Advisors Trading (sum)']];
+  const hmBody = (heatmap || []).map(r => [
+    r.asset_class || 'Unclassified',
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
+    String(Number(r.funds_traded || 0)),
+    String(Number(r.advisors_trading || 0))
+  ]);
+  doc.autoTable({ head: hmHead, body: hmBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
+
+  return doc.output('blob');
+}
+
+// Excel export for Advisor Portfolio
+export function exportAdvisorPortfolioExcel({ snapshotDate, advisorId, summary = {}, portfolio = {} }) {
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Summary
+  const adoption = (portfolio?.totalAum || 0) > 0 ? (portfolio?.recommendedAum || 0) / (portfolio.totalAum || 1) : 0;
+  const summaryRows = [
+    ['Advisor Portfolio Summary'],
+    ['Snapshot Date', snapshotDate || ''],
+    ['Advisor ID', advisorId || ''],
+    ['Clients', summary?.client_count ?? ''],
+    ['Unique Holdings', portfolio?.uniqueHoldings ?? ''],
+    ['Total AUM (USD)', Number(portfolio?.totalAum || 0)],
+    ['% In Recommended', Number((adoption * 100).toFixed(2))]
+  ];
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+  // Sheet 2: Allocation
+  const allocRows = [['Asset Class', 'Amount (USD)', '% of AUM']];
+  (portfolio?.allocation || []).forEach(a => {
+    allocRows.push([
+      a.asset_class || 'Unclassified',
+      Number(a.amount || 0),
+      Number(((a.pct || 0) * 100).toFixed(2))
+    ]);
+  });
+  const wsAlloc = XLSX.utils.aoa_to_sheet(allocRows);
+  XLSX.utils.book_append_sheet(wb, wsAlloc, 'Allocation');
+
+  // Sheet 3: Positions
+  const posRows = [['Ticker', 'Amount (USD)', '% of AUM', 'Recommended']];
+  (portfolio?.positions || []).forEach(p => {
+    posRows.push([
+      p.ticker || '',
+      Number(p.amount || 0),
+      Number(((p.pct || 0) * 100).toFixed(2)),
+      p.is_recommended ? 'Yes' : 'No'
+    ]);
+  });
+  const wsPos = XLSX.utils.aoa_to_sheet(posRows);
+  XLSX.utils.book_append_sheet(wb, wsPos, 'Positions');
+
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  return new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
 
 /**
@@ -1365,10 +1668,10 @@ function getPriorityFromDecision(decision) {
 
 function getDecisionSymbol(decision) {
   const symbols = {
-    approve: 'âœ“',
-    reject: 'âœ—',
-    monitor: 'âš ',
-    hold: 'â¸'
+    approve: 'Approve',
+    reject: 'Reject',
+    monitor: 'Monitor',
+    hold: 'Hold'
   };
   return ENABLE_VISUAL_REFRESH ? (symbols[decision] || '') : '';
 }
@@ -1384,3 +1687,10 @@ function formatPercent(value) {
   }
   return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
 }
+
+
+
+
+
+
+

@@ -1,0 +1,50 @@
+FA #,Account #,Symbol,CUSIP,Quantity,Current Value,Account Type,Registration Type,Share Class,Price,Avg Cost/Share,Unrealized G/L,M* Category,First Acq Date,Net Exp Ratio,Product Name,Product Subtype,Product Type
+70YU,7635W115,FZDXX,31617H805,8363.87,"$8,363.87 ",General Brokerage,Individual - Transfer on Death,Other,$1.00 ,,,Prime Money Market,4/4/2024,0.3,Fidelity Money Market Premium,Cash Alternatives,Cash and Cash Alternatives
+70YU,7635W115,,,,$0.00 ,General Brokerage,Individual - Transfer on Death,,,,,,,,Usd,Cash,Cash and Cash Alternatives
+70YU,7635W115,OLGAX,4812C0506,13.016,"$1,116.90 ",General Brokerage,Individual - Transfer on Death,A,$85.81 ,$85.28 ,$6.90 ,Large Growth,8/6/2025,0.94,JPMorgan Large Cap Growth A,Open-end Mutual Funds,Funds
+70YU,7635W115,FDYZX,353496680,13.922,"$2,942.00 ",General Brokerage,Individual - Transfer on Death,Adv,$211.32 ,$114.93 ,"$1,342.00 ",Large Growth,8/30/2022,0.54,Franklin DynaTech Adv,Open-end Mutual Funds,Funds
+70YU,7635W115,CEYIX,131618795,26.11,"$2,587.24 ",General Brokerage,Individual - Transfer on Death,Inst,$99.09 ,$84.78 ,$373.55 ,Large Growth,8/30/2022,0.65,Calvert Equity I,Open-end Mutual Funds,Funds
+70YU,398W7749,TSLA,88160R101,3,"$1,037.94 ",Roth IRA,Roth IRA - RJTCNH,,$345.98 ,$300.85 ,$135.40 ,,3/3/2022,,Tesla Inc,Common Shares,Stock
+70YU,398W7749,,,,$50.10 ,Roth IRA,Roth IRA - RJTCNH,,,,,,,,Usd,Cash,Cash and Cash Alternatives
+70YU,398W7749,NBPIX,641224787,39.804,"$1,993.78 ",Roth IRA,Roth IRA - RJTCNH,Inst,$50.09 ,$41.93 ,$324.95 ,Large Value,8/30/2022,0.6,Neuberger Berman Large Cap Value Instl,Open-end Mutual Funds,Funds
+70YU,398W7749,PRNHX,779562107,52.556,"$2,933.15 ",Roth IRA,Roth IRA - RJTCNH,Inv,$55.81 ,$52.39 ,$179.58 ,Mid-Cap Growth,10/13/2022,0.79,T. Rowe Price New Horizons,Open-end Mutual Funds,Funds
+70YU,398W7749,CPODX,61747T403,4.305,$255.50 ,Roth IRA,Roth IRA - RJTCNH,Inst,$59.35 ,$64.79 ,($23.44),Large Growth,9/11/2020,0.9,Morgan Stanley Insight I,Open-end Mutual Funds,Funds
+70YU,398W7749,MFEIX,552985863,17.798,"$3,927.31 ",Roth IRA,Roth IRA - RJTCNH,Inst,$220.66 ,$157.02 ,"$1,132.59 ",Large Growth,7/18/2022,0.58,MFS Growth I,Open-end Mutual Funds,Funds
+70YU,398W7749,MSFT,594918104,2,"$1,019.28 ",Roth IRA,Roth IRA - RJTCNH,,$509.64 ,$254.98 ,$509.32 ,,6/3/2021,,Microsoft Corp,Common Shares,Stock
+70YN,614VC346,,,,$177.55 ,General Brokerage,Individual - Transfer on Death,,,,,,,,Usd,Cash,Cash and Cash Alternatives
+70YN,614VC346,CRWV,21873S108,50,"$5,139.50 ",General Brokerage,Individual - Transfer on Death,,$102.79 ,$97.99 ,$240.00 ,,8/15/2025,,CoreWeave Inc,Common Shares,Stock
+70YN,614VC346,QBTS,26740W109,1000,"$15,920.00 ",General Brokerage,Individual - Transfer on Death,,$15.92 ,$6.06 ,"$9,865.15 ",,12/16/2024,,D-Wave Quantum Inc,Common Shares,Stock
+70YN,614VC346,RGTI,76655K103,800,"$13,264.00 ",General Brokerage,Individual - Transfer on Death,,$16.58 ,$8.70 ,"$6,301.32 ",,12/16/2024,,Rigetti Computing Inc,Common Shares,Stock
+70YN,614VC346,HOOD,770700102,120,"$12,442.80 ",General Brokerage,Individual - Transfer on Death,,$103.69 ,$41.96 ,"$7,407.24 ",,3/17/2025,,Robinhood Markets Inc,Common Shares,Stock
+70YN,614VC346,AVGO,11135F101,26,"$8,024.90 ",General Brokerage,Individual - Transfer on Death,,$308.65 ,$192.99 ,"$3,007.19 ",,3/7/2025,,Broadcom Inc,Common Shares,Stock
+70YN,614VC346,SNOW,833445109,31,"$7,471.00 ",General Brokerage,Individual - Transfer on Death,,$241.00 ,$158.27 ,"$2,564.63 ",,3/7/2025,,Snowflake Inc,Common Shares,Stock
+70YN,614VC346,LTBR,53224K302,210,"$3,263.40 ",General Brokerage,Individual - Transfer on Death,,$15.54 ,$14.43 ,$233.51 ,,2/13/2025,,Lightbridge Corp,Common Shares,Stock
+70YN,614VC346,SOUN,836100107,580,"$7,267.40 ",General Brokerage,Individual - Transfer on Death,,$12.53 ,$18.42 ,"($3,417.48)",,12/9/2024,,SoundHound AI Inc,Common Shares,Stock
+70YN,614VC346,APP,03831W108,20,"$9,675.00 ",General Brokerage,Individual - Transfer on Death,,$483.75 ,$394.92 ,"$1,776.54 ",,12/9/2024,,AppLovin Corp,Common Shares,Stock
+70YN,614VC346,TLN,87422Q109,24,"$9,317.28 ",General Brokerage,Individual - Transfer on Death,,$388.22 ,$216.64 ,"$4,117.97 ",,11/21/2024,,Talen Energy Corp,Common Shares,Stock
+70YN,614VC346,OKLO,02156V109,350,"$27,261.50 ",General Brokerage,Individual - Transfer on Death,,$77.89 ,$19.91 ,"$20,294.35 ",,10/22/2024,,Oklo Inc,Common Shares,Stock
+70YN,614VC346,PLTR,69608A108,370,"$58,504.40 ",General Brokerage,Individual - Transfer on Death,,$158.12 ,$36.65 ,"$44,944.73 ",,8/6/2024,,Palantir Technologies Inc,Common Shares,Stock
+70YN,614VC346,META,30303M102,20,"$15,022.20 ",General Brokerage,Individual - Transfer on Death,,$751.11 ,$480.49 ,"$5,412.45 ",,8/6/2024,,Meta Platforms Inc,Common Shares,Stock
+70YN,614VC346,AMD,007903107,80,"$13,486.40 ",General Brokerage,Individual - Transfer on Death,,$168.58 ,$130.48 ,"$3,047.65 ",,6/17/2025,,Advanced Micro Devices Inc,Common Shares,Stock
+70YN,614VC346,ARM,042068205,85,"$12,116.75 ",General Brokerage,Individual - Transfer on Death,,$142.55 ,$111.78 ,"$2,615.58 ",,8/5/2024,,ARM Holdings PLC,Depository Receipts,Stock
+2KDV,7356C070,JTPFX,47804E850,267.433,"$2,767.93 ",529 Plan,529 Plan,,$10.35 ,,,Static Large Growth,7/18/2024,0.91,AK JH U.S. Growth 529 F,529 Offerings,Funds
+2KDV,757VM142,JFILX,280911629,86.012,"$2,533.05 ",529 Plan,529 Plan,Other,$29.45 ,,,Static Allocation--85%+ Equity,7/18/2024,1,AK JH Future Trends Port F,529 Offerings,Funds
+2KDV,449KK532,JHNHX,280911579,252.544,"$5,634.26 ",529 Plan,529 Plan,Other,$22.31 ,,,Static Mid-Cap Equity,7/18/2024,0.95,AK JH New Horizons 529 F,529 Offerings,Funds
+2KDV,304PV878,JHBGX,280911561,347.775,"$12,085.18 ",529 Plan,529 Plan,Other,$34.75 ,,,Static Large Growth,7/18/2024,0.86,AK JH Blue Chip Gr 529 F,529 Offerings,Funds
+70WB,107CR784,NVDA,67066G104,380,"$68,464.60 ",Roth IRA,Roth IRA - RJTCNH,,$180.17 ,$22.46 ,"$59,930.86 ",,2/23/2022,,NVIDIA Corp,Common Shares,Stock
+70WB,107CR784,LTBR,53224K302,250,"$3,885.00 ",Roth IRA,Roth IRA - RJTCNH,,$15.54 ,$14.19 ,$336.55 ,,2/13/2025,,Lightbridge Corp,Common Shares,Stock
+70WB,107CR784,OKLO,02156V109,135,"$10,515.15 ",Roth IRA,Roth IRA - RJTCNH,,$77.89 ,$32.20 ,"$6,167.86 ",,1/28/2025,,Oklo Inc,Common Shares,Stock
+70WB,107CR784,SOUN,836100107,180,"$2,255.40 ",Roth IRA,Roth IRA - RJTCNH,,$12.53 ,$21.39 ,"($1,595.10)",,12/20/2024,,SoundHound AI Inc,Common Shares,Stock
+70WB,107CR784,APP,03831W108,10,"$4,837.50 ",Roth IRA,Roth IRA - RJTCNH,,$483.75 ,$341.96 ,"$1,417.90 ",,12/20/2024,,AppLovin Corp,Common Shares,Stock
+70WB,107CR784,ETH,38964R203,12,$502.08 ,Roth IRA,Roth IRA - RJTCNH,,$41.84 ,$38.60 ,$38.91 ,Digital Assets,5/11/2021,0.15,Grayscale Ethereum Mini Trust ETF,Exchange Traded Funds,Funds
+70WB,107CR784,TLN,87422Q109,36,"$13,975.92 ",Roth IRA,Roth IRA - RJTCNH,,$388.22 ,$186.03 ,"$7,278.79 ",,11/5/2024,,Talen Energy Corp,Common Shares,Stock
+70WB,107CR784,TCAF,87283Q867,190,"$7,016.70 ",Roth IRA,Roth IRA - RJTCNH,,$36.93 ,$33.43 ,$665.70 ,Large Blend,10/25/2024,0.31,T. Rowe Price Capital Apprec Eq ETF,Exchange Traded Funds,Funds
+70WB,107CR784,AMD,007903107,45,"$7,586.10 ",Roth IRA,Roth IRA - RJTCNH,,$168.58 ,$137.08 ,"$1,417.30 ",,8/5/2024,,Advanced Micro Devices Inc,Common Shares,Stock
+70WB,107CR784,,,,$118.41 ,Roth IRA,Roth IRA - RJTCNH,,,,,,,,Usd,Cash,Cash and Cash Alternatives
+70WB,107CR784,ETHE,389638107,125,"$4,577.50 ",Roth IRA,Roth IRA - RJTCNH,,$36.62 ,$34.63 ,$248.64 ,Digital Assets,5/11/2021,2.5,Grayscale Ethereum Trust ETF,Exchange Traded Funds,Funds
+70WB,107CR784,,33813J106,200,$0.00 ,Roth IRA,Roth IRA - RJTCNH,,,$10.66 ,"($2,130.95)",,5/11/2021,,Fisker Inc,Common Shares,Stock
+70WB,107CR784,COIN,19260Q107,15,"$4,627.05 ",Roth IRA,Roth IRA - RJTCNH,,$308.47 ,$301.14 ,$109.91 ,,5/11/2021,,Coinbase Global Inc,Common Shares,Stock
+70WB,107CR784,WINN,41151J406,287,"$8,750.63 ",Roth IRA,Roth IRA - RJTCNH,,$30.49 ,$22.88 ,"$2,184.73 ",Large Growth,2/14/2024,0.57,Harbor Long-Term Growers ETF,Exchange Traded Funds,Funds
+70WB,107CR784,TSLA,88160R101,15,"$5,189.70 ",Roth IRA,Roth IRA - RJTCNH,,$345.98 ,$360.12 ,($212.09),,4/21/2022,,Tesla Inc,Common Shares,Stock
+2KDV,8970W530,JHEPX,280911637,249.524,"$5,918.71 ",529 Plan,529 Plan,Other,$23.72 ,,,Static Large Growth,7/26/2024,0.97,AK JH Equity Port F,529 Offerings,Funds
+70WB,117PC094,SEEGX,4812C0530,33.833,"$2,996.59 ",Roth IRA,Roth IRA - RJTCNH,Inst,$88.57 ,$68.77 ,$669.83 ,Large Growth,3/8/2024,0.69,JPMorgan Large Cap Growth I,Open-end Mutual Funds,Funds

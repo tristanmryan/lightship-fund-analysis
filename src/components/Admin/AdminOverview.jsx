@@ -18,6 +18,13 @@ export default function AdminOverview({ onNavigate = () => {} }) {
     latestSnapshot: null,
     latestSnapshotRows: 0
   });
+  const [enhanced, setEnhanced] = useState({
+    holdingsDate: null,
+    advisors: 0,
+    aum: 0,
+    flowsMonth: null,
+    flowsCount: 0
+  });
 
   useEffect(() => {
     (async () => {
@@ -44,6 +51,33 @@ export default function AdminOverview({ onNavigate = () => {} }) {
         const snapshots = await fundService.listSnapshotsWithCounts();
         const latest = Array.isArray(snapshots) && snapshots.length > 0 ? snapshots[0] : null;
 
+        // Enhanced: latest holdings snapshot and flows month from new MVs
+        let holdingsDate = null; let advisors = 0; let aum = 0; let flowsMonth = null; let flowsCount = 0;
+        try {
+          const { data: hdates } = await supabase
+            .from('advisor_metrics_mv')
+            .select('snapshot_date')
+            .order('snapshot_date', { ascending: false })
+            .limit(1);
+          holdingsDate = hdates?.[0]?.snapshot_date || null;
+          if (holdingsDate) {
+            const { data: hrows } = await supabase.rpc('get_advisor_metrics', { p_date: holdingsDate, p_advisor_id: null });
+            const arr = hrows || [];
+            advisors = arr.length;
+            aum = arr.reduce((s, r) => s + (r?.aum || 0), 0);
+          }
+        } catch {}
+        try {
+          const { data: fmonths } = await supabase
+            .from('fund_flows_mv')
+            .select('month')
+            .order('month', { ascending: false })
+            .limit(1);
+          flowsMonth = fmonths?.[0]?.month || null;
+          const { data: frows } = await supabase.rpc('get_fund_flows', { p_month: flowsMonth, p_ticker: null, p_limit: 1000 });
+          flowsCount = (frows || []).length;
+        } catch {}
+
         setState({
           fundsTotal: fundsTotalRes?.count ?? 0,
           recommendedCount: recCountRes?.count ?? 0,
@@ -54,6 +88,7 @@ export default function AdminOverview({ onNavigate = () => {} }) {
           latestSnapshot: latest?.date || null,
           latestSnapshotRows: latest?.rows || 0
         });
+        setEnhanced({ holdingsDate, advisors, aum, flowsMonth, flowsCount });
       } catch (e) {
         setError(e.message);
       } finally {
@@ -69,6 +104,13 @@ export default function AdminOverview({ onNavigate = () => {} }) {
       linkText: 'Go to Catalogs',
       onClick: () => onNavigate('catalogs'),
       note: ''
+    },
+    {
+      label: 'Holdings / Flows',
+      value: `${enhanced.holdingsDate ? enhanced.holdingsDate : 'n/a'} | ${enhanced.flowsMonth ? enhanced.flowsMonth : 'n/a'}`,
+      linkText: 'Go to Data Uploads',
+      onClick: () => onNavigate('data'),
+      note: enhanced.holdingsDate ? `${enhanced.advisors} advisors • AUM ${new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(enhanced.aum || 0)} • ${enhanced.flowsCount} flow tickers` : ''
     },
     {
       label: 'Benchmark Mapping',

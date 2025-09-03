@@ -543,6 +543,8 @@ function MonthlyReportPDF({ data, options = {} }) {
     highlightRecommended: options.highlightRecommended !== false && !(Number(totalFunds) === Number(recommendedFunds))
   };
 
+  const hasAlerts = Array.isArray(data?.alerts?.topAlerts) && data.alerts.topAlerts.length > 0;
+
   return React.createElement(Document, null,
     // Cover Page
     React.createElement(Page, { 
@@ -552,6 +554,60 @@ function MonthlyReportPDF({ data, options = {} }) {
     },
       React.createElement(CoverPage, { data: data, options: computedOptions })
     ),
+
+    // Alerts Summary Page (optional)
+    (hasAlerts && React.createElement(Page, { size: "LETTER", orientation: "landscape", style: styles.page },
+      React.createElement(PageHeader, { asOf: asOf }),
+      React.createElement(View, { style: { marginTop: 28 } },
+        React.createElement(View, { style: styles.sectionHeader },
+          React.createElement(Text, { style: styles.assetClassTitle }, 'Alerts Summary'),
+          React.createElement(Text, { style: styles.sectionMetaText }, `Top by priority; Count: ${data.alerts.topAlerts.length}`)
+        ),
+        React.createElement(View, { style: [styles.tableHeader, { marginBottom: 0 }] },
+          React.createElement(Text, { style: [styles.tableHeaderCell, { width: 40 }] }, 'Prio'),
+          React.createElement(Text, { style: [styles.tableHeaderCell, { width: 70 }] }, 'Severity'),
+          React.createElement(Text, { style: [styles.tableHeaderCell, { width: 70 }] }, 'Month'),
+          React.createElement(Text, { style: [styles.tableHeaderCell, { width: 60 }] }, 'Ticker'),
+          React.createElement(Text, { style: [styles.tableHeaderCell, { width: 140, textAlign: 'left' }] }, 'Asset Class'),
+          React.createElement(Text, { style: [styles.tableHeaderCell, { flex: 1, textAlign: 'left' }] }, 'Title')
+        ),
+        ...(data.alerts.topAlerts || []).slice(0, 30).map((a, idx) => (
+          React.createElement(View, { key: String(a.id || idx), style: styles.tableRow },
+            React.createElement(Text, { style: [styles.tableCell, { width: 40 }] }, String(a.priority ?? '')),
+            React.createElement(Text, { style: [styles.tableCell, { width: 70 }] }, String(a.severity || '')),
+            React.createElement(Text, { style: [styles.tableCell, { width: 70 }] }, String(a.month || '')),
+            React.createElement(Text, { style: [styles.tableCell, { width: 60 }] }, String(a.ticker || '')),
+            React.createElement(Text, { style: [styles.tableCell, { width: 140, justifyContent: 'flex-start' }] }, String(a.assetClass || 'Unclassified')),
+            React.createElement(Text, { style: [styles.tableCell, { flex: 1, textAlign: 'left', justifyContent: 'flex-start' }] }, String(a.title || ''))
+          )
+        )),
+        React.createElement(View, { style: [styles.sectionHeader, { marginTop: 16 }] },
+          React.createElement(Text, { style: styles.assetClassTitle }, 'Alerts by Severity')
+        ),
+        React.createElement(View, { style: { display: 'flex', flexDirection: 'row', gap: 12 } },
+          ...['critical','warning','info'].map(s => (
+            React.createElement(View, { key: s, style: { borderWidth: 0.5, borderColor: '#E5E7EB', borderRadius: 6, padding: 8, width: 120 } },
+              React.createElement(Text, { style: { fontSize: 9, color: '#6B7280' } }, s.toUpperCase()),
+              React.createElement(Text, { style: { fontSize: 16, fontWeight: 700, color: '#111827', textAlign: 'center' } }, String(data?.alerts?.countsBySeverity?.[s] || 0))
+            )
+          ))
+        ),
+        React.createElement(View, { style: [styles.sectionHeader, { marginTop: 16 }] },
+          React.createElement(Text, { style: styles.assetClassTitle }, 'Top Asset Classes (by alerts)')
+        ),
+        React.createElement(View, { style: [styles.tableHeader, { marginBottom: 0 }] },
+          React.createElement(Text, { style: [styles.tableHeaderCell, { flex: 1, textAlign: 'left' }] }, 'Asset Class'),
+          React.createElement(Text, { style: [styles.tableHeaderCell, { width: 80 }] }, 'Count')
+        ),
+        ...(data.alerts.topAssetClasses || []).map((r, i) => (
+          React.createElement(View, { key: String(i), style: styles.tableRow },
+            React.createElement(Text, { style: [styles.tableCell, { flex: 1, textAlign: 'left', justifyContent: 'flex-start' }] }, String(r.assetClass || 'Unclassified')),
+            React.createElement(Text, { style: [styles.tableCell, { width: 80 }] }, String(r.count || 0))
+          )
+        ))
+      ),
+      React.createElement(PageFooter)
+    )),
 
     // TRANSFORMED: Smart multi-table layout - group multiple asset classes per page
     ...renderAssetClassPages(sections, asOf, computedOptions),

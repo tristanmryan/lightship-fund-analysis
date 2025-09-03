@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useFundData } from '../../hooks/useFundData';
 import SimpleKPIHeader from './SimpleKPIHeader';
+import { supabase } from '../../services/supabase';
 import SimpleFilterBar from './SimpleFilterBar';
 import SimpleFundViews from './SimpleFundViews';
 import DashboardDebugPanel from './DashboardDebugPanel';
@@ -90,6 +91,39 @@ const SimplifiedDashboard = () => {
     };
   }, [funds]);
 
+  // Live MV KPIs (latest holdings AUM and latest flows month)
+  const [mvKpis, setMvKpis] = React.useState({ aum: null, flowsMonth: null, flowsTickers: 0 });
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: hdates } = await supabase
+          .from('advisor_metrics_mv')
+          .select('snapshot_date')
+          .order('snapshot_date', { ascending: false })
+          .limit(1);
+        const holdingsDate = hdates?.[0]?.snapshot_date || null;
+        let aum = 0; let flowsMonth = null; let flowsTickers = 0;
+        if (holdingsDate) {
+          const { data: rows } = await supabase.rpc('get_advisor_metrics', { p_date: holdingsDate, p_advisor_id: null });
+          aum = (rows || []).reduce((s, r) => s + (r?.aum || 0), 0);
+        }
+        const { data: fmonths } = await supabase
+          .from('fund_flows_mv')
+          .select('month')
+          .order('month', { ascending: false })
+          .limit(1);
+        flowsMonth = fmonths?.[0]?.month || null;
+        if (flowsMonth) {
+          const { data: flows } = await supabase.rpc('get_fund_flows', { p_month: flowsMonth, p_ticker: null, p_limit: 1000 });
+          flowsTickers = (flows || []).length;
+        }
+        if (!cancelled) setMvKpis({ aum, flowsMonth, flowsTickers });
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   // Clear all filters
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -116,6 +150,21 @@ const SimplifiedDashboard = () => {
         {...kpiData}
         loading={loading}
       />
+      {/* MV KPIs row */}
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', margin: '8px 0 12px' }}>
+        <div className="kpi-metric" style={{ minWidth: 160 }}>
+          <div className="kpi-value" style={{ color: '#002D72' }}>
+            {mvKpis.aum == null ? '—' : new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(mvKpis.aum)}
+          </div>
+          <div className="kpi-label">Firm AUM (latest holdings)</div>
+        </div>
+        <div className="kpi-metric" style={{ minWidth: 160 }}>
+          <div className="kpi-value" style={{ color: '#6B7280' }}>
+            {mvKpis.flowsMonth || '—'}
+          </div>
+          <div className="kpi-label">Flows Month (tickers {mvKpis.flowsTickers || 0})</div>
+        </div>
+      </div>
 
       {/* Filter Bar */}
       <SimpleFilterBar

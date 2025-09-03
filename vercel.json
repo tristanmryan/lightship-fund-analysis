@@ -23,9 +23,16 @@
         },
         {
           "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization, X-Requested-With"
+          "value": "Content-Type, Authorization, X-Requested-With, X-Refresh-Token"
         }
       ]
+    }
+  ]
+  ,
+  "crons": [
+    {
+      "path": "/api/alerts/refresh",
+      "schedule": "0 9 1 * *"
     }
   ]
 }
