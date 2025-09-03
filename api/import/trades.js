@@ -36,12 +36,26 @@ export default async function handler(req, res) {
     const withExtId = mapped.filter(r => r.external_trade_id);
     const withoutExtId = mapped.filter(r => !r.external_trade_id);
 
+    // Deduplicate by external_trade_id within this batch to avoid
+    // Postgres error: "ON CONFLICT DO UPDATE command cannot affect row a second time"
+    // Keep the last occurrence (assumes later row is the latest state)
+    let upsertRows = withExtId;
+    if (withExtId.length > 0) {
+      const byId = new Map();
+      for (const row of withExtId) {
+        byId.set(row.external_trade_id, row);
+      }
+      upsertRows = Array.from(byId.values());
+      const dropped = withExtId.length - upsertRows.length;
+      if (dropped > 0) log('deduped external_trade_id within batch', { before: withExtId.length, after: upsertRows.length, dropped });
+    }
+
     if (!dryRun) {
-      if (withExtId.length) {
-        log('upserting by external id', { count: withExtId.length });
+      if (upsertRows.length) {
+        log('upserting by external id', { count: upsertRows.length });
         const { error } = await supabaseServer
           .from('trade_activity')
-          .upsert(withExtId, { onConflict: 'external_trade_id' });
+          .upsert(upsertRows, { onConflict: 'external_trade_id' });
         if (error) { log('upsert extId error', { message: error.message, details: error.details, code: error.code }); throw error; }
       }
       if (withoutExtId.length) {
