@@ -22,7 +22,7 @@ Transform the existing fund analytics application into a comprehensive advisor i
 - Status: Phases 1–3 complete and verified; Phase 4 MVP shipped (alerts + Command Center + trend analytics + p95 capture). Follow-ups: rules admin hardening, cron scheduling, PDF/CSV alert exports.
 
 #### Progress Notes
-\- 2025-09-03: Phase 4 (MVP) — Alerts + Command Center
+\- 2025-09-03: Phase 4 (MVP) - Alerts + Command Center
   - SQL: supabase/migrations/20250903_alerts_and_trend_analytics.sql (alert_rules, alerts, alert_actions; refresh/get/ack/resolve RPCs; get_trend_analytics)
   - SQL (idempotence): supabase/migrations/20250903_alert_rules_unique.sql (UNIQUE index on (name, rule_type))
   - UI: Command Center (prioritized queues, filters, bulk actions, drill-through to Flows, audit log); Rules Admin (MVP)
@@ -31,6 +31,45 @@ Transform the existing fund analytics application into a comprehensive advisor i
   - Bench: scripts/benchAlerts.mjs
   - Docs: docs/plan/appV2/alerts_model_and_rules.md (rules, SLAs, validation, runbook)
 - 2025-09-02: Added Phase 1 SQL migration for holdings/trades (supabase/migrations/20250829_holdings_trades_foundation.sql).
+\- 2025-09-03: Phase 5 kick — Rules Admin + cron hardening (initial)
+  - SQL: supabase/migrations/20250903_phase5_rules_rbac_and_constraints.sql
+    - RBAC: Granted INSERT/UPDATE/DELETE on public.alert_rules to anon/authenticated (RLS disabled; app-level admin gate).
+    - Param constraints (CHECK) per rule_type:
+      - NET_FLOW_SIGMA: window_months >= 3; sigma_threshold in [1..5]
+      - ADVISOR_SPIKE_RATIO: window_months >= 3; min_ratio >= 1; min_advisors >= 1
+      - REDEMPTION_STREAK: streak_months >= 2; min_total_outflow >= 0
+    - Assignment support: added alerts.assigned_to and RPC public.assign_alert(p_alert_id, p_assigned_to, ...).
+    - get_alerts extended to return assigned_to; added index (asset_class, status, priority desc, created_at desc).
+    - Guardrail: refresh_alerts_for_month now accepts p_max_inserts (default 20,000) and trims excess.
+  - API: api/alerts/refresh.js now refreshes MVs first (advisor_metrics_mv, fund_flows_mv, fund_utilization_mv, advisor_adoption_mv), then alerts; supports precheck via `?precheck=1`.
+  - UI: Rules Admin hardened (src/components/CommandCenter/RulesAdmin.jsx)
+    - Admin-only gate (disabled controls + warning for non-admins).
+    - Param schema validation per rule type with inline errors.
+    - Confirmation when toggling is_active on critical rules.
+  - Services: alertsService.assignAlert added; existing list/ack/resolve unchanged.
+  - Command Center polish (src/components/CommandCenter/CommandCenter.jsx)
+    - CSV export for filtered set (UTF-8 BOM, CRLF; raw numerics).
+    - Preset chips (Critical Only, High Priority, Open, All).
+    - Cursor pagination via afterId + Load More.
+    - Assignment flow: assign action (uses new RPC) and Assigned To column.
+    - Admin p95 panel: shows 7d p95 for alerts.list, analytics.trend, alerts.refresh.
+  - SLO/p95: metrics surface added (src/services/metricsService.js) and rendered in Command Center for admins.
+  - Reports (React-PDF): Added optional Alerts Summary page (top alerts by priority; counts by severity and asset class). Data shaping fetches current EOM alerts (status open/ack). Controlled via presence of data.alerts.
+  - Next: Keyboard navigation/accessibility checks for Command Center and finalize SLA/runbook section.
+
+### SLOs & Runbook (Phase 5)
+- SLOs (p95, 7-day window; tracked in `public.rpc_timings` via `api/metrics`):
+  - alerts.list ≤ 1200 ms
+  - analytics.trend ≤ 1200 ms
+  - alerts.refresh ≤ 5000 ms
+- Cron Strategy:
+  - Monthly EOM job: `vercel.json` monthly cron (0 9 1 * *) hits `/api/alerts/refresh` → refreshes MVs then alerts.
+  - Daily precheck (optional): `/api/alerts/refresh?precheck=1` to refresh MVs only and report step status.
+- Runbook:
+  - If `alerts.list` p95 > 1200 ms: Check `idx_alerts_asset_status_priority` presence, verify recent bloat, VACUUM/ANALYZE as needed; reduce result size (increase `minPriority` or pagination window).
+  - If `analytics.trend` p95 > 1200 ms: Investigate `fund_flows_mv` freshness; ensure CONCURRENT REFRESH completes; validate windows used by UI.
+  - If `alerts.refresh` > 5s: Inspect rule counts and dedupe; ensure guardrail (`p_max_inserts`) is not truncating indiscriminately; consider staging rules by type.
+  - On data anomalies: Re-run MV refresh RPCs in order: `refresh_advisor_metrics_mv`, `refresh_fund_flows_mv`, `refresh_fund_utilization_mv`, `refresh_advisor_adoption_mv`, then `refresh_alerts_for_month`.
 - 2025-09-02: Added MV refresh controls in Admin and local row-level error reporting + downloadable error reports in imports.
   - Added serverless import endpoints: api/import/holdings.js, api/import/trades.js (with dry-run).
   - Implemented Admin UI for holdings/trades import with EOM validation, previews, progress, and confirmation view.

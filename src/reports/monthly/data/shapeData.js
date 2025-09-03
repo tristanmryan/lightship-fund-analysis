@@ -43,12 +43,16 @@ export async function shapeReportData(payload) {
   const sections = await buildAssetClassSections(funds, effectiveAsOf, allFundsForAsOf);
   console.log(`📈 Built ${sections.length} asset class sections`);
   
+  // Step 4: Alerts summary for this as-of month (top by priority)
+  const alerts = await fetchAlertsSummary(effectiveAsOf);
+
   return {
     asOf: effectiveAsOf,
     generatedAt: new Date().toISOString(),
     totalFunds: funds.length,
     recommendedFunds: funds.filter(f => f.is_recommended).length,
-    sections
+    sections,
+    alerts
   };
 }
 
@@ -165,6 +169,56 @@ switch (selection.scope) {
   });
   
   return funds;
+}
+
+/**
+ * Fetch Alerts Summary for the selected EOM
+ * Returns top alerts and basic counts (severity, asset class)
+ */
+async function fetchAlertsSummary(asOf) {
+  try {
+    // Limit: keep small for PDF readability
+    const { data: rows, error } = await supabase
+      .from('alerts')
+      .select('id, month, ticker, asset_class, severity, priority, status, title, summary')
+      .eq('month', asOf)
+      .in('status', ['open','acknowledged'])
+      .order('priority', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    const topAlerts = (rows || []).map(r => ({
+      id: r.id,
+      month: r.month,
+      ticker: r.ticker,
+      assetClass: r.asset_class,
+      severity: r.severity,
+      priority: r.priority,
+      title: r.title,
+      summary: r.summary
+    }));
+
+    // Counts by severity
+    const countsBySeverity = topAlerts.reduce((acc, a) => {
+      acc[a.severity] = (acc[a.severity] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Top asset classes by alert count
+    const countsByAssetClass = topAlerts.reduce((acc, a) => {
+      const k = a.assetClass || 'Unclassified';
+      acc[k] = (acc[k] || 0) + 1;
+      return acc;
+    }, {});
+    const byClassSorted = Object.entries(countsByAssetClass)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([assetClass, count]) => ({ assetClass, count }));
+
+    return { topAlerts, countsBySeverity, topAssetClasses: byClassSorted };
+  } catch (e) {
+    console.warn('[PDF] Failed to load alerts summary:', e?.message || e);
+    return { topAlerts: [], countsBySeverity: {}, topAssetClasses: [] };
+  }
 }
 
 /**

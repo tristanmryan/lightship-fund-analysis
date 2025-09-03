@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import alertsService from '../../services/alertsService.js';
+import authService from '../../services/authService.js';
 
 export default function RulesAdmin() {
   const [rules, setRules] = useState([]);
@@ -9,6 +10,9 @@ export default function RulesAdmin() {
   const [form, setForm] = useState({ severity_default: 'warning', is_active: true, paramsText: '{}' });
   const [adding, setAdding] = useState(false);
   const [addForm, setAddForm] = useState({ name: '', description: '', rule_type: 'NET_FLOW_SIGMA', scope: 'ticker', severity_default: 'warning', is_active: true, paramsText: '{\n  "window_months": 12,\n  "sigma_threshold": 2.0\n}' });
+  const [inlineError, setInlineError] = useState('');
+
+  const isAdmin = authService?.isAdmin?.() === true;
 
   useEffect(() => {
     let cancel = false;
@@ -30,15 +34,21 @@ export default function RulesAdmin() {
       is_active: !!rule.is_active,
       paramsText: JSON.stringify(rule.params || {}, null, 2)
     });
+    setInlineError('');
   }
 
   async function save() {
     try {
-      const patch = {
-        severity_default: form.severity_default,
-        is_active: form.is_active,
-        params: JSON.parse(form.paramsText || '{}')
-      };
+      setInlineError('');
+      const params = JSON.parse(form.paramsText || '{}');
+      const type = editing.rule_type;
+      const err = validateParams(type, params);
+      if (err) { setInlineError(err); return; }
+      if (editing.severity_default === 'critical' && editing.is_active !== form.is_active) {
+        const proceed = window.confirm('This is a high-impact (critical) rule. Confirm change to Active state.');
+        if (!proceed) return;
+      }
+      const patch = { severity_default: form.severity_default, is_active: form.is_active, params };
       await alertsService.updateRule(editing.id, patch);
       const rs = await alertsService.listRules();
       setRules(rs); setEditing(null);
@@ -91,7 +101,13 @@ export default function RulesAdmin() {
       </div>
 
       {/* Add Rule */}
-      <div className="card" style={{ padding: 12, marginTop: 12 }}>
+      {!isAdmin && (
+        <div className="alert alert-error" style={{ marginTop: 8 }}>
+          Admins only: You do not have permission to manage alert rules.
+        </div>
+      )}
+
+      <div className="card" style={{ padding: 12, marginTop: 12, opacity: isAdmin ? 1 : 0.6, pointerEvents: isAdmin ? 'auto' : 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <div style={{ fontWeight: 700, fontSize: 16 }}>Add Rule</div>
           <div style={{ marginLeft: 'auto' }}>
@@ -139,7 +155,10 @@ export default function RulesAdmin() {
             <div style={{ marginTop: 8 }}>
               <button className="btn" onClick={async () => {
                 try {
+                  setInlineError('');
                   const params = JSON.parse(addForm.paramsText || '{}');
+                  const err = validateParams(addForm.rule_type, params);
+                  if (err) { setInlineError(err); return; }
                   if (!addForm.name || !addForm.rule_type) throw new Error('Name and type are required');
                   await alertsService.createRule({
                     name: addForm.name,
@@ -182,9 +201,36 @@ export default function RulesAdmin() {
           <div style={{ marginTop: 8 }}>
             <label style={{ fontSize: 12, color: '#6b7280' }}>Params (JSON)</label>
             <textarea rows={10} style={{ width: '100%', fontFamily: 'monospace' }} value={form.paramsText} onChange={e => setForm(prev => ({ ...prev, paramsText: e.target.value }))} />
+            {inlineError && <div className="alert alert-error" style={{ marginTop: 6 }}>{inlineError}</div>}
           </div>
         </div>
       )}
     </div>
   );
+}
+
+function validateParams(type, params) {
+  try {
+    if (type === 'NET_FLOW_SIGMA') {
+      const wm = Number(params.window_months ?? 12);
+      const st = Number(params.sigma_threshold ?? 2.0);
+      if (!Number.isFinite(wm) || wm < 3) return 'window_months must be an integer >= 3';
+      if (!Number.isFinite(st) || st < 1 || st > 5) return 'sigma_threshold must be between 1 and 5';
+    } else if (type === 'ADVISOR_SPIKE_RATIO') {
+      const wm = Number(params.window_months ?? 6);
+      const mr = Number(params.min_ratio ?? 1.5);
+      const ma = Number(params.min_advisors ?? 5);
+      if (!Number.isFinite(wm) || wm < 3) return 'window_months must be an integer >= 3';
+      if (!Number.isFinite(mr) || mr < 1) return 'min_ratio must be >= 1';
+      if (!Number.isFinite(ma) || ma < 1) return 'min_advisors must be >= 1';
+    } else if (type === 'REDEMPTION_STREAK') {
+      const sm = Number(params.streak_months ?? 3);
+      const mto = Number(params.min_total_outflow ?? 1000000);
+      if (!Number.isFinite(sm) || sm < 2) return 'streak_months must be >= 2';
+      if (!Number.isFinite(mto) || mto < 0) return 'min_total_outflow must be >= 0';
+    }
+    return '';
+  } catch (e) {
+    return e?.message || 'Invalid parameters';
+  }
 }

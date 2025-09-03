@@ -65,6 +65,12 @@ export async function resolveAlert(id, actor = null, note = null) {
   return !!data;
 }
 
+export async function assignAlert(id, assignedTo, actor = null, note = null) {
+  const { data, error } = await supabase.rpc('assign_alert', { p_alert_id: id, p_assigned_to: assignedTo, p_actor: actor, p_note: note });
+  if (error) throw error;
+  return !!data;
+}
+
 export async function getTrendAnalytics({ ticker, windows = [3,6,12], month = null }) {
   if (!ticker) return [];
   const m = month ? toMonthStart(month) : null;
@@ -85,6 +91,7 @@ export default {
   getAlertActions,
   acknowledgeAlert,
   resolveAlert,
+  assignAlert,
   getTrendAnalytics,
   async listRules() {
     try {

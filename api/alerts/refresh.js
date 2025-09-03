@@ -20,11 +20,28 @@ export default async function handler(req, res) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseUrl || !serviceKey) return res.status(500).json({ error: 'Server not configured' });
     const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+
     const t0 = Date.now();
+    const results = { ok: true, steps: [] };
+
+    // Optional pre-check only
+    const precheckOnly = String(req.query?.precheck || '').toLowerCase() === '1';
+
+    // Refresh materialized views first
+    try { await supabase.rpc('refresh_advisor_metrics_mv'); results.steps.push({ step: 'refresh_advisor_metrics_mv', ok: true }); } catch (e) { results.steps.push({ step: 'refresh_advisor_metrics_mv', ok: false, error: e?.message }); }
+    try { await supabase.rpc('refresh_fund_flows_mv'); results.steps.push({ step: 'refresh_fund_flows_mv', ok: true }); } catch (e) { results.steps.push({ step: 'refresh_fund_flows_mv', ok: false, error: e?.message }); }
+    try { await supabase.rpc('refresh_fund_utilization_mv'); results.steps.push({ step: 'refresh_fund_utilization_mv', ok: true }); } catch (e) { results.steps.push({ step: 'refresh_fund_utilization_mv', ok: false, error: e?.message }); }
+    try { await supabase.rpc('refresh_advisor_adoption_mv'); results.steps.push({ step: 'refresh_advisor_adoption_mv', ok: true }); } catch (e) { results.steps.push({ step: 'refresh_advisor_adoption_mv', ok: false, error: e?.message }); }
+
+    if (precheckOnly) {
+      const ms = Date.now() - t0;
+      return res.status(200).json({ ok: true, precheckOnly: true, durationMs: ms, results });
+    }
+
     const { data, error } = await supabase.rpc('refresh_alerts_for_month', { p_month: null });
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return res.status(500).json({ error: error.message, results });
     const ms = Date.now() - t0;
-    return res.status(200).json({ ok: true, inserted: data || 0, durationMs: ms });
+    return res.status(200).json({ ok: true, inserted: data || 0, durationMs: ms, results });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
