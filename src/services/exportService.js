@@ -1194,7 +1194,6 @@ export function exportTradeFlowsCSV({ month, assetClass = null, ticker = null, t
     hasDeltaOut ? ['Ticker','Inflows','Outflows','Net','Delta Net vs Prior','Advisors'] : ['Ticker','Inflows','Outflows','Net','Advisors'],
     ...((topOutflows || []).map(r => hasDeltaOut ? [r.ticker, Number(r.inflows||0), Number(r.outflows||0), Number(r.net_flow||0), Number(r.delta_net||0), Number(r.advisors_trading||0)] : [r.ticker, Number(r.inflows||0), Number(r.outflows||0), Number(r.net_flow||0), Number(r.advisors_trading||0)]))
   ];
-  ];
 
   const heatmapRows = [
     ['Asset Class Heatmap'],
