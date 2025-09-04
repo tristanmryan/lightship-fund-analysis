@@ -24,7 +24,8 @@ import ComparisonPanel from './components/Dashboard/ComparisonPanel';
 import MonthlyReportButton from './components/Reports/MonthlyReportButton';
 import PortfolioDashboard from './components/Advisor/PortfolioDashboard.jsx';
 import TradeFlowDashboard from './components/Analytics/TradeFlowDashboard.jsx';
-import CommandCenter from './components/CommandCenter/CommandCenter.jsx';
+// Command Center removed in v3 streamline
+import RecommendedList from './components/Recommended/RecommendedList.jsx';
 import { 
   exportToExcel, 
   downloadFile
@@ -103,21 +104,23 @@ const App = () => {
 
   const tabToPath = {
     dashboard: '/dashboard',
+    recommended: '/recommended',
     assetclasses: '/assetclasses',
     compare: '/compare',
     reports: '/reports',
     flows: '/flows',
     advisors: '/advisors',
-    command: '/command',
+    // command: '/command',
     admin: '/admin'
   };
   const pathToTab = (pathname) => {
+    if (pathname.startsWith('/recommended')) return 'recommended';
     if (pathname.startsWith('/assetclasses')) return 'assetclasses';
     if (pathname.startsWith('/compare')) return 'compare';
     if (pathname.startsWith('/reports')) return 'reports';
     if (pathname.startsWith('/flows')) return 'flows';
     if (pathname.startsWith('/advisors')) return 'advisors';
-    if (pathname.startsWith('/command')) return 'command';
+    // if (pathname.startsWith('/command')) return 'command';
     if (pathname.startsWith('/admin')) return 'admin';
     return 'dashboard';
   };
@@ -407,12 +410,13 @@ const App = () => {
               <span>Dashboard</span>
             </span>
           </button>
-            <button className={activeTab === 'command' ? 'active' : ''} onClick={() => { setActiveTab('command'); navigate('/command'); }}>
-              <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-                <BellIcon size={16} aria-hidden />
-                <span>Command Center</span>
-              </span>
-            </button>
+          <button className={activeTab === 'recommended' ? 'active' : ''} onClick={() => { setActiveTab('recommended'); navigate('/recommended'); }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+              <BarChartIcon size={16} aria-hidden />
+              <span>Recommended</span>
+            </span>
+          </button>
+            {/* Command Center removed */}
             <button className={activeTab === 'advisors' ? 'active' : ''} onClick={() => { setActiveTab('advisors'); navigate('/advisors'); }}>
               <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
                 <AdvisorsIcon size={16} aria-hidden />
@@ -544,6 +548,17 @@ const App = () => {
         <Home />
       )}
 
+      {/* Recommended Tab */}
+      {activeTab === 'recommended' && (
+        <div>
+          <div className="card-header">
+            <h2 className="card-title">Recommended Funds</h2>
+            <p className="card-subtitle">Recommended list grouped by asset class with ownership metrics</p>
+          </div>
+          <RecommendedList asOfMonth={asOfMonth} />
+        </div>
+      )}
+
       {/* Asset Classes Tab */}
       {activeTab === 'assetclasses' && (
         <div>
@@ -665,16 +680,7 @@ const App = () => {
         </div>
       )}
 
-      {/* Command Center Tab */}
-      {activeTab === 'command' && (
-        <div>
-          <div className="card-header">
-            <h2 className="card-title">Alerts Command Center</h2>
-            <p className="card-subtitle">Prioritized queues, filters, drill-through, and actions</p>
-          </div>
-          <CommandCenter />
-        </div>
-      )}
+      {/* Command Center removed in v3 */}
 
       {/* Admin Tab - Role-based access */}
       {activeTab === 'admin' && currentUser?.role === 'admin' && (

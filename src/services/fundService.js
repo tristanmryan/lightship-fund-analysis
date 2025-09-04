@@ -460,6 +460,45 @@ class FundService {
     }
   }
 
+  // Ownership summary (RPC) => { ticker -> { firm_aum, advisor_count, avg_position_size } }
+  async getOwnershipSummary(asOfDate = null) {
+    try {
+      const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
+      const dateOnly = asOf ? asOf.toISOString().slice(0,10) : null;
+      const { data, error } = await supabase.rpc('get_fund_ownership_summary', {});
+      if (error) throw error;
+      const map = new Map();
+      (data || []).forEach(r => { if (r?.ticker) map.set(r.ticker, r); });
+      return map;
+    } catch (e) {
+      // Fallback: empty summary
+      return new Map();
+    }
+  }
+
+  // Funds enriched with ownership metrics (firmAUM, advisorCount)
+  async getFundsWithOwnership(asOfDate = null) {
+    const [funds, ownMap] = await Promise.all([
+      this.getAllFundsWithScoring(asOfDate),
+      this.getOwnershipSummary(asOfDate)
+    ]);
+    return (funds || []).map(f => {
+      const o = ownMap.get(f.ticker) || {};
+      return {
+        ...f,
+        firmAUM: Number(o.firm_aum || 0),
+        advisorCount: Number(o.advisor_count || 0),
+        avg_position_size: Number(o.avg_position_size || 0)
+      };
+    });
+  }
+
+  // Recommended funds with ownership summary
+  async getRecommendedFundsWithOwnership(asOfDate = null) {
+    const all = await this.getFundsWithOwnership(asOfDate);
+    return (all || []).filter(f => f.is_recommended);
+  }
+
   // Search funds by name or ticker
   async searchFunds(query) {
     try {

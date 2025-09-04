@@ -1,7 +1,7 @@
 import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
-import EnhancedFundTable from '../components/Dashboard/EnhancedFundTable';
+import UnifiedFundTable from '../components/common/UnifiedFundTable';
 
 test('shows a negative contributor badge when score < 45', () => {
   const funds = [{
@@ -14,7 +14,7 @@ test('shows a negative contributor badge when score < 45', () => {
       }
     }
   }];
-  render(<EnhancedFundTable funds={funds} />);
+  render(<UnifiedFundTable funds={funds} />);
   expect(screen.getByText(/Negative Fund/)).toBeInTheDocument();
   // look for a chip with a leading minus sign
   expect(screen.getByText(/−0\.75/)).toBeInTheDocument();

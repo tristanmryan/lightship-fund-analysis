@@ -28,11 +28,5 @@
       ]
     }
   ]
-  ,
-  "crons": [
-    {
-      "path": "/api/alerts/refresh",
-      "schedule": "0 9 1 * *"
-    }
-  ]
+  
 }

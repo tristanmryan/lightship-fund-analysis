@@ -1,5 +1,6 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, Star } from 'lucide-react';
+import { METRICS_CONFIG } from '../services/scoring';
 
 /**
  * Unified Table Column Definition System
@@ -308,13 +309,71 @@ export const NAME_COLUMN = createColumnDefinition({
     const truncated = displayName.length > maxLength 
       ? `${displayName.substring(0, maxLength)}...` 
       : displayName;
-    
+
+    // Compute rationale chips similar to legacy EnhancedFundTable when score is weak
+    const breakdown = fund?.scores?.breakdown || {};
+    const toRows = () => Object.keys(breakdown).map((k) => {
+      const row = breakdown[k] || {};
+      const contrib = (typeof row.reweightedContribution === 'number') ? row.reweightedContribution : (row.weightedZScore || 0);
+      const label = (METRICS_CONFIG?.labels?.[k] || k);
+      return { key: k, label, contrib };
+    }).filter(r => Number.isFinite(r.contrib));
+
+    let positive = [];
+    let negative = [];
+    try {
+      const rows = toRows();
+      positive = rows.filter(r => r.contrib > 0).sort((a,b)=> b.contrib - a.contrib).slice(0, 2);
+      if (fund?.scores?.final != null && fund.scores.final < 45) {
+        negative = rows.filter(r => r.contrib < 0).sort((a,b)=> a.contrib - b.contrib).slice(0, 1);
+      }
+    } catch {}
+
     return (
-      <div title={displayName} style={{ 
-        fontWeight: '500',
-        lineHeight: '1.2'
-      }}>
-        {truncated}
+      <div style={{ lineHeight: 1.2 }}>
+        <div title={displayName} style={{ fontWeight: '500' }}>
+          {truncated}
+        </div>
+        {(positive.length > 0 || negative.length > 0) && (
+          <div style={{ marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }} title={(()=>{
+            try {
+              const rows = toRows().sort((a,b) => Math.abs(b.contrib) - Math.abs(a.contrib)).slice(0,3);
+              const parts = rows.map(r => `${r.contrib >= 0 ? '+' : '−'}${Math.abs(r.contrib).toFixed(2)} ${r.label}`);
+              return parts.length ? `Why this fund: ${parts.join(', ')}` : 'Why this fund: rationale unavailable';
+            } catch { return 'Why this fund: rationale unavailable'; }
+          })()}>
+            {positive.map(r => (
+              <span
+                key={r.key}
+                style={{
+                  fontSize: '0.6875rem',
+                  background: '#ecfdf5',
+                  color: '#065f46',
+                  border: '1px solid #a7f3d0',
+                  borderRadius: 9999,
+                  padding: '2px 6px'
+                }}
+              >
+                +{r.contrib.toFixed(2)} {r.label}
+              </span>
+            ))}
+            {negative.map(r => (
+              <span
+                key={`neg-${r.key}`}
+                style={{
+                  fontSize: '0.6875rem',
+                  background: '#fef2f2',
+                  color: '#7f1d1d',
+                  border: '1px solid #fecaca',
+                  borderRadius: 9999,
+                  padding: '2px 6px'
+                }}
+              >
+                −{Math.abs(r.contrib).toFixed(2)} {r.label}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -730,6 +789,41 @@ export const RECOMMENDED_COLUMN = createColumnDefinition({
 });
 
 // =============================================================================
+// OWNERSHIP / ADOPTION COLUMNS
+// =============================================================================
+
+export const FIRM_AUM_COLUMN = createColumnDefinition({
+  key: 'firmAUM',
+  label: 'Firm AUM',
+  fallbackKeys: ['firm_aum', 'aum_total', 'total_aum'],
+  width: '120px',
+  tooltip: 'Latest firm holdings in USD for this fund',
+  isNumeric: true,
+  isCurrency: true,
+  decimals: 0,
+  renderer: (value) => (
+    <div style={{ textAlign: 'right', fontFeatureSettings: 'tnum' }}>
+      {typeof value === 'number' ? `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}
+    </div>
+  )
+});
+
+export const ADVISOR_COUNT_COLUMN = createColumnDefinition({
+  key: 'advisorCount',
+  label: '# Advisors',
+  fallbackKeys: ['advisor_count', 'advisors_using'],
+  width: '110px',
+  tooltip: 'Number of advisors currently holding the fund',
+  isNumeric: true,
+  decimals: 0,
+  renderer: (value) => (
+    <div style={{ textAlign: 'right', fontWeight: 500 }}>
+      {value ?? '—'}
+    </div>
+  )
+});
+
+// =============================================================================
 // COLUMN GROUPS AND CONFIGURATIONS
 // =============================================================================
 
@@ -796,7 +890,10 @@ export const COLUMN_REGISTRY = {
   // Special columns
   score: SCORE_COLUMN,
   percentile: PERCENTILE_COLUMN,
-  recommended: RECOMMENDED_COLUMN
+  recommended: RECOMMENDED_COLUMN,
+  // Ownership
+  firmAUM: FIRM_AUM_COLUMN,
+  advisorCount: ADVISOR_COUNT_COLUMN
 };
 
 // Preset configurations
@@ -830,6 +927,11 @@ export const COLUMN_PRESETS = {
     name: 'Cost Analysis',
     description: 'Cost-focused metrics and efficiency',
     columns: ['symbol', 'name', 'assetClass', 'expenseRatio', 'ytdReturn', 'sharpeRatio', 'score', 'recommended']
+  },
+  recommended: {
+    name: 'Recommended Set',
+    description: 'Recommended workflow with ownership context',
+    columns: ['symbol', 'name', 'assetClass', 'score', 'ytdReturn', 'oneYearReturn', 'expenseRatio', 'firmAUM', 'advisorCount', 'recommended']
   }
 };
 

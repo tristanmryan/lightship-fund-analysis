@@ -23,6 +23,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^6.30.1",
+    "react-window": "^1.8.9",
     "react-scripts": "5.0.1",
     "string-similarity": "^4.0.4",
     "vercel": "^46.0.5",
