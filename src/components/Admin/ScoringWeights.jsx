@@ -1,7 +1,7 @@
-// src/components/Admin/ScoringWeights.jsx
+﻿// src/components/Admin/ScoringWeights.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import scoringProfilesService from '../../services/scoringProfilesService';
-import { computeRuntimeScores, DEFAULT_WEIGHTS, calculateScores } from '../../services/scoring';
+import { computeRuntimeScores, DEFAULT_WEIGHTS, calculateScores } from '../../services/scoring.js';
 
 const METRICS = [
   { key: 'ytd', label: 'YTD Return' },
@@ -219,7 +219,7 @@ export default function ScoringWeights({ funds = [] }) {
         </select>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ color: '#6b7280' }}>
-            Enabled weight sum: {tab==='global' ? sumEnabledWeights('global').toFixed(3) : tab==='class' ? (assetClass ? sumEnabledWeights('class').toFixed(3) : '—') : tab==='fund' ? (filteredFunds.length===1 ? sumEnabledWeights('fund').toFixed(3) : '—') : '—'}
+            Enabled weight sum: {tab==='global' ? sumEnabledWeights('global').toFixed(3) : tab==='class' ? (assetClass ? sumEnabledWeights('class').toFixed(3) : 'â€”') : tab==='fund' ? (filteredFunds.length===1 ? sumEnabledWeights('fund').toFixed(3) : 'â€”') : 'â€”'}
           </div>
           {['global','class','fund','preview'].map(k => (
             <button key={k} className={`btn ${tab===k?'btn-primary':'btn-secondary'}`} onClick={() => setTab(k)}>{k.charAt(0).toUpperCase()+k.slice(1)}</button>
@@ -276,7 +276,7 @@ export default function ScoringWeights({ funds = [] }) {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
             <span>Asset Class:</span>
             <select value={assetClass} onChange={e => setAssetClass(e.target.value)}>
-              <option value="">Choose…</option>
+              <option value="">Chooseâ€¦</option>
               {assetClasses.map(ac => <option key={ac} value={ac}>{ac}</option>)}
             </select>
           </div>
@@ -379,8 +379,8 @@ export default function ScoringWeights({ funds = [] }) {
                   {previewScores.map(f => (
                     <tr key={f.ticker || f.Symbol}>
                       <td style={{ padding: 8 }}><strong>{f.ticker || f.Symbol}</strong></td>
-                      <td style={{ padding: 8 }}>{f.name || f['Fund Name'] || '—'}</td>
-                      <td style={{ padding: 8 }}>{f.scores?.final?.toFixed(1) || '—'}</td>
+                      <td style={{ padding: 8 }}>{f.name || f['Fund Name'] || 'â€”'}</td>
+                      <td style={{ padding: 8 }}>{f.scores?.final?.toFixed(1) || 'â€”'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -396,7 +396,7 @@ export default function ScoringWeights({ funds = [] }) {
           <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8 }}>
             <span>Asset Class:</span>
             <select value={assetClass} onChange={e => setAssetClass(e.target.value)}>
-              <option value="">Choose…</option>
+              <option value="">Chooseâ€¦</option>
               {assetClasses.map(ac => <option key={ac} value={ac}>{ac}</option>)}
             </select>
             <span>Ticker:</span>
@@ -418,7 +418,7 @@ export default function ScoringWeights({ funds = [] }) {
                     const fund = { ticker: filteredFunds[0].ticker || filteredFunds[0].Symbol, asset_class_name: assetClass };
                     const w = resolver.getWeightFor(fund, m.key);
                     return (
-                      <tr key={m.key}><td style={{ padding:8 }}>{m.label}</td><td style={{ padding:8 }}>{Number.isFinite(w) ? w : '—'}</td></tr>
+                      <tr key={m.key}><td style={{ padding:8 }}>{m.label}</td><td style={{ padding:8 }}>{Number.isFinite(w) ? w : 'â€”'}</td></tr>
                     );
                   })}
                 </tbody>
@@ -430,4 +430,5 @@ export default function ScoringWeights({ funds = [] }) {
     </div>
   );
 }
+
 

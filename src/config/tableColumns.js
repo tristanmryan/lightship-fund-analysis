@@ -1,6 +1,6 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, Star } from 'lucide-react';
-import { METRICS_CONFIG } from '../services/scoring';
+import { METRICS_CONFIG } from '../services/scoring.js';
 
 /**
  * Unified Table Column Definition System

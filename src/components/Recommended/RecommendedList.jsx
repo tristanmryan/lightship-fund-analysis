@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import UnifiedFundTable from '../common/UnifiedFundTable';
 import fundService from '../../services/fundService';
-import { exportAssetClassTableCSV } from '../../services/exportService';
+import { exportAssetClassTableCSV } from '../../services/exportService.js';
 
 const DEFAULT_GROUPS = [
   'US Equity',
@@ -101,4 +101,3 @@ export default function RecommendedList({ asOfMonth = null }) {
     </div>
   );
 }
-

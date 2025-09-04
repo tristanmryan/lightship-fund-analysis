@@ -16,7 +16,7 @@ import ComparisonPanel from './ComparisonPanel';
 import DrilldownCards from './DrilldownCards';
 import preferencesService from '../../services/preferencesService';
 import fundService from '../../services/fundService';
-import { generatePDFReport, downloadFile, downloadPDF, exportToExcel, formatExportFilename, exportElementToPNG, copyElementPNGToClipboard, exportCurrentView } from '../../services/exportService';
+import { generatePDFReport, downloadFile, downloadPDF, exportToExcel, formatExportFilename, exportElementToPNG, copyElementPNGToClipboard, exportCurrentView } from '../../services/exportService.js';
 
 const DEFAULT_FILTERS = {
   search: '',

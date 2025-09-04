@@ -4,3 +4,4 @@ ALTER TABLE public.trade_activity
 
 -- No additional grants required (inherits table privileges)
 
+

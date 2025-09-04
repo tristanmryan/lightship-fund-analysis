@@ -1,15 +1,15 @@
-// src/components/Dashboard/Home.jsx
+﻿// src/components/Dashboard/Home.jsx
 import React from 'react';
 import asOfStore from '../../services/asOfStore';
 import dashboardService from '../../services/dashboardService';
 import preferencesService from '../../services/preferencesService';
 import fundService from '../../services/fundService';
-import { computeRuntimeScores, loadEffectiveWeightsResolver } from '../../services/scoring';
+import { computeRuntimeScores, loadEffectiveWeightsResolver } from '../../services/scoring.js';
 import PerformanceHeatmap from './PerformanceHeatmap';
 import TopBottomPerformers from './TopBottomPerformers';
 import AssetClassOverview from './AssetClassOverview';
 import researchNotesService from '../../services/researchNotesService';
-import { exportToExcel, downloadFile, formatExportFilename } from '../../services/exportService';
+import { exportToExcel, downloadFile, formatExportFilename } from '../../services/exportService.js';
 import SimplifiedDashboard from './SimplifiedDashboard';
 import './SimplifiedDashboard.css';
 
@@ -82,7 +82,7 @@ function OriginalHome() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 id="home-heading" style={{ margin: 0 }}>Home</h2>
-          <div style={{ color: '#6b7280' }}>As of {kpis.snapshotDate || asOf || 'Latest'} • {kpis.freshnessDays != null ? `${kpis.freshnessDays}d old` : ''}</div>
+          <div style={{ color: '#6b7280' }}>As of {kpis.snapshotDate || asOf || 'Latest'} â€¢ {kpis.freshnessDays != null ? `${kpis.freshnessDays}d old` : ''}</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn" aria-label="Import CSV" onClick={() => { window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'data' } })); }}>Import CSV</button>
@@ -95,11 +95,11 @@ function OriginalHome() {
       {/* KPI Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
         {[
-          { label: 'Funds', value: loading ? '…' : kpis.funds },
-          { label: 'Recommended', value: loading ? '…' : kpis.recommended },
-          { label: 'Min Coverage', value: loading ? '…' : `${kpis.minCoverage}%` },
-          { label: 'Alerts', value: loading ? '…' : kpis.alertsCount },
-          { label: 'Snapshot', value: loading ? '…' : (kpis.snapshotDate || 'Latest') }
+          { label: 'Funds', value: loading ? 'â€¦' : kpis.funds },
+          { label: 'Recommended', value: loading ? 'â€¦' : kpis.recommended },
+          { label: 'Min Coverage', value: loading ? 'â€¦' : `${kpis.minCoverage}%` },
+          { label: 'Alerts', value: loading ? 'â€¦' : kpis.alertsCount },
+          { label: 'Snapshot', value: loading ? 'â€¦' : (kpis.snapshotDate || 'Latest') }
         ].map((c, idx) => (
           <div key={idx} className="card" style={{ padding: 12 }}>
             <div style={{ fontSize: 12, color: '#6b7280' }}>{c.label}</div>
@@ -216,7 +216,7 @@ function OriginalHome() {
                     <ul style={{ marginTop: 6, paddingLeft: 18, fontSize: 12 }}>
                       {notes.map((n) => (
                         <li key={n.id}>
-                          <span style={{ color: '#6b7280' }}>{new Date(n.created_at).toLocaleDateString()}</span> — {n.decision ? `[${n.decision}] ` : ''}{n.body?.slice(0, 120)}{(n.body?.length || 0) > 120 ? '…' : ''}
+                          <span style={{ color: '#6b7280' }}>{new Date(n.created_at).toLocaleDateString()}</span> â€” {n.decision ? `[${n.decision}] ` : ''}{n.body?.slice(0, 120)}{(n.body?.length || 0) > 120 ? 'â€¦' : ''}
                         </li>
                       ))}
                     </ul>
@@ -232,7 +232,7 @@ function OriginalHome() {
       <div className="card" style={{ padding: 12 }} role="region" aria-labelledby="changed-heading">
         <div className="card-header"><h3 id="changed-heading" className="card-title" style={{ margin: 0 }}>What Changed</h3></div>
         {loading ? (
-          <div style={{ color: '#6b7280', fontSize: 12 }}>Loading…</div>
+          <div style={{ color: '#6b7280', fontSize: 12 }}>Loadingâ€¦</div>
         ) : (deltas.moversUp.length === 0 && deltas.moversDown.length === 0) ? (
           <div style={{ color: '#6b7280', fontSize: 12 }}>Not enough history to compute changes (need a prior snapshot).</div>
         ) : (
@@ -262,7 +262,7 @@ function OriginalHome() {
               <div style={{ fontSize: 12, color: '#374151' }}>{deltas.dropped.length} funds</div>
             </div>
             <div style={{ gridColumn: '1 / -1', fontSize: 12, color: '#6b7280' }}>
-              Breadth: {deltas.stats.advancers} advancers / {deltas.stats.decliners} decliners • Avg YTD delta: {deltas.stats.avgYtdDelta?.toFixed(2)}%
+              Breadth: {deltas.stats.advancers} advancers / {deltas.stats.decliners} decliners â€¢ Avg YTD delta: {deltas.stats.avgYtdDelta?.toFixed(2)}%
             </div>
           </div>
         )}
@@ -284,3 +284,4 @@ export default function Home() {
   // Otherwise, use the original dashboard
   return <OriginalHome />;
 }
+

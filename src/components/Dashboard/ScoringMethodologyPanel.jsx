@@ -1,11 +1,11 @@
-// src/components/Dashboard/ScoringMethodologyPanel.jsx
+﻿// src/components/Dashboard/ScoringMethodologyPanel.jsx
 import React, { useState, useMemo } from 'react';
 import { 
   Info, ChevronDown, ChevronRight, BarChart3, Database, 
   Shield, Clock, AlertTriangle, CheckCircle, Target,
   Layers, TrendingUp, FileText, RefreshCw
 } from 'lucide-react';
-import { METRICS_CONFIG, DEFAULT_WEIGHTS, SCORE_BANDS } from '../../services/scoring';
+import { METRICS_CONFIG, DEFAULT_WEIGHTS, SCORE_BANDS } from '../../services/scoring.js';
 import { 
   isWinsorizationEnabled, 
   getCoverageThreshold, 
@@ -182,7 +182,7 @@ const ScoringMethodologyPanel = ({ fund = null, funds = [], visible = false, onT
           <li>Funds are compared to peers within their asset class</li>
           <li>Each metric is standardized to Z-scores using peer statistics</li>
           <li>Weighted Z-scores are summed to produce a raw composite score</li>
-          <li>Raw scores are scaled using <code>50 + 10 × rawScore</code></li>
+          <li>Raw scores are scaled using <code>50 + 10 Ã— rawScore</code></li>
           <li>Final scores are clamped to 0-100 range</li>
         </ol>
       </div>

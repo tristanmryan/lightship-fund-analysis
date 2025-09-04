@@ -28,7 +28,7 @@ import RecommendedList from './components/Recommended/RecommendedList.jsx';
 import { 
   exportToExcel, 
   downloadFile
-} from './services/exportService';
+} from './services/exportService.js';
 
 // Import new services
 import authService from './services/authService';

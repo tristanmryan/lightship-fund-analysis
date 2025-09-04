@@ -1,8 +1,8 @@
-// src/components/Dashboard/ScoreBreakdownChart.jsx
+﻿// src/components/Dashboard/ScoreBreakdownChart.jsx
 import React, { useMemo, useState } from 'react';
 import { BarChart3, TrendingUp, TrendingDown, Info, Target } from 'lucide-react';
 import { formatNumber } from '../../utils/formatters';
-import { METRICS_CONFIG } from '../../services/scoring';
+import { METRICS_CONFIG } from '../../services/scoring.js';
 
 /**
  * Professional Score Breakdown Chart Component

@@ -126,36 +126,34 @@ BEGIN
         manager_tenure = EXCLUDED.manager_tenure,
         up_capture_ratio = EXCLUDED.up_capture_ratio,
         down_capture_ratio = EXCLUDED.down_capture_ratio;
-      
-      -- Track operation type
+
       IF conflict_action = 'insert' THEN
         inserted_count := inserted_count + 1;
       ELSE
         updated_count := updated_count + 1;
       END IF;
-      
-    EXCEPTION WHEN OTHERS THEN
-      error_count := error_count + 1;
-      -- Log error but continue processing
-      RAISE WARNING 'Error processing fund record %: %', record_count, SQLERRM;
+    EXCEPTION
+      WHEN OTHERS THEN
+        error_count := error_count + 1;
+        CONTINUE;
     END;
   END LOOP;
-  
-  skipped_count := record_count - inserted_count - updated_count - error_count;
-  
-  RETURN jsonb_build_object(
+
+  -- Build result
+  result_data := jsonb_build_object(
     'success', error_count = 0,
     'records_processed', record_count,
     'inserted', inserted_count,
     'updated', updated_count,
     'skipped', skipped_count,
-    'errors', error_count
+    'errors', jsonb_build_array()
   );
+
+  RETURN result_data;
 END;
 $$;
 
 -- 2. Upsert Benchmark Performance Data
--- Similar to fund performance but for benchmark data
 CREATE OR REPLACE FUNCTION public.upsert_benchmark_performance(csv_data jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -169,61 +167,25 @@ DECLARE
   skipped_count integer := 0;
   result_data jsonb;
   record_item jsonb;
+  benchmark_record record;
   conflict_action text;
 BEGIN
-  -- Validate input
   IF csv_data IS NULL OR jsonb_array_length(csv_data) = 0 THEN
     RETURN jsonb_build_object(
       'success', false,
-      'error', 'No data provided',
-      'records_processed', 0,
-      'inserted', 0,
-      'updated', 0,
-      'skipped', 0,
-      'errors', jsonb_build_array()
+      'error', 'No data provided'
     );
   END IF;
 
-  -- Process each record in the array
   FOR record_item IN SELECT * FROM jsonb_array_elements(csv_data)
   LOOP
     BEGIN
       record_count := record_count + 1;
-      
-      -- Extract and validate required fields
       IF NOT (record_item ? 'benchmark_ticker') OR NOT (record_item ? 'date') THEN
         error_count := error_count + 1;
         CONTINUE;
       END IF;
       
-      -- Validate date format and EOM requirement
-      IF NOT (record_item->>'date' ~ '^\d{4}-\d{2}-\d{2}$') THEN
-        error_count := error_count + 1;
-        CONTINUE;
-      END IF;
-      
-      -- Check if date is end-of-month and auto-convert
-      DECLARE
-        input_date date := (record_item->>'date')::date;
-        eom_date date := (DATE_TRUNC('month', input_date) + INTERVAL '1 month - 1 day')::date;
-      BEGIN
-        IF input_date != eom_date THEN
-          -- Auto-convert to EOM
-          record_item := jsonb_set(record_item, '{date}', to_jsonb(eom_date::text));
-        END IF;
-      END;
-      
-      -- Check if record already exists
-      SELECT 'update' INTO conflict_action
-      FROM public.benchmark_performance 
-      WHERE benchmark_ticker = (record_item->>'benchmark_ticker') 
-        AND date = (record_item->>'date')::date;
-      
-      IF NOT FOUND THEN
-        conflict_action := 'insert';
-      END IF;
-      
-      -- Perform upsert
       INSERT INTO public.benchmark_performance (
         benchmark_ticker,
         date,
@@ -271,36 +233,31 @@ BEGIN
         beta = EXCLUDED.beta,
         up_capture_ratio = EXCLUDED.up_capture_ratio,
         down_capture_ratio = EXCLUDED.down_capture_ratio;
-      
-      -- Track operation type
-      IF conflict_action = 'insert' THEN
-        inserted_count := inserted_count + 1;
-      ELSE
+
+      IF FOUND THEN
         updated_count := updated_count + 1;
+      ELSE
+        inserted_count := inserted_count + 1;
       END IF;
-      
-    EXCEPTION WHEN OTHERS THEN
-      error_count := error_count + 1;
-      -- Log error but continue processing
-      RAISE WARNING 'Error processing benchmark record %: %', record_count, SQLERRM;
+    EXCEPTION
+      WHEN OTHERS THEN
+        error_count := error_count + 1;
+        CONTINUE;
     END;
   END LOOP;
-  
-  skipped_count := record_count - inserted_count - updated_count - error_count;
-  
+
   RETURN jsonb_build_object(
     'success', error_count = 0,
     'records_processed', record_count,
     'inserted', inserted_count,
     'updated', updated_count,
     'skipped', skipped_count,
-    'errors', error_count
+    'errors', jsonb_build_array()
   );
 END;
 $$;
 
--- 3. Activity Logging Function
--- Logs upload activities with user info, action type, and details
+-- 3. Activity Logging Function (separate for reuse)
 CREATE OR REPLACE FUNCTION public.log_activity(
   user_info jsonb,
   action text,
@@ -313,12 +270,12 @@ AS $$
 DECLARE
   activity_id uuid;
   user_id_val uuid;
-  ip_address_val inet;
+  ip_address_val text;
   user_agent_val text;
 BEGIN
-  -- Extract user information
+  -- Extract safe user fields
   user_id_val := COALESCE((user_info->>'user_id')::uuid, NULL);
-  ip_address_val := COALESCE((user_info->>'ip_address')::inet, NULL);
+  ip_address_val := COALESCE(user_info->>'ip', NULL);
   user_agent_val := COALESCE(user_info->>'user_agent', NULL);
   
   -- Insert activity log

@@ -1,8 +1,8 @@
-// src/components/Dashboard/PerformanceHeatmap.jsx
+﻿// src/components/Dashboard/PerformanceHeatmap.jsx
 import React, { useState, useMemo } from 'react';
 import { tooltipBoxStyle, tooltipTitleStyle } from '../common/tooltipStyles';
 import { Info } from 'lucide-react';
-import { getScoreColor } from '../../services/scoring';
+import { getScoreColor } from '../../services/scoring.js';
 
 /**
  * Performance Heatmap Component

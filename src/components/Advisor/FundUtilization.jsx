@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import utilizationService from '../../services/utilizationService';
-import { exportUtilizationCSV, downloadFile, formatExportFilename } from '../../services/exportService';
+import { exportUtilizationCSV, downloadFile, formatExportFilename } from '../../services/exportService.js';
 
 export default function FundUtilization() {
   const [dates, setDates] = useState([]);

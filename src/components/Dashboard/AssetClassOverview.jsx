@@ -1,8 +1,8 @@
-// src/components/Dashboard/AssetClassOverview.jsx
+﻿// src/components/Dashboard/AssetClassOverview.jsx
 import React, { useState, useMemo } from 'react';
 import { tooltipBoxStyle, tooltipTitleStyle } from '../common/tooltipStyles';
 import { TrendingUp, TrendingDown } from 'lucide-react';
-import { getScoreColor, generateClassSummary } from '../../services/scoring';
+import { getScoreColor, generateClassSummary } from '../../services/scoring.js';
 import FundStatusBadge from './FundStatusBadge';
 
 /**
@@ -438,7 +438,7 @@ const AssetClassOverview = ({ funds, classSummaries = {}, benchmarkData = {} }) 
                     transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                     transition: 'transform 0.2s'
                   }}>
-                    ▼
+                    â–¼
                   </div>
                 </div>
               </div>

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import advisorService from '../../services/advisorService';
 import { supabase } from '../../services/supabase';
 import { fmt } from '../../utils/formatters';
-import { exportAdvisorPortfolioCSV, generateAdvisorPortfolioPDF, exportAdvisorPortfolioExcel, downloadFile, downloadPDF, formatExportFilename } from '../../services/exportService';
+import { exportAdvisorPortfolioCSV, generateAdvisorPortfolioPDF, exportAdvisorPortfolioExcel, downloadFile, downloadPDF, formatExportFilename } from '../../services/exportService.js';
 import FundUtilization from './FundUtilization.jsx';
 
 export default function PortfolioDashboard() {

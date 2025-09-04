@@ -1,10 +1,10 @@
 // src/components/Dashboard/ScoreTooltip.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Info, TrendingUp, TrendingDown } from 'lucide-react';
-import { METRICS_CONFIG } from '../../services/scoring';
+import { METRICS_CONFIG } from '../../services/scoring.js';
 import { getScoreColor, getScoreLabel } from '../../services/scoringPolicy';
 import { formatNumber } from '../../utils/formatters';
-import { getFundScoringHistory } from '../../services/scoringHistory';
+import { getFundScoringHistory } from '../../services/scoringHistory.js';
 
 const ENABLE_VISUAL_REFRESH = (process.env.REACT_APP_ENABLE_VISUAL_REFRESH || 'false') === 'true';
 

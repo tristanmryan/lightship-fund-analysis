@@ -1,7 +1,7 @@
 // src/components/Reports/MonthlyReportButton.jsx
 import React, { useState } from 'react';
 import { FileText, Download, FileSpreadsheet, Info } from 'lucide-react';
-import { generatePDFReport, exportToExcel, exportToCSV, downloadFile, downloadPDF } from '../../services/exportService';
+import { generatePDFReport, exportToExcel, exportToCSV, downloadFile, downloadPDF } from '../../services/exportService.js';
 import { useFundData } from '../../hooks/useFundData';
 
 const MonthlyReportButton = () => {
