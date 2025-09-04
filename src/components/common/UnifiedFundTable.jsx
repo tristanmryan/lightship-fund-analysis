@@ -118,5 +118,4 @@ const UnifiedFundTable = ({
   );
 };
 
-export default UnifiedFundTable;
-
+export default React.memo(UnifiedFundTable);

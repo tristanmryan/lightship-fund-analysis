@@ -1,9 +1,12 @@
-// src/services/fundService.js
+﻿// src/services/fundService.js
 import { supabase, TABLES, dbUtils, handleSupabaseError, toNumberStrict } from './supabase.js';
 import { resolveAssetClassForTicker } from './resolvers/assetClassResolver.js';
 import ychartsAPI from './ychartsAPI.js';
 
 class FundService {
+  constructor() { this._ownershipCache = new Map(); this._fundsWithOwnershipCache = new Map(); }
+
+
   // expose supabase and TABLES for limited use in hooks/tests
   get supabase() { return supabase; }
   get TABLES() { return TABLES; }
@@ -462,6 +465,11 @@ class FundService {
 
   // Ownership summary (RPC-backed) => { ticker -> { firm_aum, advisor_count, avg_position_size } }
   async getOwnershipSummary(asOfDate = null) {
+    const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
+    const dateOnly = asOf ? asOf.toISOString().slice(0,10) : null;
+    if (this._ownershipCache && this._ownershipCache.has(dateOnly)) {
+      return this._ownershipCache.get(dateOnly);
+    }
     const map = new Map();
     try {
       // Preferred: dedicated summary RPC if present
@@ -473,8 +481,6 @@ class FundService {
     } catch {}
     // Fallback: use fund_utilization MV RPC and adapt field names
     try {
-      const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
-      const dateOnly = asOf ? asOf.toISOString().slice(0,10) : null;
       const { data, error } = await supabase.rpc('get_fund_utilization', { p_date: dateOnly, p_asset_class: null, p_limit: 5000 });
       if (error) throw error;
       (data || []).forEach(r => {
@@ -486,6 +492,7 @@ class FundService {
           avg_position_size: Number(r.avg_position_usd || 0)
         });
       });
+      if (this._ownershipCache) this._ownershipCache.set(dateOnly, map);
       return map;
     } catch {
       return new Map();
@@ -494,11 +501,16 @@ class FundService {
 
   // Funds enriched with ownership metrics (firmAUM, advisorCount)
   async getFundsWithOwnership(asOfDate = null) {
+    const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
+    const dateOnly = asOf ? asOf.toISOString().slice(0,10) : null;
+    if (this._fundsWithOwnershipCache && this._fundsWithOwnershipCache.has(dateOnly)) {
+      return this._fundsWithOwnershipCache.get(dateOnly);
+    }
     const [funds, ownMap] = await Promise.all([
       this.getAllFundsWithScoring(asOfDate),
       this.getOwnershipSummary(asOfDate)
     ]);
-    return (funds || []).map(f => {
+    const merged = (funds || []).map(f => {
       const o = ownMap.get(f.ticker) || {};
       return {
         ...f,
@@ -507,6 +519,8 @@ class FundService {
         avg_position_size: Number(o.avg_position_size || 0)
       };
     });
+    if (this._fundsWithOwnershipCache) this._fundsWithOwnershipCache.set(dateOnly, merged);
+    return merged;
   }
 
   // Recommended funds with ownership summary
@@ -667,7 +681,7 @@ class FundService {
           const metrics = ['ytd_return','one_year_return','sharpe_ratio'];
           const allNull = Array.isArray(probe) && probe.length > 0 && probe.every(row => metrics.every(m => row?.[m] == null));
           if (allNull) {
-            return { success, failed: failed + fundValidated.dropped + benchValidated.dropped, warning: `All fund metrics null for ${importDate} — check mapping` };
+            return { success, failed: failed + fundValidated.dropped + benchValidated.dropped, warning: `All fund metrics null for ${importDate} â€” check mapping` };
           }
         } catch (_) {
           // non-fatal

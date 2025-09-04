@@ -14,12 +14,12 @@
 
 ### Navigation Structure (5 Tabs + Admin)
 ```
-ðŸ“Š Dashboard     â†’ Complete fund universe with scoring
-ðŸ“‹ Recommended   â†’ Dedicated recommended list by asset class (NEW)
-ðŸ’¼ Portfolios    â†’ Holdings analysis (merger of Advisors + Holdings features)
-ðŸ’¹ Trading       â†’ Simplified flows (stripped-down version)
-ðŸ“„ Reports       â†’ Keep as-is
-âš™ï¸ Admin        â†’ Keep as-is (hidden for non-admins)
+Dashboard      - Complete fund universe with scoring
+Recommended    - Recommended list by asset class (NEW)
+Portfolios     - Holdings analysis (Advisors + Holdings)
+Trading        - Simplified flows (stripped-down)
+Reports        - Keep as-is
+Admin          - Keep as-is (hidden for non-admins)
 ```
 
 ### Components to DELETE Entirely
@@ -335,16 +335,16 @@ const TABS = [
 - [ ] Implement virtual scrolling for large tables
 - [ ] Add proper loading states everywhere
 - [ ] Cache holdings data in service layer
-- [ ] Optimize database queries with proper indexes
+- [x] Optimize database queries with proper indexes
 
 ### 3.2 Enhanced Scoring Display
 
 Since scoring is critical, enhance how it's shown:
 
 - [ ] Add score trending indicators (â†‘â†“â†’)
-- [ ] Show score confidence based on data completeness
-- [ ] Add tooltip with top 3 factors affecting score
-- [ ] Create score history mini-chart
+- [x] Show score confidence based on data completeness
+- [x] Add tooltip with top 3 factors affecting score
+- [x] Create score history mini-chart (in tooltip)
 
 ### 3.3 Code Cleanup
 
@@ -368,8 +368,8 @@ Since scoring is critical, enhance how it's shown:
 
 - [ ] Update README with new architecture
 - [ ] Document unified table component API
-- [ ] Create user guide for new Recommended page
-- [ ] Archive old documentation
+- [x] Create user guide for new Recommended page
+- [x] Archive old documentation (see docs/ARCHIVE.md)
 
 ### Phase 3 Acceptance Criteria
 - [ ] App loads in < 2 seconds
@@ -429,18 +429,20 @@ etc...
 
 ### Phase 3 Deletions
 <!-- Track here -->
+- 2025-09-04: Deleted unused ScoringTrends component
+- 2025-09-04: Deleted unused TagManager component & tagEngine service
+- 2025-09-04: Deleted unused trendAnalysis and metricsService
 
 ---
 
 ## Status Tracking
 
 **Phase 1 Progress**: 0% Complete
-**Phase 2 Progress**: 0% Complete  
-**Phase 3 Progress**: 0% Complete
+**Phase 2 Progress**: 100% Complete  
+**Phase 3 Progress**: 40% Complete
 
-**Overall Progress**: 0% Complete
+**Last Updated**: 2025-09-04 11:39
 
-**Last Updated**: [Update this]
 **Current Blockers**: None
 
 ---

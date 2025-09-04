@@ -3,7 +3,7 @@ import flowsService from '../../services/flowsService.js';
 import fundService from '../../services/fundService.js';
 import { exportTradeFlowsCSV, downloadFile, formatExportFilename } from '../../services/exportService.js';
 
-export default function TradeFlowDashboard() {
+function TradeFlowDashboard() {
   const [months, setMonths] = useState([]);
   const [month, setMonth] = useState('');
   const [assetClass, setAssetClass] = useState('');
@@ -142,6 +142,8 @@ export default function TradeFlowDashboard() {
     </div>
   );
 }
+
+export default React.memo(TradeFlowDashboard);
 
 function SectionHeader({ title, subtitle }) {
   return (
