@@ -4,7 +4,7 @@ import DataHealth from './DataHealth';
 import RealDataImporter from './RealDataImporter';
 import Papa from 'papaparse';
 import { supabase, TABLES } from '../../services/supabase';
-import { buildCSV, downloadFile } from '../../services/exportService';
+import { buildCSV, downloadFile } from '../../services/exportService.js';
 import databaseResetService from '../../services/databaseResetService';
 
 export default function ResetAndSeedUtilities() {

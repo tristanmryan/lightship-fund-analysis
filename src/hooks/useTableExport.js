@@ -11,7 +11,7 @@ import {
   exportCompareCSV,
   exportAssetClassTableCSV,
   exportCurrentView
-} from '../services/exportService';
+} from '../services/exportService.js';
 
 /**
  * Table export hook that works with existing exportService

@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import StatusIcon from '../common/StatusIcon';
 import AdvancedFilters from './AdvancedFilters';
-import ModernFundTable from './ModernFundTable';
+// Replaced legacy table components with UnifiedFundTable
+import UnifiedFundTable from '../common/UnifiedFundTable';
 import PerformanceHeatmap from './PerformanceHeatmap';
 import TopBottomPerformers from './TopBottomPerformers';
 import AssetClassOverview from './AssetClassOverview';
@@ -15,7 +16,7 @@ import ComparisonPanel from './ComparisonPanel';
 import DrilldownCards from './DrilldownCards';
 import preferencesService from '../../services/preferencesService';
 import fundService from '../../services/fundService';
-import { generatePDFReport, downloadFile, downloadPDF, exportToExcel, formatExportFilename, exportElementToPNG, copyElementPNGToClipboard, exportCurrentView } from '../../services/exportService';
+import { generatePDFReport, downloadFile, downloadPDF, exportToExcel, formatExportFilename, exportElementToPNG, copyElementPNGToClipboard, exportCurrentView } from '../../services/exportService.js';
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -455,15 +456,15 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
         ) : null;
         
         return (
-          <EnhancedFundTable 
+          <UnifiedFundTable
             funds={filteredFunds}
-            onFundSelect={handleFundSelect}
+            onRowClick={handleFundSelect}
             chartPeriod={chartPeriod}
             initialSortConfig={sanitized.sortConfig}
-            initialSelectedColumns={sanitized.selectedColumns}
+            columns={sanitized.selectedColumns}
             onStateChange={handleTableStateChange}
             registerExportHandler={(fn) => { tableExportRef.current = fn; }}
-            presetSelector={presetSelectorComponent}
+            preset="extended"
           />
         );
       

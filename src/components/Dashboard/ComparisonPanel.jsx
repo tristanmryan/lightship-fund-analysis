@@ -4,7 +4,7 @@ import { Search, X, TrendingUp, TrendingDown, Minus, Download, BarChart3 } from 
 import { computeBenchmarkDelta } from './benchmarkUtils';
 import { formatPercent, formatNumber } from '../../utils/formatters';
 import preferencesService from '../../services/preferencesService';
-import { exportCompareCSV, downloadFile, shouldConfirmLargeExport, formatExportFilename } from '../../services/exportService';
+import { exportCompareCSV, downloadFile, shouldConfirmLargeExport, formatExportFilename } from '../../services/exportService.js';
 import fundService from '../../services/fundService';
 import { useFundData } from '../../hooks/useFundData';
 

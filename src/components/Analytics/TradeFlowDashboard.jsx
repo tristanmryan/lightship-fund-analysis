@@ -1,23 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import flowsService from '../../services/flowsService.js';
+import fundService from '../../services/fundService.js';
 import { exportTradeFlowsCSV, downloadFile, formatExportFilename } from '../../services/exportService.js';
 
-export default function TradeFlowDashboard() {
+function TradeFlowDashboard() {
   const [months, setMonths] = useState([]);
   const [month, setMonth] = useState('');
   const [assetClass, setAssetClass] = useState('');
-  const [ticker, setTicker] = useState('');
   const [topInflows, setTopInflows] = useState([]);
   const [topOutflows, setTopOutflows] = useState([]);
-  const [heatmap, setHeatmap] = useState([]);
   const [trend, setTrend] = useState([]);
-  const [sentiment, setSentiment] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [trendMonths, setTrendMonths] = useState(6);
-  const [advisorModal, setAdvisorModal] = useState({ open: false, ticker: null, rows: [], loading: false, error: null });
-  const [comparePrev, setComparePrev] = useState(false);
-  const [prevMap, setPrevMap] = useState(null);
+  const [recommendedSet, setRecommendedSet] = useState(new Set());
 
   // Load available months
   useEffect(() => {
@@ -35,18 +30,18 @@ export default function TradeFlowDashboard() {
     return () => { cancel = true; };
   }, []);
 
-  // Support deep-link drillthrough from Command Center
+  // Load recommended set for flagging
   useEffect(() => {
-    const handler = (ev) => {
+    let cancel = false;
+    (async () => {
       try {
-        const m = ev?.detail?.month;
-        const t = ev?.detail?.ticker;
-        if (m) setMonth(m);
-        if (t) setTicker(String(t).toUpperCase());
-      } catch {}
-    };
-    window.addEventListener('NAVIGATE_FLOWS', handler);
-    return () => window.removeEventListener('NAVIGATE_FLOWS', handler);
+        const rec = await fundService.getRecommendedFunds();
+        if (cancel) return;
+        const set = new Set((rec || []).map(r => String(r.ticker || '').toUpperCase()));
+        setRecommendedSet(set);
+      } catch { setRecommendedSet(new Set()); }
+    })();
+    return () => { cancel = true; };
   }, []);
 
   // Load data when filters change
@@ -56,29 +51,15 @@ export default function TradeFlowDashboard() {
     (async () => {
       try {
         setLoading(true); setError(null);
-        const [inflows, outflows, hm, tr, ap] = await Promise.all([
-          flowsService.getTopMovers({ month, direction: 'inflow', assetClass: assetClass || null, ticker: ticker?.trim() ? ticker.trim().toUpperCase() : null, limit: 10 }),
-          flowsService.getTopMovers({ month, direction: 'outflow', assetClass: assetClass || null, ticker: ticker?.trim() ? ticker.trim().toUpperCase() : null, limit: 10 }),
-          flowsService.getFlowByAssetClass({ month }),
-          flowsService.getNetFlowTrend(trendMonths),
-          flowsService.getAdvisorParticipation({ month, ticker: ticker?.trim() ? ticker.trim().toUpperCase() : null })
+        const [inflows, outflows, tr] = await Promise.all([
+          flowsService.getTopMovers({ month, direction: 'inflow', assetClass: assetClass || null, ticker: null, limit: 10 }),
+          flowsService.getTopMovers({ month, direction: 'outflow', assetClass: assetClass || null, ticker: null, limit: 10 }),
+          flowsService.getNetFlowTrend(6)
         ]);
         if (cancel) return;
         setTopInflows(inflows);
         setTopOutflows(outflows);
-        setHeatmap(hm);
         setTrend(tr);
-        setSentiment(ap);
-        // Load previous month map when compare is enabled
-        if (comparePrev) {
-          const pm = flowsService.monthOffset(month, -1);
-          try {
-            const pmap = await flowsService.getFundFlowsMap(pm, 1000);
-            if (!cancel) setPrevMap(pmap);
-          } catch { if (!cancel) setPrevMap(null); }
-        } else {
-          setPrevMap(null);
-        }
       } catch (e) {
         if (!cancel) setError(e.message || String(e));
       } finally {
@@ -86,47 +67,34 @@ export default function TradeFlowDashboard() {
       }
     })();
     return () => { cancel = true; };
-  }, [month, assetClass, ticker, trendMonths, comparePrev]);
+  }, [month, assetClass]);
 
-  // Compute rows with delta when comparing vs prior month
   const inflowRows = useMemo(() => {
-    if (!comparePrev || !prevMap) return topInflows;
     return (topInflows || []).map(r => {
-      const prev = prevMap.get(String(r.ticker || '').toUpperCase());
-      const delta = Number(r.net_flow || 0) - Number(prev?.net_flow || 0);
-      return { ...r, delta_net: delta };
+      const t = String(r.ticker || '').toUpperCase();
+      const flag = recommendedSet.has(t) ? null : 'NONREC_BUY';
+      return { ...r, flag };
     });
-  }, [topInflows, comparePrev, prevMap]);
+  }, [topInflows, recommendedSet]);
 
   const outflowRows = useMemo(() => {
-    if (!comparePrev || !prevMap) return topOutflows;
     return (topOutflows || []).map(r => {
-      const prev = prevMap.get(String(r.ticker || '').toUpperCase());
-      const delta = Number(r.net_flow || 0) - Number(prev?.net_flow || 0);
-      return { ...r, delta_net: delta };
+      const t = String(r.ticker || '').toUpperCase();
+      const flag = recommendedSet.has(t) ? 'REC_SELL' : null;
+      return { ...r, flag };
     });
-  }, [topOutflows, comparePrev, prevMap]);
+  }, [topOutflows, recommendedSet]);
 
   const assetClasses = useMemo(() => {
-    const s = new Set((heatmap || []).map(r => r.asset_class).filter(Boolean));
-    return [''].concat(Array.from(s).sort());
-  }, [heatmap]);
-
-  async function handleAdvisorClick({ month, ticker }) {
-    try {
-      setAdvisorModal(prev => ({ ...prev, open: true, ticker, loading: true, error: null }));
-      const rows = await flowsService.getAdvisorBreakdown({ month, ticker, limit: 500 });
-      setAdvisorModal(prev => ({ ...prev, rows, loading: false }));
-    } catch (e) {
-      setAdvisorModal(prev => ({ ...prev, loading: false, error: e.message || String(e) }));
-    }
-  }
+    const s = new Set([""].concat((inflowRows || []).map(r => r.asset_class || null)).concat((outflowRows || []).map(r => r.asset_class || null)).filter(Boolean));
+    return Array.from(s).sort();
+  }, [inflowRows, outflowRows]);
 
   return (
     <div className="card" style={{ padding: 16, marginTop: 16 }}>
       <div className="card-header">
         <h2 className="card-title">Trade Flow Dashboard</h2>
-        <p className="card-subtitle">Monthly net flows, advisor sentiment, and top movers</p>
+        <p className="card-subtitle">Monthly net flows and top movers</p>
       </div>
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
@@ -142,72 +110,40 @@ export default function TradeFlowDashboard() {
             {assetClasses.map(ac => <option key={ac || 'all'} value={ac}>{ac || 'All'}</option>)}
           </select>
         </div>
-        <div>
-          <label style={{ fontSize: 12, color: '#6b7280' }}>Ticker (optional)</label><br />
-          <input type="text" placeholder="e.g., SPY" value={ticker} onChange={e => setTicker(e.target.value.toUpperCase())} style={{ width: 120 }} />
-        </div>
-        <div>
-          <label style={{ fontSize: 12, color: '#6b7280' }}>Net Flow Window</label><br />
-          <select value={trendMonths} onChange={e => setTrendMonths(Number(e.target.value))}>
-            {[3,6,12,24].map(n => <option key={n} value={n}>{n}M</option>)}
-          </select>
-        </div>
-        <div>
-          <label style={{ fontSize: 12, color: '#6b7280' }}>Compare vs Prior Month</label><br />
-          <input type="checkbox" checked={comparePrev} onChange={e => setComparePrev(e.target.checked)} />
-        </div>
+        
         {loading && <div style={{ color: "#6b7280" }}>Loading...</div>}
         {error && <div className="alert alert-error">{error}</div>}
         <div style={{ marginLeft: 'auto' }}>
           <button className="btn" onClick={() => {
             try {
-              const blob = exportTradeFlowsCSV({ month, assetClass: assetClass || null, ticker: ticker?.trim() || null, topInflows: inflowRows, topOutflows: outflowRows, heatmap, trend, sentiment });
+              const blob = exportTradeFlowsCSV({ month, assetClass: assetClass || null, ticker: null, topInflows: inflowRows, topOutflows: outflowRows, heatmap: [], trend, sentiment: null });
               const name = formatExportFilename({ scope: 'trade_flows', asOf: month, ext: 'csv' });
               downloadFile(blob, name, 'text/csv;charset=utf-8');
             } catch (e) { console.error('Export flows CSV failed', e); }
           }}>Export CSV</button>
-          <button className="btn" onClick={async () => {
-            try {
-              const { generateTradeFlowsPDF, downloadPDF } = await import('../../services/exportService.js');
-              const pdf = await generateTradeFlowsPDF({ month, assetClass: assetClass || null, ticker: ticker?.trim() || null, topInflows: inflowRows, topOutflows: outflowRows, heatmap, trend, sentiment });
-              const name = formatExportFilename({ scope: 'trade_flows', asOf: month, ext: 'pdf' });
-              downloadPDF(pdf, name);
-            } catch (e) { console.error('Export flows PDF failed', e); }
-          }}>Export PDF</button>
         </div>
       </div>
 
-      <div className="grid-3" style={{ marginTop: 12 }}>
-        <div className="card" style={{ padding: 12 }}>
-          <SectionHeader title="Net Flow Trend" subtitle={`Firm-wide net flows (last ${trendMonths} months)`} />
-          <NetFlowChart series={trend} />
-        </div>
-        <div className="card" style={{ padding: 12 }}>
-          <SectionHeader title="Advisor Sentiment" subtitle="Buying vs. selling participation" />
-          <AdvisorSentimentGauge data={sentiment} />
-        </div>
-        <div className="card" style={{ padding: 12 }}>
-          <SectionHeader title="Asset Class Flow Heatmap" subtitle="Aggregated by asset class" />
-          <FlowHeatmap rows={heatmap} />
-        </div>
+      <div className="card" style={{ padding: 12, marginTop: 12 }}>
+        <SectionHeader title="Net Flow Trend" subtitle={`Firm-wide net flows (last 6 months)`} />
+        <NetFlowChart series={trend} />
       </div>
 
       <div className="grid-2" style={{ marginTop: 12 }}>
         <div className="card" style={{ padding: 12 }}>
           <SectionHeader title="Top Inflows" subtitle={assetClass ? `Filtered: ${assetClass}` : 'All asset classes'} />
-          <TopMoversTable rows={inflowRows} direction="inflow" onAdvisorClick={handleAdvisorClick} month={month} />
+          <TopMoversTable rows={inflowRows} direction="inflow" month={month} />
         </div>
         <div className="card" style={{ padding: 12 }}>
           <SectionHeader title="Top Outflows" subtitle={assetClass ? `Filtered: ${assetClass}` : 'All asset classes'} />
-          <TopMoversTable rows={outflowRows} direction="outflow" onAdvisorClick={handleAdvisorClick} month={month} />
+          <TopMoversTable rows={outflowRows} direction="outflow" month={month} />
         </div>
       </div>
-      {advisorModal.open && (
-        <AdvisorBreakdownModal state={advisorModal} onClose={() => setAdvisorModal({ open: false, ticker: null, rows: [], loading: false, error: null })} />
-      )}
     </div>
   );
 }
+
+export default React.memo(TradeFlowDashboard);
 
 function SectionHeader({ title, subtitle }) {
   return (
@@ -243,30 +179,7 @@ function NetFlowChart({ series }) {
   );
 }
 
-function AdvisorSentimentGauge({ data }) {
-  const buying = Number(data?.advisors_buying || 0);
-  const selling = Number(data?.advisors_selling || 0);
-  const total = Number(data?.advisors_total || (buying + selling)) || 0;
-  const pct = total > 0 ? buying / total : 0;
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ width: 160, height: 12, background: '#f3f4f6', borderRadius: 6, overflow: 'hidden' }}>
-          <div style={{ width: `${Math.round(pct * 100)}%`, height: '100%', background: '#10b981' }} />
-        </div>
-        <div style={{ fontSize: 12 }}>
-          {Math.round(pct * 100)}% buying
-        </div>
-      </div>
-      <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
-        Advisors buying: {buying} | selling: {selling} | total: {total}
-      </div>
-    </div>
-  );
-}
-
-function TopMoversTable({ rows, direction, onAdvisorClick, month }) {
-  const hasDelta = Array.isArray(rows) && rows.some(r => Object.prototype.hasOwnProperty.call(r || {}, 'delta_net'));
+function TopMoversTable({ rows, direction, month }) {
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -276,11 +189,8 @@ function TopMoversTable({ rows, direction, onAdvisorClick, month }) {
             <th style={{ textAlign: 'right', padding: 6, borderBottom: '1px solid #e5e7eb' }}>Inflows</th>
             <th style={{ textAlign: 'right', padding: 6, borderBottom: '1px solid #e5e7eb' }}>Outflows</th>
             <th style={{ textAlign: 'right', padding: 6, borderBottom: '1px solid #e5e7eb' }}>Net</th>
-            {hasDelta && (
-              <th style={{ textAlign: 'right', padding: 6, borderBottom: '1px solid #e5e7eb' }}>Net vs Prior</th>
-            )}
             <th style={{ textAlign: 'right', padding: 6, borderBottom: '1px solid #e5e7eb' }}>Advisors</th>
-            <th style={{ textAlign: 'right', padding: 6, borderBottom: '1px solid #e5e7eb' }}>Details</th>
+            <th style={{ textAlign: 'center', padding: 6, borderBottom: '1px solid #e5e7eb' }}>Flag</th>
           </tr>
         </thead>
         <tbody>
@@ -290,12 +200,10 @@ function TopMoversTable({ rows, direction, onAdvisorClick, month }) {
               <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6', textAlign: 'right' }}>{fmtCurrency(r.inflows)}</td>
               <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6', textAlign: 'right' }}>{fmtCurrency(r.outflows)}</td>
               <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6', textAlign: 'right', color: Number(r.net_flow || 0) >= 0 ? '#065f46' : '#7f1d1d' }}>{fmtCurrency(r.net_flow)}</td>
-              {hasDelta && (
-                <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6', textAlign: 'right', color: Number(r.delta_net || 0) >= 0 ? '#065f46' : '#7f1d1d' }}>{fmtCurrency(r.delta_net)}</td>
-              )}
               <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6', textAlign: 'right' }}>{r.advisors_trading}</td>
-              <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6', textAlign: 'right' }}>
-                <button className="btn btn-secondary" onClick={() => onAdvisorClick && onAdvisorClick({ month, ticker: r.ticker })}>Advisors</button>
+              <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>
+                {r.flag === 'REC_SELL' && <span title="Selling recommended" style={{ color: '#b91c1c', fontWeight: 700 }}>!</span>}
+                {r.flag === 'NONREC_BUY' && <span title="Buying non-recommended" style={{ color: '#b45309', fontWeight: 700 }}>!</span>}
               </td>
             </tr>
           ))}
@@ -305,92 +213,11 @@ function TopMoversTable({ rows, direction, onAdvisorClick, month }) {
   );
 }
 
-function FlowHeatmap({ rows }) {
-  const entries = (rows || []).slice().sort((a, b) => b.net_flow - a.net_flow);
-  const maxAbs = Math.max(1, ...entries.map(e => Math.abs(e.net_flow)));
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
-      {entries.map((e, i) => (
-        <div key={i} className="card" style={{ padding: 10, background: heatColor(e.net_flow / maxAbs) }}>
-          <div style={{ fontWeight: 600 }}>{e.asset_class}</div>
-          <div style={{ fontSize: 12, color: '#111827' }}>Inflows: {fmtCurrency(e.inflows)}</div>
-          <div style={{ fontSize: 12, color: '#111827' }}>Outflows: {fmtCurrency(e.outflows)}</div>
-          <div style={{ fontSize: 12, color: '#111827' }}>Net: {fmtCurrency(e.net_flow)}</div>
-          <div style={{ fontSize: 12, color: '#111827' }}>Funds traded: {e.funds_traded}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function fmtCurrency(v) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(v || 0));
 }
 
-function heatColor(x) {
-  // diverging palette: red (-) to green (+)
-  const t = Math.max(-1, Math.min(1, x));
-  if (t >= 0) {
-    const g = Math.floor(255 * (0.6 + 0.4 * t));
-    const r = Math.floor(255 * (1 - t * 0.7));
-    return `rgb(${r}, ${g}, 180)`;
-  } else {
-    const u = Math.abs(t);
-    const r = Math.floor(255 * (0.6 + 0.4 * u));
-    const g = Math.floor(255 * (1 - u * 0.7));
-    return `rgb(${r}, ${g}, 180)`;
-  }
-}
-
-function AdvisorBreakdownModal({ state, onClose }) {
-  const { open, ticker, rows, loading, error } = state;
-  if (!open) return null;
-  return (
-    <div role="dialog" aria-modal="true" aria-label={`Advisor Breakdown for ${ticker}`} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={onClose}>
-      <div className="card" style={{ padding: 16, width: '90%', maxWidth: 800, maxHeight: '80vh', overflow: 'auto', background: 'white' }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>Advisor Breakdown: {ticker}</div>
-            {loading && <div style={{ color: "#6b7280" }}>Loading...</div>}
-            {error && <div className="alert alert-error">{error}</div>}
-          </div>
-          <div style={{ marginLeft: 'auto' }}>
-            <button className="btn" onClick={() => {
-              import('../../services/exportService.js').then(({ exportTickerAdvisorBreakdownCSV, formatExportFilename, downloadFile }) => {
-                const blob = exportTickerAdvisorBreakdownCSV({ ticker, rows });
-                const name = formatExportFilename({ scope: `advisor_breakdown_${ticker}`, ext: 'csv' });
-                downloadFile(blob, name, 'text/csv;charset=utf-8');
-              });
-            }}>Export CSV</button>
-            <button className="btn btn-secondary" onClick={onClose} style={{ marginLeft: 8 }}>Close</button>
-          </div>
-        </div>
-        <div style={{ marginTop: 8, overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left', padding: 6, borderBottom: '1px solid #e5e7eb' }}>Advisor</th>
-                <th style={{ textAlign: 'right', padding: 6, borderBottom: '1px solid #e5e7eb' }}>Buy Trades</th>
-                <th style={{ textAlign: 'right', padding: 6, borderBottom: '1px solid #e5e7eb' }}>Sell Trades</th>
-                <th style={{ textAlign: 'right', padding: 6, borderBottom: '1px solid #e5e7eb' }}>Net Principal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(rows || []).map((r, i) => (
-                <tr key={i}>
-                  <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6' }}>{r.advisor_id}</td>
-                  <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6', textAlign: 'right' }}>{Number(r.buy_trades || 0)}</td>
-                  <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6', textAlign: 'right' }}>{Number(r.sell_trades || 0)}</td>
-                  <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6', textAlign: 'right', color: Number(r.net_principal || 0) >= 0 ? '#065f46' : '#7f1d1d' }}>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_principal || 0))}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
+// Removed heatmaps, sentiment gauge, advisor modal for simplicity per v3 spec
 
 
 

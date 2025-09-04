@@ -81,6 +81,19 @@ To learn React, check out the [React documentation](https://reactjs.org/).
 - Recommended (Dashboard): `recommended_list_YYYYMMDD_HHMMSS.csv`
 - Recommended (Admin Overview): `recommended_only_YYYYMMDD.csv`
 
+## App Navigation (v3)
+
+- Dashboard: Complete fund universe with scoring
+- Recommended: Recommended list by asset class (with firm ownership columns)
+- Portfolios: Holdings analysis by Advisor / Fund / Gaps
+- Trading: Simplified flows (monthly net + top inflows/outflows)
+- Reports: Professional exports (PDF/Excel/CSV)
+- Admin: Admin tools (hidden for non-admins)
+
+## Unified Fund Table
+
+See `docs/UNIFIED_FUND_TABLE.md` for API and presets. All tables now route through a single component with a central column registry and presets (including `recommended`).
+
 ### Code Splitting
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)

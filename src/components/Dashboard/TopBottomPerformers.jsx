@@ -1,7 +1,7 @@
-// src/components/Dashboard/TopBottomPerformers.jsx
+﻿// src/components/Dashboard/TopBottomPerformers.jsx
 import React, { useState, useMemo } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
-import { getScoreColor, getScoreLabel } from '../../services/scoring';
+import { getScoreColor, getScoreLabel } from '../../services/scoring.js';
 
 /**
  * Top and Bottom Performers Component

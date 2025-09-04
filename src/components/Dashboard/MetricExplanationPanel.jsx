@@ -1,8 +1,8 @@
-// src/components/Dashboard/MetricExplanationPanel.jsx
+﻿// src/components/Dashboard/MetricExplanationPanel.jsx
 import React, { useState, useMemo } from 'react';
 import { Info, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, XCircle, HelpCircle } from 'lucide-react';
 import { formatNumber, formatPercent } from '../../utils/formatters';
-import { METRICS_CONFIG } from '../../services/scoring';
+import { METRICS_CONFIG } from '../../services/scoring.js';
 
 /**
  * Metric Explanation Panel Component
@@ -208,7 +208,7 @@ const MetricExplanationPanel = ({ fund, benchmark }) => {
 
   // Format metric value based on type
   const formatMetricValue = (value, metricKey) => {
-    if (value == null || isNaN(value)) return '—';
+    if (value == null || isNaN(value)) return 'â€”';
     
     switch (metricKey) {
       case 'ytd':
@@ -394,7 +394,7 @@ const MetricExplanationPanel = ({ fund, benchmark }) => {
                       transition: 'transform 0.2s',
                       color: '#6B7280'
                     }}>
-                      ▼
+                      â–¼
                     </div>
                   </div>
                 </div>

@@ -5,7 +5,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { FileText, AlertCircle, CheckCircle, Loader, Download } from 'lucide-react';
-import { generatePDFReport, downloadPDF } from '../services/exportService';
+import { generatePDFReport, downloadPDF } from '../services/exportService.js';
 
 /**
  * PDF Generation Status Hook

@@ -4,7 +4,7 @@ import { supabase, TABLES } from '../../services/supabase';
 import DecisionIcon from '../common/DecisionIcon';
 import { Link2, Search, X, Filter, Download } from 'lucide-react';
 import notesService from '../../services/researchNotesService';
-import { exportNotesCSV, downloadFile, formatExportFilename } from '../../services/exportService';
+import { exportNotesCSV, downloadFile, formatExportFilename } from '../../services/exportService.js';
 
 export default function NotesPanel({ fundId = null, fundTicker = null }) {
   const enableNotes = (process.env.REACT_APP_ENABLE_NOTES || 'false') === 'true';

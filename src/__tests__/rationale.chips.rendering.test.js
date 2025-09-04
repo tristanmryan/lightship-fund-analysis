@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import EnhancedFundTable from '../components/Dashboard/EnhancedFundTable';
+import UnifiedFundTable from '../components/common/UnifiedFundTable';
 
 test('table shows positive reasons and one negative chip for low-score fund', () => {
   const funds = [
@@ -20,9 +20,9 @@ test('table shows positive reasons and one negative chip for low-score fund', ()
   ];
 
   render(
-    <EnhancedFundTable
+    <UnifiedFundTable
       funds={funds}
-      onFundSelect={() => {}}
+      onRowClick={() => {}}
       chartPeriod="1Y"
       initialSortConfig={[{ key: 'score', direction: 'desc' }]}
     />

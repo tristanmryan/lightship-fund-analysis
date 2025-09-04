@@ -1,7 +1,7 @@
-// src/components/Trends/FundTimeline.jsx
+﻿// src/components/Trends/FundTimeline.jsx
 import React, { useState, useMemo } from 'react';
 import { TrendingUp, TrendingDown, Calendar, Info, LineChart } from 'lucide-react';
-import { getScoreColor } from '../../services/scoring';
+import { getScoreColor } from '../../services/scoring.js';
 
 /**
  * Fund Timeline Component
@@ -542,7 +542,7 @@ const FundTimeline = ({ snapshots, currentFunds }) => {
                   gap: '0.25rem'
                 }}>
                   {timelineStats.trend === 'up' ? <TrendingUp size={20} /> : 
-                   timelineStats.trend === 'down' ? <TrendingDown size={20} /> : <span>→</span>}
+                   timelineStats.trend === 'down' ? <TrendingDown size={20} /> : <span>â†’</span>}
                   {Math.abs(timelineStats.change).toFixed(2)}
                 </div>
               </div>

@@ -1,4 +1,4 @@
-// src/components/Admin/FundAdmin.jsx
+﻿// src/components/Admin/FundAdmin.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Plus, Trash2, Edit3, History, Download, Upload, Search, 
@@ -13,7 +13,7 @@ import {
   getMetricWeights,
   setMetricWeights,
   DEFAULT_WEIGHTS
-} from '../../services/scoring';
+} from '../../services/scoring.js';
 
 const FundAdmin = () => {
   // State management
@@ -1019,7 +1019,7 @@ const FundAdmin = () => {
                         <ul style={{ marginLeft: '1rem', marginTop: '0.25rem' }}>
                           {Object.entries(entry.changes).map(([field, change]) => (
                             <li key={field}>
-                              {field}: {change.from} → {change.to}
+                              {field}: {change.from} â†’ {change.to}
                             </li>
                           ))}
                         </ul>

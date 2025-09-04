@@ -1,4 +1,4 @@
-// src/components/Dashboard/DrilldownCards.jsx
+﻿// src/components/Dashboard/DrilldownCards.jsx
 import React, { useMemo } from 'react';
 import { formatPercent, formatNumber } from '../../utils/formatters';
 import { getPrimaryBenchmark } from '../../services/resolvers/benchmarkResolverClient';
@@ -6,7 +6,7 @@ import NotesPanel from './NotesPanel';
 import ScoreAnalysisSection from './ScoreAnalysisSection';
 import ScoringMethodologyPanel from './ScoringMethodologyPanel';
 import ScoreTooltip from './ScoreTooltip';
-import { METRICS_CONFIG } from '../../services/scoring';
+import { METRICS_CONFIG } from '../../services/scoring.js';
 
 function MetricRow({ label, value, delta, benchTicker, tooltip }) {
   const showDelta = delta != null && !isNaN(delta);
@@ -41,7 +41,7 @@ export default function DrilldownCards({ fund, funds }) {
   }, [fund, funds]);
 
   const make = (val, kind = 'num', digits) => {
-    if (val == null || isNaN(val)) return '—';
+    if (val == null || isNaN(val)) return 'â€”';
     return kind === 'pct' ? formatPercent(val, digits ?? 2) : formatNumber(val, digits ?? 2);
   };
 
@@ -92,7 +92,7 @@ export default function DrilldownCards({ fund, funds }) {
         { label: 'Sharpe Ratio', value: make(fund?.sharpe_ratio, 'num', 2), delta: diff(fund?.sharpe_ratio, benchFund?.sharpe_ratio), kind: 'num', tooltip: 'Risk-adjusted return: higher is better' },
         { label: 'Std Dev (3Y)', value: make(fund?.standard_deviation_3y, 'pct', 2), delta: diff(fund?.standard_deviation_3y, benchFund?.standard_deviation_3y ?? benchFund?.standard_deviation), kind: 'pct', tooltip: 'Volatility (3-year): lower is better' },
         { label: 'Std Dev (5Y)', value: make(fund?.standard_deviation_5y, 'pct', 2), delta: diff(fund?.standard_deviation_5y, benchFund?.standard_deviation_5y ?? benchFund?.standard_deviation), kind: 'pct', tooltip: 'Volatility (5-year): lower is better' },
-        { label: 'Beta', value: make(fund?.beta, 'num', 2), delta: diff(fund?.beta, benchFund?.beta), kind: 'num', tooltip: 'Market sensitivity: 1.0 ≈ market risk' },
+        { label: 'Beta', value: make(fund?.beta, 'num', 2), delta: diff(fund?.beta, benchFund?.beta), kind: 'num', tooltip: 'Market sensitivity: 1.0 â‰ˆ market risk' },
         { label: 'Alpha', value: make(fund?.alpha, 'num', 2), delta: diff(fund?.alpha, benchFund?.alpha), kind: 'num', tooltip: 'Excess return vs risk expectation' }
       ]
     },
@@ -117,7 +117,7 @@ export default function DrilldownCards({ fund, funds }) {
       <div className="card" style={{ padding: 12 }}>
         <div style={{ fontWeight: 600, marginBottom: 8 }}>Overview</div>
         <ScoreTooltip fund={fund} score={scoreValue}>
-          <MetricRow label="Score" value={scoreValue == null ? '—' : formatNumber(scoreValue, 1)} />
+          <MetricRow label="Score" value={scoreValue == null ? 'â€”' : formatNumber(scoreValue, 1)} />
         </ScoreTooltip>
         {topReasons.length > 0 && (
           <div style={{ marginTop: 8 }}>
@@ -138,7 +138,7 @@ export default function DrilldownCards({ fund, funds }) {
       {!benchmark || !benchFund ? (
         <div className="card" style={{ padding: 12 }}>
           <div style={{ fontWeight: 600, marginBottom: 6 }}>Benchmark mapping missing</div>
-          <div style={{ fontSize: 12, color:'#6b7280', marginBottom: 6 }}>Add a primary benchmark for this fund’s asset class to see deltas.</div>
+          <div style={{ fontSize: 12, color:'#6b7280', marginBottom: 6 }}>Add a primary benchmark for this fundâ€™s asset class to see deltas.</div>
           <button className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'catalogs' } })); }}>Open Benchmarks</button>
         </div>
       ) : null}
@@ -174,8 +174,8 @@ export default function DrilldownCards({ fund, funds }) {
                     <tr key={key}>
                       <td style={{ padding: '6px 8px', borderBottom: '1px solid #f3f4f6' }}>{label}</td>
                       <td style={{ padding: '6px 8px', textAlign: 'right', borderBottom: '1px solid #f3f4f6' }}>{Number.isFinite(info?.weight) ? info.weight : '-'}</td>
-                      <td style={{ padding: '6px 8px', borderBottom: '1px solid #f3f4f6' }}>{info?.weightSource || '—'}</td>
-                      <td style={{ padding: '6px 8px', color: '#6b7280', borderBottom: '1px solid #f3f4f6' }}>{notes.join(' • ') || '—'}</td>
+                      <td style={{ padding: '6px 8px', borderBottom: '1px solid #f3f4f6' }}>{info?.weightSource || 'â€”'}</td>
+                      <td style={{ padding: '6px 8px', color: '#6b7280', borderBottom: '1px solid #f3f4f6' }}>{notes.join(' â€¢ ') || 'â€”'}</td>
                     </tr>
                   );
                 })}
@@ -199,4 +199,5 @@ export default function DrilldownCards({ fund, funds }) {
     </div>
   );
 }
+
 

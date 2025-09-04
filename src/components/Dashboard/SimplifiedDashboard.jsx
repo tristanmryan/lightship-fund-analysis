@@ -3,7 +3,7 @@ import { useFundData } from '../../hooks/useFundData';
 import SimpleKPIHeader from './SimpleKPIHeader';
 import { supabase } from '../../services/supabase';
 import SimpleFilterBar from './SimpleFilterBar';
-import SimpleFundViews from './SimpleFundViews';
+import UnifiedFundTable from '../common/UnifiedFundTable';
 import DashboardDebugPanel from './DashboardDebugPanel';
 
 const SimplifiedDashboard = () => {
@@ -181,10 +181,18 @@ const SimplifiedDashboard = () => {
       />
 
       {/* Main Content */}
-      <SimpleFundViews
-        funds={filteredFunds}
-        loading={loading}
-      />
+      <div className="card" style={{ padding: 8 }}>
+        <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <h3 className="card-title" style={{ margin: 0 }}>Fund Overview</h3>
+        </div>
+        <UnifiedFundTable
+          funds={filteredFunds}
+          loading={loading}
+          preset="core"
+          initialSortConfig={[{ key: 'score', direction: 'desc' }]}
+          chartPeriod="1Y"
+        />
+      </div>
 
       {showDebug && (
         <DashboardDebugPanel funds={funds} loading={loading} />

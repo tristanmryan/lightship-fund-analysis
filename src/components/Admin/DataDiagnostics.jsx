@@ -3,7 +3,7 @@ import { Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import asOfStore from '../../services/asOfStore';
 import { supabase, TABLES } from '../../services/supabase';
 import fundService from '../../services/fundService';
-import { buildCSV, downloadFile } from '../../services/exportService';
+import { buildCSV, downloadFile } from '../../services/exportService.js';
 
 export default function DataDiagnostics() {
   const [loading, setLoading] = useState(true);

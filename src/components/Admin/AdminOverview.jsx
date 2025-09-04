@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import asOfStore from '../../services/asOfStore';
 import { supabase, TABLES } from '../../services/supabase';
 import fundService from '../../services/fundService';
-import { exportRecommendedFundsCSV, exportPrimaryBenchmarkMappingCSV, exportTableCSV } from '../../services/exportService';
-import { generatePDFReport, downloadPDF } from '../../services/exportService';
+import { exportRecommendedFundsCSV, exportPrimaryBenchmarkMappingCSV, exportTableCSV } from '../../services/exportService.js';
+import { generatePDFReport, downloadPDF } from '../../services/exportService.js';
 
 export default function AdminOverview({ onNavigate = () => {} }) {
   const [loading, setLoading] = useState(true);
@@ -196,7 +196,7 @@ export default function AdminOverview({ onNavigate = () => {} }) {
                       asOf: asOfStore.getActiveMonth() || null
                     };
                     const pdf = await generatePDFReport({ funds: funds || [], metadata });
-                    const { formatExportFilename } = await import('../../services/exportService');
+                    const { formatExportFilename } = await import('../../services/exportService.js');
                     const name = formatExportFilename({ scope: 'admin_pdf_all', ext: 'pdf' });
                     downloadPDF(pdf, name);
                   } catch (e) { console.error('PDF export failed', e); }
