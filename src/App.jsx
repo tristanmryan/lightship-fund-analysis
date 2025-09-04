@@ -1,6 +1,6 @@
-// App.jsx
+﻿// App.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Home as HomeIcon, BarChart3 as BarChartIcon, Settings, Download, RefreshCw, HelpCircle, Info, TrendingUp as CompareIcon, Users as AdvisorsIcon, Activity as FlowsIcon, Bell as BellIcon } from 'lucide-react';
+import { Home as HomeIcon, BarChart3 as BarChartIcon, Settings, Download, RefreshCw, HelpCircle, Info, TrendingUp as TrendingUpIcon, Briefcase as BriefcaseIcon } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './App.css'; // Import the CSS file
 import LoginModal from './components/Auth/LoginModal';
@@ -19,10 +19,9 @@ import fundRegistry from './services/fundRegistry';
 import Home from './components/Dashboard/Home';
 import MethodologyDrawer from './components/Dashboard/MethodologyDrawer';
 import FundManagement from './components/Admin/FundManagement';
-import AssetClassTable from './components/Dashboard/AssetClassTable';
-import ComparisonPanel from './components/Dashboard/ComparisonPanel';
+// Removed AssetClass and Compare views in v3 streamline
 import MonthlyReportButton from './components/Reports/MonthlyReportButton';
-import PortfolioDashboard from './components/Advisor/PortfolioDashboard.jsx';
+import Portfolios from './components/Portfolios/Portfolios.jsx';
 import TradeFlowDashboard from './components/Analytics/TradeFlowDashboard.jsx';
 // Command Center removed in v3 streamline
 import RecommendedList from './components/Recommended/RecommendedList.jsx';
@@ -57,39 +56,12 @@ const App = () => {
 
   // Navigation and UI state
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [selectedClass, setSelectedClass] = useState('');
 
   const [assetClassBenchmarks, setAssetClassBenchmarks] = useState({});
   const [availableMonths, setAvailableMonths] = useState([]);
 
 
 
-  // Memoize expensive calculations
-  const memoizedAssetClasses = useMemo(() => {
-    const classes = new Set(Object.keys(assetClassBenchmarks || {}));
-    (funds || []).forEach(f => {
-      const cls = f['Asset Class'] || f.asset_class;
-      if (cls) classes.add(cls);
-    });
-    return Array.from(classes).sort();
-  }, [assetClassBenchmarks, funds]);
-
-  // Find the selected asset class ID from fund data
-  const selectedAssetClassData = useMemo(() => {
-    if (!selectedClass || !funds || funds.length === 0) return null;
-    
-    // Find a fund with matching asset class name to get the ID
-    const matchingFund = funds.find(fund => 
-      fund.asset_class_name === selectedClass || 
-      fund.asset_class === selectedClass ||
-      fund['Asset Class'] === selectedClass
-    );
-    
-    return matchingFund ? {
-      id: matchingFund.asset_class_id,
-      name: matchingFund.asset_class_name || matchingFund.asset_class || selectedClass
-    } : { id: null, name: selectedClass };
-  }, [selectedClass, funds]);
 
 
 
@@ -105,21 +77,16 @@ const App = () => {
   const tabToPath = {
     dashboard: '/dashboard',
     recommended: '/recommended',
-    assetclasses: '/assetclasses',
-    compare: '/compare',
+    portfolios: '/portfolios',
+    trading: '/trading',
     reports: '/reports',
-    flows: '/flows',
-    advisors: '/advisors',
-    // command: '/command',
     admin: '/admin'
   };
   const pathToTab = (pathname) => {
     if (pathname.startsWith('/recommended')) return 'recommended';
-    if (pathname.startsWith('/assetclasses')) return 'assetclasses';
-    if (pathname.startsWith('/compare')) return 'compare';
+    if (pathname.startsWith('/portfolios')) return 'portfolios';
+    if (pathname.startsWith('/trading')) return 'trading';
     if (pathname.startsWith('/reports')) return 'reports';
-    if (pathname.startsWith('/flows')) return 'flows';
-    if (pathname.startsWith('/advisors')) return 'advisors';
     // if (pathname.startsWith('/command')) return 'command';
     if (pathname.startsWith('/admin')) return 'admin';
     return 'dashboard';
@@ -170,31 +137,31 @@ const App = () => {
 
     const checkAuth = async () => {
       try {
-        console.log('🔐 Checking authentication...');
-        console.log('🔧 Environment check:', {
-          supabaseUrl: process.env.REACT_APP_SUPABASE_URL ? '✅ Set' : '❌ Missing',
-          supabaseKey: process.env.REACT_APP_SUPABASE_ANON_KEY ? '✅ Set' : '❌ Missing',
-          ychartsKey: process.env.REACT_APP_YCHARTS_API_KEY ? '✅ Set' : '❌ Missing',
-          appPassword: process.env.REACT_APP_APP_PASSWORD ? '✅ Set' : '❌ Missing'
+        console.log('ðŸ” Checking authentication...');
+        console.log('ðŸ”§ Environment check:', {
+          supabaseUrl: process.env.REACT_APP_SUPABASE_URL ? 'âœ… Set' : 'âŒ Missing',
+          supabaseKey: process.env.REACT_APP_SUPABASE_ANON_KEY ? 'âœ… Set' : 'âŒ Missing',
+          ychartsKey: process.env.REACT_APP_YCHARTS_API_KEY ? 'âœ… Set' : 'âŒ Missing',
+          appPassword: process.env.REACT_APP_APP_PASSWORD ? 'âœ… Set' : 'âŒ Missing'
         });
         
         setAuthLoading(true);
         const authResult = await authService.checkAuth();
         
-        console.log('🔐 Auth result:', authResult);
+        console.log('ðŸ” Auth result:', authResult);
         
         if (authResult.success) {
-          console.log('✅ User is authenticated');
+          console.log('âœ… User is authenticated');
           setIsAuthenticated(true);
           setCurrentUser(authResult.user);
         } else {
-          console.log('❌ User is not authenticated, showing login modal');
+          console.log('âŒ User is not authenticated, showing login modal');
           setIsAuthenticated(false);
           setCurrentUser(null);
           setShowLoginModal(true);
         }
       } catch (error) {
-        console.error('❌ Authentication check failed:', error);
+        console.error('âŒ Authentication check failed:', error);
         setIsAuthenticated(false);
         setCurrentUser(null);
         setShowLoginModal(true);
@@ -211,19 +178,19 @@ const App = () => {
     if (isAuthenticated && !authLoading) {
       const checkMigration = async () => {
         try {
-          console.log('🔍 Checking migration status...');
+          console.log('ðŸ” Checking migration status...');
           const migrationStatus = await migrationService.checkMigrationStatus();
-          console.log('📊 Migration status:', migrationStatus);
+          console.log('ðŸ“Š Migration status:', migrationStatus);
           
           if (migrationStatus.needsMigration) {
-            console.log('🔄 Migration needed. Starting migration from IndexedDB to Supabase...');
+            console.log('ðŸ”„ Migration needed. Starting migration from IndexedDB to Supabase...');
             const migrationResult = await migrationService.migrateFromIndexedDB();
-            console.log('✅ Migration completed:', migrationResult);
+            console.log('âœ… Migration completed:', migrationResult);
           } else {
-            console.log('✅ No migration needed. Supabase data is up to date.');
+            console.log('âœ… No migration needed. Supabase data is up to date.');
           }
         } catch (error) {
-          console.error('❌ Migration check failed:', error);
+          console.error('âŒ Migration check failed:', error);
         }
       };
 
@@ -300,7 +267,7 @@ const App = () => {
       }
       // Number keys for tab navigation
       if (e.key >= '1' && e.key <= '5' && !e.ctrlKey && !e.metaKey) {
-        const tabs = ['dashboard', 'assetclasses', 'compare', 'reports', 'admin'];
+        const tabs = ['dashboard', 'recommended', 'portfolios', 'trading', 'reports'];
         const tabIndex = parseInt(e.key) - 1;
         if (tabIndex < tabs.length) {
           const t = tabs[tabIndex];
@@ -333,7 +300,7 @@ const App = () => {
 
   // Handle login
   const handleLogin = (user) => {
-    console.log('✅ Login successful:', user);
+    console.log('âœ… Login successful:', user);
     setIsAuthenticated(true);
     setCurrentUser(user);
     setShowLoginModal(false);
@@ -416,29 +383,18 @@ const App = () => {
               <span>Recommended</span>
             </span>
           </button>
-            {/* Command Center removed */}
-            <button className={activeTab === 'advisors' ? 'active' : ''} onClick={() => { setActiveTab('advisors'); navigate('/advisors'); }}>
+            {/* Portfolios */}
+            <button className={activeTab === 'portfolios' ? 'active' : ''} onClick={() => { setActiveTab('portfolios'); navigate('/portfolios'); }}>
               <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-                <AdvisorsIcon size={16} aria-hidden />
-                <span>Advisors</span>
+                <BriefcaseIcon size={16} aria-hidden />
+                <span>Portfolios</span>
               </span>
             </button>
-          <button className={activeTab === 'assetclasses' ? 'active' : ''} onClick={() => { setActiveTab('assetclasses'); navigate('/assetclasses'); }}>
-            <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-              <BarChartIcon size={16} aria-hidden />
-              <span>Asset Classes</span>
-            </span>
-          </button>
-            <button className={activeTab === 'compare' ? 'active' : ''} onClick={() => { setActiveTab('compare'); navigate('/compare'); }}>
+            {/* Trading */}
+            <button className={activeTab === 'trading' ? 'active' : ''} onClick={() => { setActiveTab('trading'); navigate('/trading'); }}>
               <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-                <CompareIcon size={16} aria-hidden />
-                <span>Compare</span>
-              </span>
-            </button>
-            <button className={activeTab === 'flows' ? 'active' : ''} onClick={() => { setActiveTab('flows'); navigate('/flows'); }}>
-              <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-                <FlowsIcon size={16} aria-hidden />
-                <span>Flows</span>
+                <TrendingUpIcon size={16} aria-hidden />
+                <span>Trading</span>
               </span>
             </button>
             <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => { setActiveTab('reports'); navigate('/reports'); }}>
@@ -559,48 +515,14 @@ const App = () => {
         </div>
       )}
 
-      {/* Asset Classes Tab */}
-      {activeTab === 'assetclasses' && (
-        <div>
-              <div className="card-header">
-                <h2 className="card-title">Asset Class Analysis</h2>
-                <p className="card-subtitle">Performance analysis by asset class with benchmarks</p>
-              </div>
-              
-              <div className="input-group">
-                <label className="input-label">Select Asset Class:</label>
-          <select
-            value={selectedClass}
-                  onChange={(e) => setSelectedClass(e.target.value)}
-                  className="select-field"
-                >
-                  <option value="">Choose an asset class...</option>
-                  {memoizedAssetClasses.map(cls => (
-                    <option key={cls} value={cls}>{cls}</option>
-            ))}
-          </select>
-              </div>
-
-              {selectedClass && selectedAssetClassData && (
-                <AssetClassTable 
-                  assetClassId={selectedAssetClassData.id}
-                  assetClassName={selectedAssetClassData.name}
-                />
-              )}
-                    </div>
-          )}
-
-      {/* Compare View Tab */}
-      {activeTab === 'compare' && (
+      {/* Portfolios Tab */}
+      {activeTab === 'portfolios' && (
         <div>
           <div className="card-header">
-            <h2 className="card-title">Fund Comparison</h2>
-            <p className="card-subtitle">Compare up to 4 funds and benchmarks side-by-side</p>
+            <h2 className="card-title">Portfolios</h2>
+            <p className="card-subtitle">Holdings analysis by advisor or by fund, plus gap analysis</p>
           </div>
-          
-          <ComparisonPanel 
-            funds={funds || []}
-          />
+          <Portfolios />
         </div>
       )}
 
@@ -658,23 +580,12 @@ const App = () => {
         </div>
       )}
 
-      {/* Advisors Tab */}
-      {activeTab === 'advisors' && (
+      {/* Trading Tab */}
+      {activeTab === 'trading' && (
         <div>
           <div className="card-header">
-            <h2 className="card-title">Advisor Portfolios</h2>
-            <p className="card-subtitle">Holdings intelligence by advisor and snapshot</p>
-          </div>
-          <PortfolioDashboard />
-        </div>
-      )}
-
-      {/* Flows Tab */}
-      {activeTab === 'flows' && (
-        <div>
-          <div className="card-header">
-            <h2 className="card-title">Trade Flows</h2>
-            <p className="card-subtitle">Firm-wide fund flow intelligence</p>
+            <h2 className="card-title">Trading</h2>
+            <p className="card-subtitle">Monthly net flows and top movers</p>
           </div>
           <TradeFlowDashboard />
         </div>
@@ -755,19 +666,19 @@ const App = () => {
                 padding: '1rem',
                 borderRadius: '0.375rem'
               }}>
-                <div>• YTD Return (2.5%)</div>
-                <div>• 1-Year Return (5%)</div>
-                <div>• 3-Year Return (10%)</div>
-                <div>• 5-Year Return (20%)</div>
-                <div>• 10-Year Return (10%)</div>
-                <div>• 3Y Sharpe Ratio (15%)</div>
-                <div>• 3Y Std Deviation (-10%)</div>
-                <div>• 5Y Std Deviation (-15%)</div>
-                <div>• Up Capture Ratio (7.5%)</div>
-                <div>• Down Capture Ratio (-10%)</div>
-                <div>• 5Y Alpha (5%)</div>
-                <div>• Expense Ratio (-2.5%)</div>
-                <div>• Manager Tenure (2.5%)</div>
+                <div>â€¢ YTD Return (2.5%)</div>
+                <div>â€¢ 1-Year Return (5%)</div>
+                <div>â€¢ 3-Year Return (10%)</div>
+                <div>â€¢ 5-Year Return (20%)</div>
+                <div>â€¢ 10-Year Return (10%)</div>
+                <div>â€¢ 3Y Sharpe Ratio (15%)</div>
+                <div>â€¢ 3Y Std Deviation (-10%)</div>
+                <div>â€¢ 5Y Std Deviation (-15%)</div>
+                <div>â€¢ Up Capture Ratio (7.5%)</div>
+                <div>â€¢ Down Capture Ratio (-10%)</div>
+                <div>â€¢ 5Y Alpha (5%)</div>
+                <div>â€¢ Expense Ratio (-2.5%)</div>
+                <div>â€¢ Manager Tenure (2.5%)</div>
               </div>
             </div>
 

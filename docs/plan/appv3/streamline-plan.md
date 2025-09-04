@@ -1,4 +1,4 @@
-# Lightship Fund Analytics v3 - Streamlined Architecture Plan
+﻿# Lightship Fund Analytics v3 - Streamlined Architecture Plan
 
 ## Executive Summary
 
@@ -14,12 +14,12 @@
 
 ### Navigation Structure (5 Tabs + Admin)
 ```
-📊 Dashboard     → Complete fund universe with scoring
-📋 Recommended   → Dedicated recommended list by asset class (NEW)
-💼 Portfolios    → Holdings analysis (merger of Advisors + Holdings features)
-💹 Trading       → Simplified flows (stripped-down version)
-📄 Reports       → Keep as-is
-⚙️ Admin        → Keep as-is (hidden for non-admins)
+ðŸ“Š Dashboard     â†’ Complete fund universe with scoring
+ðŸ“‹ Recommended   â†’ Dedicated recommended list by asset class (NEW)
+ðŸ’¼ Portfolios    â†’ Holdings analysis (merger of Advisors + Holdings features)
+ðŸ’¹ Trading       â†’ Simplified flows (stripped-down version)
+ðŸ“„ Reports       â†’ Keep as-is
+âš™ï¸ Admin        â†’ Keep as-is (hidden for non-admins)
 ```
 
 ### Components to DELETE Entirely
@@ -49,7 +49,7 @@
 
 ### 1.1 Unified Table Component
 
-**Create**: `src/components/common/UnifiedFundTable.jsx` ✅
+**Create**: `src/components/common/UnifiedFundTable.jsx` âœ…
 
 ```javascript
 // This single component replaces:
@@ -120,7 +120,7 @@ const COLUMN_DEFINITIONS = {
 - Added `src/components/common/UnifiedFundTable.jsx` which wraps the shared `DataTable` with fund-specific defaults and export wiring.
 - Extended `src/config/tableColumns.js`:
   - Added ownership columns: `firmAUM`, `advisorCount` and registered them, plus a new `recommended` preset.
-  - Enhanced `NAME_COLUMN` to render rationale chips (top 2 positive + 1 negative when score < 45) using `METRICS_CONFIG` — preserves legacy UX and satisfies tests expecting inline rationale chips.
+  - Enhanced `NAME_COLUMN` to render rationale chips (top 2 positive + 1 negative when score < 45) using `METRICS_CONFIG` â€” preserves legacy UX and satisfies tests expecting inline rationale chips.
 - Replaced usage in `EnhancedPerformanceDashboard.jsx` to render `UnifiedFundTable` with prior sort/column state preserved.
 - Updated tests to import and render `UnifiedFundTable` instead of legacy tables.
 - Removed legacy, duplicate table implementations and helpers:
@@ -129,7 +129,7 @@ const COLUMN_DEFINITIONS = {
 
 ### 1.2 New Recommended Page
 
-**Create**: `src/components/Recommended/RecommendedList.jsx` ✅
+**Create**: `src/components/Recommended/RecommendedList.jsx` âœ…
 
 ```javascript
 // Structure:
@@ -208,7 +208,7 @@ DROP FUNCTION IF EXISTS assign_alert CASCADE;
 
 ### 1.4 Connect Holdings to Funds
 
-**Update**: `src/services/fundService.js` ✅
+**Update**: `src/services/fundService.js` âœ…
 
 ```javascript
 // Add method to get funds with ownership data
@@ -247,29 +247,29 @@ async getRecommendedFundsWithOwnership(asOfDate) { /* filters is_recommended */ 
 **New Structure**:
 ```
 Portfolios Tab
-├── View Selector: [By Advisor | By Fund | Gap Analysis]
-├── By Advisor View
-│   ├── Advisor selector
-│   ├── Holdings table
-│   ├── Concentration alerts
-│   └── Alignment score
-├── By Fund View
-│   ├── Fund selector (or click from Recommended)
-│   ├── Which advisors hold it
-│   ├── Total firm position
-│   └── Recent trading activity
-└── Gap Analysis View
-    ├── Recommended funds not held
-    ├── Under-owned recommended funds
-    └── Non-recommended positions
+- View Selector: [By Advisor | By Fund | Gap Analysis]
+- By Advisor View
+  - Advisor selector
+  - Holdings table
+  - Concentration alerts
+  - Alignment score
+- By Fund View
+  - Fund selector (or click from Recommended)
+  - Which advisors hold it
+  - Total firm position
+  - Recent trading activity
+- Gap Analysis View
+  - Recommended funds not held
+  - Under-owned recommended funds
+  - Non-recommended positions
 ```
 
 **Implementation**:
-- [ ] Rename src/components/Advisor to src/components/Portfolios
-- [ ] Create view toggle (By Advisor / By Fund / Gaps)
-- [ ] Add fund → advisor lookup
-- [ ] Create gap analysis calculations
-- [ ] Remove unnecessary complexity from PortfolioDashboard.jsx
+- [x] Replace Advisors tab with new Portfolios page (route + nav)
+- [x] Create view toggle (By Advisor / By Fund / Gaps)
+- [x] Add fund + advisor lookup
+- [x] Create gap analysis calculations
+- [x] Remove unnecessary complexity from PortfolioDashboard.jsx
 
 ### 2.2 Simplify Trading/Flows
 
@@ -280,10 +280,10 @@ Portfolios Tab
 
 **DELETE**:
 - [ ] Complex heatmaps
-- [ ] Sentiment gauges
-- [ ] Advisor participation details
-- [ ] Pattern analysis
-- [ ] Trend analytics beyond simple chart
+- [x] Sentiment gauges
+- [x] Advisor participation details
+- [x] Pattern analysis
+- [x] Trend analytics beyond simple chart
 
 **Simplify**: `src/components/Analytics/TradeFlowDashboard.jsx`
 ```javascript
@@ -318,10 +318,10 @@ const TABS = [
 - [ ] Advisors tab (rename to Portfolios)
 
 ### Phase 2 Acceptance Criteria
-- [ ] Portfolios page has 3 views (Advisor/Fund/Gaps)
-- [ ] Can see any fund's ownership across advisors
-- [ ] Trading page simplified to essentials
-- [ ] Navigation reduced to 5 tabs + Admin
+- [x] Portfolios page has 3 views (Advisor/Fund/Gaps)
+- [x] Can see any fund's ownership across advisors
+- [x] Trading page simplified to essentials
+- [x] Navigation reduced to 5 tabs + Admin
 - [ ] No feature regressions
 
 ---
@@ -341,7 +341,7 @@ const TABS = [
 
 Since scoring is critical, enhance how it's shown:
 
-- [ ] Add score trending indicators (↑↓→)
+- [ ] Add score trending indicators (â†‘â†“â†’)
 - [ ] Show score confidence based on data completeness
 - [ ] Add tooltip with top 3 factors affecting score
 - [ ] Create score history mini-chart
@@ -421,7 +421,11 @@ etc...
 -->
 
 ### Phase 2 Deletions
-<!-- Track here -->
+<!--
+2025-09-04: Navigation cleaned: removed Asset Classes and Compare tabs from App.jsx (components retained for reference)
+2025-09-04: Flows renamed to Trading; simplified TradeFlowDashboard.jsx (removed heatmaps, sentiment gauge, advisor modal, trend compare)
+2025-09-04: Advisors tab replaced by Portfolios (new component at src/components/Portfolios/Portfolios.jsx); legacy Advisor components no longer referenced
+-->
 
 ### Phase 3 Deletions
 <!-- Track here -->

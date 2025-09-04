@@ -460,18 +460,34 @@ class FundService {
     }
   }
 
-  // Ownership summary (RPC) => { ticker -> { firm_aum, advisor_count, avg_position_size } }
+  // Ownership summary (RPC-backed) => { ticker -> { firm_aum, advisor_count, avg_position_size } }
   async getOwnershipSummary(asOfDate = null) {
+    const map = new Map();
+    try {
+      // Preferred: dedicated summary RPC if present
+      const { data, error } = await supabase.rpc('get_fund_ownership_summary', {});
+      if (!error && Array.isArray(data)) {
+        (data || []).forEach(r => { if (r?.ticker) map.set(r.ticker, r); });
+        return map;
+      }
+    } catch {}
+    // Fallback: use fund_utilization MV RPC and adapt field names
     try {
       const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
       const dateOnly = asOf ? asOf.toISOString().slice(0,10) : null;
-      const { data, error } = await supabase.rpc('get_fund_ownership_summary', {});
+      const { data, error } = await supabase.rpc('get_fund_utilization', { p_date: dateOnly, p_asset_class: null, p_limit: 5000 });
       if (error) throw error;
-      const map = new Map();
-      (data || []).forEach(r => { if (r?.ticker) map.set(r.ticker, r); });
+      (data || []).forEach(r => {
+        if (!r?.ticker) return;
+        map.set(r.ticker, {
+          ticker: r.ticker,
+          firm_aum: Number(r.total_aum || 0),
+          advisor_count: Number(r.advisors_using || 0),
+          avg_position_size: Number(r.avg_position_usd || 0)
+        });
+      });
       return map;
-    } catch (e) {
-      // Fallback: empty summary
+    } catch {
       return new Map();
     }
   }
