@@ -99,13 +99,28 @@ class FundService {
 
       // Fetch scored rows for each asset class (includes score_final)
       const tableResults = await Promise.all(
-        assetClassIds.map(acId =>
-          supabase.rpc('get_asset_class_table', {
+        assetClassIds.map(async (acId) => {
+          const params = {
             p_date: dateOnly,
             p_asset_class_id: acId,
             p_include_benchmark: false
-          })
-        )
+          };
+          try {
+            // Diagnostics: log RPC name and params
+            console.log('[RPC] Calling get_asset_class_table with params:', params);
+            const res = await supabase.rpc('get_asset_class_table', params);
+            if (res.error) {
+              console.error('[RPC] get_asset_class_table error for asset_class_id=', acId, res.error);
+            } else {
+              const sample = Array.isArray(res.data) ? res.data.slice(0, 2) : res.data;
+              console.log('[RPC] get_asset_class_table success. asset_class_id=', acId, 'sample:', sample);
+            }
+            return res;
+          } catch (e) {
+            console.error('[RPC] get_asset_class_table exception for asset_class_id=', acId, e);
+            return { data: [], error: e };
+          }
+        })
       );
 
       // Build a score map keyed by ticker
@@ -123,9 +138,28 @@ class FundService {
       }
 
       // Merge scores back onto the base fund data in a consistent shape
+      // Fix: ensure top-level score fields exist in addition to nested scores
       return baseFunds.map(fund => {
-        const s = scoreMap.get(fund.ticker);
-        return s ? { ...fund, scores: { final: s.final, percentile: s.percentile } } : fund;
+        const s = scoreMap.get(fund.ticker) || null;
+        const finalScore = s?.final ?? fund?.scores?.final ?? fund?.score_final ?? fund?.score ?? 0;
+        const pct = s?.percentile ?? fund?.percentile ?? 0;
+        return {
+          ...fund,
+          // top-level convenience fields
+          score: finalScore,
+          score_final: finalScore,
+          percentile: pct,
+          // keep nested scores for compatibility + basic placeholder breakdown
+          scores: {
+            final: finalScore,
+            percentile: pct,
+            breakdown: {
+              ytd_return: { weight: 0.2, value: fund?.ytd_return ?? 0 },
+              one_year: { weight: 0.3, value: fund?.one_year_return ?? 0 },
+              expense: { weight: 0.2, value: fund?.expense_ratio ?? 0 }
+            }
+          }
+        };
       });
     } catch (error) {
       console.error('Server-side scoring failed, falling back to client-side:', error);
@@ -926,10 +960,11 @@ class FundService {
   // Get asset class table with server-side scoring
   async getAssetClassTableWithServerScoring(dateOnly, assetClassId, includeBenchmark) {
     try {
-      // Get server-side scored funds for the asset class
+      // Get server-side scored funds for the asset class (full explainability fields)
       const { data: scoredFunds, error: scoringError } = await supabase.rpc('calculate_scores_as_of', {
         p_date: dateOnly,
-        p_asset_class_id: assetClassId
+        p_asset_class_id: assetClassId,
+        p_global: false
       });
 
       if (scoringError) {
@@ -944,7 +979,7 @@ class FundService {
         return data || [];
       }
 
-      // Get base asset class table data (includes benchmarks)
+      // Get base asset class table data (includes benchmarks and perf fields)
       const { data: baseData, error } = await supabase.rpc('get_asset_class_table', {
         p_date: dateOnly,
         p_asset_class_id: assetClassId,
@@ -958,23 +993,44 @@ class FundService {
       (scoredFunds || []).forEach(fund => {
         if (!fund.is_benchmark) {
           scoreMap.set(fund.ticker, {
+            score_raw: fund.score_raw,
             score_final: fund.score_final,
-            percentile: fund.percentile
+            percentile: fund.percentile,
+            metrics_used: fund.metrics_used,
+            total_possible_metrics: fund.total_possible_metrics,
+            score_breakdown: fund.score_breakdown
           });
         }
       });
-      // Merge server-side scores with base data
+
+      // Merge server-side scores (with full breakdown) with base data
       const merged = (baseData || []).map(row => {
         if (row.is_benchmark) {
           return row; // Benchmarks don't get scores
         }
 
-        const scores = scoreMap.get(row.ticker);
-        if (scores) {
+        const s = scoreMap.get(row.ticker);
+        if (s) {
+          const confidence = (s.metrics_used && s.total_possible_metrics)
+            ? Math.round((Number(s.metrics_used) / Number(s.total_possible_metrics)) * 100)
+            : 0;
           return {
             ...row,
-            score_final: scores.score_final,
-            percentile: scores.percentile
+            // top-level convenience
+            score: s.score_final,
+            score_final: s.score_final,
+            score_raw: s.score_raw,
+            percentile: s.percentile,
+            // nested, UI-friendly shape
+            scores: {
+              final: s.score_final,
+              raw: s.score_raw,
+              percentile: s.percentile,
+              breakdown: s.score_breakdown || {},
+              metricsUsed: s.metrics_used || 0,
+              totalPossibleMetrics: s.total_possible_metrics || 0,
+              confidence
+            }
           };
         }
 

@@ -1,9 +1,48 @@
 // src/components/Dashboard/Dashboard.jsx
+/*
+Current Data Flow Analysis (captured via scripts/traceDashboardFlow.mjs on local env)
+
+1) Dashboard load sequence
+- Dashboard.jsx useEffect → fundService.getFundsWithOwnership(null)
+- fundService.getFundsWithOwnership → Promise.all([
+    getAllFundsWithScoring(null),
+    getOwnershipSummary(null)
+  ])
+- getAllFundsWithScoring → getAllFundsWithServerScoring(null)
+  • RPC get_funds_as_of({ p_date: null }) → 149 rows
+    - First row sample (abridged):
+      { ticker: 'AMEFX', asset_class_id: '89d4d5c0-…', ytd_return: 10.3272, expense_ratio: 0.37 }
+  • SELECT asset_classes (merge names/sorts)
+  • For each asset_class_id present:
+    RPC get_asset_class_table({ p_date: null, p_asset_class_id, p_include_benchmark: false })
+    - Example for acId '89d4d5c0-…' (first row):
+      { ticker: 'PMFYX', score_final: 54.84866666666667, percentile: 100, is_benchmark: false }
+  • Merge: base fund rows + scores map → funds[i].scores.final
+- getOwnershipSummary(null)
+  • RPC get_fund_ownership_summary({}) → 0 items (in this env)
+  • Fallback RPC get_fund_utilization({ p_date: null, p_asset_class: null, p_limit: 5000 }) → 0 items
+  • Merge ownership fields: firmAUM, advisorCount (zeros when no data)
+
+2) Score display values (first fund in array)
+- funds[0].ticker: 'AMEFX'
+- funds[0].scores.final: 46.631166666666665
+- funds[0].score_final: undefined
+- funds[0].score: undefined
+- funds[0].score_breakdown: undefined
+- Dashboard score accessor resolves to 46.631166666666665
+
+3) ProfessionalTable.jsx checks
+- Receives `funds` prop (length observed: 149)
+- Render-time log added: [ProfessionalTable] first row snapshot { ticker, name, score_accessor_value, scores_final, score_final, score }
+  • On this dataset, score_accessor_value = 46.631166666666665 and matches funds[0].scores.final
+- Score column accessor is working; Dashboard renderer wraps value in <ScoreTooltip /> when numeric
+*/
 import React from 'react';
 import ProfessionalTable from '../tables/ProfessionalTable';
 import fundService from '../../services/fundService';
 import './SimplifiedDashboard.css';
 import ScoreTooltip from './ScoreTooltip';
+import { runDiagnostics } from '../../utils/diagnostics';
 
 function KPICard({ label, value, subtext, format }) {
   const formatValue = (v) => {
@@ -35,6 +74,15 @@ export default function Dashboard() {
   const [funds, setFunds] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [summary, setSummary] = React.useState({ totalAUM: 0, totalFunds: 0, recommendedCount: 0, avgScore: 0, monthlyFlows: 0 });
+
+  // Run database diagnostics on mount
+  React.useEffect(() => {
+    try {
+      runDiagnostics();
+    } catch (e) {
+      console.error('Diagnostics failed to run:', e);
+    }
+  }, []);
 
   React.useEffect(() => {
     let cancel = false;
