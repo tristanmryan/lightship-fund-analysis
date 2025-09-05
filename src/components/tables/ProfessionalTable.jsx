@@ -75,6 +75,7 @@ export function ProfessionalTable({
               {columns.map((col) => (
                 <td
                   key={col.key}
+                  className={col.numeric ? 'number' : undefined}
                   style={{
                     width: col.width,
                     textAlign: col.align || (col.numeric ? 'right' : 'left'),
@@ -92,4 +93,3 @@ export function ProfessionalTable({
 }
 
 export default ProfessionalTable;
-

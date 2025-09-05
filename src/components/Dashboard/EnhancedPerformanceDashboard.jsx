@@ -7,6 +7,7 @@ import {
 import StatusIcon from '../common/StatusIcon';
 import AdvancedFilters from './AdvancedFilters';
 import ProfessionalTable from '../tables/ProfessionalTable';
+import ScoreTooltip from './ScoreTooltip';
 import PerformanceHeatmap from './PerformanceHeatmap';
 import TopBottomPerformers from './TopBottomPerformers';
 import AssetClassOverview from './AssetClassOverview';
@@ -485,7 +486,11 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
               const s = row?.scores?.final ?? row?.score_final ?? row?.score;
               return typeof s === 'number' ? s : (s != null ? Number(s) : null);
             },
-            render: (val) => (val != null && !Number.isNaN(val)) ? Number(val).toFixed(1) : '—',
+            render: (val, row) => (val != null && !Number.isNaN(val)) ? (
+              <ScoreTooltip fund={row} score={Number(val)}>
+                <span className="number">{Number(val).toFixed(1)}</span>
+              </ScoreTooltip>
+            ) : '—',
           },
           {
             key: 'ytd',
@@ -510,7 +515,7 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
             label: 'Rec',
             width: '70px',
             accessor: (row) => row.is_recommended || row.recommended || false,
-            render: (val) => val ? <span style={{ color: '#f59e0b', fontWeight: 600 }}>YES</span> : <span style={{ color: '#9ca3af' }}>—</span>,
+            render: (val) => val ? <span className="status-recommended">Yes</span> : <span style={{ color: '#9ca3af' }}>—</span>,
           },
         ];
 

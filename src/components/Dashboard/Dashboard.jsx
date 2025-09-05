@@ -3,6 +3,7 @@ import React from 'react';
 import ProfessionalTable from '../tables/ProfessionalTable';
 import fundService from '../../services/fundService';
 import './SimplifiedDashboard.css';
+import ScoreTooltip from './ScoreTooltip';
 
 function KPICard({ label, value, subtext, format }) {
   const formatValue = (v) => {
@@ -13,7 +14,7 @@ function KPICard({ label, value, subtext, format }) {
     return String(v);
   };
   return (
-    <div className="card" style={{ padding: 12 }}>
+    <div className="kpi-card">
       <div style={{ fontSize: 12, color: '#6b7280' }}>{label}</div>
       <div style={{ fontWeight: 700, fontSize: 20 }}>{formatValue(value)}</div>
       {subtext && <div style={{ fontSize: 12, color: '#6b7280' }}>{subtext}</div>}
@@ -65,7 +66,11 @@ export default function Dashboard() {
     { key: 'score', label: 'Score', width: '90px', numeric: true, align: 'right', accessor: (row) => {
         const s = row?.scores?.final ?? row?.score_final ?? row?.score;
         return typeof s === 'number' ? s : (s != null ? Number(s) : null);
-      }, render: (v) => (v != null && !Number.isNaN(v)) ? Number(v).toFixed(1) : '—' },
+      }, render: (v, row) => (v != null && !Number.isNaN(v)) ? (
+        <ScoreTooltip fund={row} score={Number(v)}>
+          <span className="number">{Number(v).toFixed(1)}</span>
+        </ScoreTooltip>
+      ) : '—' },
     { key: 'ytd', label: 'YTD', width: '90px', numeric: true, align: 'right', accessor: (row) => row.ytd_return ?? row['Total Return - YTD (%)'] ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : '—' },
     { key: 'expense', label: 'Expense', width: '90px', numeric: true, align: 'right', accessor: (row) => row.expense_ratio ?? row['Net Expense Ratio'] ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : '—' },
     { key: 'firmAUM', label: 'Firm AUM', width: '120px', numeric: true, align: 'right', accessor: (row) => row.firmAUM ?? null, render: (v) => v != null ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(v)) : '—' },
@@ -139,4 +144,3 @@ export default function Dashboard() {
     </div>
   );
 }
-

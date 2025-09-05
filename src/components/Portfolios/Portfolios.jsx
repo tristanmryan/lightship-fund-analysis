@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import ProfessionalTable from '../tables/ProfessionalTable';
 import { getAdvisorName } from '../../config/advisorNames';
+import ScoreTooltip from '../Dashboard/ScoreTooltip';
 import fundService from '../../services/fundService.js';
 import advisorService from '../../services/advisorService.js';
 import flowsService from '../../services/flowsService.js';
@@ -457,7 +458,11 @@ const ADVISOR_FUNDS_COLUMNS = [
   { key: 'ticker', label: 'Ticker', width: '90px', accessor: (r) => r.ticker, render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
   { key: 'name', label: 'Fund Name', width: '240px', accessor: (r) => r.name || '' },
   { key: 'assetClass', label: 'Asset Class', width: '160px', accessor: (r) => r.asset_class_name || r.asset_class || '' },
-  { key: 'score', label: 'Score', width: '80px', numeric: true, align: 'right', accessor: (r) => (r?.scores?.final ?? r?.score_final ?? r?.score) ?? null, render: (v) => v != null ? Number(v).toFixed(1) : '—' },
+  { key: 'score', label: 'Score', width: '80px', numeric: true, align: 'right', accessor: (r) => (r?.scores?.final ?? r?.score_final ?? r?.score) ?? null, render: (v, row) => v != null ? (
+    <ScoreTooltip fund={row} score={Number(v)}>
+      <span className="number">{Number(v).toFixed(1)}</span>
+    </ScoreTooltip>
+  ) : '—' },
   { key: 'firmAUM', label: 'Firm AUM', width: '120px', numeric: true, align: 'right', accessor: (r) => r.firmAUM ?? null, render: (v) => v != null ? new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits: 0 }).format(Number(v)) : '—' },
   { key: 'advisors', label: '# Advisors', width: '110px', numeric: true, align: 'right', accessor: (r) => r.advisorCount ?? null }
 ];

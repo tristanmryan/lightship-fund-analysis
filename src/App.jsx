@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Home as HomeIcon, BarChart3 as BarChartIcon, Settings, Download, RefreshCw, HelpCircle, Info, TrendingUp as TrendingUpIcon, Briefcase as BriefcaseIcon } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './App.css'; // Import the CSS file
+import './styles/professional.css';
 import LoginModal from './components/Auth/LoginModal';
 import {
   recommendedFunds as defaultRecommendedFunds,

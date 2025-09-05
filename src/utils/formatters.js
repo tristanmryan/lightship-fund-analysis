@@ -1,47 +1,37 @@
 // src/utils/formatters.js
+// Consistent formatting utility (Phase 4C)
 
-export function formatPercent(value, digits = 2) {
-  if (value == null || isNaN(value)) return '—';
-  return `${Number(value).toFixed(digits)}%`;
-}
-
-export function formatNumber(value, digits = 2) {
-  if (value == null || isNaN(value)) return '—';
-  return Number(value).toFixed(digits);
-}
-
-export function toISODateTime(dateLike) {
-  try {
-    const d = dateLike instanceof Date ? dateLike : new Date(dateLike);
-    return d.toISOString();
-  } catch {
-    return '';
-  }
-}
-
-// Unified formatting object for consistency across components
-export const fmt = {
-  percent(value, opts = {}) {
-    const { decimals = 2, sign = false } = opts;
-    if (value == null || Number.isNaN(value)) return '—';
-    const s = sign && value > 0 ? '+' : '';
-    return `${s}${Number(value).toFixed(decimals)}%`;
+export const formatters = {
+  currency(value) {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+    const n = Number(value);
+    const abs = Math.abs(n);
+    if (abs >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
+    if (abs >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+    if (abs >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
   },
-  
-  number(value, opts = {}) {
-    const { decimals = 2 } = opts;
-    if (value == null || Number.isNaN(value)) return '—';
+
+  number(value, { decimals = 0 } = {}) {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
     return Number(value).toFixed(decimals);
   },
-  
-  date(value) {
-    try {
-      const d = value instanceof Date ? value : new Date(String(value));
-      if (!Number.isFinite(d.getTime())) return '—';
-      return d.toISOString().slice(0, 10);
-    } catch {
-      return '—';
-    }
-  }
+
+  percent(value, { decimals = 2 } = {}) {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+    return `${Number(value).toFixed(decimals)}%`;
+  },
+
+  expense(value) {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+    return `${Number(value).toFixed(2)}%`;
+  },
+
+  score(value, { decimals = 1 } = {}) {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+    return Number(value).toFixed(decimals);
+  },
 };
+
+export default formatters;
 

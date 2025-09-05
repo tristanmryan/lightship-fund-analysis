@@ -1,6 +1,7 @@
 // src/components/Recommended/RecommendedList.jsx
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import ProfessionalTable from '../tables/ProfessionalTable';
+import ScoreTooltip from '../Dashboard/ScoreTooltip';
 import fundService from '../../services/fundService';
 import { exportAssetClassTableCSV } from '../../services/exportService.js';
 
@@ -137,7 +138,11 @@ const RECOMMENDED_COLUMNS = [
   { key: 'ticker', label: 'Ticker', width: '80px', accessor: (r) => r.ticker, render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
   { key: 'name', label: 'Fund Name', width: '250px', accessor: (r) => r.name || '' },
   { key: 'assetClass', label: 'Asset Class', width: '160px', accessor: (r) => r.asset_class_name || r.asset_class || '' },
-  { key: 'score', label: 'Score', width: '70px', numeric: true, align: 'right', accessor: (r) => (r?.scores?.final ?? r?.score_final ?? r?.score) ?? null, render: (v) => v != null ? Number(v).toFixed(1) : '—' },
+  { key: 'score', label: 'Score', width: '70px', numeric: true, align: 'right', accessor: (r) => (r?.scores?.final ?? r?.score_final ?? r?.score) ?? null, render: (v, row) => v != null ? (
+    <ScoreTooltip fund={row} score={Number(v)}>
+      <span className="number">{Number(v).toFixed(1)}</span>
+    </ScoreTooltip>
+  ) : '—' },
   { key: 'ytdReturn', label: 'YTD', width: '80px', numeric: true, align: 'right', accessor: (r) => r.ytd_return ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : '—' },
   { key: 'oneYear', label: '1Y', width: '80px', numeric: true, align: 'right', accessor: (r) => r.one_year_return ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : '—' },
   { key: 'threeYear', label: '3Y', width: '80px', numeric: true, align: 'right', accessor: (r) => r.three_year_return ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : '—' },
