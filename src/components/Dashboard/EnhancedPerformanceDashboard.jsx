@@ -6,8 +6,7 @@ import {
 } from 'lucide-react';
 import StatusIcon from '../common/StatusIcon';
 import AdvancedFilters from './AdvancedFilters';
-// Replaced legacy table components with UnifiedFundTable
-import UnifiedFundTable from '../common/UnifiedFundTable';
+import ProfessionalTable from '../tables/ProfessionalTable';
 import PerformanceHeatmap from './PerformanceHeatmap';
 import TopBottomPerformers from './TopBottomPerformers';
 import AssetClassOverview from './AssetClassOverview';
@@ -455,17 +454,76 @@ const EnhancedPerformanceDashboard = ({ funds, onRefresh, isLoading = false, asO
           </div>
         ) : null;
         
+        // Simple professional table (Phase 4A)
+        const columns = [
+          {
+            key: 'symbol',
+            label: 'Symbol',
+            width: '90px',
+            accessor: (row) => row.ticker || row.symbol || '',
+            render: (v) => <span style={{ fontWeight: 600 }}>{v}</span>,
+          },
+          {
+            key: 'name',
+            label: 'Fund Name',
+            width: '260px',
+            accessor: (row) => row.name || row.fund_name || row['Fund Name'] || '',
+          },
+          {
+            key: 'assetClass',
+            label: 'Asset Class',
+            width: '160px',
+            accessor: (row) => row.asset_class_name || row.asset_class || '',
+          },
+          {
+            key: 'score',
+            label: 'Score',
+            width: '90px',
+            numeric: true,
+            align: 'right',
+            accessor: (row) => {
+              const s = row?.scores?.final ?? row?.score_final ?? row?.score;
+              return typeof s === 'number' ? s : (s != null ? Number(s) : null);
+            },
+            render: (val) => (val != null && !Number.isNaN(val)) ? Number(val).toFixed(1) : '—',
+          },
+          {
+            key: 'ytd',
+            label: 'YTD',
+            width: '90px',
+            numeric: true,
+            align: 'right',
+            accessor: (row) => row['Total Return - YTD (%)'] ?? row.ytd_return ?? null,
+            render: (val) => (val != null && !Number.isNaN(val)) ? `${Number(val).toFixed(2)}%` : '—',
+          },
+          {
+            key: 'expense',
+            label: 'Expense',
+            width: '100px',
+            numeric: true,
+            align: 'right',
+            accessor: (row) => row.expense_ratio ?? row['Net Expense Ratio'] ?? null,
+            render: (val) => (val != null && !Number.isNaN(val)) ? `${Number(val).toFixed(2)}%` : '—',
+          },
+          {
+            key: 'recommended',
+            label: 'Rec',
+            width: '70px',
+            accessor: (row) => row.is_recommended || row.recommended || false,
+            render: (val) => val ? <span style={{ color: '#f59e0b', fontWeight: 600 }}>YES</span> : <span style={{ color: '#9ca3af' }}>—</span>,
+          },
+        ];
+
         return (
-          <UnifiedFundTable
-            funds={filteredFunds}
-            onRowClick={handleFundSelect}
-            chartPeriod={chartPeriod}
-            initialSortConfig={sanitized.sortConfig}
-            columns={sanitized.selectedColumns}
-            onStateChange={handleTableStateChange}
-            registerExportHandler={(fn) => { tableExportRef.current = fn; }}
-            preset="extended"
-          />
+          <div>
+            <ProfessionalTable
+              data={filteredFunds}
+              columns={columns}
+              onRowClick={handleFundSelect}
+              sortable={true}
+              maxHeight="600px"
+            />
+          </div>
         );
       
       case 'heatmap':

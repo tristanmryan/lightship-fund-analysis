@@ -84,59 +84,48 @@ class FundService {
     }
   }
 
-  // Get funds with server-side scoring via RPC
+  // Get funds with server-side scoring via RPC (merge scores from asset class table)
   async getAllFundsWithServerScoring(asOfDate = null) {
     try {
       const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
       const dateOnly = asOf ? asOf.toISOString().slice(0, 10) : null;
 
-      // Base fund data is needed for asset class grouping and enrichment
+      // Base fund data for enrichment and field consistency
       const baseFunds = await this.getAllFunds(asOfDate);
       if (!baseFunds.length) return [];
 
-      // Group funds by asset class and prepare RPC calls
+      // Unique asset class IDs present in data
       const assetClassIds = Array.from(new Set(baseFunds.map(f => f.asset_class_id).filter(Boolean)));
 
-      const start = Date.now();
-      const scoreResults = await Promise.all(
+      // Fetch scored rows for each asset class (includes score_final)
+      const tableResults = await Promise.all(
         assetClassIds.map(acId =>
-          supabase.rpc('calculate_scores_as_of', {
+          supabase.rpc('get_asset_class_table', {
             p_date: dateOnly,
             p_asset_class_id: acId,
-            p_global: false
+            p_include_benchmark: false
           })
         )
       );
 
-      // Consolidate scores, throwing if any call failed
-      let scoredFunds = [];
-      for (const result of scoreResults) {
-        if (result.error) throw result.error;
-        if (result.data) scoredFunds = scoredFunds.concat(result.data);
+      // Build a score map keyed by ticker
+      const scoreMap = new Map();
+      for (const res of tableResults) {
+        if (res.error) throw res.error;
+        (res.data || []).forEach(row => {
+          if (!row.is_benchmark) {
+            scoreMap.set(row.ticker, {
+              final: row.score_final,
+              percentile: row.percentile
+            });
+          }
+        });
       }
 
-      const duration = Date.now() - start;
-      // Scoring completed; metrics available in calling context if needed
-
-      // Map scores by ticker, ignoring benchmark rows
-      const scoreMap = new Map();
-      (scoredFunds || []).forEach(fund => {
-        if (!fund.is_benchmark) {
-          scoreMap.set(fund.ticker, {
-            final: fund.score_final,
-            raw: fund.score_raw,
-            percentile: fund.percentile,
-            metricsUsed: fund.metrics_used,
-            totalPossibleMetrics: fund.total_possible_metrics,
-            breakdown: fund.score_breakdown
-          });
-        }
-      });
-
-      // Merge scores back onto the base fund data
+      // Merge scores back onto the base fund data in a consistent shape
       return baseFunds.map(fund => {
-        const scores = scoreMap.get(fund.ticker);
-        return scores ? { ...fund, scores } : fund;
+        const s = scoreMap.get(fund.ticker);
+        return s ? { ...fund, scores: { final: s.final, percentile: s.percentile } } : fund;
       });
     } catch (error) {
       console.error('Server-side scoring failed, falling back to client-side:', error);
