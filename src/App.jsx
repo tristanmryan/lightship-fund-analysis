@@ -16,13 +16,13 @@ import fundService from './services/fundService';
 import { isSupabaseStubbed } from './services/supabase';
 
 import fundRegistry from './services/fundRegistry';
-import Home from './components/Dashboard/Home';
+import Dashboard from './components/Dashboard/Dashboard';
 import MethodologyDrawer from './components/Dashboard/MethodologyDrawer';
 import FundManagement from './components/Admin/FundManagement';
 // Removed AssetClass and Compare views in v3 streamline
 import MonthlyReportButton from './components/Reports/MonthlyReportButton';
 import Portfolios from './components/Portfolios/Portfolios.jsx';
-import TradeFlowDashboard from './components/Analytics/TradeFlowDashboard.jsx';
+import Trading from './components/Trading/Trading.jsx';
 // Command Center removed in v3 streamline
 import RecommendedList from './components/Recommended/RecommendedList.jsx';
 import { 
@@ -501,7 +501,7 @@ const App = () => {
 
       {/* Dashboard Tab */}
       {activeTab === 'dashboard' && (
-        <Home />
+        <Dashboard />
       )}
 
       {/* Recommended Tab */}
@@ -587,7 +587,7 @@ const App = () => {
             <h2 className="card-title">Trading</h2>
             <p className="card-subtitle">Monthly net flows and top movers</p>
           </div>
-          <TradeFlowDashboard />
+          <Trading />
         </div>
       )}
 
