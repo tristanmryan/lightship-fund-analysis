@@ -2,8 +2,11 @@
 -- Supports mixed fund/benchmark selection with proper validation
 -- Includes comprehensive performance metrics for comparison
 
--- Drop the existing function
+-- Drop all possible function signatures
+DROP FUNCTION IF EXISTS public.get_compare_dataset(date, text[], text);
 DROP FUNCTION IF EXISTS public.get_compare_dataset(date, text[]);
+DROP FUNCTION IF EXISTS public.get_compare_dataset(text[], text);
+DROP FUNCTION IF EXISTS public.get_compare_dataset(text[]);
 
 -- Create enhanced version with expanded metrics and mixed support
 CREATE OR REPLACE FUNCTION public.get_compare_dataset(
