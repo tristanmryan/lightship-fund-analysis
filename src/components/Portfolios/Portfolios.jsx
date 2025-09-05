@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
-import UnifiedFundTable from '../common/UnifiedFundTable.jsx';
+import ProfessionalTable from '../tables/ProfessionalTable';
+import { getAdvisorName } from '../../config/advisorNames';
+import ScoreTooltip from '../Dashboard/ScoreTooltip';
 import fundService from '../../services/fundService.js';
 import advisorService from '../../services/advisorService.js';
 import flowsService from '../../services/flowsService.js';
@@ -126,7 +128,7 @@ function ByAdvisorView() {
         <div>
           <label style={{ fontSize: 12, color: '#6b7280' }}>Advisor</label><br />
           <select value={advisorId} onChange={e => setAdvisorId(e.target.value)}>
-            {(advisors || []).map(a => <option key={a.advisor_id} value={a.advisor_id}>{a.advisor_id}</option>)}
+            {(advisors || []).map(a => <option key={a.advisor_id} value={a.advisor_id}>{getAdvisorName(a.advisor_id)}</option>)}
           </select>
         </div>
         <div className="card" style={{ padding: 8, display: 'inline-flex', gap: 12, alignItems: 'center' }}>
@@ -140,10 +142,9 @@ function ByAdvisorView() {
       </div>
 
       <div style={{ marginTop: 12 }}>
-        <UnifiedFundTable
-          funds={tableRows}
-          preset="recommended"
-          loading={loading}
+        <ProfessionalTable
+          data={tableRows}
+          columns={ADVISOR_FUNDS_COLUMNS}
           onRowClick={(f) => console.log('select', f?.ticker)}
         />
       </div>
@@ -281,12 +282,16 @@ function ByFundView() {
               </tr>
             </thead>
             <tbody>
-              {(holders || []).map((r, i) => (
-                <tr key={i}>
-                  <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6' }}>{r.advisor_id}</td>
-                  <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6', textAlign: 'right' }}>{fmtUSD(r.amount)}</td>
-                </tr>
-              ))}
+                {(holders || []).map((r, i) => {
+                  const id = r.advisor_id;
+                  const name = getAdvisorName(id);
+                  return (
+                    <tr key={i}>
+                      <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6' }}>{name}</td>
+                      <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6', textAlign: 'right' }}>{fmtUSD(r.amount)}</td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
           {(!holders || holders.length === 0) && (
@@ -379,7 +384,7 @@ function GapAnalysisView() {
         <div>
           <label style={{ fontSize: 12, color: '#6b7280' }}>Advisor</label><br />
           <select value={advisorId} onChange={e => setAdvisorId(e.target.value)}>
-            {(advisors || []).map(a => <option key={a.advisor_id} value={a.advisor_id}>{a.advisor_id}</option>)}
+            {(advisors || []).map(a => <option key={a.advisor_id} value={a.advisor_id}>{getAdvisorName(a.advisor_id)}</option>)}
           </select>
         </div>
         {loading && <div style={{ color: '#6b7280' }}>Loading...</div>}
@@ -448,6 +453,19 @@ function GapAnalysisView() {
     </div>
   );
 }
+
+const ADVISOR_FUNDS_COLUMNS = [
+  { key: 'ticker', label: 'Ticker', width: '90px', accessor: (r) => r.ticker, render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
+  { key: 'name', label: 'Fund Name', width: '240px', accessor: (r) => r.name || '' },
+  { key: 'assetClass', label: 'Asset Class', width: '160px', accessor: (r) => r.asset_class_name || r.asset_class || '' },
+  { key: 'score', label: 'Score', width: '80px', numeric: true, align: 'right', accessor: (r) => (r?.scores?.final ?? r?.score_final ?? r?.score) ?? null, render: (v, row) => v != null ? (
+    <ScoreTooltip fund={row} score={Number(v)}>
+      <span className="number">{Number(v).toFixed(1)}</span>
+    </ScoreTooltip>
+  ) : '—' },
+  { key: 'firmAUM', label: 'Firm AUM', width: '120px', numeric: true, align: 'right', accessor: (r) => r.firmAUM ?? null, render: (v) => v != null ? new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits: 0 }).format(Number(v)) : '—' },
+  { key: 'advisors', label: '# Advisors', width: '110px', numeric: true, align: 'right', accessor: (r) => r.advisorCount ?? null }
+];
 
 function Metric({ label, value }) {
   return (

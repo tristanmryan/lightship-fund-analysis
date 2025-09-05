@@ -21,6 +21,7 @@ const ScoreTooltip = ({
   maxContributions = 5
 }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const hideTimerRef = useRef(null);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [history, setHistory] = useState([]);
   const [recentDelta, setRecentDelta] = useState(null);
@@ -107,8 +108,9 @@ const ScoreTooltip = ({
     .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
     .slice(0, maxContributions);
 
-  const handleShow = () => setIsVisible(true);
-  const handleHide = () => setIsVisible(false);
+  const clearHideTimer = () => { if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; } };
+  const handleShow = () => { clearHideTimer(); setIsVisible(true); };
+  const handleHide = () => { clearHideTimer(); hideTimerRef.current = setTimeout(() => setIsVisible(false), 200); };
 
   if (!fund && !score) return children;
 
@@ -159,8 +161,10 @@ const ScoreTooltip = ({
               : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
             fontSize: 14,
             lineHeight: 1.4,
-            pointerEvents: 'none'
+            pointerEvents: 'auto'
           }}
+          onMouseEnter={handleShow}
+          onMouseLeave={handleHide}
         >
           {/* Score Header */}
           <div style={{
