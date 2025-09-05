@@ -1,0 +1,1525 @@
+=== BEGIN BROWSER CONSOLE LOGS ===
+[requestfailed] net::ERR_ABORTED https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap
+[console.log] ðŸ” Checking authentication...
+[console.log] ðŸ”§ Environment check: JSHandle@object
+[console.log] ðŸ” Auth result: JSHandle@object
+[console.log] âœ… User is authenticated
+[console.log] === DATABASE DIAGNOSTICS ===
+[console.log] ðŸ” Checking migration status...
+[console.log] Database opened successfully
+[console.log] Initializing fund registry with default data...
+[console.error] Failed to load resource: the server responded with a status of 404 ()
+[console.log] RPC get_funds_as_of: FAILED - Could not find the function public.get_funds_as_of(p_as_of_date) in the schema cache
+[console.error] Failed to load resource: the server responded with a status of 404 ()
+[console.log] ðŸ“Š Migration status: JSHandle@object
+[console.log] âœ… No migration needed. Supabase data is up to date.
+[console.log] [ProfessionalTable] container height (px): 61 table height (px): 59 tbody height (px): 0
+[console.log] [ProfessionalTable] rows rendered (prop vs DOM): 0 0
+[console.log] [ProfessionalTable] tbody overflowY: auto
+[console.log] tbody styles: JSHandle@object
+[console.log] [ProfessionalTable] tbody max-height (computed vs prop): 600px 600px
+[console.error] Failed to load resource: the server responded with a status of 404 ()
+[console.log] RPC get_scores_as_of: FAILED - Could not find the function public.get_scores_as_of(p_as_of_date) in the schema cache
+[requestfailed] net::ERR_ABORTED https://hpnqxituxtjlxzxoclmi.supabase.co/rest/v1/fund_performance?select=date&date=eq.2025-07-31
+[console.error] Failed to load resource: the server responded with a status of 404 ()
+[console.log] RPC calculate_scores_as_of: FAILED - Could not find the function public.calculate_scores_as_of(p_as_of_date) in the schema cache
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.error] Failed to load resource: the server responded with a status of 404 ()
+[console.log] RPC get_asset_class_table: FAILED - Could not find the function public.get_asset_class_table(p_as_of_date) in the schema cache
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] [RPC] Calling get_asset_class_table with params: JSHandle@object
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] [RPC] get_asset_class_table success. asset_class_id= a13bfeb1-fc87-4d99-b564-5481532ad2d0 sample: JSHandle@array
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Config saved: assetClassBenchmarks
+[console.log] Imported 114 funds and 32 benchmarks
+[console.log] [RPC] get_asset_class_table success. asset_class_id= aaea060c-ea0f-4315-93d2-73264d510870 sample: JSHandle@array
+[console.error] Failed to load resource: the server responded with a status of 404 ()
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e60e0e19-7dff-479e-af56-a7ad6360cf42 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 9e96ad2c-a5df-40cc-8eb5-caf14f610ec0 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 264903ff-1f40-464c-89c5-757ae8fc66cf sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= b5a44555-85e6-4478-a82b-d9a97eb532bd sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= a690043f-1900-4deb-b071-0052d87dced8 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 1c349c71-f0c9-4515-8975-f6e44e8031fb sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 42d94186-cf8e-4679-a321-c6c50fac38cc sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 80f18164-2bdb-475e-ace0-907c7b8e8ee9 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 89d4d5c0-16d2-4916-86a8-e1b60e5825c6 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 2514dd0e-b8e0-45e6-9053-1b5d4ecfbb7b sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 74d4a925-e438-4b7f-af8a-834251eabfc4 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= cdb77de5-16c8-44a4-a54b-f31b6cf36e97 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e1842181-2dec-4da5-8ec8-aab8c34e1064 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 2842f253-b0eb-4a50-8d85-52a6980997ef sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 7d77ccb6-7a7c-4f19-a5de-197e2a7018a9 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= d99aa7a6-8e56-4613-a43e-cd1d528ce04f sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 2a9359cc-d383-4659-a1c5-0d68fc5ee812 sample: JSHandle@array
+[console.log] RPC get_fund_ownership_summary: FAILED - Could not find the function public.get_fund_ownership_summary(p_as_of_date) in the schema cache
+[console.log] [RPC] get_asset_class_table success. asset_class_id= dfd4abea-a6da-4289-9316-e1566e6b4760 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= febcc9b7-b1ac-4564-ac38-67e87c0bd2d5 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= d2657d49-6d11-477a-867c-a2918264e437 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e0e6a4a2-8f2e-4c86-a057-0a5df70949d9 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 05e29148-3c07-4ff8-87b8-bb340b6369c0 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 344aebf8-1d5b-4f86-ac97-38e8ad740dc5 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 242b06f2-9394-4336-ab91-fad126094d6a sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= f44eb3c8-b405-4ec8-8815-f91e3f8a91c7 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 53f6fcde-0ada-4533-bae3-b703d2de3c4d sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e9fafe51-de75-46cd-8d0e-b273eb4f6b93 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 96036b6d-f198-4406-9796-0f0c686828d7 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= b5a44555-85e6-4478-a82b-d9a97eb532bd sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 2842f253-b0eb-4a50-8d85-52a6980997ef sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 557a3e85-a0cc-473d-838f-35be868b9f9e sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e1842181-2dec-4da5-8ec8-aab8c34e1064 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 2a9359cc-d383-4659-a1c5-0d68fc5ee812 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= a13bfeb1-fc87-4d99-b564-5481532ad2d0 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 030a8d48-ded7-4846-b612-c116425d23dd sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= aaea060c-ea0f-4315-93d2-73264d510870 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 80f18164-2bdb-475e-ace0-907c7b8e8ee9 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e0e6a4a2-8f2e-4c86-a057-0a5df70949d9 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= d2657d49-6d11-477a-867c-a2918264e437 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 030a8d48-ded7-4846-b612-c116425d23dd sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 344aebf8-1d5b-4f86-ac97-38e8ad740dc5 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= b5a44555-85e6-4478-a82b-d9a97eb532bd sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= cdb77de5-16c8-44a4-a54b-f31b6cf36e97 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 557a3e85-a0cc-473d-838f-35be868b9f9e sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 96036b6d-f198-4406-9796-0f0c686828d7 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 242b06f2-9394-4336-ab91-fad126094d6a sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= aaea060c-ea0f-4315-93d2-73264d510870 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 96036b6d-f198-4406-9796-0f0c686828d7 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 74d4a925-e438-4b7f-af8a-834251eabfc4 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= f44eb3c8-b405-4ec8-8815-f91e3f8a91c7 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 05e29148-3c07-4ff8-87b8-bb340b6369c0 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= cdb77de5-16c8-44a4-a54b-f31b6cf36e97 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 89d4d5c0-16d2-4916-86a8-e1b60e5825c6 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 030a8d48-ded7-4846-b612-c116425d23dd sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e9fafe51-de75-46cd-8d0e-b273eb4f6b93 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= a13bfeb1-fc87-4d99-b564-5481532ad2d0 sample: JSHandle@array
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 99.712125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 86.09914285714285  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 85.97925  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 83.50563636363637  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 83.43594444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 83.334625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 81.385125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 79.55675  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 79.471625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 79.228625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 77.87264285714285  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 77.10783333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 74.91695  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 74.60445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 73.2219  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 71.09916666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 69.99494444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 69.03345  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 69.016125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 68.14216666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 67.57794444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 66.81566666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 65.75825  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 65.53675  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 65.01913636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 64.29575  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 64.16444444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 64.01694444444445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 63.98613636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 62.560125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 62.4161  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 61.87295  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 61.814136363636365  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 59.28195  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 59.2039  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 59.00691666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 58.535333333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 57.149  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 56.813  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 56.00841666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 55.93275  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 55.672636363636364  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 55.5109  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 54.84866666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 54.626333333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.9946  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.845  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.820125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.44094444444445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 52.996916666666664  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 52.576166666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 51.58125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 51.56213636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.99766666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.871916666666664  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.7505  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.72775  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.637875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.62416666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.386375  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.3524  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.29695  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.155875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.117625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 49.795  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 49.2495  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 49.197625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.819875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.733333333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.6854  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.54783333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.52016666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.443333333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.41875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.378166666666665  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.236333333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.1539  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.87383333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.50383333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.499833333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.2974  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.09725  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.92813636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.631166666666665  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.56445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.36  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 45.683166666666665  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 45.369125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 45.0086  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.95466666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.3136  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.2671  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.06725  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.06614285714286  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.80383333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.577125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.57214285714286  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.187  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 42.851  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 42.828125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 42.7149  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 41.33013636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 40.83391666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 40.28191666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.95495  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.8439  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.71263636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.31925  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 38.40625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 37.27594444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 36.17466666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 35.180142857142854  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 35.124125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 35.0154  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 34.59314285714286  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 33.94616666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 31.159136363636364  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 30.608166666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 29.088333333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 28.616642857142857  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 27.998125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 27.794125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 17.006125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 14.14845  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 9.32545  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 9.310136363636364  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 7.1114444444444445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 2.9814444444444446  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] [RPC] get_asset_class_table success. asset_class_id= dfd4abea-a6da-4289-9316-e1566e6b4760 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= f44eb3c8-b405-4ec8-8815-f91e3f8a91c7 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= d2657d49-6d11-477a-867c-a2918264e437 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 9e96ad2c-a5df-40cc-8eb5-caf14f610ec0 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 53f6fcde-0ada-4533-bae3-b703d2de3c4d sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e0e6a4a2-8f2e-4c86-a057-0a5df70949d9 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e1842181-2dec-4da5-8ec8-aab8c34e1064 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 2842f253-b0eb-4a50-8d85-52a6980997ef sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 1c349c71-f0c9-4515-8975-f6e44e8031fb sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= febcc9b7-b1ac-4564-ac38-67e87c0bd2d5 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= d99aa7a6-8e56-4613-a43e-cd1d528ce04f sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= dfd4abea-a6da-4289-9316-e1566e6b4760 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e9fafe51-de75-46cd-8d0e-b273eb4f6b93 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 242b06f2-9394-4336-ab91-fad126094d6a sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 344aebf8-1d5b-4f86-ac97-38e8ad740dc5 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 05e29148-3c07-4ff8-87b8-bb340b6369c0 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 80f18164-2bdb-475e-ace0-907c7b8e8ee9 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 264903ff-1f40-464c-89c5-757ae8fc66cf sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= febcc9b7-b1ac-4564-ac38-67e87c0bd2d5 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 7d77ccb6-7a7c-4f19-a5de-197e2a7018a9 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 1c349c71-f0c9-4515-8975-f6e44e8031fb sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 242b06f2-9394-4336-ab91-fad126094d6a sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e9fafe51-de75-46cd-8d0e-b273eb4f6b93 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= cdb77de5-16c8-44a4-a54b-f31b6cf36e97 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 2514dd0e-b8e0-45e6-9053-1b5d4ecfbb7b sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= a690043f-1900-4deb-b071-0052d87dced8 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 557a3e85-a0cc-473d-838f-35be868b9f9e sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= d99aa7a6-8e56-4613-a43e-cd1d528ce04f sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 74d4a925-e438-4b7f-af8a-834251eabfc4 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e60e0e19-7dff-479e-af56-a7ad6360cf42 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 42d94186-cf8e-4679-a321-c6c50fac38cc sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= a690043f-1900-4deb-b071-0052d87dced8 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 9e96ad2c-a5df-40cc-8eb5-caf14f610ec0 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 89d4d5c0-16d2-4916-86a8-e1b60e5825c6 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 264903ff-1f40-464c-89c5-757ae8fc66cf sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 2514dd0e-b8e0-45e6-9053-1b5d4ecfbb7b sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 264903ff-1f40-464c-89c5-757ae8fc66cf sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e60e0e19-7dff-479e-af56-a7ad6360cf42 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 7d77ccb6-7a7c-4f19-a5de-197e2a7018a9 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 557a3e85-a0cc-473d-838f-35be868b9f9e sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 2842f253-b0eb-4a50-8d85-52a6980997ef sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 9e96ad2c-a5df-40cc-8eb5-caf14f610ec0 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= d99aa7a6-8e56-4613-a43e-cd1d528ce04f sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e0e6a4a2-8f2e-4c86-a057-0a5df70949d9 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 2a9359cc-d383-4659-a1c5-0d68fc5ee812 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 344aebf8-1d5b-4f86-ac97-38e8ad740dc5 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 7d77ccb6-7a7c-4f19-a5de-197e2a7018a9 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 42d94186-cf8e-4679-a321-c6c50fac38cc sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 2a9359cc-d383-4659-a1c5-0d68fc5ee812 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 53f6fcde-0ada-4533-bae3-b703d2de3c4d sample: JSHandle@array
+[console.log] Loaded 149 funds from database as of 2025-07-31 (server-side scoring)
+[console.log] Sample fund row JSHandle@object
+[console.log] [RPC] get_asset_class_table success. asset_class_id= a690043f-1900-4deb-b071-0052d87dced8 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 05e29148-3c07-4ff8-87b8-bb340b6369c0 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 74d4a925-e438-4b7f-af8a-834251eabfc4 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= febcc9b7-b1ac-4564-ac38-67e87c0bd2d5 sample: JSHandle@array
+[console.log] Loaded 149 funds from database as of 2025-07-31 (server-side scoring)
+[console.log] Sample fund row JSHandle@object
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 89d4d5c0-16d2-4916-86a8-e1b60e5825c6 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= b5a44555-85e6-4478-a82b-d9a97eb532bd sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e60e0e19-7dff-479e-af56-a7ad6360cf42 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 80f18164-2bdb-475e-ace0-907c7b8e8ee9 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= aaea060c-ea0f-4315-93d2-73264d510870 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= a13bfeb1-fc87-4d99-b564-5481532ad2d0 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= e1842181-2dec-4da5-8ec8-aab8c34e1064 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 030a8d48-ded7-4846-b612-c116425d23dd sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 2514dd0e-b8e0-45e6-9053-1b5d4ecfbb7b sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 42d94186-cf8e-4679-a321-c6c50fac38cc sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 1c349c71-f0c9-4515-8975-f6e44e8031fb sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= d2657d49-6d11-477a-867c-a2918264e437 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 53f6fcde-0ada-4533-bae3-b703d2de3c4d sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= f44eb3c8-b405-4ec8-8815-f91e3f8a91c7 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= dfd4abea-a6da-4289-9316-e1566e6b4760 sample: JSHandle@array
+[console.log] [RPC] get_asset_class_table success. asset_class_id= 96036b6d-f198-4406-9796-0f0c686828d7 sample: JSHandle@array
+[console.log] Loaded 149 funds from database as of 2025-07-31 (server-side scoring)
+[console.log] Sample fund row JSHandle@object
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 99.712125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 86.09914285714285  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 85.97925  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 83.50563636363637  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 83.43594444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 83.334625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 81.385125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 79.55675  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 79.471625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 79.228625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 77.87264285714285  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 77.10783333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 74.91695  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 74.60445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 73.2219  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 71.09916666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 69.99494444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 69.03345  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 69.016125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 68.14216666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 67.57794444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 66.81566666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 65.75825  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 65.53675  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 65.01913636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 64.29575  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 64.16444444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 64.01694444444445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 63.98613636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 62.560125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 62.4161  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 61.87295  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 61.814136363636365  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 59.28195  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 59.2039  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 59.00691666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 58.535333333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 57.149  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 56.813  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 56.00841666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 55.93275  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 55.672636363636364  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 55.5109  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 54.84866666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 54.626333333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.9946  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.845  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.820125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.44094444444445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 52.996916666666664  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 52.576166666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 51.58125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 51.56213636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.99766666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.871916666666664  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.7505  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.72775  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.637875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.62416666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.386375  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.3524  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.29695  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.155875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.117625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 49.795  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 49.2495  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 49.197625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.819875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.733333333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.6854  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.54783333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.52016666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.443333333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.41875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.378166666666665  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.236333333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.1539  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.87383333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.50383333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.499833333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.2974  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.09725  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.92813636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.631166666666665  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.56445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.36  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 45.683166666666665  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 45.369125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 45.0086  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.95466666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.3136  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.2671  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.06725  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.06614285714286  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.80383333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.577125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.57214285714286  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.187  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 42.851  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 42.828125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 42.7149  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 41.33013636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 40.83391666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 40.28191666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.95495  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.8439  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.71263636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.31925  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 38.40625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 37.27594444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 36.17466666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 35.180142857142854  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 35.124125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 35.0154  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 34.59314285714286  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 33.94616666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 31.159136363636364  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 30.608166666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 29.088333333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 28.616642857142857  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 27.998125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 27.794125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 17.006125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 14.14845  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 9.32545  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 9.310136363636364  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 7.1114444444444445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 2.9814444444444446  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Table funds: SUCCESS
+[console.log] [ProfessionalTable] container height (px): 661 table height (px): 659 tbody height (px): 600
+[console.log] [ProfessionalTable] rows rendered (prop vs DOM): 149 149
+[console.log] [ProfessionalTable] tbody overflowY: auto
+[console.log] tbody styles: JSHandle@object
+[console.log] [ProfessionalTable] tbody max-height (computed vs prop): 600px 600px
+[console.log] Table fund_performance: SUCCESS
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 99.712125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 86.09914285714285  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 85.97925  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 83.50563636363637  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 83.43594444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 83.334625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 81.385125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 79.55675  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 79.471625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 79.228625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 77.87264285714285  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 77.10783333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 74.91695  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 74.60445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 73.2219  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 71.09916666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 69.99494444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 69.03345  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 69.016125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 68.14216666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 67.57794444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 66.81566666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 65.75825  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 65.53675  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 65.01913636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 64.29575  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 64.16444444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 64.01694444444445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 63.98613636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 62.560125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 62.4161  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 61.87295  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 61.814136363636365  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 59.28195  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 59.2039  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 59.00691666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 58.535333333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 57.149  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 56.813  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 56.00841666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 55.93275  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 55.672636363636364  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 55.5109  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 54.84866666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 54.626333333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.9946  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.845  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.820125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.44094444444445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 52.996916666666664  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 52.576166666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 51.58125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 51.56213636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.99766666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.871916666666664  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.7505  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.72775  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.637875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.62416666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.386375  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.3524  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.29695  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.155875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.117625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 49.795  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 49.2495  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 49.197625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.819875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.733333333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.6854  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.54783333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.52016666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.443333333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.41875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.378166666666665  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.236333333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.1539  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.87383333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.50383333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.499833333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.2974  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.09725  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.92813636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.631166666666665  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.56445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.36  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 45.683166666666665  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 45.369125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 45.0086  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.95466666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.3136  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.2671  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.06725  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.06614285714286  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.80383333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.577125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.57214285714286  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.187  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 42.851  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 42.828125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 42.7149  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 41.33013636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 40.83391666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 40.28191666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.95495  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.8439  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.71263636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.31925  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 38.40625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 37.27594444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 36.17466666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 35.180142857142854  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 35.124125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 35.0154  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 34.59314285714286  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 33.94616666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 31.159136363636364  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 30.608166666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 29.088333333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 28.616642857142857  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 27.998125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 27.794125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 17.006125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 14.14845  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 9.32545  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 9.310136363636364  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 7.1114444444444445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 2.9814444444444446  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Table client_holdings: SUCCESS
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 100  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 99.712125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 86.09914285714285  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 85.97925  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 83.50563636363637  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 83.43594444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 83.334625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 81.385125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 79.55675  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 79.471625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 79.228625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 77.87264285714285  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 77.10783333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 74.91695  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 74.60445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 73.2219  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 71.09916666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 69.99494444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 69.03345  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 69.016125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 68.14216666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 67.57794444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 66.81566666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 65.75825  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 65.53675  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 65.01913636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 64.29575  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 64.16444444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 64.01694444444445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 63.98613636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 62.560125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 62.4161  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 61.87295  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 61.814136363636365  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 59.28195  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 59.2039  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 59.00691666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 58.535333333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 57.149  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 56.813  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 56.00841666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 55.93275  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 55.672636363636364  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 55.5109  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 54.84866666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 54.626333333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.9946  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.845  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.820125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 53.44094444444445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 52.996916666666664  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 52.576166666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 51.58125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 51.56213636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.99766666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.871916666666664  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.7505  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.72775  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.637875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.62416666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.386375  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.3524  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.29695  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.155875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50.117625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 50  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 49.795  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 49.2495  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 49.197625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.819875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.733333333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.6854  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.54783333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.52016666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.443333333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.41875  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.378166666666665  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.236333333333334  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 48.1539  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.87383333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.50383333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.499833333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.2974  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 47.09725  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.92813636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.631166666666665  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.56445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 46.36  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 45.683166666666665  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 45.369125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 45.0086  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.95466666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.3136  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.2671  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.06725  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 44.06614285714286  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.80383333333333  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.577125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.57214285714286  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 43.187  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 42.851  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 42.828125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 42.7149  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 41.33013636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 40.83391666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 40.28191666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.95495  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.8439  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.71263636363636  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 39.31925  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 38.40625  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 37.27594444444444  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 36.17466666666667  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 35.180142857142854  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 35.124125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 35.0154  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 34.59314285714286  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 33.94616666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 31.159136363636364  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 30.608166666666666  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 29.088333333333335  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 28.616642857142857  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 27.998125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 27.794125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 17.006125  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 14.14845  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 9.32545  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 9.310136363636364  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 7.1114444444444445  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 2.9814444444444446  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+[console.log] Score render: 0  
+[console.log] [ProfessionalTable] score tooltip created: false (type: st )
+=== END BROWSER CONSOLE LOGS ===

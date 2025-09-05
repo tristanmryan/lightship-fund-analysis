@@ -3,7 +3,8 @@ import { useFundData } from '../../hooks/useFundData';
 import SimpleKPIHeader from './SimpleKPIHeader';
 import { supabase } from '../../services/supabase';
 import SimpleFilterBar from './SimpleFilterBar';
-import UnifiedFundTable from '../common/UnifiedFundTable';
+import { ProfessionalTable } from '../tables/ProfessionalTable';
+import ScoreTooltip from './ScoreTooltip';
 import DashboardDebugPanel from './DashboardDebugPanel';
 
 const SimplifiedDashboard = () => {
@@ -185,12 +186,25 @@ const SimplifiedDashboard = () => {
         <div className="card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <h3 className="card-title" style={{ margin: 0 }}>Fund Overview</h3>
         </div>
-        <UnifiedFundTable
-          funds={filteredFunds}
-          loading={loading}
-          preset="core"
-          initialSortConfig={[{ key: 'score', direction: 'desc' }]}
-          chartPeriod="1Y"
+        <ProfessionalTable
+          data={filteredFunds}
+          columns={[
+            { key: 'symbol', label: 'Symbol', width: '90px', accessor: (row) => row.ticker || row.symbol || '', render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
+            { key: 'name', label: 'Fund Name', width: '260px', accessor: (row) => row.name || row.fund_name || '' },
+            { key: 'assetClass', label: 'Asset Class', width: '160px', accessor: (row) => row.asset_class_name || row.asset_class || '' },
+            { key: 'score', label: 'Score', width: '90px', numeric: true, align: 'right', accessor: (row) => {
+                const s = row?.scores?.final ?? row?.score_final ?? row?.score;
+                return typeof s === 'number' ? s : (s != null ? Number(s) : null);
+              }, render: (v, row) => (v != null && !Number.isNaN(v)) ? (
+                <ScoreTooltip fund={row} score={Number(v)}>
+                  <span className="number">{Number(v).toFixed(1)}</span>
+                </ScoreTooltip>
+              ) : '—' },
+            { key: 'ytd', label: 'YTD', width: '90px', numeric: true, align: 'right', accessor: (row) => row.ytd_return ?? row['Total Return - YTD (%)'] ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : '—' },
+            { key: 'expense', label: 'Expense', width: '90px', numeric: true, align: 'right', accessor: (row) => row.expense_ratio ?? row['Net Expense Ratio'] ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : '—' },
+            { key: 'firmAUM', label: 'Firm AUM', width: '120px', numeric: true, align: 'right', accessor: (row) => row.firmAUM ?? null, render: (v) => v != null ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(v)) : '—' },
+            { key: 'advisors', label: '# Advisors', width: '110px', numeric: true, align: 'right', accessor: (row) => row.advisorCount ?? null }
+          ]}
         />
       </div>
 

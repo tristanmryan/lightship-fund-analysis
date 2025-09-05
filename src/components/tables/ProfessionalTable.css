@@ -1,7 +1,8 @@
 .professional-table-container {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  overflow: hidden;
+  /* Allow tbody to scroll independently */
+  overflow: visible;
   background: white;
 }
 
@@ -30,7 +31,10 @@
 .professional-table tbody {
   display: block;
   overflow-y: auto;
+  overflow-x: hidden;
   width: 100%;
+  /* Ensure a fixed scrollable area */
+  max-height: 600px;
 }
 
 .professional-table tbody tr {
@@ -54,4 +58,3 @@
   background: #f3f4f6;
   font-style: italic;
 }
-
