@@ -8,7 +8,9 @@ dotenv.config({ path: '.env.local' });
 
 async function loadDashboard(asOf = null) {
   console.log('\n📊 Loading dashboard funds...');
-  const funds = await fundService.getAllFundsWithServerScoring(asOf);
+  // Use new fundDataService instead of deleted RPCs  
+  const { getFundsWithPerformance } = await import('../src/services/fundDataService.js');
+  const funds = await getFundsWithPerformance(asOf);
   console.log(`   Loaded ${funds.length} funds`);
 
   const scores = funds.map(f => f.scores?.final).filter(s => typeof s === 'number');
@@ -27,14 +29,18 @@ async function loadDashboard(asOf = null) {
 
 async function compareAssetClass(asOf, assetClassId) {
   console.log(`\n🔎 Comparing scores for asset class ${assetClassId}...`);
-  const tableRows = await fundService.getAssetClassTable(asOf, assetClassId, true);
+  // Use new fundDataService directly instead of old RPC-based method
+  const { getFundsWithPerformance } = await import('../src/services/fundDataService.js');
+  const tableRows = await getFundsWithPerformance(asOf, assetClassId);
   const tableMap = new Map(
     (tableRows || [])
       .filter(r => !r.is_benchmark)
       .map(r => [r.ticker, r.score_final])
   );
 
-  const dashboardFunds = await fundService.getAllFundsWithServerScoring(asOf);
+  // Use new fundDataService instead of deleted RPCs
+  const { getFundsWithPerformance } = await import('../src/services/fundDataService.js');
+  const dashboardFunds = await getFundsWithPerformance(asOf);
   const discrepancies = [];
   dashboardFunds
     .filter(f => f.asset_class_id === assetClassId)

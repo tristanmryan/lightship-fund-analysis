@@ -29,7 +29,6 @@ export function createColumnDefinition(config) {
   const {
     key,
     label,
-    fallbackKeys = [],
     sortable = true,
     width = null,
     tooltip = null,
@@ -50,7 +49,6 @@ export function createColumnDefinition(config) {
   return {
     key,
     label,
-    fallbackKeys,
     sortable,
     width,
     tooltip,
@@ -63,12 +61,12 @@ export function createColumnDefinition(config) {
     filterType,
     customClasses,
 
-    // Data accessor with fallback pattern support
-    getValue: (fund) => getValueWithFallbacks(fund, key, fallbackKeys),
+    // Simple data accessor - fundDataService provides consistent field names
+    getValue: (fund) => getValue(fund, key),
 
     // Formatted value for display
     getFormattedValue: (fund) => {
-      const rawValue = getValueWithFallbacks(fund, key, fallbackKeys);
+      const rawValue = getValue(fund, key);
       return formatter ? formatter(rawValue, fund) : formatValue(rawValue, config);
     },
 
@@ -77,7 +75,7 @@ export function createColumnDefinition(config) {
 
     // Export-specific formatter
     getExportValue: (fund) => {
-      const rawValue = getValueWithFallbacks(fund, key, fallbackKeys);
+      const rawValue = getValue(fund, key);
       return exportFormatter ? exportFormatter(rawValue, fund) : rawValue;
     },
 
@@ -95,24 +93,11 @@ export function createColumnDefinition(config) {
 }
 
 /**
- * Get value from fund with fallback pattern support
+ * Simple value accessor - fundDataService provides consistent field names
  */
-function getValueWithFallbacks(fund, primaryKey, fallbackKeys = []) {
+function getValue(fund, key) {
   if (!fund || typeof fund !== 'object') return null;
-
-  // Try primary key first
-  if (fund[primaryKey] !== undefined && fund[primaryKey] !== null) {
-    return fund[primaryKey];
-  }
-
-  // Try fallback keys
-  for (const fallbackKey of fallbackKeys) {
-    if (fund[fallbackKey] !== undefined && fund[fallbackKey] !== null) {
-      return fund[fallbackKey];
-    }
-  }
-
-  return null;
+  return fund[key] !== undefined ? fund[key] : null;
 }
 
 /**
@@ -191,38 +176,39 @@ function getColumnType(config) {
 function getColumnCategory(key) {
   const categoryMap = {
     // Basic info
-    symbol: 'basic',
     ticker: 'basic', 
     name: 'basic',
-    assetClass: 'basic',
+    asset_class_name: 'basic',
     
     // Performance
-    ytdReturn: 'performance',
-    oneYearReturn: 'performance',
-    threeYearReturn: 'performance',
-    fiveYearReturn: 'performance',
-    tenYearReturn: 'performance',
+    ytd_return: 'performance',
+    one_year_return: 'performance',
+    three_year_return: 'performance',
+    five_year_return: 'performance',
+    ten_year_return: 'performance',
     sparkline: 'performance',
     
     // Risk metrics
-    sharpeRatio: 'risk',
+    sharpe_ratio: 'risk',
     beta: 'risk',
     alpha: 'risk',
-    standardDeviation: 'risk',
-    stdDev3Y: 'risk',
-    stdDev5Y: 'risk',
-    upCaptureRatio: 'risk',
-    downCaptureRatio: 'risk',
+    standard_deviation_3y: 'risk',
+    standard_deviation_5y: 'risk',
+    up_capture_ratio: 'risk',
+    down_capture_ratio: 'risk',
     
     // Cost metrics
-    expenseRatio: 'cost',
-    managementFee: 'cost',
+    expense_ratio: 'cost',
+    manager_tenure: 'metadata',
     
     // Special/computed
-    score: 'special',
+    score_final: 'special',
     percentile: 'special',
-    recommended: 'special',
-    managerTenure: 'metadata'
+    is_recommended: 'special',
+    
+    // Ownership
+    firmAUM: 'ownership',
+    advisorCount: 'ownership'
   };
 
   return categoryMap[key] || 'other';
@@ -279,9 +265,8 @@ function TrendIndicator({ value, showIcon = true, showValue = true }) {
 // =============================================================================
 
 export const SYMBOL_COLUMN = createColumnDefinition({
-  key: 'symbol',
+  key: 'ticker', // Use consistent field name from fundDataService
   label: 'Symbol',
-  fallbackKeys: ['ticker', 'Symbol'],
   width: '80px',
   tooltip: 'Fund ticker symbol',
   alignment: 'center',
@@ -300,7 +285,6 @@ export const SYMBOL_COLUMN = createColumnDefinition({
 export const NAME_COLUMN = createColumnDefinition({
   key: 'name',
   label: 'Fund Name',
-  fallbackKeys: ['fund_name', 'Product Name', 'displayName'],
   width: '200px',
   tooltip: 'Full fund name',
   renderer: (value, fund) => {
@@ -320,9 +304,8 @@ export const NAME_COLUMN = createColumnDefinition({
 });
 
 export const ASSET_CLASS_COLUMN = createColumnDefinition({
-  key: 'assetClass',
+  key: 'asset_class_name', // Use consistent field from fundDataService
   label: 'Asset Class',
-  fallbackKeys: ['asset_class_name', 'asset_class', 'Asset Class'],
   width: '140px',
   tooltip: 'Investment asset class category',
   renderer: (value, fund) => (
@@ -344,9 +327,8 @@ export const ASSET_CLASS_COLUMN = createColumnDefinition({
 // =============================================================================
 
 export const YTD_RETURN_COLUMN = createColumnDefinition({
-  key: 'ytdReturn',
+  key: 'ytd_return', // Use consistent field from fundDataService
   label: 'YTD Return',
-  fallbackKeys: ['ytd_return', 'Total Return - YTD (%)'],
   width: '100px',
   tooltip: 'Year-to-date total return',
   isNumeric: true,
@@ -356,9 +338,8 @@ export const YTD_RETURN_COLUMN = createColumnDefinition({
 });
 
 export const ONE_YEAR_RETURN_COLUMN = createColumnDefinition({
-  key: 'oneYearReturn', 
+  key: 'one_year_return', // Use consistent field from fundDataService
   label: '1Y Return',
-  fallbackKeys: ['one_year_return', 'Total Return - 1 Year (%)', '1 Year'],
   width: '100px',
   tooltip: 'Total return over the last 12 months',
   isNumeric: true,
@@ -386,9 +367,8 @@ export const ONE_YEAR_RETURN_COLUMN = createColumnDefinition({
 });
 
 export const THREE_YEAR_RETURN_COLUMN = createColumnDefinition({
-  key: 'threeYearReturn',
+  key: 'three_year_return', // Use consistent field from fundDataService
   label: '3Y Return',
-  fallbackKeys: ['three_year_return', 'Annualized Total Return - 3 Year (%)'],
   width: '100px',
   tooltip: 'Annualized return over 3 years',
   isNumeric: true,
@@ -398,9 +378,8 @@ export const THREE_YEAR_RETURN_COLUMN = createColumnDefinition({
 });
 
 export const FIVE_YEAR_RETURN_COLUMN = createColumnDefinition({
-  key: 'fiveYearReturn',
+  key: 'five_year_return', // Use consistent field from fundDataService
   label: '5Y Return',
-  fallbackKeys: ['five_year_return', 'Annualized Total Return - 5 Year (%)'],
   width: '100px',
   tooltip: 'Annualized return over 5 years',
   isNumeric: true,
@@ -410,9 +389,8 @@ export const FIVE_YEAR_RETURN_COLUMN = createColumnDefinition({
 });
 
 export const TEN_YEAR_RETURN_COLUMN = createColumnDefinition({
-  key: 'tenYearReturn',
+  key: 'ten_year_return', // Use consistent field from fundDataService
   label: '10Y Return',
-  fallbackKeys: ['ten_year_return', 'Annualized Total Return - 10 Year (%)'],
   width: '100px',
   tooltip: 'Annualized return over 10 years',
   isNumeric: true,
@@ -461,9 +439,8 @@ export const SPARKLINE_COLUMN = createColumnDefinition({
 // =============================================================================
 
 export const SHARPE_RATIO_COLUMN = createColumnDefinition({
-  key: 'sharpeRatio',
+  key: 'sharpe_ratio', // Use consistent field from fundDataService
   label: 'Sharpe Ratio',
-  fallbackKeys: ['sharpe_ratio', 'Sharpe Ratio - 3 Year'],
   width: '100px',
   tooltip: 'Risk-adjusted return measure (higher is better)',
   isNumeric: true,
@@ -476,9 +453,8 @@ export const SHARPE_RATIO_COLUMN = createColumnDefinition({
 });
 
 export const BETA_COLUMN = createColumnDefinition({
-  key: 'beta',
+  key: 'beta', // Use consistent field from fundDataService
   label: 'Beta',
-  fallbackKeys: ['beta', 'Beta - 5 Year'],
   width: '80px',
   tooltip: 'Market sensitivity measure (1.0 = market level)',
   isNumeric: true,
@@ -499,9 +475,8 @@ export const BETA_COLUMN = createColumnDefinition({
 });
 
 export const ALPHA_COLUMN = createColumnDefinition({
-  key: 'alpha',
+  key: 'alpha', // Use consistent field from fundDataService
   label: 'Alpha',
-  fallbackKeys: ['alpha', 'Alpha - 5 Year'],
   width: '80px',
   tooltip: 'Excess return vs benchmark',
   isNumeric: true,
@@ -514,9 +489,8 @@ export const ALPHA_COLUMN = createColumnDefinition({
 });
 
 export const STD_DEV_3Y_COLUMN = createColumnDefinition({
-  key: 'stdDev3Y',
+  key: 'standard_deviation_3y', // Use consistent field from fundDataService
   label: 'Std Dev (3Y)',
-  fallbackKeys: ['standard_deviation_3y', 'standard_deviation', 'Standard Deviation'],
   width: '100px',
   tooltip: '3-year standard deviation (volatility measure)',
   isNumeric: true,
@@ -525,9 +499,8 @@ export const STD_DEV_3Y_COLUMN = createColumnDefinition({
 });
 
 export const STD_DEV_5Y_COLUMN = createColumnDefinition({
-  key: 'stdDev5Y',
+  key: 'standard_deviation_5y', // Use consistent field from fundDataService
   label: 'Std Dev (5Y)',
-  fallbackKeys: ['standard_deviation_5y', 'Standard Deviation - 5 Year'],
   width: '100px', 
   tooltip: '5-year standard deviation (volatility measure)',
   isNumeric: true,
@@ -536,9 +509,8 @@ export const STD_DEV_5Y_COLUMN = createColumnDefinition({
 });
 
 export const UP_CAPTURE_COLUMN = createColumnDefinition({
-  key: 'upCaptureRatio',
+  key: 'up_capture_ratio', // Use consistent field from fundDataService
   label: 'Up Capture',
-  fallbackKeys: ['up_capture_ratio', 'Up Capture Ratio (Morningstar Standard) - 3 Year'],
   width: '100px',
   tooltip: 'Percentage of up-market returns captured',
   isNumeric: true,
@@ -547,9 +519,8 @@ export const UP_CAPTURE_COLUMN = createColumnDefinition({
 });
 
 export const DOWN_CAPTURE_COLUMN = createColumnDefinition({
-  key: 'downCaptureRatio',
+  key: 'down_capture_ratio', // Use consistent field from fundDataService
   label: 'Down Capture', 
-  fallbackKeys: ['down_capture_ratio', 'Down Capture Ratio (Morningstar Standard) - 3 Year'],
   width: '100px',
   tooltip: 'Percentage of down-market losses captured (lower is better)',
   isNumeric: true,
@@ -562,9 +533,8 @@ export const DOWN_CAPTURE_COLUMN = createColumnDefinition({
 // =============================================================================
 
 export const EXPENSE_RATIO_COLUMN = createColumnDefinition({
-  key: 'expenseRatio',
+  key: 'expense_ratio', // Use consistent field from fundDataService
   label: 'Expense Ratio',
-  fallbackKeys: ['expense_ratio', 'Net Exp Ratio (%)', 'Expense Ratio'],
   width: '110px',
   tooltip: 'Annual fund costs (lower is better)',
   isNumeric: true,
@@ -602,9 +572,8 @@ export const EXPENSE_RATIO_COLUMN = createColumnDefinition({
 });
 
 export const MANAGER_TENURE_COLUMN = createColumnDefinition({
-  key: 'managerTenure',
+  key: 'manager_tenure', // Use consistent field from fundDataService
   label: 'Manager Tenure',
-  fallbackKeys: ['manager_tenure', 'Manager Tenure', 'Tenure'],
   width: '120px',
   tooltip: 'Years of current manager experience',
   isNumeric: true,
@@ -617,18 +586,12 @@ export const MANAGER_TENURE_COLUMN = createColumnDefinition({
 // =============================================================================
 
 export const SCORE_COLUMN = createColumnDefinition({
-  key: 'score',
+  key: 'score_final', // Use consistent field from fundDataService
   label: 'Score',
-  fallbackKeys: ['score_final', 'scores.final', 'final_score'],
   width: '80px',
   tooltip: 'Composite quality score (0-100)',
   isNumeric: true,
   decimals: 1,
-  getValue: (fund) => {
-    // Handle nested score objects
-    if (fund.scores?.final !== undefined) return fund.scores.final;
-    return getValueWithFallbacks(fund, 'score_final', ['score', 'final_score']);
-  },
   renderer: (value, fund, allFunds, { ScoreTooltip }) => {
     const scoreValue = Number(value) || 0;
     
@@ -648,9 +611,8 @@ export const SCORE_COLUMN = createColumnDefinition({
 });
 
 export const PERCENTILE_COLUMN = createColumnDefinition({
-  key: 'percentile',
+  key: 'percentile', // Use consistent field from fundDataService
   label: 'Percentile',
-  fallbackKeys: ['score_percentile', 'percentile_rank'],
   width: '90px',
   tooltip: 'Percentile ranking within asset class',
   isNumeric: true,
@@ -689,9 +651,8 @@ export const PERCENTILE_COLUMN = createColumnDefinition({
 });
 
 export const RECOMMENDED_COLUMN = createColumnDefinition({
-  key: 'recommended',
+  key: 'is_recommended', // Use consistent field from fundDataService
   label: 'Recommended',
-  fallbackKeys: ['is_recommended'],
   width: '110px',
   tooltip: 'Firm-designated recommended fund',
   renderer: (value, fund) => {
@@ -733,9 +694,8 @@ export const RECOMMENDED_COLUMN = createColumnDefinition({
 // =============================================================================
 
 export const FIRM_AUM_COLUMN = createColumnDefinition({
-  key: 'firmAUM',
+  key: 'firmAUM', // Use consistent field from fundDataService
   label: 'Firm AUM',
-  fallbackKeys: ['firm_aum', 'aum_total', 'total_aum'],
   width: '120px',
   tooltip: 'Latest firm holdings in USD for this fund',
   isNumeric: true,
@@ -749,9 +709,8 @@ export const FIRM_AUM_COLUMN = createColumnDefinition({
 });
 
 export const ADVISOR_COUNT_COLUMN = createColumnDefinition({
-  key: 'advisorCount',
+  key: 'advisorCount', // Use consistent field from fundDataService
   label: '# Advisors',
-  fallbackKeys: ['advisor_count', 'advisors_using'],
   width: '110px',
   tooltip: 'Number of advisors currently holding the fund',
   isNumeric: true,
@@ -799,38 +758,39 @@ export const ADVANCED_COLUMNS = [
   MANAGER_TENURE_COLUMN
 ];
 
-// Column registry for easy lookup
+// Column registry for easy lookup - updated to use consistent field names
 export const COLUMN_REGISTRY = {
   // Basic info
-  symbol: SYMBOL_COLUMN,
+  ticker: SYMBOL_COLUMN,
   name: NAME_COLUMN,
-  assetClass: ASSET_CLASS_COLUMN,
+  asset_class_name: ASSET_CLASS_COLUMN,
   
   // Performance
-  ytdReturn: YTD_RETURN_COLUMN,
-  oneYearReturn: ONE_YEAR_RETURN_COLUMN,
-  threeYearReturn: THREE_YEAR_RETURN_COLUMN,
-  fiveYearReturn: FIVE_YEAR_RETURN_COLUMN,
-  tenYearReturn: TEN_YEAR_RETURN_COLUMN,
+  ytd_return: YTD_RETURN_COLUMN,
+  one_year_return: ONE_YEAR_RETURN_COLUMN,
+  three_year_return: THREE_YEAR_RETURN_COLUMN,
+  five_year_return: FIVE_YEAR_RETURN_COLUMN,
+  ten_year_return: TEN_YEAR_RETURN_COLUMN,
   sparkline: SPARKLINE_COLUMN,
   
   // Risk metrics
-  sharpeRatio: SHARPE_RATIO_COLUMN,
+  sharpe_ratio: SHARPE_RATIO_COLUMN,
   beta: BETA_COLUMN,
   alpha: ALPHA_COLUMN,
-  stdDev3Y: STD_DEV_3Y_COLUMN,
-  stdDev5Y: STD_DEV_5Y_COLUMN,
-  upCaptureRatio: UP_CAPTURE_COLUMN,
-  downCaptureRatio: DOWN_CAPTURE_COLUMN,
+  standard_deviation_3y: STD_DEV_3Y_COLUMN,
+  standard_deviation_5y: STD_DEV_5Y_COLUMN,
+  up_capture_ratio: UP_CAPTURE_COLUMN,
+  down_capture_ratio: DOWN_CAPTURE_COLUMN,
   
   // Cost metrics
-  expenseRatio: EXPENSE_RATIO_COLUMN,
-  managerTenure: MANAGER_TENURE_COLUMN,
+  expense_ratio: EXPENSE_RATIO_COLUMN,
+  manager_tenure: MANAGER_TENURE_COLUMN,
   
   // Special columns
-  score: SCORE_COLUMN,
+  score_final: SCORE_COLUMN,
   percentile: PERCENTILE_COLUMN,
-  recommended: RECOMMENDED_COLUMN,
+  is_recommended: RECOMMENDED_COLUMN,
+  
   // Ownership
   firmAUM: FIRM_AUM_COLUMN,
   advisorCount: ADVISOR_COUNT_COLUMN
@@ -856,22 +816,22 @@ export const COLUMN_PRESETS = {
   performance: {
     name: 'Performance Focus',
     description: 'Performance and returns focused view',
-    columns: ['symbol', 'name', 'assetClass', 'ytdReturn', 'oneYearReturn', 'threeYearReturn', 'fiveYearReturn', 'sparkline', 'recommended']
+    columns: ['ticker', 'name', 'asset_class_name', 'ytd_return', 'one_year_return', 'three_year_return', 'five_year_return', 'sparkline', 'is_recommended']
   },
   risk: {
     name: 'Risk Analysis',
     description: 'Risk metrics and volatility focus',
-    columns: ['symbol', 'name', 'assetClass', 'score', 'sharpeRatio', 'beta', 'alpha', 'stdDev3Y', 'stdDev5Y', 'upCaptureRatio', 'downCaptureRatio']
+    columns: ['ticker', 'name', 'asset_class_name', 'score_final', 'sharpe_ratio', 'beta', 'alpha', 'standard_deviation_3y', 'standard_deviation_5y', 'up_capture_ratio', 'down_capture_ratio']
   },
   cost: {
     name: 'Cost Analysis',
     description: 'Cost-focused metrics and efficiency',
-    columns: ['symbol', 'name', 'assetClass', 'expenseRatio', 'ytdReturn', 'sharpeRatio', 'score', 'recommended']
+    columns: ['ticker', 'name', 'asset_class_name', 'expense_ratio', 'ytd_return', 'sharpe_ratio', 'score_final', 'is_recommended']
   },
   recommended: {
     name: 'Recommended Set',
     description: 'Recommended workflow with ownership context',
-    columns: ['symbol', 'name', 'assetClass', 'score', 'ytdReturn', 'oneYearReturn', 'expenseRatio', 'firmAUM', 'advisorCount', 'recommended']
+    columns: ['ticker', 'name', 'asset_class_name', 'score_final', 'ytd_return', 'one_year_return', 'expense_ratio', 'firmAUM', 'advisorCount', 'is_recommended']
   }
 };
 
@@ -879,23 +839,27 @@ export const COLUMN_PRESETS = {
 export const COLUMN_CATEGORIES = {
   basic: {
     name: 'Basic Info',
-    columns: ['symbol', 'name', 'assetClass']
+    columns: ['ticker', 'name', 'asset_class_name']
   },
   performance: {
     name: 'Performance',
-    columns: ['ytdReturn', 'oneYearReturn', 'threeYearReturn', 'fiveYearReturn', 'tenYearReturn', 'sparkline']
+    columns: ['ytd_return', 'one_year_return', 'three_year_return', 'five_year_return', 'ten_year_return', 'sparkline']
   },
   risk: {
     name: 'Risk Metrics', 
-    columns: ['sharpeRatio', 'beta', 'alpha', 'stdDev3Y', 'stdDev5Y', 'upCaptureRatio', 'downCaptureRatio']
+    columns: ['sharpe_ratio', 'beta', 'alpha', 'standard_deviation_3y', 'standard_deviation_5y', 'up_capture_ratio', 'down_capture_ratio']
   },
   cost: {
     name: 'Cost & Efficiency',
-    columns: ['expenseRatio', 'managerTenure']
+    columns: ['expense_ratio', 'manager_tenure']
   },
   special: {
     name: 'Special Metrics',
-    columns: ['score', 'percentile', 'recommended']
+    columns: ['score_final', 'percentile', 'is_recommended']
+  },
+  ownership: {
+    name: 'Ownership Data',
+    columns: ['firmAUM', 'advisorCount']
   }
 };
 

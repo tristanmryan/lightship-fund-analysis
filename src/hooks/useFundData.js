@@ -1,6 +1,7 @@
 // src/hooks/useFundData.js
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import fundService from '../services/fundService.js';
+import { getFundsWithPerformance } from '../services/fundDataService.js';
 import asOfStore from '../services/asOfStore.js';
 import ychartsAPI from '../services/ychartsAPI.js';
 import { computeRuntimeScores, loadEffectiveWeightsResolver } from '../services/scoring.js';
@@ -35,11 +36,10 @@ export function useFundData() {
       let fundData;
       let scoringSource = '';
 
-      // Prefer server-side scoring for parity with Asset Classes tab.
-      // Attempt server-scored dataset first; the service already falls back to base funds on error.
-      fundData = await fundService.getAllFundsWithServerScoring(asOf);
-      const hasServerScores = Array.isArray(fundData) && fundData.some(f => Number.isFinite(f?.scores?.final));
-      scoringSource = hasServerScores ? 'server-side' : 'client-side';
+      // Use the new fundDataService instead of old RPC-based methods
+      fundData = await getFundsWithPerformance(asOf);
+      const hasServerScores = false; // fundDataService provides clean base data only
+      scoringSource = 'client-side';
 
       // Load effective weights once per refresh (resolver caches in module)
       if (ENABLE_RUNTIME_SCORING && !hasServerScores) {

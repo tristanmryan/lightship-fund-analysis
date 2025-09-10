@@ -104,10 +104,9 @@ async function fetchFunds(selection, asOf) {
   if (!hasServerScores) {
     try {
       console.log('dY"< [PDF] Falling back to base funds + runtime scoring for asOf:', asOf);
-      // Load base funds (no scores)
-      const dateOnly = asOf ? new Date(asOf + 'T00:00:00Z').toISOString().slice(0,10) : null;
-      const { data: baseFunds, error } = await supabase.rpc('get_funds_as_of', { p_date: dateOnly });
-      if (error) throw error;
+      // Load base funds using new fundDataService
+      const { getFundsWithPerformance } = await import('../../services/fundDataService.js');
+      const baseFunds = await getFundsWithPerformance(asOf);
       const base = baseFunds || [];
       await loadEffectiveWeightsResolver();
       funds = computeRuntimeScores(base, {

@@ -47,12 +47,12 @@ export default function RecommendedList({ asOfMonth = null }) {
         const results = await Promise.all(entries.map(async (acId) => {
           try {
             const { supabase } = fundService; // reuse client
-            const { data, error } = await supabase.rpc('get_asset_class_table', {
-              p_date: asOfMonth ? new Date(asOfMonth + 'T00:00:00Z').toISOString().slice(0,10) : null,
-              p_asset_class_id: acId,
-              p_include_benchmark: true
-            });
-            if (error) throw error;
+            // Use new fundDataService instead of deleted get_asset_class_table RPC
+            const { getFundsWithPerformance } = await import('../../services/fundDataService.js');
+            const data = await getFundsWithPerformance(
+              asOfMonth ? new Date(asOfMonth + 'T00:00:00Z').toISOString().slice(0,10) : null,
+              acId
+            );
             const bench = (data || []).find(r => r.is_benchmark);
             return [acId, bench || null];
           } catch { return [acId, null]; }

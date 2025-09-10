@@ -120,7 +120,8 @@ export async function getTriage(asOf = null) {
       }
 
       // Unresolved funds & classes missing primary benchmark
-      const { data: fundsAsOf } = await supabase.rpc('get_funds_as_of', { p_date: active });
+      const { getFundsWithPerformance } = await import('./fundDataService.js');
+      const fundsAsOf = await getFundsWithPerformance(active);
       const unresolved = (fundsAsOf || []).filter(r => (!r.asset_class_id && !r.asset_class));
       if (unresolved.length > 0) {
         items.push({ severity: 'info', title: 'Unresolved funds (missing asset class)', detail: `${unresolved.length} fund${unresolved.length === 1 ? '' : 's'}`, action: { label: 'Open Catalogs', ev: { tab: 'admin', subtab: 'catalogs', focus: 'classes' } } });

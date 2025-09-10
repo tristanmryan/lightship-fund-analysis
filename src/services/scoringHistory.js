@@ -42,9 +42,9 @@ async function getAvailableSnapshots() {
  */
 async function getFundsAsOfDate(date) {
   try {
-    // Use the existing RPC function to get funds as of a specific date
-    const { data: rows, error } = await supabase.rpc('get_funds_as_of', { p_date: date });
-    if (error) throw error;
+    // Use new fundDataService instead of deleted get_funds_as_of RPC
+    const { getFundsWithPerformance } = await import('./fundDataService.js');
+    const rows = await getFundsWithPerformance(date);
     
     // Transform to the expected format
     const funds = (rows || []).map(r => ({
