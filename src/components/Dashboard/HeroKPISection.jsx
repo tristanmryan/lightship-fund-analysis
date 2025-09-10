@@ -12,14 +12,14 @@ const HeroKPISection = ({
   const kpis = [
     {
       label: 'Portfolio Avg Score',
-      value: loading ? '—' : portfolioAvgScore.toFixed(1),
+      value: loading ? 'N/A' : portfolioAvgScore.toFixed(1),
       icon: TrendingUp,
       color: portfolioAvgScore >= 70 ? '#10B981' : portfolioAvgScore >= 50 ? '#F59E0B' : '#EF4444',
       trend: null
     },
     {
       label: 'Top Performer',
-      value: loading ? '—' : (topPerformer?.ticker || 'N/A'),
+      value: loading ? 'N/A' : (topPerformer?.ticker || 'N/A'),
       subValue: loading ? '' : (topPerformer?.score ? `${topPerformer.score.toFixed(1)}` : ''),
       icon: Award,
       color: '#C9B037',
@@ -27,14 +27,14 @@ const HeroKPISection = ({
     },
     {
       label: 'Assets Analyzed',
-      value: loading ? '—' : assetsAnalyzed.toLocaleString(),
+      value: loading ? 'N/A' : assetsAnalyzed.toLocaleString(),
       icon: BarChart3,
       color: '#3B82F6',
       trend: null
     },
     {
       label: 'Recommended',
-      value: loading ? '—' : recommendedCount.toLocaleString(),
+      value: loading ? 'N/A' : recommendedCount.toLocaleString(),
       subValue: loading ? '' : `${assetsAnalyzed > 0 ? ((recommendedCount / assetsAnalyzed) * 100).toFixed(0) : 0}%`,
       icon: Award,
       color: '#10B981',
@@ -42,7 +42,7 @@ const HeroKPISection = ({
     },
     {
       label: 'Alerts',
-      value: loading ? '—' : alertCount.toLocaleString(),
+      value: loading ? 'N/A' : alertCount.toLocaleString(),
       icon: AlertTriangle,
       color: alertCount > 0 ? '#EF4444' : '#6B7280',
       trend: null
@@ -73,3 +73,4 @@ const HeroKPISection = ({
 };
 
 export default HeroKPISection;
+
