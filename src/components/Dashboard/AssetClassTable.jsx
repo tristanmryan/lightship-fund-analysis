@@ -1,7 +1,7 @@
 // src/components/Dashboard/AssetClassTable.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, Shield, Calendar, BarChart3, Target, Star } from 'lucide-react';
-import fundService from '../../services/fundService';
+import { getFundsWithPerformance } from '../../services/fundDataService';
 import asOfStore from '../../services/asOfStore';
 import scoringProfilesService from '../../services/scoringProfilesService';
 import { fmt } from '../../utils/formatters';
@@ -71,29 +71,21 @@ const AssetClassTable = ({
       setError(null);
 
       try {
-        const tableData = await fundService.getAssetClassTable(
-          asOfMonth,
-          assetClassId,
-          true // include benchmark
-        );
+        // Use the new consolidated fund data service
+        const funds = await getFundsWithPerformance(asOfMonth, assetClassId);
 
-        // Clean corrupted ticker data by removing appended labels
-        const cleanedData = (tableData || []).map(row => {
-          const originalTicker = row.ticker;
-          const cleanedTicker = cleanTicker(row.ticker);
+        // Transform data for component compatibility
+        const transformedData = funds.map(fund => ({
+          ...fund,
+          // Add isBenchmark property for UI logic compatibility
+          isBenchmark: fund.ticker && fund.ticker.toLowerCase().includes('benchmark'),
+          // Ensure score fields are available
+          score_final: fund.score_final || fund.score || 0
+        }));
 
-          const transformedRow = {
-            ...row,
-            ticker: cleanedTicker,
-            is_recommended: row.is_recommended || isRecommendedTicker(row.ticker),
-            isBenchmark: row.is_benchmark || isBenchmarkTicker(row.ticker)
-          };
-          return transformedRow;
-        });
-
-        setData(cleanedData);
+        setData(transformedData);
       } catch (err) {
-        console.error('AssetClassTable: error loading asset class table', err);
+        console.error('AssetClassTable: error loading asset class data', err);
         setError('Failed to load asset class data');
       } finally {
         setLoading(false);
@@ -103,26 +95,7 @@ const AssetClassTable = ({
     loadData();
   }, [assetClassId, assetClassName, asOfMonth, selectedProfile]);
 
-  // Clean corrupted ticker data
-  const cleanTicker = (ticker) => {
-    if (!ticker) return ticker;
-    return ticker
-      .replace(/Recommended$/i, '')
-      .replace(/Benchmark$/i, '')
-      .trim();
-  };
-
-  // Check if ticker indicates recommended status (legacy data)
-  const isRecommendedTicker = (ticker) => {
-    if (!ticker) return false;
-    return ticker.toLowerCase().includes('recommended');
-  };
-
-  // Check if ticker indicates benchmark status (legacy data)
-  const isBenchmarkTicker = (ticker) => {
-    if (!ticker) return false;
-    return ticker.toLowerCase().includes('benchmark');
-  };
+  // Legacy cleanup functions removed - fundDataService provides clean, consistent data
 
   // Modern score badge with CSS classes
   const renderScoreBadge = (score) => {
@@ -233,16 +206,7 @@ const AssetClassTable = ({
     return finalSorted;
   }, [data, sortConfig]);
 
-  // Helper function to get the correct field value with fallbacks
-  const getFieldValue = (row, fieldName, fallbacks = []) => {
-    if (row[fieldName] != null) return row[fieldName];
-    
-    for (const fallback of fallbacks) {
-      if (row[fallback] != null) return row[fallback];
-    }
-    
-    return null;
-  };
+  // getFieldValue function removed - fundDataService provides consistent field names
 
   // Handle sorting
   const handleSort = (key) => {
@@ -384,7 +348,7 @@ const AssetClassTable = ({
                 <div className="kpi-trend">
                   {(() => {
                     const avgScore = nonBenchmarkCount > 0 
-                      ? (data.filter(r => !r.isBenchmark).reduce((sum, r) => sum + (getFieldValue(r, 'score_final', ['score', 'final_score']) || 0), 0) / nonBenchmarkCount)
+                      ? (data.filter(r => !r.isBenchmark).reduce((sum, r) => sum + (r.score_final || 0), 0) / nonBenchmarkCount)
                       : 0;
                     return (
                       <span className={`trend-indicator ${avgScore >= 60 ? 'trend-up' : avgScore >= 40 ? 'trend-neutral' : 'trend-down'}`}>
@@ -396,7 +360,7 @@ const AssetClassTable = ({
               </div>
               <div className="kpi-content">
                 <div className="kpi-value">
-                  {nonBenchmarkCount > 0 ? (data.filter(r => !r.isBenchmark).reduce((sum, r) => sum + (getFieldValue(r, 'score_final', ['score', 'final_score']) || 0), 0) / nonBenchmarkCount).toFixed(1) : '0.0'}
+                  {nonBenchmarkCount > 0 ? (data.filter(r => !r.isBenchmark).reduce((sum, r) => sum + (r.score_final || 0), 0) / nonBenchmarkCount).toFixed(1) : '0.0'}
                 </div>
                 <div className="kpi-label">Portfolio Score</div>
               </div>
@@ -537,28 +501,28 @@ const AssetClassTable = ({
 
                     {/* Score Column */}
                     <td className="asset-table-cell">
-                      {renderScoreBadge(getFieldValue(row, 'score_final', ['score', 'final_score']))}
+                      {renderScoreBadge(row.score_final)}
                     </td>
 
                     {/* Return Columns */}
                     <td className="asset-table-cell">
-                      {renderReturn(getFieldValue(row, 'ytd_return', ['ytd', 'Total Return - YTD (%)']), 'YTD')}
+                      {renderReturn(row.ytd_return, 'YTD')}
                     </td>
                     <td className="asset-table-cell">
-                      {renderReturn(getFieldValue(row, 'one_year_return', ['1 Year', 'Total Return - 1 Year (%)']), '1Y')}
+                      {renderReturn(row.one_year_return, '1Y')}
                     </td>
                     <td className="asset-table-cell">
-                      {renderReturn(getFieldValue(row, 'three_year_return', ['3 Year', 'Annualized Total Return - 3 Year (%)']), '3Y')}
+                      {renderReturn(row.three_year_return, '3Y')}
                     </td>
 
                     {/* Expense Ratio */}
                     <td className="asset-table-cell">
-                      {renderExpenseRatio(getFieldValue(row, 'expense_ratio', ['Net Exp Ratio (%)']))}
+                      {renderExpenseRatio(row.expense_ratio)}
                     </td>
 
                     {/* Sharpe Ratio */}
                     <td className="asset-table-cell">
-                      {renderSharpeRatio(getFieldValue(row, 'sharpe_ratio', ['Sharpe Ratio - 3 Year', 'Sharpe Ratio']))}
+                      {renderSharpeRatio(row.sharpe_ratio)}
                     </td>
                   </tr>
                 );
