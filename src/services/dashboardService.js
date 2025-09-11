@@ -1,8 +1,48 @@
 // src/services/dashboardService.js
 import { supabase, TABLES } from './supabase.js';
 import fundService from './fundService.js';
-import { computeRuntimeScores, loadEffectiveWeightsResolver } from './scoring.js';
+import { calculateScores } from './scoringService.js';
+import { getBulkWeightsForAssetClasses } from './weightService.js';
 import asOfStore from './asOfStore.js';
+
+// Helper function to apply new scoring system
+async function scoreWithNewSystem(fundData) {
+  if (!fundData || fundData.length === 0) return [];
+  
+  // Get unique asset class IDs  
+  const assetClassIds = [...new Set(
+    fundData
+      .filter(f => f.asset_class_id)
+      .map(f => f.asset_class_id)
+  )];
+  
+  // Load weights
+  const weightsByAssetClass = assetClassIds.length > 0 
+    ? await getBulkWeightsForAssetClasses(assetClassIds)
+    : {};
+  
+  // Map to asset class names
+  const weightsByAssetClassName = {};
+  fundData.forEach(fund => {
+    if (fund.asset_class_id && weightsByAssetClass[fund.asset_class_id]) {
+      const assetClassName = fund.asset_class_name || fund.asset_class || 'Unknown';
+      if (!weightsByAssetClassName[assetClassName]) {
+        weightsByAssetClassName[assetClassName] = weightsByAssetClass[fund.asset_class_id];
+      }
+    }
+  });
+  
+  // Calculate scores and add legacy field mapping
+  const scoredFunds = calculateScores(fundData, weightsByAssetClassName);
+  return scoredFunds.map(fund => ({
+    ...fund,
+    score: fund.score_final,
+    scores: {
+      final: fund.score_final,
+      breakdown: fund.score_breakdown
+    }
+  }));
+}
 
 // Utilities
 const toDateOnly = (d) => (typeof d === 'string' ? d.slice(0,10) : (d ? new Date(d).toISOString().slice(0,10) : null));
@@ -166,9 +206,9 @@ export async function getDeltas(currAsOf = null, prevAsOf = null) {
     fundService.getAllFunds(current),
     fundService.getAllFunds(previous)
   ]);
-  await loadEffectiveWeightsResolver();
-  const currScored = computeRuntimeScores(currFunds || []);
-  const prevScored = computeRuntimeScores(prevFunds || []);
+  // Use new scoring system
+  const currScored = await scoreWithNewSystem(currFunds || []);
+  const prevScored = await scoreWithNewSystem(prevFunds || []);
   const prevMap = new Map((prevScored || []).map(f => [String(f.ticker || f.symbol || '').toUpperCase(), f]));
   const changes = [];
   let ytdSum = 0; let ytdCount = 0; let adv = 0; let dec = 0;
