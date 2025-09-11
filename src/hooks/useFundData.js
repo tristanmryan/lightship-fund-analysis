@@ -5,6 +5,53 @@ import { getFundsWithPerformance } from '../services/fundDataService.js';
 import asOfStore from '../services/asOfStore.js';
 import ychartsAPI from '../services/ychartsAPI.js';
 import { computeRuntimeScores, loadEffectiveWeightsResolver } from '../services/scoring.js';
+import { calculateScores } from '../services/scoringService.js';
+import { getBulkWeightsForAssetClasses } from '../services/weightService.js';
+
+// Helper function to apply clean scoring system
+async function applyCleanScoring(fundData) {
+  try {
+    // Get unique asset class IDs
+    const assetClassIds = [...new Set(
+      fundData
+        .filter(f => f.asset_class_id)
+        .map(f => f.asset_class_id)
+    )];
+    
+    // Load custom weights for all asset classes (with fallback to defaults)
+    const weightsByAssetClass = assetClassIds.length > 0 
+      ? await getBulkWeightsForAssetClasses(assetClassIds)
+      : {};
+    
+    // Map asset class IDs to names for calculateScores function
+    const weightsByAssetClassName = {};
+    fundData.forEach(fund => {
+      if (fund.asset_class_id && weightsByAssetClass[fund.asset_class_id]) {
+        const assetClassName = fund.asset_class_name || fund.asset_class || 'Unknown';
+        if (!weightsByAssetClassName[assetClassName]) {
+          weightsByAssetClassName[assetClassName] = weightsByAssetClass[fund.asset_class_id];
+        }
+      }
+    });
+    
+    // Calculate scores using new clean scoring system
+    const scoredFunds = calculateScores(fundData, weightsByAssetClassName);
+    
+    // Add legacy field mapping for backward compatibility
+    return scoredFunds.map(fund => ({
+      ...fund,
+      score: fund.score_final,
+      scores: {
+        final: fund.score_final,
+        breakdown: fund.score_breakdown
+      }
+    }));
+    
+  } catch (error) {
+    console.error('Error in applyCleanScoring:', error);
+    throw error;
+  }
+}
 
 export function useFundData() {
   const [funds, setFunds] = useState([]);
@@ -46,12 +93,22 @@ export function useFundData() {
         await loadEffectiveWeightsResolver();
       }
 
-      // Apply client-side scoring only when server-side scores are not available
-      const enriched = (hasServerScores || !ENABLE_RUNTIME_SCORING) ? fundData : computeRuntimeScores(fundData, {
-        useAdvancedWeighting: true,
-        enableAdvancedFeatures: true,
-        focusArea: 'balanced' // Can be 'risk', 'performance', or 'balanced'
-      });
+      // Apply client-side scoring using new clean scoring system
+      let enriched = fundData;
+      if (!hasServerScores && ENABLE_RUNTIME_SCORING) {
+        try {
+          // Use new clean scoring system
+          enriched = await applyCleanScoring(fundData);
+        } catch (error) {
+          console.warn('New scoring system failed, falling back to legacy:', error);
+          // Fallback to old system if new one fails
+          enriched = computeRuntimeScores(fundData, {
+            useAdvancedWeighting: true,
+            enableAdvancedFeatures: true,
+            focusArea: 'balanced'
+          });
+        }
+      }
 
       // Normalize fields so all dashboards have a single logical shape
       // - score: prefer scores.final (server/client), then legacy score/score_final
@@ -96,16 +153,27 @@ export function useFundData() {
   useEffect(() => {
     if (!ENABLE_RUNTIME_SCORING || USE_SERVER_SCORING) return;
     if (!Array.isArray(funds) || funds.length === 0) return;
-    try {
-      const rescored = computeRuntimeScores(funds, {
-        useAdvancedWeighting: true,
-        enableAdvancedFeatures: true,
-        focusArea: 'balanced'
-      });
-      setFunds(rescored);
-    } catch (e) {
-      // no-op: don't break UI on scoring issues
-    }
+    
+    // Use new clean scoring system for runtime rescoring
+    (async () => {
+      try {
+        const rescored = await applyCleanScoring(funds);
+        setFunds(rescored);
+      } catch (e) {
+        console.warn('Runtime rescoring with new system failed:', e);
+        try {
+          // Fallback to old system
+          const rescored = computeRuntimeScores(funds, {
+            useAdvancedWeighting: true,
+            enableAdvancedFeatures: true,
+            focusArea: 'balanced'
+          });
+          setFunds(rescored);
+        } catch (fallbackError) {
+          // no-op: don't break UI on scoring issues
+        }
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asOfMonth, funds.length, ENABLE_RUNTIME_SCORING, USE_SERVER_SCORING]);
 

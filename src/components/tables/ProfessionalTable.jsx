@@ -93,7 +93,6 @@ export function ProfessionalTable({
                 {columns.map((col) => (
                   <td
                     key={col.key}
-                    className={col.numeric ? 'number' : undefined}
                     data-col-key={col.key}
                     className={`col-${col.key} ${col.numeric ? 'number' : ''}`}
                     style={{

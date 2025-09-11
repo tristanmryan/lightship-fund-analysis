@@ -107,7 +107,7 @@ const ScoringTab = () => {
   // Handle asset class selection change
   const handleAssetClassChange = useCallback(async (assetClassId) => {
     if (hasUnsavedChanges) {
-      if (!confirm('You have unsaved changes. Continue without saving?')) {
+      if (!window.confirm('You have unsaved changes. Continue without saving?')) {
         return;
       }
     }
@@ -200,7 +200,7 @@ const ScoringTab = () => {
   
   // Reset weights to defaults
   const handleReset = useCallback(async () => {
-    if (!confirm('Reset all weights for this asset class to global defaults?')) return;
+    if (!window.confirm('Reset all weights for this asset class to global defaults?')) return;
     
     try {
       setLoading(true);

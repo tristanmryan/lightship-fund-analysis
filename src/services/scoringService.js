@@ -232,7 +232,20 @@ function calculateFundScore(fund, statistics, weights) {
  * @returns {Object[]} Funds with calculated scores
  */
 export function calculateAssetClassScores(funds, weights) {
-  return calculateScores(funds, { '*': weights }); // Apply same weights to all asset classes
+  if (!funds || funds.length === 0) return [];
+
+  // Get unique asset class names from the funds
+  const assetClassNames = [...new Set(
+    funds.map(fund => getAssetClassName(fund))
+  )];
+  
+  // Create weightsByAssetClass object with the same weights for each asset class
+  const weightsByAssetClass = {};
+  assetClassNames.forEach(assetClass => {
+    weightsByAssetClass[assetClass] = weights;
+  });
+  
+  return calculateScores(funds, weightsByAssetClass);
 }
 
 /**
