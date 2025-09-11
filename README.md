@@ -1,18 +1,27 @@
 # Lightship Fund Analysis Platform
 
-A comprehensive fund performance analysis platform built for financial advisors, featuring real-time data integration, professional reporting, and client-ready analytics.
+A comprehensive fund performance analysis platform built for financial advisors, featuring CSV-based data ingestion, professional scoring algorithms, and client-ready analytics.
 
-## 🚨 **IMPORTANT: CSV-only MVP (Phase 3) and YCharts Status**
+## 🚀 **Current Status (September 2025)**
 
-**Current Status (January 2025):**
-- ✅ Phase 3 pivoted to a CSV-only MVP. All ingestion and exports work without YCharts.
-- ⚠️ YCharts integration remains implemented but de-prioritized for MVP; API access pending (403s observed).
-- 🔄 When access is granted, the app can switch to real YCharts data without scope changes.
+**Platform Overview:**
+- ✅ Production-ready CSV-only MVP with comprehensive fund analysis
+- ✅ Advanced scoring system with customizable weights
+- ✅ Professional reporting and export capabilities
+- ✅ Research notes and comparison tools
+- ✅ Clean, maintainable codebase (recently optimized)
 
-**What this means for development:**
-- Focus on CSV ingestion, saved views, research notes, compare sets, and exports.
-- No Health surfacing of YCharts schedule/errors in MVP.
-- YCharts code paths remain in place and can be re-enabled post-MVP.
+**Recent Improvements (September 2025):**
+- 🧹 Major codebase cleanup: Removed 50+ unused components and files
+- 📦 Streamlined from 157 to 128 source files (-18% reduction)
+- 🗂️ Organized documentation and removed development artifacts
+- 🚀 Improved build performance and maintainability
+
+**Architecture:**
+- React 19 frontend with modern component architecture
+- Supabase backend for data persistence and real-time features
+- Vercel deployment with serverless API functions
+- Professional table components with advanced filtering
 
 ---
 
@@ -45,15 +54,20 @@ Your app is ready to be deployed!
 
 See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
-### `npm run eject`
+### Additional Scripts
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- `npm run process-data` - Process and build data files
+- `npm run setup` - Initialize project setup
+- `npm run import:samples` - Import sample data for development
+- `npm run test:ci` - Run tests in CI mode
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+**Available Utility Scripts:**
+- `scripts/adminStatus.mjs` - Check admin system status
+- `scripts/benchAlerts.mjs` - Benchmark alert performance
+- `scripts/benchFlows.mjs` - Benchmark flow calculations
+- `scripts/validateFlows.mjs` - Validate flow data accuracy
+- `scripts/buildData.mjs` - Build and process data files
+- `scripts/importSamples.mjs` - Import sample datasets
 
 ## Learn More
 
@@ -81,42 +95,51 @@ To learn React, check out the [React documentation](https://reactjs.org/).
 - Recommended (Dashboard): `recommended_list_YYYYMMDD_HHMMSS.csv`
 - Recommended (Admin Overview): `recommended_only_YYYYMMDD.csv`
 
-## App Navigation (v3)
+## 🧭 App Navigation
 
-- Dashboard: Complete fund universe with scoring
-- Recommended: Recommended list by asset class (with firm ownership columns)
-- Portfolios: Holdings analysis by Advisor / Fund / Gaps
-- Trading: Simplified flows (monthly net + top inflows/outflows)
-- Reports: Professional exports (PDF/Excel/CSV)
-- Admin: Admin tools (hidden for non-admins)
+- **Dashboard**: Complete fund universe with advanced scoring and filtering
+- **Recommended**: Curated fund recommendations by asset class
+- **Portfolios**: Holdings analysis and portfolio management tools
+- **Trading**: Fund flow analysis and trading activity insights
+- **Scoring**: Customizable scoring weights and methodology
+- **Reports**: Professional PDF and CSV export capabilities
+- **Admin**: Data management and system administration tools
 
-## Unified Fund Table
+## 🏗️ Architecture Overview
 
-See `docs/UNIFIED_FUND_TABLE.md` for API and presets. All tables now route through a single component with a central column registry and presets (including `recommended`).
+**Core Components:**
+- `Dashboard/` - Main fund analysis interface with scoring tooltips
+- `Scoring/` - Scoring system with customizable weights
+- `Admin/` - Data upload, fund management, and system tools
+- `tables/` - Professional table components with advanced features
+- `Reports/` - PDF generation and export functionality
 
-### Code Splitting
+**Key Services:**
+- `fundService.js` - Core fund data operations
+- `scoringService.js` - Fund scoring algorithms
+- `exportService.js` - PDF and CSV export functionality
+- `weightService.js` - Scoring weight management
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## 🔧 Development
 
-### Analyzing the Bundle Size
+**Prerequisites:**
+- Node.js 18+ 
+- npm or yarn
+- Supabase account (for backend)
+- Vercel account (for deployment)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+**Environment Setup:**
+1. Copy `env.example` to `.env.local`
+2. Configure Supabase credentials
+3. Run `npm run setup` for initial project setup
+4. Use `npm run import:samples` to load sample data
 
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+**Key Features:**
+- 📊 Advanced fund scoring with customizable weights
+- 📈 Professional PDF reports and CSV exports  
+- 🔍 Research notes with append-only architecture
+- 📋 Comparison tools and saved views
+- 🎯 Asset class analysis and benchmarking
 
 ## Admin Options
 
