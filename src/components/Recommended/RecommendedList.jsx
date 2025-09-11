@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import ProfessionalTable from '../tables/ProfessionalTable';
 import ScoreTooltip from '../Dashboard/ScoreTooltip';
 import fundService from '../../services/fundService';
+import { useFundData } from '../../hooks/useFundData';
 import { exportAssetClassTableCSV } from '../../services/exportService.js';
 
 const DEFAULT_GROUPS = [
@@ -14,45 +15,44 @@ const DEFAULT_GROUPS = [
 ];
 
 export default function RecommendedList({ asOfMonth = null }) {
-  const [rows, setRows] = useState([]);
+  // Use useFundData hook to get funds with scoring
+  const { funds, loading, error: fundsError } = useFundData();
+  
   const [benchmarks, setBenchmarks] = useState(new Map()); // asset_class_id -> benchmark row
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState('All');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fundService.getRecommendedFundsWithOwnership(asOfMonth);
-      setRows(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error('RecommendedList: load failed', e);
-      setError('Failed to load recommended funds');
-    } finally {
-      setLoading(false);
-    }
-  }, [asOfMonth]);
+  // Filter for recommended funds from useFundData
+  const recommendedFunds = useMemo(() => {
+    if (!funds || funds.length === 0) return [];
+    return funds.filter(fund => fund.is_recommended || fund.recommended);
+  }, [funds]);
 
-  useEffect(() => { load(); }, [load]);
-
-  // After rows load, fetch benchmarks per asset class
+  // Set error from useFundData
   useEffect(() => {
+    if (fundsError) {
+      setError(fundsError);
+    }
+  }, [fundsError]);
+
+  // After recommendedFunds load, fetch benchmarks per asset class
+  useEffect(() => {
+    if (recommendedFunds.length === 0) return;
     let cancel = false;
     (async () => {
       try {
         const byAc = new Map();
-        (rows || []).forEach(r => { if (r.asset_class_id) byAc.set(r.asset_class_id, r.asset_class_name || r.asset_class || ''); });
+        (recommendedFunds || []).forEach(r => { if (r.asset_class_id) byAc.set(r.asset_class_id, r.asset_class_name || r.asset_class || ''); });
         const entries = Array.from(byAc.keys());
         const results = await Promise.all(entries.map(async (acId) => {
           try {
             const { supabase } = fundService; // reuse client
-            const { data, error } = await supabase.rpc('get_asset_class_table', {
-              p_date: asOfMonth ? new Date(asOfMonth + 'T00:00:00Z').toISOString().slice(0,10) : null,
-              p_asset_class_id: acId,
-              p_include_benchmark: true
-            });
-            if (error) throw error;
+            // Use new fundDataService instead of deleted get_asset_class_table RPC
+            const { getFundsWithPerformance } = await import('../../services/fundDataService.js');
+            const data = await getFundsWithPerformance(
+              asOfMonth ? new Date(asOfMonth + 'T00:00:00Z').toISOString().slice(0,10) : null,
+              acId
+            );
             const bench = (data || []).find(r => r.is_benchmark);
             return [acId, bench || null];
           } catch { return [acId, null]; }
@@ -61,23 +61,23 @@ export default function RecommendedList({ asOfMonth = null }) {
       } catch { if (!cancel) setBenchmarks(new Map()); }
     })();
     return () => { cancel = true; };
-  }, [rows, asOfMonth]);
+  }, [recommendedFunds, asOfMonth]);
 
   const groups = useMemo(() => {
     const set = new Set(DEFAULT_GROUPS);
-    (rows || []).forEach(r => { if (r.asset_class_name) set.add(r.asset_class_name); });
+    (recommendedFunds || []).forEach(r => { if (r.asset_class_name) set.add(r.asset_class_name); });
     return ['All', ...Array.from(set).filter(Boolean)];
-  }, [rows]);
+  }, [recommendedFunds]);
 
   const grouped = useMemo(() => {
     const map = new Map();
-    (rows || []).forEach(r => {
+    (recommendedFunds || []).forEach(r => {
       const key = r.asset_class_name || r.asset_class || 'Unclassified';
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(r);
     });
     return map;
-  }, [rows]);
+  }, [recommendedFunds]);
 
   const onExport = (assetClassName, data) => {
     try {
@@ -126,7 +126,7 @@ export default function RecommendedList({ asOfMonth = null }) {
         </div>
       ); })}
 
-      {!rows.length && !loading && (
+      {!recommendedFunds.length && !loading && (
         <div className="card" style={{ padding: 12, color: '#6b7280' }}>No recommended funds found.</div>
       )}
     </div>

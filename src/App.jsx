@@ -1,6 +1,6 @@
 ﻿// App.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Home as HomeIcon, BarChart3 as BarChartIcon, Settings, Download, RefreshCw, HelpCircle, Info, TrendingUp as TrendingUpIcon, Briefcase as BriefcaseIcon } from 'lucide-react';
+import { Home as HomeIcon, BarChart3 as BarChartIcon, Settings, Download, RefreshCw, HelpCircle, Info, TrendingUp as TrendingUpIcon, Briefcase as BriefcaseIcon, Sliders as SlidersIcon } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './App.css'; // Import the CSS file
 import './styles/professional.css';
@@ -26,6 +26,7 @@ import Portfolios from './components/Portfolios/Portfolios.jsx';
 import Trading from './components/Trading/Trading.jsx';
 // Command Center removed in v3 streamline
 import RecommendedList from './components/Recommended/RecommendedList.jsx';
+import ScoringTab from './components/Scoring/ScoringTab.jsx';
 import { 
   exportToExcel, 
   downloadFile
@@ -80,6 +81,7 @@ const App = () => {
     recommended: '/recommended',
     portfolios: '/portfolios',
     trading: '/trading',
+    scoring: '/scoring',
     reports: '/reports',
     admin: '/admin'
   };
@@ -87,6 +89,7 @@ const App = () => {
     if (pathname.startsWith('/recommended')) return 'recommended';
     if (pathname.startsWith('/portfolios')) return 'portfolios';
     if (pathname.startsWith('/trading')) return 'trading';
+    if (pathname.startsWith('/scoring')) return 'scoring';
     if (pathname.startsWith('/reports')) return 'reports';
     // if (pathname.startsWith('/command')) return 'command';
     if (pathname.startsWith('/admin')) return 'admin';
@@ -268,7 +271,7 @@ const App = () => {
       }
       // Number keys for tab navigation
       if (e.key >= '1' && e.key <= '5' && !e.ctrlKey && !e.metaKey) {
-        const tabs = ['dashboard', 'recommended', 'portfolios', 'trading', 'reports'];
+        const tabs = ['dashboard', 'recommended', 'portfolios', 'trading', 'scoring', 'reports'];
         const tabIndex = parseInt(e.key) - 1;
         if (tabIndex < tabs.length) {
           const t = tabs[tabIndex];
@@ -396,6 +399,13 @@ const App = () => {
               <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
                 <TrendingUpIcon size={16} aria-hidden />
                 <span>Trading</span>
+              </span>
+            </button>
+            {/* Scoring */}
+            <button className={activeTab === 'scoring' ? 'active' : ''} onClick={() => { setActiveTab('scoring'); navigate('/scoring'); }}>
+              <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+                <SlidersIcon size={16} aria-hidden />
+                <span>Scoring</span>
               </span>
             </button>
             <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => { setActiveTab('reports'); navigate('/reports'); }}>
@@ -592,6 +602,11 @@ const App = () => {
         </div>
       )}
 
+      {/* Scoring Tab */}
+      {activeTab === 'scoring' && (
+        <ScoringTab />
+      )}
+
       {/* Command Center removed in v3 */}
 
       {/* Admin Tab - Role-based access */}
@@ -697,6 +712,9 @@ const App = () => {
               <div style={{ fontSize: '0.875rem', color: '#374151' }}>
                 <div style={{ marginBottom: '0.5rem' }}>
                   <strong>Dashboard:</strong> Visual overview with fund performance analysis and key metrics
+                </div>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <strong>Scoring:</strong> Configure metric weights and see real-time scoring impact
                 </div>
                 <div style={{ marginBottom: '0.5rem' }}>
                   <strong>Asset Classes:</strong> Performance analysis by asset class with benchmark comparisons

@@ -1,52 +1,17 @@
 // src/components/Dashboard/Dashboard.jsx
-/*
-Current Data Flow Analysis (captured via scripts/traceDashboardFlow.mjs on local env)
-
-1) Dashboard load sequence
-- Dashboard.jsx useEffect → fundService.getFundsWithOwnership(null)
-- fundService.getFundsWithOwnership → Promise.all([
-    getAllFundsWithScoring(null),
-    getOwnershipSummary(null)
-  ])
-- getAllFundsWithScoring → getAllFundsWithServerScoring(null)
-  • RPC get_funds_as_of({ p_date: null }) → 149 rows
-    - First row sample (abridged):
-      { ticker: 'AMEFX', asset_class_id: '89d4d5c0-…', ytd_return: 10.3272, expense_ratio: 0.37 }
-  • SELECT asset_classes (merge names/sorts)
-  • For each asset_class_id present:
-    RPC get_asset_class_table({ p_date: null, p_asset_class_id, p_include_benchmark: false })
-    - Example for acId '89d4d5c0-…' (first row):
-      { ticker: 'PMFYX', score_final: 54.84866666666667, percentile: 100, is_benchmark: false }
-  • Merge: base fund rows + scores map → funds[i].scores.final
-- getOwnershipSummary(null)
-  • RPC get_fund_ownership_summary({}) → 0 items (in this env)
-  • Fallback RPC get_fund_utilization({ p_date: null, p_asset_class: null, p_limit: 5000 }) → 0 items
-  • Merge ownership fields: firmAUM, advisorCount (zeros when no data)
-
-2) Score display values (first fund in array)
-- funds[0].ticker: 'AMEFX'
-- funds[0].scores.final: 46.631166666666665
-- funds[0].score_final: undefined
-- funds[0].score: undefined
-- funds[0].score_breakdown: undefined
-- Dashboard score accessor resolves to 46.631166666666665
-
-3) ProfessionalTable.jsx checks
-- Receives `funds` prop (length observed: 149)
-- Render-time log added: [ProfessionalTable] first row snapshot { ticker, name, score_accessor_value, scores_final, score_final, score }
-  • On this dataset, score_accessor_value = 46.631166666666665 and matches funds[0].scores.final
-- Score column accessor is working; Dashboard renderer wraps value in <ScoreTooltip /> when numeric
-*/
 import React from 'react';
 import ProfessionalTable from '../tables/ProfessionalTable';
 import fundService from '../../services/fundService';
+import { useFundData } from '../../hooks/useFundData';
 import './SimplifiedDashboard.css';
 import ScoreTooltip from './ScoreTooltip';
+import ScoreBadge from '../ScoreBadge';
+import flowsService from '../../services/flowsService';
 import { runDiagnostics } from '../../utils/diagnostics';
 
 function KPICard({ label, value, subtext, format }) {
   const formatValue = (v) => {
-    if (v == null) return '—';
+    if (v == null) return 'N/A';
     if (format === 'currency') return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(v) || 0);
     if (format === 'score') return Number(v).toFixed(1);
     if (typeof v === 'number') return v.toLocaleString('en-US');
@@ -71,46 +36,101 @@ function InsightCard({ title, children }) {
 }
 
 export default function Dashboard() {
-  const [funds, setFunds] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [summary, setSummary] = React.useState({ totalAUM: 0, totalFunds: 0, recommendedCount: 0, avgScore: 0, monthlyFlows: 0 });
+  // Use the useFundData hook for funds with scoring
+  const { funds, loading: fundsLoading } = useFundData();
+  
+  const [summary, setSummary] = React.useState({ totalAUM: 0, totalFunds: 0, recommendedCount: 0, avgScore: 0, monthlyFlows: null, ownershipAvailable: false });
+  const [newRecommendations, setNewRecommendations] = React.useState([]);
 
-  // Run database diagnostics on mount
+  // Run database diagnostics on mount (dev only)
   React.useEffect(() => {
     try {
-      runDiagnostics();
+      if (process.env.REACT_APP_DEBUG_MODE === 'true' || process.env.NODE_ENV === 'development') {
+        runDiagnostics();
+      }
     } catch (e) {
-      console.error('Diagnostics failed to run:', e);
+      // ignore in production
     }
   }, []);
 
+  // Update summary when funds data changes
+  React.useEffect(() => {
+    if (!funds || funds.length === 0) return;
+    
+    const fs = Array.isArray(funds) ? funds : [];
+    // compute summary
+    const totalFunds = fs.length;
+    const recommendedCount = fs.filter((f) => f.is_recommended || f.recommended).length;
+    const aumValues = fs.map((f) => Number(f.firmAUM || 0));
+    const totalAUM = aumValues.reduce((s, v) => s + v, 0);
+    const ownershipAvailable = aumValues.some((v) => v > 0);
+    const scores = fs.map((f) => (typeof f?.scores?.final === 'number' ? f.scores.final : (typeof f.score_final === 'number' ? f.score_final : (typeof f.score === 'number' ? f.score : null)))).filter((n) => n != null);
+    const avgScore = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    
+    setSummary(prevSummary => ({ 
+      ...prevSummary, 
+      totalAUM, 
+      totalFunds, 
+      recommendedCount, 
+      avgScore, 
+      ownershipAvailable 
+    }));
+  }, [funds]);
+
+  // Load latest net flows KPI
   React.useEffect(() => {
     let cancel = false;
     (async () => {
       try {
-        setLoading(true);
-        const rows = await fundService.getFundsWithOwnership(null);
-        if (cancel) return;
-        const fs = Array.isArray(rows) ? rows : [];
-        setFunds(fs);
-        // compute summary
-        const totalFunds = fs.length;
-        const recommendedCount = fs.filter((f) => f.is_recommended || f.recommended).length;
-        const totalAUM = fs.reduce((s, f) => s + (Number(f.firmAUM || 0)), 0);
-        const scores = fs.map((f) => (typeof f?.scores?.final === 'number' ? f.scores.final : (typeof f.score_final === 'number' ? f.score_final : (typeof f.score === 'number' ? f.score : null)))).filter((n) => n != null);
-        const avgScore = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-        setSummary({ totalAUM, totalFunds, recommendedCount, avgScore, monthlyFlows: 0 });
-      } finally {
-        if (!cancel) setLoading(false);
+        const months = await flowsService.listMonths(12);
+        const latest = Array.isArray(months) && months.length > 0 ? months[0] : null;
+        if (!latest) return;
+        const rows = await flowsService.getFundFlows(latest, null, 5000);
+        const net = (rows || []).reduce((s, r) => s + Number(r?.net_flow || 0), 0);
+        if (!cancel) setSummary((s) => ({ ...s, monthlyFlows: Number.isFinite(net) ? net : null }));
+      } catch {
+        // leave null when unavailable
       }
     })();
     return () => { cancel = true; };
   }, []);
 
+  // Compute newly recommended funds vs prior snapshot
+  React.useEffect(() => {
+    let cancel = false;
+    (async () => {
+      try {
+        const months = await fundService.listSnapshotMonths(24);
+        if (!Array.isArray(months) || months.length < 2) {
+          const latestRecs = (funds || []).filter(f => f.is_recommended).slice(0, 5);
+          if (!cancel) setNewRecommendations(latestRecs);
+          return;
+        }
+        const prev = months[1];
+        const prevRecs = await fundService.getRecommendedFundsWithOwnership(prev);
+        const prevSet = new Set((prevRecs || []).map(r => r.ticker));
+        const latestRecs = (funds || []).filter(f => f.is_recommended);
+        const newly = latestRecs.filter(f => !prevSet.has(f.ticker));
+        newly.sort((a, b) => ((b?.scores?.final ?? b?.score_final ?? b?.score) || 0) - ((a?.scores?.final ?? a?.score_final ?? a?.score) || 0));
+        if (!cancel) setNewRecommendations(newly.slice(0, 5));
+      } catch {
+        const fallback = (funds || []).filter(f => f.is_recommended).slice(0, 5);
+        if (!cancel) setNewRecommendations(fallback);
+      }
+    })();
+    return () => { cancel = true; };
+  }, [funds]);
+
   const DASHBOARD_COLUMNS = React.useMemo(() => ([
-    { key: 'symbol', label: 'Symbol', width: '90px', accessor: (row) => row.ticker || row.symbol || '', render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
-    { key: 'name', label: 'Fund Name', width: '260px', accessor: (row) => row.name || row.fund_name || '' },
-    { key: 'assetClass', label: 'Asset Class', width: '160px', accessor: (row) => row.asset_class_name || row.asset_class || '' },
+    { key: 'symbol', label: 'Symbol', accessor: (row) => row.ticker || row.symbol || '', render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
+    { key: 'name', label: 'Fund Name', accessor: (row) => row.name || row.fund_name || '', render: (v) => <span title={v}>{v}</span> },
+    { key: 'assetClass', label: 'Asset Class', accessor: (row) => row.asset_class_name || row.asset_class || '' },
+    { key: 'status', label: 'Status', accessor: (row) => row, render: (_v, row) => (
+        <div style={{ display: 'flex', justifyContent: 'flex-start', gap: 6 }}>
+          {row.is_recommended && <span className="status-recommended">REC</span>}
+          {row.is_benchmark && <span className="benchmark-indicator">BM</span>}
+        </div>
+      ) },
     { key: 'score', label: 'Score', width: '90px', numeric: true, align: 'right', accessor: (row) => {
         const s = row?.scores?.final ?? row?.score_final ?? row?.score;
         return typeof s === 'number' ? s : (s != null ? Number(s) : null);
@@ -118,11 +138,11 @@ export default function Dashboard() {
         <ScoreTooltip fund={row} score={Number(v)}>
           <span className="number">{Number(v).toFixed(1)}</span>
         </ScoreTooltip>
-      ) : '—' },
-    { key: 'ytd', label: 'YTD', width: '90px', numeric: true, align: 'right', accessor: (row) => row.ytd_return ?? row['Total Return - YTD (%)'] ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : '—' },
-    { key: 'expense', label: 'Expense', width: '90px', numeric: true, align: 'right', accessor: (row) => row.expense_ratio ?? row['Net Expense Ratio'] ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : '—' },
-    { key: 'firmAUM', label: 'Firm AUM', width: '120px', numeric: true, align: 'right', accessor: (row) => row.firmAUM ?? null, render: (v) => v != null ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(v)) : '—' },
-    { key: 'advisors', label: '# Advisors', width: '110px', numeric: true, align: 'right', accessor: (row) => row.advisorCount ?? null }
+      ) : 'N/A' },
+    { key: 'ytd', label: 'YTD', numeric: true, align: 'right', accessor: (row) => row.ytd_return ?? row['Total Return - YTD (%)'] ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : 'N/A' },
+    { key: 'expense', label: 'Expense', numeric: true, align: 'right', accessor: (row) => row.expense_ratio ?? row['Net Expense Ratio'] ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : 'N/A' },
+    { key: 'firmAUM', label: 'Firm AUM', numeric: true, align: 'right', accessor: (row) => row.firmAUM ?? null, render: (v) => v != null ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(v)) : 'N/A' },
+    { key: 'advisors', label: '# Advisors', numeric: true, align: 'right', accessor: (row) => row.advisorCount ?? null }
   ]), []);
 
   const topPerformers = React.useMemo(() => {
@@ -145,36 +165,53 @@ export default function Dashboard() {
     return arr.slice(0, 5);
   }, [funds]);
 
+  const renderInsightItem = (f) => {
+    const score = f?.scores?.final ?? f?.score_final ?? f?.score ?? null;
+    return (
+      <div key={f.ticker} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <div style={{ width: 68, fontWeight: 600, flex: '0 0 auto' }}>{f.ticker}</div>
+          {/* Omit long fund name to keep cards tight */}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '0 0 auto' }}>
+          <ScoreBadge score={typeof score === 'number' ? score : null} fund={f} size="small" />
+          {f.is_recommended && (
+            <span className="status-recommended">REC</span>
+          )}
+          {f.is_benchmark && (
+            <span className="benchmark-indicator">BM</span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="dashboard" style={{ display: 'grid', gap: '1rem' }}>
       <div className="kpi-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px,1fr))', gap: '0.75rem' }}>
-        <KPICard label="Total AUM" value={summary.totalAUM} format="currency" />
+        <KPICard label="Total AUM" value={summary.ownershipAvailable ? summary.totalAUM : null} format="currency" subtext={summary.ownershipAvailable ? undefined : 'Ownership data unavailable'} />
         <KPICard label="Funds Tracked" value={summary.totalFunds} subtext={`${summary.recommendedCount} recommended`} />
         <KPICard label="Avg Score" value={summary.avgScore} format="score" />
-        <KPICard label="Net Flows" value={summary.monthlyFlows} format="currency" />
+        {summary.monthlyFlows != null && (
+          <KPICard label="Net Flows" value={summary.monthlyFlows} format="currency" />
+        )}
       </div>
 
-      <div className="insights-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+      <div className="insights-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
         <InsightCard title="Top Performers">
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {(topPerformers || []).map((f) => (
-              <li key={f.ticker}><strong>{f.ticker}</strong> {(f?.scores?.final ?? f?.score_final ?? f?.score)?.toFixed?.(1) || ''}</li>
-            ))}
-          </ul>
+          <div>
+            {(topPerformers || []).slice(0,5).map(renderInsightItem)}
+          </div>
         </InsightCard>
         <InsightCard title="Needs Review">
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {(needsReview || []).map((f) => (
-              <li key={f.ticker}><strong>{f.ticker}</strong> {(f?.scores?.final ?? f?.score_final ?? f?.score)?.toFixed?.(1) || ''}</li>
-            ))}
-          </ul>
+          <div>
+            {(needsReview || []).slice(0,5).map(renderInsightItem)}
+          </div>
         </InsightCard>
         <InsightCard title="New Recommendations">
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {(funds || []).filter(f => f.is_recommended).slice(0, 5).map((f) => (
-              <li key={f.ticker}><strong>{f.ticker}</strong> {f.name}</li>
-            ))}
-          </ul>
+          <div>
+            {(newRecommendations || []).map(renderInsightItem)}
+          </div>
         </InsightCard>
       </div>
 
@@ -188,7 +225,7 @@ export default function Dashboard() {
           onRowClick={(row) => { try { window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'portfolios' } })); window.history.pushState({}, '', `/portfolios?ticker=${row.ticker}`); } catch {} }}
         />
       </div>
-      {loading && <div style={{ color: '#6b7280' }}>Loading…</div>}
+      {fundsLoading && <div style={{ color: '#6b7280' }}>Loading...</div>}
     </div>
   );
 }

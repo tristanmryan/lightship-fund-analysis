@@ -1,10 +1,21 @@
 // src/components/Dashboard/ScoreTooltip.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Info, TrendingUp, TrendingDown } from 'lucide-react';
-import { METRICS_CONFIG } from '../../services/scoring.js';
-import { getScoreColor, getScoreLabel } from '../../services/scoringPolicy';
+import { getScoreColor, getScoreLabel } from '../../services/scoringService.js';
 import { formatNumber } from '../../utils/formatters';
-import { getFundScoringHistory } from '../../services/scoringHistory.js';
+
+// Simple metrics labels for tooltip display
+const METRICS_LABELS = {
+  ytd_return: 'YTD Return',
+  one_year_return: '1-Year Return', 
+  three_year_return: '3-Year Return',
+  sharpe_ratio: 'Sharpe Ratio',
+  expense_ratio: 'Expense Ratio',
+  alpha: 'Alpha',
+  beta: 'Beta',
+  up_capture_ratio: 'Up Capture',
+  down_capture_ratio: 'Down Capture'
+};
 
 const ENABLE_VISUAL_REFRESH = (process.env.REACT_APP_ENABLE_VISUAL_REFRESH || 'false') === 'true';
 
@@ -23,8 +34,7 @@ const ScoreTooltip = ({
   const [isVisible, setIsVisible] = useState(false);
   const hideTimerRef = useRef(null);
   const [position, setPosition] = useState({ top: 0, left: 0 });
-  const [history, setHistory] = useState([]);
-  const [recentDelta, setRecentDelta] = useState(null);
+  // Removed scoring history functionality (legacy feature)
   const tooltipRef = useRef(null);
   const triggerRef = useRef(null);
 
@@ -69,36 +79,13 @@ const ScoreTooltip = ({
     }
   }, [isVisible, placement]);
 
-  // Load score history on first show for trending/mini-chart
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        if (!isVisible) return;
-        const ticker = fund?.ticker || fund?.symbol || fund?.fund_ticker;
-        if (!ticker) return;
-        if (history && history.length > 0) return; // already loaded
-        const rows = await getFundScoringHistory(String(ticker).toUpperCase(), 12);
-        if (cancelled) return;
-        setHistory(rows || []);
-        if ((rows || []).length >= 2) {
-          const last = rows[rows.length - 1]?.score ?? null;
-          const prev = rows[rows.length - 2]?.score ?? null;
-          if (last != null && prev != null) setRecentDelta(Math.round((last - prev) * 10) / 10);
-        }
-      } catch {
-        if (!cancelled) { setHistory([]); setRecentDelta(null); }
-      }
-    })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isVisible, fund?.ticker]);
+  // Scoring history functionality removed (legacy feature)
 
   // Get top contributors
   const contributors = Object.entries(breakdown)
     .map(([key, info]) => ({
       key,
-      label: METRICS_CONFIG.labels[key] || key,
+      label: METRICS_LABELS[key] || key,
       contribution: info.reweightedContribution || info.weightedZScore || 0,
       percentile: info.percentile || 50,
       value: info.value,
@@ -199,18 +186,7 @@ const ScoreTooltip = ({
                 {scoreLabel} Performance
               </div>
             </div>
-            {typeof recentDelta === 'number' && (
-              <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                {recentDelta >= 0 ? (
-                  <TrendingUp size={14} color="#059669" />
-                ) : (
-                  <TrendingDown size={14} color="#DC2626" />
-                )}
-                <span style={{ fontSize: 12, fontWeight: 600, color: recentDelta >= 0 ? '#059669' : '#DC2626' }}>
-                  {recentDelta >= 0 ? '+' : ''}{formatNumber(recentDelta, 1)} (recent)
-                </span>
-              </div>
-            )}
+            {/* Trend display removed - legacy scoring history feature */}
           </div>
 
           {/* Confidence / Fund Info */}
@@ -353,37 +329,13 @@ const ScoreTooltip = ({
             </div>
           )}
 
-          {/* Mini score history chart */}
-          {Array.isArray(history) && history.length >= 2 && (
-            <div style={{ marginTop: 10 }}>
-              <MiniScoreChart history={history} />
-            </div>
-          )}
+          {/* Mini score history chart removed - legacy feature */}
         </div>
       )}
     </>
   );
 };
 
-function MiniScoreChart({ history }) {
-  const w = 280, h = 80, pad = 8;
-  const points = (history || []).map(r => ({ x: new Date(r.date).getTime(), y: Number(r.score || 0) }));
-  if (points.length < 2) return null;
-  const minX = Math.min(...points.map(p => p.x));
-  const maxX = Math.max(...points.map(p => p.x));
-  const minY = Math.min(...points.map(p => p.y));
-  const maxY = Math.max(...points.map(p => p.y));
-  const sx = (v) => pad + ((v - minX) / ((maxX - minX) || 1)) * (w - pad * 2);
-  const sy = (v) => (h - pad) - ((v - minY) / ((maxY - minY) || 1)) * (h - pad * 2);
-  const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${sx(p.x)} ${sy(p.y)}`).join(' ');
-  const last = points[points.length - 1];
-  return (
-    <svg width={w} height={h} role="img" aria-label="Score history mini-chart">
-      <rect x={0} y={0} width={w} height={h} fill="#F9FAFB" rx={6} />
-      <path d={d} fill="none" stroke="#3B82F6" strokeWidth={2} />
-      <circle cx={sx(last.x)} cy={sy(last.y)} r={3} fill="#3B82F6" />
-    </svg>
-  );
-}
+// MiniScoreChart removed - legacy scoring history feature
 
 export default ScoreTooltip;

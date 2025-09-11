@@ -5,8 +5,48 @@
 
 import { supabase, TABLES } from '../../../services/supabase.js';
 import fundService from '../../../services/fundService.js';
-import { computeRuntimeScores, loadEffectiveWeightsResolver } from '../../../services/scoring.js';
+import { calculateScores } from '../../../services/scoringService.js';
+import { getBulkWeightsForAssetClasses } from '../../../services/weightService.js';
 import { formatPercentDisplay, formatNumberDisplay, toEomDate } from '../shared/format.js';
+
+// Helper function to apply new scoring system
+async function applyNewScoring(fundData) {
+  if (!fundData || fundData.length === 0) return [];
+  
+  // Get unique asset class IDs  
+  const assetClassIds = [...new Set(
+    fundData
+      .filter(f => f.asset_class_id)
+      .map(f => f.asset_class_id)
+  )];
+  
+  // Load weights
+  const weightsByAssetClass = assetClassIds.length > 0 
+    ? await getBulkWeightsForAssetClasses(assetClassIds)
+    : {};
+  
+  // Map to asset class names
+  const weightsByAssetClassName = {};
+  fundData.forEach(fund => {
+    if (fund.asset_class_id && weightsByAssetClass[fund.asset_class_id]) {
+      const assetClassName = fund.asset_class_name || fund.asset_class || 'Unknown';
+      if (!weightsByAssetClassName[assetClassName]) {
+        weightsByAssetClassName[assetClassName] = weightsByAssetClass[fund.asset_class_id];
+      }
+    }
+  });
+  
+  // Calculate scores and add legacy field mapping
+  const scoredFunds = calculateScores(fundData, weightsByAssetClassName);
+  return scoredFunds.map(fund => ({
+    ...fund,
+    score: fund.score_final,
+    scores: {
+      final: fund.score_final,
+      breakdown: fund.score_breakdown
+    }
+  }));
+}
 
 /**
  * Main data shaping function
@@ -104,17 +144,12 @@ async function fetchFunds(selection, asOf) {
   if (!hasServerScores) {
     try {
       console.log('dY"< [PDF] Falling back to base funds + runtime scoring for asOf:', asOf);
-      // Load base funds (no scores)
-      const dateOnly = asOf ? new Date(asOf + 'T00:00:00Z').toISOString().slice(0,10) : null;
-      const { data: baseFunds, error } = await supabase.rpc('get_funds_as_of', { p_date: dateOnly });
-      if (error) throw error;
+      // Load base funds using new fundDataService
+      const { getFundsWithPerformance } = await import('../../services/fundDataService.js');
+      const baseFunds = await getFundsWithPerformance(asOf);
       const base = baseFunds || [];
-      await loadEffectiveWeightsResolver();
-      funds = computeRuntimeScores(base, {
-        useAdvancedWeighting: true,
-        enableAdvancedFeatures: true,
-        focusArea: 'balanced'
-      });
+      // Use new scoring system
+      funds = await applyNewScoring(base);
     } catch (err) {
       console.warn('[PDF] Runtime scoring fallback failed:', err?.message || err);
       // Last resort: keep any base funds we might have
@@ -278,7 +313,7 @@ async function buildAssetClassSections(funds, asOf, allFundsForAsOf = null) {
           return cls === assetClass;
         });
         try { console.log('[PDF] Benchmark scoring peers for', assetClass, ':', (peersFull || []).length); } catch {}
-        const scored = computeRuntimeScores([...(peersFull || []), benchAsFund]);
+        const scored = await applyNewScoring([...(peersFull || []), benchAsFund]);
         const benchScored = (scored || []).find(f => f.isBenchmark);
         if (benchScored?.scores?.final != null) {
           benchmark.score = benchScored.scores.final;

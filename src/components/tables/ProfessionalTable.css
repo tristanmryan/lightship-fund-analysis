@@ -1,14 +1,20 @@
 .professional-table-container {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  /* Allow tbody to scroll independently */
-  overflow: visible;
   background: white;
+}
+
+/* New: scroll wrapper so thead/tbody remain a true table for alignment */
+.professional-table-scroll {
+  max-height: 600px;
+  overflow-y: auto;
+  overflow-x: hidden; /* avoid sideways scroll in dashboard */
 }
 
 .professional-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed; /* keep columns within container width */
 }
 
 .professional-table thead {
@@ -28,19 +34,18 @@
   letter-spacing: 0.05em;
 }
 
+.professional-table th, .professional-table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* tbody remains a normal table section for column alignment */
 .professional-table tbody {
-  display: block;
-  overflow-y: auto;
-  overflow-x: hidden;
-  width: 100%;
-  /* Ensure a fixed scrollable area */
-  max-height: 600px;
 }
 
 .professional-table tbody tr {
-  display: table;
-  width: 100%;
-  table-layout: fixed;
+  /* default display keeps header/body column widths aligned */
 }
 
 .professional-table td {
@@ -54,7 +59,24 @@
   cursor: pointer;
 }
 
+.professional-table tbody tr:focus {
+  outline: 2px solid #c7d2fe; /* indigo-200 */
+  background: #f1f5f9; /* slate-100 */
+}
+
 .professional-table .benchmark-row {
   background: #f3f4f6;
   font-style: italic;
+}
+
+/* Responsive column priorities */
+@media (max-width: 1280px) {
+  th[data-col-key='firmAUM'], td[data-col-key='firmAUM'],
+  th[data-col-key='advisors'], td[data-col-key='advisors'] { display: none; }
+}
+@media (max-width: 1024px) {
+  th[data-col-key='expense'], td[data-col-key='expense'] { display: none; }
+}
+@media (max-width: 1150px) {
+  th[data-col-key='status'], td[data-col-key='status'] { display: none; }
 }

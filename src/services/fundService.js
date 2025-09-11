@@ -1,6 +1,5 @@
 ﻿// src/services/fundService.js
 import { supabase, TABLES, dbUtils, handleSupabaseError, toNumberStrict } from './supabase.js';
-import { resolveAssetClassForTicker } from './resolvers/assetClassResolver.js';
 import ychartsAPI from './ychartsAPI.js';
 
 class FundService {
@@ -19,11 +18,9 @@ class FundService {
   // Get all funds from database with performance at a given date (or latest if null)
   async getAllFunds(asOfDate = null) {
     try {
-      // Single RPC to fetch funds + latest performance as-of date
-      const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
-      const dateOnly = asOf ? asOf.toISOString().slice(0,10) : null;
-      const { data: rows, error } = await supabase.rpc('get_funds_as_of', { p_date: dateOnly });
-      if (error) throw error;
+      // Use new fundDataService instead of deleted get_funds_as_of RPC
+      const { getFundsWithPerformance } = await import('./fundDataService.js');
+      const rows = await getFundsWithPerformance(asOfDate);
 
       // Enrich with asset_classes in one pass (optional; keep resilient if table empty)
       const classMap = new Map();
@@ -90,13 +87,12 @@ class FundService {
       const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
       const dateOnly = asOf ? asOf.toISOString().slice(0, 10) : null;
 
-      // Get ALL funds with scores in one call
-      const { data: scoredFunds, error } = await supabase.rpc('calculate_scores_as_of', {
-        p_date: dateOnly,
-        p_asset_class_id: null,
-        p_global: true
-      });
-      if (error) throw error;
+      // Use new fundDataService instead of deleted calculate_scores_as_of RPC
+      const { getFundsWithPerformance } = await import('./fundDataService.js');
+      const baseFunds = await getFundsWithPerformance(asOfDate);
+      
+      // No server-side scoring available - return base funds for client-side scoring
+      const scoredFunds = baseFunds;
 
       // Enrich with asset class metadata for compatibility
       const classMap = new Map();
@@ -113,7 +109,9 @@ class FundService {
         ? !('ytd_return' in (scoredFunds[0] || {}))
         : false;
       if (needsPerf) {
-        const { data: perfData } = await supabase.rpc('get_funds_as_of', { p_date: dateOnly });
+        // Use new fundDataService instead of deleted RPC
+        const { getFundsWithPerformance } = await import('./fundDataService.js');
+        const perfData = await getFundsWithPerformance(dateOnly);
         perfMap = new Map((perfData || []).map(f => [f.ticker, f]));
       }
 
@@ -410,13 +408,12 @@ class FundService {
         throw new Error(`No data returned from Ycharts API for ${ticker}`);
       }
 
-      // Resolve asset class via Supabase dictionary first
-      const { asset_class_id, asset_class_name } = await resolveAssetClassForTicker(ticker, apiData.asset_class);
+      // Use simple asset class assignment - complex resolution removed
       const fundData = {
         ticker: ticker,
         name: apiData.name || '',
-        asset_class: asset_class_name || apiData.asset_class || '',
-        asset_class_id: asset_class_id || null,
+        asset_class: apiData.asset_class || '',
+        asset_class_id: null, // Will be assigned through admin UI when needed
         is_recommended: false // Will be updated separately
       };
 
@@ -517,12 +514,8 @@ class FundService {
     }
     const map = new Map();
     try {
-      // Preferred: dedicated summary RPC if present
-      const { data, error } = await supabase.rpc('get_fund_ownership_summary', {});
-      if (!error && Array.isArray(data)) {
-        (data || []).forEach(r => { if (r?.ticker) map.set(r.ticker, r); });
-        return map;
-      }
+      // get_fund_ownership_summary RPC was deleted, skip to fallback
+      console.warn('get_fund_ownership_summary RPC no longer available, using utilization fallback');
     } catch {}
     // Fallback: use fund_utilization MV RPC and adapt field names
     try {
@@ -962,14 +955,10 @@ class FundService {
       if (this.useServerScoring) {
         result = await this.getAssetClassTableWithServerScoring(dateOnly, assetClassId, includeBenchmark);
       } else {
-        // Use existing client-side logic
-        const { data, error } = await supabase.rpc('get_asset_class_table', {
-          p_date: dateOnly,
-          p_asset_class_id: assetClassId,
-          p_include_benchmark: !!includeBenchmark
-        });
-        if (error) throw error;
-        result = data || [];
+        // Use new fundDataService instead of deleted get_asset_class_table RPC
+        const { getFundsWithPerformance } = await import('./fundDataService.js');
+        const funds = await getFundsWithPerformance(dateOnly, assetClassId);
+        result = funds || [];
       }
       return result;
     } catch (error) {
@@ -982,13 +971,12 @@ class FundService {
   // Get asset class table with server-side scoring
   async getAssetClassTableWithServerScoring(dateOnly, assetClassId, includeBenchmark) {
     try {
-      const { data: scoredFunds, error } = await supabase.rpc('calculate_scores_as_of', {
-        p_date: dateOnly,
-        p_asset_class_id: assetClassId,
-        p_global: false
-      });
-      if (error) {
-        console.error('Error fetching scored funds for asset class:', error);
+      // Use new fundDataService instead of deleted calculate_scores_as_of RPC
+      const { getFundsWithPerformance } = await import('./fundDataService.js');
+      const scoredFunds = await getFundsWithPerformance(dateOnly, assetClassId);
+      
+      if (!scoredFunds || scoredFunds.length === 0) {
+        console.warn('No funds found for asset class:', assetClassId);
         return [];
       }
 
@@ -998,7 +986,9 @@ class FundService {
         ? !('ytd_return' in (scoredFunds[0] || {}))
         : false;
       if (needsPerf) {
-        const { data: perfData } = await supabase.rpc('get_funds_as_of', { p_date: dateOnly });
+        // Use new fundDataService instead of deleted RPC
+        const { getFundsWithPerformance } = await import('./fundDataService.js');
+        const perfData = await getFundsWithPerformance(dateOnly);
         perfMap = new Map((perfData || []).map(f => [f.ticker, f]));
       }
 
