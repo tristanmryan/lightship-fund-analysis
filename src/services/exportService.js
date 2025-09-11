@@ -365,32 +365,7 @@ export async function __obsolete_generatePDFReportV2_old(data, options = {}) {
 
   console.log('[PDF] Calling PDF v2 API with payload:', payload);
 
-  // Check if we're in development mode (localhost)
-  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  
-  if (false) {
-    console.log('[PDF] Development mode: testing serverless function first');
-    
-    // Try the advanced test endpoint first to verify serverless setup
-    try {
-      console.log('[PDF] Testing advanced PDF endpoint...');
-      const testResponse = await fetch('/api/test-pdf-advanced', { method: 'GET' });
-      
-      if (testResponse.ok) {
-        console.log('[PDF] Serverless PDF working – using server-side generation');
-        // If test works, proceed with real API call (fall through to production code)
-      } else {
-        throw new Error(`Test endpoint failed: ${testResponse.status}`);
-      }
-    } catch (testError) {
-      console.log('[PDF] Serverless function unavailable – using client-side fallback');
-      console.log('[PDF] Using enhanced client-side PDF generation');
-      
-      // Import the client-side PDF generation as a fallback for development
-      const { generateClientSideProfessionalPDF } = await import('./clientPdfV2Service.js');
-      return await generateClientSideProfessionalPDF(data, options);
-    }
-  }
+  // Development test path removed to avoid unresolved imports and simplify flow
 
   // Production: Call the serverless API  
   const response = await fetch('/api/reports/monthly', {
