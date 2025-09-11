@@ -37,7 +37,7 @@ async function applyCleanScoring(fundData) {
     // Calculate scores using new clean scoring system
     const scoredFunds = calculateScores(fundData, weightsByAssetClassName);
     
-    // Add legacy field mapping for backward compatibility
+      // Add legacy field mapping for backward compatibility
     return scoredFunds.map(fund => ({
       ...fund,
       score: fund.score_final,
@@ -66,6 +66,7 @@ export function useFundData() {
   const ENABLE_REFRESH = (process.env.REACT_APP_ENABLE_REFRESH || 'false') === 'true';
   // Feature flag: server-side scoring (default OFF for gradual rollout)
   const USE_SERVER_SCORING = (process.env.REACT_APP_DB_SCORES || 'false') === 'true';
+  
 
   // Load funds from database
   const loadFunds = useCallback(async (asOf = asOfMonth) => {
@@ -127,9 +128,6 @@ export function useFundData() {
       setLastUpdated(new Date());
       
       console.log(`Loaded ${fundData.length} funds from database${asOf ? ` as of ${asOf}` : ''} (${scoringSource} scoring)`);
-      // Tiny log: sample fund row
-      // eslint-disable-next-line no-console
-      console.log('Sample fund row', fundData?.[0]);
       // Count rows for guardrails
       try {
         const d = asOf || asOfStore.getActiveMonth();

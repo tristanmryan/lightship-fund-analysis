@@ -2,6 +2,7 @@
 import React from 'react';
 import ProfessionalTable from '../tables/ProfessionalTable';
 import fundService from '../../services/fundService';
+import { useFundData } from '../../hooks/useFundData';
 import './SimplifiedDashboard.css';
 import ScoreTooltip from './ScoreTooltip';
 import ScoreBadge from '../ScoreBadge';
@@ -35,8 +36,9 @@ function InsightCard({ title, children }) {
 }
 
 export default function Dashboard() {
-  const [funds, setFunds] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
+  // Use the useFundData hook for funds with scoring
+  const { funds, loading: fundsLoading } = useFundData();
+  
   const [summary, setSummary] = React.useState({ totalAUM: 0, totalFunds: 0, recommendedCount: 0, avgScore: 0, monthlyFlows: null, ownershipAvailable: false });
   const [newRecommendations, setNewRecommendations] = React.useState([]);
 
@@ -51,30 +53,29 @@ export default function Dashboard() {
     }
   }, []);
 
+  // Update summary when funds data changes
   React.useEffect(() => {
-    let cancel = false;
-    (async () => {
-      try {
-        setLoading(true);
-        const rows = await fundService.getFundsWithOwnership(null);
-        if (cancel) return;
-        const fs = Array.isArray(rows) ? rows : [];
-        setFunds(fs);
-        // compute summary
-        const totalFunds = fs.length;
-        const recommendedCount = fs.filter((f) => f.is_recommended || f.recommended).length;
-        const aumValues = fs.map((f) => Number(f.firmAUM || 0));
-        const totalAUM = aumValues.reduce((s, v) => s + v, 0);
-        const ownershipAvailable = aumValues.some((v) => v > 0);
-        const scores = fs.map((f) => (typeof f?.scores?.final === 'number' ? f.scores.final : (typeof f.score_final === 'number' ? f.score_final : (typeof f.score === 'number' ? f.score : null)))).filter((n) => n != null);
-        const avgScore = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-        setSummary({ totalAUM, totalFunds, recommendedCount, avgScore, monthlyFlows: null, ownershipAvailable });
-      } finally {
-        if (!cancel) setLoading(false);
-      }
-    })();
-    return () => { cancel = true; };
-  }, []);
+    if (!funds || funds.length === 0) return;
+    
+    const fs = Array.isArray(funds) ? funds : [];
+    // compute summary
+    const totalFunds = fs.length;
+    const recommendedCount = fs.filter((f) => f.is_recommended || f.recommended).length;
+    const aumValues = fs.map((f) => Number(f.firmAUM || 0));
+    const totalAUM = aumValues.reduce((s, v) => s + v, 0);
+    const ownershipAvailable = aumValues.some((v) => v > 0);
+    const scores = fs.map((f) => (typeof f?.scores?.final === 'number' ? f.scores.final : (typeof f.score_final === 'number' ? f.score_final : (typeof f.score === 'number' ? f.score : null)))).filter((n) => n != null);
+    const avgScore = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    
+    setSummary(prevSummary => ({ 
+      ...prevSummary, 
+      totalAUM, 
+      totalFunds, 
+      recommendedCount, 
+      avgScore, 
+      ownershipAvailable 
+    }));
+  }, [funds]);
 
   // Load latest net flows KPI
   React.useEffect(() => {
@@ -224,7 +225,7 @@ export default function Dashboard() {
           onRowClick={(row) => { try { window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'portfolios' } })); window.history.pushState({}, '', `/portfolios?ticker=${row.ticker}`); } catch {} }}
         />
       </div>
-      {loading && <div style={{ color: '#6b7280' }}>Loading...</div>}
+      {fundsLoading && <div style={{ color: '#6b7280' }}>Loading...</div>}
     </div>
   );
 }

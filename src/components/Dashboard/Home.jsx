@@ -4,6 +4,7 @@ import asOfStore from '../../services/asOfStore';
 import dashboardService from '../../services/dashboardService';
 import preferencesService from '../../services/preferencesService';
 import fundService from '../../services/fundService';
+import { useFundData } from '../../hooks/useFundData';
 import { computeRuntimeScores, loadEffectiveWeightsResolver } from '../../services/scoring.js';
 import PerformanceHeatmap from './PerformanceHeatmap';
 import TopBottomPerformers from './TopBottomPerformers';
@@ -15,13 +16,15 @@ import './SimplifiedDashboard.css';
 
 // Original dashboard component
 function OriginalHome() {
+  // Use useFundData hook for funds with scoring
+  const { funds } = useFundData();
+  
   const [asOf, setAsOf] = React.useState(asOfStore.getActiveMonth() || null);
   const [kpis, setKpis] = React.useState({ funds: 0, recommended: 0, minCoverage: 0, alertsCount: 0, snapshotDate: null, freshnessDays: null });
   const [triage, setTriage] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [deltas, setDeltas] = React.useState({ moversUp: [], moversDown: [], newlyRecommended: [], dropped: [], stats: { avgYtdDelta: 0, advancers: 0, decliners: 0 } });
   const [widgets, setWidgets] = React.useState({ heatmap: true, topBottom: true, assetMini: true });
-  const [funds, setFunds] = React.useState([]);
   const [notes, setNotes] = React.useState([]);
 
   const load = React.useCallback(async (date) => {
@@ -35,13 +38,7 @@ function OriginalHome() {
       setKpis(k);
       setTriage(t);
       setDeltas(d);
-      // Load funds for widgets
-      try {
-        const f = await fundService.getAllFunds(date || null);
-        await loadEffectiveWeightsResolver();
-        const scored = computeRuntimeScores(f || []);
-        setFunds(scored);
-      } catch {}
+      // Funds are now loaded via useFundData hook with scoring
     } finally {
       setLoading(false);
     }
