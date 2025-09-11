@@ -20,173 +20,74 @@ export default async function handler(req, res) {
   }
 
   try {
-    // No token guard (simplified path)
-    console.log('🚀 Starting React-PDF generation process...');
-    
-    // Import all dependencies using dynamic import for ES module compatibility
-    console.log('📦 Importing dependencies...');
-    let z, renderToBuffer, React, shapeReportData, MonthlyReportPDF, PayloadSchema, pdfBuffer;
-    
-    try {
-      const zodModule = await import('zod');
-      z = zodModule.z;
-      console.log('✅ Zod validation library loaded');
-      
-      // Define payload validation schema after Zod is loaded
-      PayloadSchema = z.object({
-        asOf: z.string().nullable().optional(),
-        selection: z.object({
-          scope: z.enum(['all', 'recommended', 'tickers']),
-          tickers: z.array(z.string()).nullable().optional()
-        }),
-        options: z.object({
+    // Dynamic imports
+    const { z } = await import('zod');
+    const { renderToBuffer } = await import('@react-pdf/renderer');
+    const React = (await import('react')).default;
+
+    const { shapeReportData } = await import('../../src/reports/monthly/data/shapeData.js');
+    const MonthlyReportPDF = (await import('../../src/reports/monthly/template/MonthlyReportPDF.js')).default;
+
+    // Payload validation schema
+    const PayloadSchema = z.object({
+      asOf: z.string().nullable().optional(),
+      selection: z.object({
+        scope: z.enum(['all', 'recommended', 'tickers']),
+        tickers: z.array(z.string()).nullable().optional(),
+      }),
+      options: z
+        .object({
           columns: z.array(z.string()).optional(),
           brand: z.string().default('RJ'),
           locale: z.string().default('en-US'),
           landscape: z.boolean().default(true),
-          includeTOC: z.boolean().default(true)
-        }).optional()
-      });
-      
-    } catch (e) {
-      console.error('❌ Failed to load Zod:', e.message);
-      throw new Error('Zod validation library unavailable');
-    }
-    
-    try {
-      const reactPdfModule = await import('@react-pdf/renderer');
-      renderToBuffer = reactPdfModule.renderToBuffer;
-      console.log('✅ React-PDF renderer loaded');
-    } catch (e) {
-      console.error('❌ Failed to load React-PDF renderer:', e.message);
-      throw new Error('React-PDF renderer unavailable');
-    }
-    
-    try {
-      const reactModule = await import('react');
-      React = reactModule.default;
-      console.log('✅ React module loaded');
-    } catch (e) {
-      console.error('❌ Failed to load React module:', e.message);
-      throw new Error('React module unavailable');
-    }
-    
-    // Import our services and components
-    console.log('🎨 Importing report services...');
-    
-    try {
-      const shapeDataModule = await import('../../src/reports/monthly/data/shapeData.js');
-      shapeReportData = shapeDataModule.shapeReportData;
-      console.log('✅ Data shaping service loaded');
-    } catch (e) {
-      console.error('❌ Failed to load shapeReportData:', e.message);
-      throw new Error('Data shaping service unavailable');
-    }
-    
-    try {
-      const MonthlyReportPDFModule = await import('../../src/reports/monthly/template/MonthlyReportPDF.js');
-      MonthlyReportPDF = MonthlyReportPDFModule.default;
-      console.log('✅ React-PDF Monthly report template loaded');
-    } catch (e) {
-      console.error('❌ Failed to load MonthlyReportPDF:', e.message);
-      throw new Error('React-PDF template unavailable');
-    }
-    
-    // Now validate payload after all dependencies are loaded
-    console.log('🔍 Validating request payload...');
-    const payload = PayloadSchema.parse(req.body);
-    try { console.log('[API] Selection received (post-validate):', payload.selection); } catch {}
-    console.log('✅ Payload validated:', { scope: payload.selection?.scope, asOf: payload.asOf });
-    
-    console.log(`📊 Processing PDF request: ${payload.selection.scope}, asOf: ${payload.asOf || 'latest'}`);
-
-    // Step 1: Shape the data
-    console.log('📋 Shaping report data...');
-    const shapedData = await shapeReportData(payload);
-    console.log(`✅ Data shaped successfully: ${shapedData.sections.length} asset class sections`);
-
-    // Step 2: Create React-PDF component
-    console.log('⚛️ Creating React-PDF component...');
-    
-    // Enhanced component validation
-    console.log('🔍 Component creation details:', {
-      ReactAvailable: typeof React === 'function',
-      MonthlyReportPDFAvailable: typeof MonthlyReportPDF === 'function',
-      dataValid: !!shapedData,
-      dataKeys: Object.keys(shapedData || {}),
-      optionsValid: !!payload.options,
-      optionsKeys: Object.keys(payload.options || {})
+          includeTOC: z.boolean().default(true),
+        })
+        .optional(),
     });
-    
+
+    // Parse request
+    const raw = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    const payload = PayloadSchema.parse(raw);
+    const scope = payload.selection?.scope;
+    const asOf = payload.asOf || 'latest';
+    console.log('[MonthlyPDF] Generating', { scope, asOf });
+
+    // Shape data and render
+    const shapedData = await shapeReportData(payload);
     const reportComponent = React.createElement(MonthlyReportPDF, {
       data: shapedData,
-      options: payload.options || {}
+      options: payload.options || {},
     });
-    
-    console.log('✅ React-PDF component created');
-    console.log('🔍 Component details:', {
-      componentType: typeof reportComponent,
-      hasProps: !!reportComponent.props,
-      propsKeys: Object.keys(reportComponent.props || {}),
-      childrenCount: reportComponent.props?.children?.length || 0
-    });
-    
-    // Step 3: Render to PDF buffer
-    console.log('🖨️ Rendering PDF with React-PDF...');
-    
-    try {
-      console.log('🔄 Starting PDF rendering process...');
-      pdfBuffer = await renderToBuffer(reportComponent);
-      console.log(`✅ PDF generated successfully: ${pdfBuffer.length} bytes`);
-      console.log('📊 Buffer details:', {
-        size: pdfBuffer.length,
-        sizeKB: (pdfBuffer.length / 1024).toFixed(2),
-        sizeMB: (pdfBuffer.length / (1024 * 1024)).toFixed(2)
-      });
-    } catch (renderError) {
-      console.error('❌ PDF rendering failed:', renderError.message);
-      console.error('❌ Render error details:', {
-        errorType: renderError.constructor.name,
-        errorStack: renderError.stack,
-        componentValid: !!reportComponent,
-        dataValid: !!shapedData,
-        renderToBufferAvailable: typeof renderToBuffer === 'function'
-      });
-      throw new Error(`PDF rendering failed: ${renderError.message}`);
-    }
+    const pdfBuffer = await renderToBuffer(reportComponent);
+    console.log('[MonthlyPDF] Done', { bytes: pdfBuffer.length });
 
     // Return PDF
-    console.log('📤 Sending PDF response...');
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 
-      `attachment; filename="lightship_monthly_report_${shapedData.asOf.replace(/-/g, '')}.pdf"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="lightship_monthly_report_${shapedData.asOf.replace(/-/g, '')}.pdf"`
+    );
     res.setHeader('Content-Length', pdfBuffer.length);
-    
-    console.log('🎉 React-PDF generation completed successfully!');
     return res.send(pdfBuffer);
-
   } catch (error) {
-    console.error('❌ React-PDF generation failed:', error.message);
-    console.error('❌ Full error:', error);
-    
+    console.error('[MonthlyPDF] Generation failed:', error?.message || error);
     // Determine error type for better messaging
     let errorType = 'Unknown error';
-    if (error.message.includes('Data shaping')) {
+    if (error?.message?.includes('Data shaping')) {
       errorType = 'Data processing error';
-    } else if (error.message.includes('React-PDF') || error.message.includes('template')) {
+    } else if (error?.message?.includes('React-PDF') || error?.message?.includes('template')) {
       errorType = 'PDF rendering error';
-    } else if (error.message.includes('validation')) {
+    } else if (error?.message?.includes('validation')) {
       errorType = 'Request validation error';
     }
-    
-    // Return structured error
+
     return res.status(500).json({
       error: 'React-PDF generation failed',
       type: errorType,
-      message: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      timestamp: new Date().toISOString()
+      message: error?.message || String(error),
+      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
+      timestamp: new Date().toISOString(),
     });
   }
 }
-

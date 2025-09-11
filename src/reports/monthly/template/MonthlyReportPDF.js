@@ -712,9 +712,10 @@ function PageFooter() {
     ),
     
     React.createElement(View, { style: styles.footerCenter },
-      React.createElement(Text, { style: { fontWeight: 500, color: '#374151' } },
-        "Page " + "1" // Note: React-PDF page numbers need special handling
-      )
+      React.createElement(Text, {
+        style: { fontWeight: 500, color: '#374151' },
+        render: ({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`
+      })
     ),
     
     React.createElement(View, { style: styles.footerRight },
@@ -949,6 +950,21 @@ function BenchmarkRow({ benchmark, columns }) {
           break;
         default:
           cellValue = '';
+      }
+
+      // Ensure Std Dev columns render from benchmark if not handled above
+      if (col.dataKey === 'standardDeviation3y' && (cellValue === '' || cellValue == null)) {
+        cellValue = benchmark.standard_deviation_3y ? formatPercent(benchmark.standard_deviation_3y) : 'N/A';
+      }
+      if (col.dataKey === 'standardDeviation5y' && (cellValue === '' || cellValue == null)) {
+        cellValue = benchmark.standard_deviation_5y ? formatPercent(benchmark.standard_deviation_5y) : 'N/A';
+      }
+      // Normalize placeholders
+      if (cellValue === '�?"') {
+        cellValue = 'N/A';
+      }
+      if (col.dataKey === 'managerTenure' && (cellValue === '' || cellValue == null)) {
+        cellValue = 'N/A';
       }
 
       const cellStyles = [

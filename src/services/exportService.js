@@ -2,11 +2,11 @@
 import * as XLSX from 'xlsx';
 import { toISODateTime } from '../utils/formatters.js';
 import { supabase, TABLES } from './supabase.js';
-// Avoid importing jsPDF/pdf generation in test/node by lazy-loading pdfReportService inside the function
 
 /**
  * Export Service
- * Handles generation of Excel, PDF, and other report formats for the API-driven approach
+ * Handles generation of Excel, CSV, HTML, and image exports
+ * (All PDF generation moved to src/services/pdfService.js)
  * Enhanced with visual refresh formatting and improved data presentation
  */
 
@@ -295,144 +295,7 @@ export function exportToExcel(data, options = {}) {
   return new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
 
-/**
- * Generate PDF report with feature flag support for PDF v2
- * @param {Object} data - Report data
- * @param {Object} options - PDF generation options
- * @returns {jsPDF|Blob} PDF document (jsPDF for v1, Blob for v2)
- */
-async function _obsolete_generatePDFReportLegacyWrapper(data, options = {}) {
-  // Prefer PDF v2 by default unless explicitly disabled
-  const envValue = process.env.REACT_APP_ENABLE_PDF_V2;
-  const usePdfV2 = options.forceV2 || (envValue !== 'false');
-  
-  // Debug logging
-  // Debug logging
-  console.log('[PDF] Feature flag debug:', {
-    usePdfV2,
-    forceV2: options.forceV2,
-    allEnv: Object.keys(process.env).filter(k => k.startsWith('REACT_APP_'))
-  });
-  
-  if (usePdfV2) {
-    try {
-      console.log('[PDF] Using PDF v2 (server-rendered)');
-      return await generatePDFReportV2(data, options);
-    } catch (error) {
-      console.warn('[PDF] PDF v2 failed, falling back to legacy PDF:', error);
-      // Legacy removed: bubble error (wrapper unused)
-      return await generatePDFReportV2(data, options);
-    }
-  } else {
-    console.log('[PDF] Using legacy PDF (client-side)');
-    return await generatePDFReportV2(data, options);
-  }
-}
-
-// Minimal single-path PDF generator
-export async function generatePDFReport(data, options = {}) {
-  return await generatePDFReportV2(data, options);
-}
-
-/**
- * Generate PDF report using new server-side HTML-to-PDF pipeline (v2)
- * @param {Object} data - Report data
- * @param {Object} options - PDF generation options
- * @returns {Blob} PDF blob
- */
-export async function __obsolete_generatePDFReportV2_old(data, options = {}) {
-  const { funds, metadata } = data;
-
-  // Build payload for API
-  const payload = {
-    asOf: metadata?.asOf || window.__AS_OF_MONTH__ || null,
-    selection: {
-      scope: options.scope || 'all',
-      tickers: options.tickers || null
-    },
-    options: {
-      columns: options.columns || [
-        'ticker', 'name', 'asset_class', 'ytd_return', 'one_year_return',
-        'three_year_return', 'five_year_return', 'expense_ratio', 'sharpe_ratio',
-        'standard_deviation_3y', 'standard_deviation_5y', 'manager_tenure', 'is_recommended'
-      ],
-      brand: 'RJ',
-      locale: 'en-US',
-      landscape: options.landscape !== false, // Default to landscape
-      includeTOC: options.includeTOC !== false // Default to include TOC
-    }
-  };
-
-  console.log('[PDF] Calling PDF v2 API with payload:', payload);
-
-  // Development test path removed to avoid unresolved imports and simplify flow
-
-  // Production: Call the serverless API  
-  const response = await fetch('/api/reports/monthly', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(`PDF v2 API failed: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`);
-  }
-
-  // Return the PDF blob
-  const blob = await response.blob();
-  console.log(`[PDF] PDF v2 generated successfully: ${blob.size} bytes`);
-  return blob;
-}
-
-// Minimal single-path v2 generator
-export async function generatePDFReportV2(data, options = {}) {
-  const { metadata } = data;
-  const payload = {
-    asOf: (metadata && metadata.asOf) || (typeof window !== 'undefined' ? (window.__AS_OF_MONTH__ || null) : null),
-    selection: {
-      scope: options.scope || 'all',
-      tickers: options.tickers || null
-    },
-    options: {
-      columns: options.columns || [
-        'ticker', 'name', 'asset_class', 'ytd_return', 'one_year_return',
-        'three_year_return', 'five_year_return', 'expense_ratio', 'sharpe_ratio',
-        'standard_deviation_3y', 'standard_deviation_5y', 'manager_tenure', 'is_recommended'
-      ],
-      brand: 'RJ',
-      locale: 'en-US',
-      landscape: options.landscape !== false,
-      includeTOC: options.includeTOC !== false
-    }
-  };
-
-  try {
-    console.log('[ExportService] Sending monthly PDF payload:', {
-      asOf: payload.asOf,
-      selection: payload.selection,
-      options: {
-        landscape: payload.options.landscape,
-        includeTOC: payload.options.includeTOC
-      }
-    });
-  } catch {}
-
-  const response = await fetch('/api/reports/monthly', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(`PDF v2 API failed: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`);
-  }
-  return await response.blob();
-}
-
-// Legacy jsPDF path removed
+// PDF report-related code has been moved to src/services/pdfService.js
 
 /**
  * Export data to CSV
@@ -995,35 +858,7 @@ export function downloadFile(content, filename, type = 'application/octet-stream
  * @param {jsPDF|Blob} pdfResult - PDF result from either legacy or v2 system
  * @param {string} filename - File name
  */
-function _obsolete_downloadPDFLegacy(pdfResult, filename) {
-  if (!pdfResult) {
-    throw new Error('No PDF result provided');
-  }
-  
-  // Handle jsPDF objects (legacy v1)
-  if (pdfResult.save && typeof pdfResult.save === 'function') {
-    console.log('[PDF] Downloading PDF v1 (jsPDF)');
-    pdfResult.save(filename);
-    return;
-  }
-  
-  // Handle Blob objects (v2)
-  if (pdfResult instanceof Blob) {
-    console.log('[PDF] Downloading PDF v2 (Blob)');
-    downloadFile(pdfResult, filename, 'application/pdf');
-    return;
-  }
-  
-  throw new Error('Unsupported PDF result type');
-}
-
-// Minimal-only downloader for Blob PDFs
-export function downloadPDF(pdfBlob, filename) {
-  if (!(pdfBlob instanceof Blob)) {
-    throw new Error('No PDF blob provided');
-  }
-  downloadFile(pdfBlob, filename, 'application/pdf');
-}
+// (downloadPDF moved to pdfService.js)
 
 // --- Advisor Portfolio Exports (Phase 2) ---
 
@@ -1066,52 +901,7 @@ export function exportAdvisorPortfolioCSV({ snapshotDate, advisorId, summary = {
   return new Blob([csv], { type: 'text/csv;charset=utf-8' });
 }
 
-export async function generateAdvisorPortfolioPDF({ snapshotDate, advisorId, summary = {}, portfolio = {} }) {
-  // Lightweight PDF via jsPDF + autoTable
-  const { jsPDF } = await import('jspdf');
-  await import('jspdf-autotable');
-  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
-
-  const title = 'Advisor Portfolio Summary';
-  doc.setFontSize(16);
-  doc.text(title, 40, 40);
-  doc.setFontSize(11);
-  doc.text(`Snapshot: ${snapshotDate || ''}`, 40, 62);
-  doc.text(`Advisor: ${advisorId || ''}`, 40, 78);
-
-  const totalAum = Number(portfolio?.totalAum || 0);
-  const uniqueHoldings = Number(portfolio?.uniqueHoldings || 0);
-  const clients = Number(summary?.client_count || 0);
-  const adoptionPct = totalAum > 0 ? ((portfolio?.recommendedAum || 0) / totalAum) * 100 : 0;
-  const kpiRows = [
-    ['Total AUM (USD)', Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(totalAum)],
-    ['Unique Holdings', String(uniqueHoldings)],
-    ['Clients', String(clients)],
-    ['% In Recommended', `${adoptionPct.toFixed(1)}%`]
-  ];
-  doc.autoTable({ startY: 95, head: [['Metric', 'Value']], body: kpiRows, styles: { fontSize: 9 } });
-
-  // Allocation table
-  const allocHead = [['Asset Class', 'Amount (USD)', '% of AUM']];
-  const allocBody = (portfolio?.allocation || []).map(a => [
-    a.asset_class || 'Unclassified',
-    Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(a.amount || 0)),
-    `${(((a.pct || 0) * 100).toFixed(1))}%`
-  ]);
-  doc.autoTable({ head: allocHead, body: allocBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
-
-  // Positions table (top 20 to keep size)
-  const posHead = [['Ticker', 'Amount (USD)', '% of AUM', 'Recommended']];
-  const posBody = (portfolio?.positions || []).slice(0, 20).map(p => [
-    p.ticker || '',
-    Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(p.amount || 0)),
-    `${(((p.pct || 0) * 100).toFixed(1))}%`,
-    p.is_recommended ? 'Yes' : 'No'
-  ]);
-  doc.autoTable({ head: posHead, body: posBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
-
-  return doc.output('blob');
-}
+// (generateAdvisorPortfolioPDF moved to pdfService.js)
 
 // Export current fund utilization view to CSV
 export function exportUtilizationCSV({ snapshotDate, assetClass = null, rows = [] }) {
@@ -1204,83 +994,7 @@ export function exportTickerAdvisorBreakdownCSV({ ticker, rows = [] }) {
   return new Blob([csv], { type: 'text/csv;charset=utf-8' });
 }
 
-export async function generateTradeFlowsPDF({ month, assetClass = null, ticker = null, topInflows = [], topOutflows = [], heatmap = [], trend = [], sentiment = {} }) {
-  const { jsPDF } = await import('jspdf');
-  await import('jspdf-autotable');
-  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
-
-  // Header
-  doc.setFontSize(16);
-  doc.text('Trade Flow Summary', 40, 40);
-  doc.setFontSize(11);
-  doc.text(`Month: ${month || 'Latest'}`, 40, 60);
-  if (assetClass) doc.text(`Asset Class: ${assetClass}`, 40, 76);
-  if (ticker) doc.text(`Ticker: ${ticker}`, 40, 92);
-
-  // Sentiment
-  const sRows = [
-    ['Advisors Buying', String(Number(sentiment.advisors_buying || 0))],
-    ['Advisors Selling', String(Number(sentiment.advisors_selling || 0))],
-    ['Advisors Neutral', String(Number(sentiment.advisors_neutral || 0))],
-    ['Advisors Total', String(Number(sentiment.advisors_total || 0))]
-  ];
-  doc.autoTable({ startY: 110, head: [['Sentiment', 'Value']], body: sRows, styles: { fontSize: 9 } });
-
-  // Trend
-  const trendHead = [['Month', 'Net Flow (USD)']];
-  const trendBody = (trend || []).map(r => [r.month || '', new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0))]);
-  doc.autoTable({ head: trendHead, body: trendBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
-
-  // Top inflows
-  const inflowHasDelta = Array.isArray(topInflows) && topInflows.some(r => Object.prototype.hasOwnProperty.call(r || {}, 'delta_net'));
-  const inflowHead = [ inflowHasDelta ? ['Ticker', 'Inflows', 'Outflows', 'Net', 'Delta Net vs Prior', 'Advisors'] : ['Ticker', 'Inflows', 'Outflows', 'Net', 'Advisors'] ];
-  const inflowBody = (topInflows || []).map(r => inflowHasDelta ? [
-    r.ticker || '',
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.delta_net || 0)),
-    String(Number(r.advisors_trading || 0))
-  ] : [
-    r.ticker || '',
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
-    String(Number(r.advisors_trading || 0))
-  ]);
-  doc.autoTable({ head: inflowHead, body: inflowBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
-
-  // Top outflows
-  const outflowHasDelta = Array.isArray(topOutflows) && topOutflows.some(r => Object.prototype.hasOwnProperty.call(r || {}, 'delta_net'));
-  const outflowHead = [ outflowHasDelta ? ['Ticker', 'Inflows', 'Outflows', 'Net', 'Delta Net vs Prior', 'Advisors'] : ['Ticker', 'Inflows', 'Outflows', 'Net', 'Advisors'] ];
-  const outflowBody = (topOutflows || []).map(r => outflowHasDelta ? [
-    r.ticker || '',
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.delta_net || 0)),
-    String(Number(r.advisors_trading || 0))
-  ] : [
-    r.ticker || '',
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
-    String(Number(r.advisors_trading || 0))
-  ]);
-  doc.autoTable({ head: outflowHead, body: outflowBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });  // Heatmap by asset class
-  const hmHead = [['Asset Class', 'Inflows', 'Outflows', 'Net', 'Funds Traded', 'Advisors Trading (sum)']];
-  const hmBody = (heatmap || []).map(r => [
-    r.asset_class || 'Unclassified',
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.inflows || 0)),
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.outflows || 0)),
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(r.net_flow || 0)),
-    String(Number(r.funds_traded || 0)),
-    String(Number(r.advisors_trading || 0))
-  ]);
-  doc.autoTable({ head: hmHead, body: hmBody, styles: { fontSize: 9 }, startY: doc.lastAutoTable.finalY + 16, theme: 'grid' });
-
-  return doc.output('blob');
-}
+// (generateTradeFlowsPDF moved to pdfService.js)
 
 // Excel export for Advisor Portfolio
 export function exportAdvisorPortfolioExcel({ snapshotDate, advisorId, summary = {}, portfolio = {} }) {

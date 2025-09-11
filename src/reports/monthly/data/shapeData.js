@@ -145,7 +145,7 @@ async function fetchFunds(selection, asOf) {
     try {
       console.log('dY"< [PDF] Falling back to base funds + runtime scoring for asOf:', asOf);
       // Load base funds using new fundDataService
-      const { getFundsWithPerformance } = await import('../../services/fundDataService.js');
+      const { getFundsWithPerformance } = await import('../../../services/fundDataService.js');
       const baseFunds = await getFundsWithPerformance(asOf);
       const base = baseFunds || [];
       // Use new scoring system
