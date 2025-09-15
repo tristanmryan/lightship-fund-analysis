@@ -186,7 +186,7 @@ async function getNetFlowTrend(limitMonths = 6) {
     .slice(-Math.max(1, Math.min(limitMonths || 6, 36)));
 }
 
-export default {
+const flowsService = {
   listMonths,
   getFundFlows,
   getTopMovers,
@@ -245,3 +245,5 @@ export default {
     } catch { return null; }
   }
 };
+
+export default flowsService;

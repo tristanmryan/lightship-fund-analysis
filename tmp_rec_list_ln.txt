@@ -1,0 +1,255 @@
+﻿1:// src/components/Recommended/RecommendedList.jsx
+2:import React, { useEffect, useMemo, useState } from 'react';
+3:import ProfessionalTable from '../tables/ProfessionalTable';
+4:import ScoreTooltip from '../Dashboard/ScoreTooltip';
+5:import { getScoreColor, getScoreLabel, getScoreBreakdown } from '../../services/scoringService.js';
+6:import { useFundData } from '../../hooks/useFundData';
+7:import { exportAssetClassTableCSV } from '../../services/exportService.js';
+8:import { supabase, TABLES } from '../../services/supabase.js';
+9:import { prefetchBenchmarkMappings, getPrimaryBenchmark } from '../../services/resolvers/benchmarkResolverClient.js';
+10:
+11:const DEFAULT_GROUPS = [
+12:  'US Equity',
+13:  'International Equity',
+14:  'Fixed Income',
+15:  'Commodities',
+16:  'Alternatives'
+17:];
+18:
+19:export default function RecommendedList({ asOfMonth = null }) {
+20:  // Use useFundData hook to get funds with scoring
+21:  const { funds, loading, error: fundsError } = useFundData();
+22:  
+23:  const [benchmarks, setBenchmarks] = useState(new Map()); // asset_class_id -> benchmark row
+24:  // const [error, setError] = useState(null);
+25:  const [selectedGroup, setSelectedGroup] = useState('All');
+26:
+27:  // Filter for recommended funds from useFundData
+28:  const recommendedFunds = useMemo(() => {
+29:    if (!funds || funds.length === 0) return [];
+30:    return funds.filter(fund => fund.is_recommended || fund.recommended);
+31:  }, [funds]);
+32:
+33:  // Set error from useFundData
+34:  useEffect(() => {
+35:    if (fundsError) {
+36:      console.warn('RecommendedList: data error', fundsError);
+37:    }
+38:  }, [fundsError]);
+39:
+40:  // After recommendedFunds load, fetch benchmark rows per asset class
+41:  useEffect(() => {
+42:    if (recommendedFunds.length === 0) return;
+43:    let cancel = false;
+44:    (async () => {
+45:      try {
+46:        // Warm benchmark mappings
+47:        await prefetchBenchmarkMappings();
+48:
+49:        // Determine target date (prefer perf_date on any fund)
+50:        const targetDate = (() => {
+51:          const d = recommendedFunds.find(f => f?.perf_date)?.perf_date;
+52:          if (d) return d;
+53:          if (asOfMonth) {
+54:            try { return new Date(asOfMonth + '-01T00:00:00Z').toISOString().slice(0,10); } catch {}
+55:          }
+56:          return null;
+57:        })();
+58:
+59:        // Create map: asset_class_id -> sample fund
+60:        const byAcId = new Map();
+61:        (recommendedFunds || []).forEach(r => { if (r.asset_class_id) byAcId.set(r.asset_class_id, r); });
+62:        const entries = Array.from(byAcId.entries());
+63:
+64:        const results = await Promise.all(entries.map(async ([acId, sampleFund]) => {
+65:          try {
+66:            const benchInfo = getPrimaryBenchmark(sampleFund); // { ticker, name }
+67:            const benchTicker = benchInfo?.ticker || null;
+68:            const benchName = benchInfo?.name || 'Benchmark';
+69:            if (!benchTicker) return [acId, null];
+70:
+71:            // Fetch benchmark performance for the date
+72:            let { data } = await supabase
+73:              .from(TABLES.BENCHMARK_PERFORMANCE)
+74:              .select('*')
+75:              .eq('benchmark_ticker', benchTicker)
+76:              .eq('date', targetDate)
+77:              .maybeSingle();
+78:
+79:            if (!data) {
+80:              const res = await supabase
+81:                .from(TABLES.BENCHMARK_PERFORMANCE)
+82:                .select('*')
+83:                .eq('benchmark_ticker', benchTicker)
+84:                .order('date', { ascending: false })
+85:                .limit(1);
+86:              data = res?.data?.[0] || null;
+87:            }
+88:
+89:            const row = data ? {
+90:              is_benchmark: true,
+91:              ticker: benchTicker,
+92:              name: benchName,
+93:              asset_class_id: acId,
+94:              asset_class_name: sampleFund.asset_class_name || sampleFund.asset_class || '',
+95:              ytd_return: data.ytd_return ?? null,
+96:              one_year_return: data.one_year_return ?? null,
+97:              three_year_return: data.three_year_return ?? null,
+98:              five_year_return: data.five_year_return ?? null,
+99:              expense_ratio: data.expense_ratio ?? null,
+100:              sharpe_ratio: data.sharpe_ratio ?? null,
+101:              standard_deviation_3y: data.standard_deviation_3y ?? null,
+102:              standard_deviation_5y: data.standard_deviation_5y ?? null,
+103:              perf_date: data.date ?? targetDate
+104:            } : null;
+105:
+106:            return [acId, row];
+107:          } catch { return [acId, null]; }
+108:        }));
+109:
+110:        if (!cancel) setBenchmarks(new Map(results));
+111:      } catch {
+112:        if (!cancel) setBenchmarks(new Map());
+113:      }
+114:    })();
+115:    return () => { cancel = true; };
+116:  }, [recommendedFunds, asOfMonth]);
+117:
+118:  const groups = useMemo(() => {
+119:    const set = new Set(DEFAULT_GROUPS);
+120:    (recommendedFunds || []).forEach(r => { if (r.asset_class_name) set.add(r.asset_class_name); });
+121:    return ['All', ...Array.from(set).filter(Boolean)];
+122:  }, [recommendedFunds]);
+123:
+124:  const grouped = useMemo(() => {
+125:    const map = new Map();
+126:    (recommendedFunds || []).forEach(r => {
+127:      const key = r.asset_class_name || r.asset_class || 'Unclassified';
+128:      if (!map.has(key)) map.set(key, []);
+129:      map.get(key).push(r);
+130:    });
+131:    return map;
+132:  }, [recommendedFunds]);
+133:
+134:  const onExport = (assetClassName, data) => {
+135:    try {
+136:      const blob = exportAssetClassTableCSV(data, assetClassName, asOfMonth);
+137:      const fname = `${assetClassName.replace(/\s+/g, '_').toLowerCase()}_recommended_${(asOfMonth||'latest')}.csv`;
+138:      const url = URL.createObjectURL(blob);
+139:      const a = document.createElement('a');
+140:      a.href = url; a.download = fname; a.click();
+141:      URL.revokeObjectURL(url);
+142:    } catch (e) {
+143:      console.error('Export failed', e);
+144:    }
+145:  };
+146:
+147:  return (
+148:    <div style={{ display: 'grid', gap: 12 }}>
+149:      <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+150:        <div style={{ fontWeight: 600, fontSize: 18 }}>Recommended Funds</div>
+151:        <div>
+152:          <label htmlFor="acFilter" style={{ fontSize: 12, color: '#6b7280', marginRight: 6 }}>Asset Class</label>
+153:          <select id="acFilter" value={selectedGroup} onChange={(e)=> setSelectedGroup(e.target.value)}>
+154:            {groups.map(g => <option key={g} value={g}>{g}</option>)}
+155:          </select>
+156:        </div>
+157:      </div>
+158:
+159:      {Array.from(grouped.entries())
+160:        .filter(([name]) => selectedGroup === 'All' || name === selectedGroup)
+161:        .map(([name, funds]) => {
+162:          const acId = (funds[0] && funds[0].asset_class_id) || null;
+163:          let bench = acId ? benchmarks.get(acId) : null;
+164:
+165:          // If we have a benchmark row, compute its score relative to the funds in class
+166:          if (bench) {
+167:            try {
+168:              const breakdown = getScoreBreakdown(bench, funds);
+169:              const benchScore = Number(breakdown?.finalScore ?? null);
+170:              if (Number.isFinite(benchScore)) {
+171:                bench = {
+172:                  ...bench,
+173:                  score: benchScore,
+174:                  score_final: benchScore,
+175:                  scores: { final: benchScore }
+176:                };
+177:              }
+178:            } catch (e) {
+179:              // Non-fatal; keep benchmark without score
+180:            }
+181:          }
+182:
+183:          // Sort funds by score desc (ignoring benchmark) and push benchmark last
+184:          const fundRows = [...funds].sort((a, b) => {
+185:            const sa = (a?.scores?.final ?? a?.score_final ?? a?.score);
+186:            const sb = (b?.scores?.final ?? b?.score_final ?? b?.score);
+187:            const aNum = Number.isFinite(Number(sa)) ? Number(sa) : -Infinity;
+188:            const bNum = Number.isFinite(Number(sb)) ? Number(sb) : -Infinity;
+189:            return bNum - aNum; // descending
+190:          });
+191:
+192:          const data = bench ? [...fundRows, bench] : fundRows;
+193:          return (
+194:        <div key={name} className="card" style={{ padding: 12 }}>
+195:          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+196:            <h3 className="card-title" style={{ margin: 0 }}>{name}</h3>
+197:            <div style={{ display: 'flex', gap: 8 }}>
+198:              <button className="btn" onClick={() => onExport(name, funds)}>Export CSV</button>
+199:            </div>
+200:          </div>
+201:          <ProfessionalTable
+202:            data={data}
+203:            columns={RECOMMENDED_COLUMNS}
+204:            sortable={false}
+205:            onRowClick={(f) => console.log('select', f?.ticker)}
+206:          />
+207:        </div>
+208:      ); })}
+209:
+210:      {!recommendedFunds.length && !loading && (
+211:        <div className="card" style={{ padding: 12, color: '#6b7280' }}>No recommended funds found.</div>
+212:      )}
+213:    </div>
+214:  );
+215:}
+216:
+217:// Simple column set for recommended view
+218:const RECOMMENDED_COLUMNS = [
+219:  { key: 'ticker', label: 'Ticker', width: '80px', accessor: (r) => r.ticker, render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
+220:  { key: 'name', label: 'Fund Name', width: '250px', accessor: (r) => r.name || '' },
+221:  { key: 'assetClass', label: 'Asset Class', width: '160px', accessor: (r) => r.asset_class_name || r.asset_class || '' },
+222:  { key: 'score', label: 'Score', width: '90px', numeric: true, align: 'right', accessor: (r) => (r?.scores?.final ?? r?.score_final ?? r?.score) ?? null, render: (v, row) => v != null ? (
+223:    <ScoreTooltip fund={row} score={Number(v)}>
+224:      {(() => {
+225:        const s = Number(v);
+226:        const color = getScoreColor(s);
+227:        const label = getScoreLabel(s);
+228:        return (
+229:          <span
+230:            className="number"
+231:            style={{
+232:              display: 'inline-block',
+233:              padding: '2px 8px',
+234:              borderRadius: 999,
+235:              backgroundColor: color + '20',
+236:              color,
+237:              fontWeight: 600,
+238:              minWidth: 54,
+239:              textAlign: 'right'
+240:            }}
+241:            title={label}
+242:          >
+243:            {s.toFixed(1)}
+244:          </span>
+245:        );
+246:      })()}
+247:    </ScoreTooltip>
+248:  ) : 'â€”' },
+249:  { key: 'ytdReturn', label: 'YTD', width: '80px', numeric: true, align: 'right', accessor: (r) => r.ytd_return ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : 'â€”' },
+250:  { key: 'oneYear', label: '1Y', width: '80px', numeric: true, align: 'right', accessor: (r) => r.one_year_return ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : 'â€”' },
+251:  { key: 'threeYear', label: '3Y', width: '80px', numeric: true, align: 'right', accessor: (r) => r.three_year_return ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : 'â€”' },
+252:  { key: 'expense', label: 'Expense', width: '80px', numeric: true, align: 'right', accessor: (r) => r.expense_ratio ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : 'â€”' },
+253:  { key: 'firmAUM', label: 'Firm AUM', width: '120px', numeric: true, align: 'right', accessor: (r) => r.firmAUM ?? null, render: (v) => v != null ? new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits: 0 }).format(Number(v)) : 'â€”' },
+254:  { key: 'advisors', label: '# Advisors', width: '100px', numeric: true, align: 'right', accessor: (r) => r.advisorCount ?? null }
+255:];

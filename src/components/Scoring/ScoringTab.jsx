@@ -18,6 +18,7 @@ import {
   getWeightsDifferenceSummary
 } from '../../services/weightService.js';
 import { calculateAssetClassScores } from '../../services/scoringService.js';
+import { METRICS as METRICS_REGISTRY } from '../../services/metricsRegistry.js';
 import { getFundsWithPerformance } from '../../services/fundDataService.js';
 
 const ScoringTab = () => {
@@ -36,8 +37,42 @@ const ScoringTab = () => {
   
   // UI state
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [showApplyBanner, setShowApplyBanner] = useState(false);
   
-  // Load asset classes and initial data
+  // Message management (define early so callbacks can depend on it)
+  const showMessage = useCallback((type, text) => {
+    setMessage({ type, text });
+    if (type !== 'error') {
+      setTimeout(() => setMessage({ type: '', text: '' }), 4000);
+    }
+  }, []);
+  
+  const clearMessage = useCallback(() => {
+    setMessage({ type: '', text: '' });
+  }, []);
+  
+  // Load weights for selected asset class
+  const loadWeightsForAssetClass = useCallback(async (assetClassId) => {
+    try {
+      const weights = await getWeightsForAssetClass(assetClassId);
+      setCurrentWeights(weights);
+      setHasUnsavedChanges(false);
+      
+      // Show customization status
+      const diffSummary = getWeightsDifferenceSummary(weights);
+      if (diffSummary.hasCustomWeights) {
+        showMessage('info', `${diffSummary.totalDifferences} custom weights loaded`);
+      } else {
+        showMessage('info', 'Using global default weights');
+      }
+    } catch (error) {
+      console.error('Error loading weights:', error);
+      showMessage('error', 'Failed to load weights, using defaults');
+      setCurrentWeights(getGlobalDefaultWeights());
+    }
+  }, [showMessage]);
+
+  // Load asset classes and initial data (after callbacks are defined)
   useEffect(() => {
     async function loadInitialData() {
       try {
@@ -81,28 +116,9 @@ const ScoringTab = () => {
     }
     
     loadInitialData();
-  }, []);
+  }, [loadWeightsForAssetClass, showMessage]);
   
-  // Load weights for selected asset class
-  const loadWeightsForAssetClass = useCallback(async (assetClassId) => {
-    try {
-      const weights = await getWeightsForAssetClass(assetClassId);
-      setCurrentWeights(weights);
-      setHasUnsavedChanges(false);
-      
-      // Show customization status
-      const diffSummary = getWeightsDifferenceSummary(weights);
-      if (diffSummary.hasCustomWeights) {
-        showMessage('info', `${diffSummary.totalDifferences} custom weights loaded`);
-      } else {
-        showMessage('info', 'Using global default weights');
-      }
-    } catch (error) {
-      console.error('Error loading weights:', error);
-      showMessage('error', 'Failed to load weights, using defaults');
-      setCurrentWeights(getGlobalDefaultWeights());
-    }
-  }, []);
+  
   
   // Handle asset class selection change
   const handleAssetClassChange = useCallback(async (assetClassId) => {
@@ -128,7 +144,7 @@ const ScoringTab = () => {
     }));
     setHasUnsavedChanges(true);
     clearMessage();
-  }, []);
+  }, [clearMessage]);
   
   // Calculate real-time preview scores
   const previewScores = useMemo(() => {
@@ -150,6 +166,21 @@ const ScoringTab = () => {
       return previewFunds;
     }
   }, [selectedAssetClassName, previewFunds, currentWeights]);
+
+  // Compute per-metric coverage within the selected asset class (0..1)
+  const coverageMap = useMemo(() => {
+    const map = {};
+    if (!Array.isArray(previewFunds) || previewFunds.length === 0) return map;
+    const total = previewFunds.length;
+    Object.keys(METRICS_REGISTRY).forEach((metric) => {
+      const count = previewFunds.reduce((acc, f) => {
+        const v = f[metric];
+        return acc + ((v !== null && v !== undefined && !isNaN(v)) ? 1 : 0);
+      }, 0);
+      map[metric] = total > 0 ? count / total : 0;
+    });
+    return map;
+  }, [previewFunds]);
   
   // Update preview funds when asset class changes
   useEffect(() => {
@@ -189,6 +220,8 @@ const ScoringTab = () => {
       
       const diffSummary = getWeightsDifferenceSummary(currentWeights);
       showMessage('success', `Saved ${diffSummary.totalDifferences} custom weights for ${selectedAssetClassName}`);
+      // Reveal CTA banner to apply changes globally across the app
+      setShowApplyBanner(true);
       
     } catch (error) {
       console.error('Error saving weights:', error);
@@ -196,7 +229,7 @@ const ScoringTab = () => {
     } finally {
       setSaving(false);
     }
-  }, [selectedAssetClassId, selectedAssetClassName, currentWeights]);
+  }, [selectedAssetClassId, selectedAssetClassName, currentWeights, showMessage]);
   
   // Reset weights to defaults
   const handleReset = useCallback(async () => {
@@ -221,19 +254,9 @@ const ScoringTab = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedAssetClassId, selectedAssetClassName]);
+  }, [selectedAssetClassId, selectedAssetClassName, showMessage]);
   
-  // Message management
-  const showMessage = useCallback((type, text) => {
-    setMessage({ type, text });
-    if (type !== 'error') {
-      setTimeout(() => setMessage({ type: '', text: '' }), 4000);
-    }
-  }, []);
   
-  const clearMessage = useCallback(() => {
-    setMessage({ type: '', text: '' });
-  }, []);
   
   // Weight validation for UI feedback
   const validation = useMemo(() => validateWeights(currentWeights), [currentWeights]);
@@ -384,6 +407,43 @@ const ScoringTab = () => {
         </div>
       )}
       
+      {/* Apply Scoring Banner (CTA) */}
+      {showApplyBanner && (
+        <div style={{
+          padding: '12px 24px',
+          backgroundColor: '#FFFBEB',
+          borderBottom: '1px solid #FDE68A',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <AlertTriangle size={16} style={{ color: '#D97706' }} />
+          <div style={{ fontSize: '14px', color: '#92400E' }}>
+            You have saved new scoring weights. Apply changes to the app?
+          </div>
+          <button
+            onClick={() => {
+              try {
+                window.dispatchEvent(new CustomEvent('APPLY_NEW_SCORING'));
+              } catch {}
+              setShowApplyBanner(false);
+            }}
+            style={{
+              marginLeft: 'auto',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: '#F59E0B',
+              color: 'white',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Apply new scoring to app
+          </button>
+        </div>
+      )}
+
       {/* Main Content */}
       {selectedAssetClassId && (
         <div style={{ 
@@ -420,7 +480,17 @@ const ScoringTab = () => {
               </h2>
               
               {/* Controls */}
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {/* Add Metric selector */}
+                <AddMetricControl
+                  weights={currentWeights}
+                  coverageMap={coverageMap}
+                  onAdd={(metricKey) => {
+                    // Set a sensible starting weight
+                    const start = 0.05;
+                    handleWeightChange(metricKey, start);
+                  }}
+                />
                 <button
                   onClick={handleReset}
                   disabled={loading}
@@ -469,6 +539,7 @@ const ScoringTab = () => {
               onWeightChange={handleWeightChange}
               validation={validation}
               diffSummary={diffSummary}
+              coverageMap={coverageMap}
             />
           </div>
           
@@ -497,3 +568,64 @@ const ScoringTab = () => {
 };
 
 export default ScoringTab;
+
+// Inline AddMetric control (simple, no external styles)
+function AddMetricControl({ weights, coverageMap, onAdd }) {
+  const [selected, setSelected] = React.useState('');
+
+  const options = React.useMemo(() => {
+    const opts = Object.keys(METRICS_REGISTRY)
+      .filter((k) => (weights?.[k] ?? 0) === 0)
+      .map((k) => ({ key: k, label: METRICS_REGISTRY[k].label, coverage: coverageMap?.[k] ?? 0 }))
+      .filter((o) => o.coverage > 0)
+      .sort((a, b) => b.coverage - a.coverage || a.label.localeCompare(b.label));
+    return opts;
+  }, [weights, coverageMap]);
+
+  if (options.length === 0) return null;
+
+  const fmtPct = (p) => `${Math.round((p || 0) * 100)}%`;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <select
+        value={selected}
+        onChange={(e) => setSelected(e.target.value)}
+        style={{
+          padding: '8px 12px',
+          border: '1px solid #D1D5DB',
+          borderRadius: 6,
+          backgroundColor: 'white',
+          fontSize: 14,
+          minWidth: 220
+        }}
+      >
+        <option value="">Add metric…</option>
+        {options.map((o) => (
+          <option key={o.key} value={o.key}>
+            {o.label} · {fmtPct(o.coverage)} coverage
+          </option>
+        ))}
+      </select>
+      <button
+        disabled={!selected}
+        onClick={() => {
+          if (!selected) return;
+          onAdd?.(selected);
+          setSelected('');
+        }}
+        style={{
+          padding: '8px 12px',
+          border: 'none',
+          borderRadius: 6,
+          backgroundColor: '#10B981',
+          color: 'white',
+          fontWeight: 600,
+          cursor: selected ? 'pointer' : 'not-allowed'
+        }}
+      >
+        Add
+      </button>
+    </div>
+  );
+}

@@ -142,7 +142,7 @@ async function computePortfolioBreakdown(snapshotDate, advisorId) {
   };
 }
 
-export default {
+const advisorService = {
   listSnapshotDates,
   listAdvisorsForDate,
   getAdvisorMetrics,
@@ -196,3 +196,5 @@ export default {
     return (data || []).reverse(); // chronological ascending
   }
 };
+
+export default advisorService;

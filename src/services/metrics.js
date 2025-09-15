@@ -6,7 +6,7 @@
 // 2) Map the metric in extractMetrics():
 //    - Provide legacy/CSV aliases (e.g., '1 Year', 'Sharpe Ratio') and the live/Supabase
 //      field names (e.g., one_year_return, sharpe_ratio) so both ingestion paths are supported.
-// 3) Add a default weight for the new metric in DEFAULT_WEIGHTS (see src/services/scoring.js).
+// 3) Add a default weight for the new metric in DEFAULT_WEIGHTS (see src/services/metricsRegistry.js).
 //    Keep default weight 0 if you want it inert until profiles override it.
 // 4) If the metric is derived (e.g., benchmark deltas), gate it behind a feature flag and
 //    include defensive null checks to avoid partial-data issues.

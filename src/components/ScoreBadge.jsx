@@ -1,36 +1,27 @@
 import React from 'react';
 import ScoreTooltip from './Dashboard/ScoreTooltip';
+import { getScoreColor, getScoreLabel } from '../services/scoringService.js';
 
 const ScoreBadge = ({ score, fund, size = 'medium' }) => {
   if (score === null || score === undefined) {
     return <span className="score-badge score-badge-unknown">N/A</span>;
   }
 
-  // Determine score category and color
-  let scoreClass = 'score-badge-neutral';
-  let scoreText = 'Neutral';
-
-  if (score >= 80) {
-    scoreClass = 'score-badge-excellent';
-    scoreText = 'Excellent';
-  } else if (score >= 60) {
-    scoreClass = 'score-badge-good';
-    scoreText = 'Good';
-  } else if (score >= 40) {
-    scoreClass = 'score-badge-fair';
-    scoreText = 'Fair';
-  } else if (score >= 20) {
-    scoreClass = 'score-badge-poor';
-    scoreText = 'Poor';
-  } else {
-    scoreClass = 'score-badge-very-poor';
-    scoreText = 'Very Poor';
-  }
+  // Centralized score color and label (Scoring tab policy)
+  const color = getScoreColor(score);
+  const scoreText = getScoreLabel(score);
 
   const sizeClass = `score-badge-${size}`;
 
   const badge = (
-    <span className={`score-badge ${scoreClass} ${sizeClass}`}>
+    <span
+      className={`score-badge ${sizeClass}`}
+      style={{
+        backgroundColor: color,
+        color: '#FFFFFF',
+        borderColor: color
+      }}
+    >
       {scoreText} ({score.toFixed(1)})
     </span>
   );

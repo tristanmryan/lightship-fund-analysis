@@ -45,11 +45,12 @@ export function getMissingPolicy() {
 }
 
 export const SCORE_BANDS = [
-  { min: 60, label: 'Strong',  color: '#10b981' }, // Soft emerald
-  { min: 55, label: 'Healthy', color: '#3b82f6' }, // Soft blue
-  { min: 45, label: 'Neutral', color: '#6b7280' }, // Muted gray
-  { min: 40, label: 'Caution', color: '#f59e0b' }, // Soft amber
-  { min: 0,  label: 'Weak',    color: '#ef4444' }  // Soft red
+  // Canonical scoring bands used across the app (from Scoring tab)
+  { min: 60, label: 'Strong',  color: '#10B981' }, // Emerald
+  { min: 55, label: 'Healthy', color: '#34D399' }, // Green
+  { min: 45, label: 'Neutral', color: '#FCD34D' }, // Amber (neutral)
+  { min: 40, label: 'Caution', color: '#F97316' }, // Orange
+  { min: 0,  label: 'Weak',    color: '#EF4444' }  // Red
 ];
 
 export function getScoreColor(score) {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase, TABLES, dbUtils } from '../../services/supabase';
+import { supabase, TABLES, } from '../../services/supabase';
 
 export default function DataHealth() {
   const [asOf, setAsOf] = useState('');
@@ -65,9 +65,9 @@ export default function DataHealth() {
     <div className="card" style={{ padding: 12 }}>
       <div className="card-header">
         <h4 className="card-title">Data Health</h4>
-        <p className="card-subtitle">Active month: {asOf || '—'}</p>
+        <p className="card-subtitle">Active month: {asOf || 'n/a'}</p>
         <div style={{ fontSize:12, color:'#6b7280' }}>
-          Target ≥80% coverage for YTD/1Y/Sharpe/StdDev(3Y) before trusting scores. Use Importer to backfill.
+          Target ≥ 80% coverage for YTD/1Y/Sharpe/StdDev(3Y) before trusting scores. Use Importer to backfill.
         </div>
       </div>
       <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:12 }}>
@@ -99,8 +99,8 @@ export default function DataHealth() {
         </table>
       </div>
       <div style={{ marginTop:12, display:'flex', gap:8, flexWrap:'wrap' }}>
-        <a href="#" className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}>Open Importer</a>
-        <a href="#" className="btn btn-secondary" onClick={(e)=>{ e.preventDefault(); window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'catalogs' } })); }}>Benchmarks Dictionary</a>
+        <button type="button" className="btn btn-secondary" onClick={() => { window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); }}>Open Importer</button>
+        <button type="button" className="btn btn-secondary" onClick={() => { window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'admin' } })); window.dispatchEvent(new CustomEvent('NAVIGATE_ADMIN', { detail: { subtab: 'catalogs' } })); }}>Benchmarks Dictionary</button>
       </div>
     </div>
   );

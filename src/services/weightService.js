@@ -12,8 +12,8 @@
  * - Database persistence with simple schema
  */
 
-import { supabase, TABLES, handleSupabaseError } from './supabase.js';
-import { DEFAULT_WEIGHTS } from './scoringService.js';
+import { supabase } from './supabase.js';
+import { DEFAULT_WEIGHTS } from './metricsRegistry.js';
 
 // Table name for weight storage
 const WEIGHTS_TABLE = 'scoring_weights_simple';
@@ -90,18 +90,13 @@ export async function saveAssetClassWeights(assetClassId, weights) {
 
     // Prepare weight records for insertion
     const weightRecords = Object.entries(weights)
-      .filter(([_, weight]) => weight !== 0) // Only store non-zero weights
       .map(([metric_key, weight]) => ({
         asset_class_id: assetClassId,
         metric_key,
         weight: parseFloat(weight)
       }));
 
-    // If no weights to save (all are zero/default), we're done
-    if (weightRecords.length === 0) {
-      console.log(`No custom weights to save for asset class ${assetClassId}`);
-      return true;
-    }
+    // Note: We persist zero weights to explicitly disable metrics
 
     // Insert new weight records
     const { error: insertError } = await supabase

@@ -12,39 +12,15 @@
  * - Weighted sum calculation
  * - Score breakdown for tooltips
  */
+// Centralized score bands, colors, and labels from shared policy
+// Keep imports at the top to satisfy lint rules
+import { getScoreColor as getPolicyScoreColor, getScoreLabel as getPolicyScoreLabel } from './scoringPolicy.js';
+import { METRICS, DEFAULT_WEIGHTS } from './metricsRegistry.js';
 
-// Default metric weights (based on user requirements)
-export const DEFAULT_WEIGHTS = {
-  ytd_return: 0.15,
-  one_year_return: 0.25,
-  three_year_return: 0.20,
-  sharpe_ratio: 0.15,
-  expense_ratio: 0.10, // Negative weight - lower is better
-  alpha: 0.10,
-  beta: 0.05
-};
+// Re-export defaults for existing consumers
+export { DEFAULT_WEIGHTS };
 
-// Metrics configuration
-const METRICS = {
-  ytd_return: { isHigherBetter: true },
-  one_year_return: { isHigherBetter: true },
-  three_year_return: { isHigherBetter: true },
-  sharpe_ratio: { isHigherBetter: true },
-  expense_ratio: { isHigherBetter: false }, // Lower is better
-  alpha: { isHigherBetter: true },
-  beta: { isHigherBetter: false }, // Generally prefer lower beta
-  up_capture_ratio: { isHigherBetter: true },
-  down_capture_ratio: { isHigherBetter: false } // Lower down capture is better
-};
-
-// Score interpretation bands
-const SCORE_BANDS = [
-  { min: 60, color: '#10B981', label: 'Strong' },
-  { min: 55, color: '#34D399', label: 'Healthy' },
-  { min: 45, color: '#FCD34D', label: 'Neutral' },
-  { min: 40, color: '#F97316', label: 'Caution' },
-  { min: 0, color: '#EF4444', label: 'Weak' }
-];
+//
 
 /**
  * Calculate mean of an array of numbers, ignoring null/undefined values
@@ -281,9 +257,7 @@ export function getScoreColor(score) {
   if (score === null || score === undefined || isNaN(score)) {
     return '#9CA3AF'; // Gray for missing scores
   }
-  
-  const band = SCORE_BANDS.find(b => score >= b.min);
-  return band ? band.color : '#EF4444'; // Default to red if somehow below all bands
+  return getPolicyScoreColor(score);
 }
 
 /**
@@ -295,9 +269,7 @@ export function getScoreLabel(score) {
   if (score === null || score === undefined || isNaN(score)) {
     return 'N/A';
   }
-  
-  const band = SCORE_BANDS.find(b => score >= b.min);
-  return band ? band.label : 'Weak';
+  return getPolicyScoreLabel(score);
 }
 
 /**

@@ -16,12 +16,7 @@ const ENABLE_VISUAL_REFRESH = (process.env.REACT_APP_ENABLE_VISUAL_REFRESH || 'f
 /**
  * Enhanced formatting functions for visual refresh
  */
-function formatCurrency(value, options = {}) {
-  if (value == null || isNaN(value)) return options.emptyValue || '';
-  const { symbol = '$', decimals = 2, includeSymbol = ENABLE_VISUAL_REFRESH } = options;
-  const formatted = Number(value).toFixed(decimals);
-  return includeSymbol ? `${symbol}${formatted}` : formatted;
-}
+// removed unused formatCurrency (use formatPercentage/formatDate helpers below)
 
 function formatPercentage(value, options = {}) {
   if (value == null || isNaN(value)) return options.emptyValue || '';
@@ -646,7 +641,7 @@ export async function exportPrimaryBenchmarkMappingCSV() {
   for (const m of maps || []) {
     if (m?.kind === 'primary' || m?.rank === 1) primaryByAc.set(m.asset_class_id, m.benchmark_id);
   }
-  const bmIds = Array.from(new Set(Array.from(primaryByAc.values()).filter(Boolean)));
+  // primaryByAc -> benchmark id map computed above; fetch tickers next
   const { data: bms } = await supabase
     .from(TABLES.BENCHMARKS)
     .select('id,ticker');
@@ -1322,7 +1317,6 @@ export function exportCurrentView(options = {}) {
       
       // Apply enhanced formatting based on column type
       const percentColumns = ['ytdReturn', 'oneYearReturn', 'threeYearReturn', 'fiveYearReturn', 'expenseRatio', 'standardDeviation'];
-      const currencyColumns = ['expenseRatio']; // Expense ratios can be treated as currency in some contexts
       
       if (percentColumns.includes(col.key)) {
         return formatPercentage(rawValue, { 

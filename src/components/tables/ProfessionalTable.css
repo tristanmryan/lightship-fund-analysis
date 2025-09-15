@@ -40,13 +40,18 @@
   text-overflow: ellipsis;
 }
 
-/* tbody remains a normal table section for column alignment */
-.professional-table tbody {
+/* Accessible sort indicators via aria-sort attribute */
+.professional-table th[aria-sort="ascending"]::after {
+  content: " ▲";
+  font-size: 11px;
+}
+.professional-table th[aria-sort="descending"]::after {
+  content: " ▼";
+  font-size: 11px;
 }
 
-.professional-table tbody tr {
-  /* default display keeps header/body column widths aligned */
-}
+/* tbody remains a normal table section for column alignment */
+/* tbody remains a normal table section for column alignment (no overrides needed) */
 
 .professional-table td {
   padding: 10px 12px;
@@ -59,14 +64,24 @@
   cursor: pointer;
 }
 
+/* Keep benchmark row highlighted even on hover */
+.professional-table tbody tr.benchmark-row:hover {
+  background: #FFFBEB;
+}
+
 .professional-table tbody tr:focus {
   outline: 2px solid #c7d2fe; /* indigo-200 */
   background: #f1f5f9; /* slate-100 */
 }
 
 .professional-table .benchmark-row {
-  background: #f3f4f6;
-  font-style: italic;
+  background: #FFFBEB; /* soft amber-50 */
+  border-left: 3px solid #F59E0B; /* amber accent */
+}
+
+/* Hide ticker cell for benchmark rows only (keep header visible) */
+.professional-table .benchmark-row td.col-ticker {
+  visibility: hidden; /* keep cell for alignment but hide content */
 }
 
 /* Responsive column priorities */
@@ -79,4 +94,30 @@
 }
 @media (max-width: 1150px) {
   th[data-col-key='status'], td[data-col-key='status'] { display: none; }
+}
+
+/* Add these rules to ProfessionalTable.css */
+.professional-table th.col-symbol,
+.professional-table td.col-symbol {
+  width: 80px;
+}
+
+.professional-table th.col-name,
+.professional-table td.col-name {
+  width: 300px;
+}
+
+.professional-table th.col-assetClass,
+.professional-table td.col-assetClass {
+  width: 200px;
+}
+
+.professional-table th.col-status,
+.professional-table td.col-status {
+  width: 80px;
+}
+
+.professional-table th.col-score,
+.professional-table td.col-score {
+  width: 90px;
 }

@@ -9,6 +9,63 @@ import { calculateScores } from '../../../services/scoringService.js';
 import { getBulkWeightsForAssetClasses } from '../../../services/weightService.js';
 import { formatPercentDisplay, formatNumberDisplay, toEomDate } from '../shared/format.js';
 
+// Custom display order for asset class sections in PDF/Preview
+const CUSTOM_ASSET_CLASS_ORDER = [
+  'Large Cap Growth',
+  'Large Cap Blend',
+  'Large Cap Value',
+  'Mid-Cap Growth',
+  'Mid-Cap Blend',
+  'Mid-Cap Value',
+  'Small Cap Growth',
+  'Small Cap Core',
+  'Small Cap Value',
+  'International Stock (Large Cap)',
+  'International Stock (Small/Mid Cap)',
+  'Emerging Markets',
+  'Money Market',
+  'Short Term Muni',
+  'Intermediate Muni',
+  'High Yield Muni',
+  'Mass Muni Bonds',
+  'Short Term Bonds',
+  'Intermediate Term Bonds',
+  'High Yield Bonds',
+  'Foreign Bonds',
+  'Multi Sector Bonds',
+  'Non-Traditional Bonds',
+  'Convertible Bonds',
+  'Multi-Asset Income',
+  'Preferred Stock',
+  'Long/Short',
+  'Real Estate',
+  'Hedged/Enhanced',
+  'Tactical',
+  'Asset Allocation',
+  'Sector Funds',
+];
+
+function normalizeClassName(name) {
+  return String(name || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+const ORDER_INDEX = new Map(
+  CUSTOM_ASSET_CLASS_ORDER.map((n, i) => [normalizeClassName(n), i])
+);
+
+function compareAssetClassNames(a, b) {
+  const na = normalizeClassName(a);
+  const nb = normalizeClassName(b);
+  const ia = ORDER_INDEX.has(na) ? ORDER_INDEX.get(na) : Number.POSITIVE_INFINITY;
+  const ib = ORDER_INDEX.has(nb) ? ORDER_INDEX.get(nb) : Number.POSITIVE_INFINITY;
+  if (ia !== ib) return ia - ib;
+  // Fallback to alphabetical when both are not in the custom list or have same index
+  return (a || '').localeCompare(b || '');
+}
+
 // Helper function to apply new scoring system
 async function applyNewScoring(fundData) {
   if (!fundData || fundData.length === 0) return [];
@@ -54,7 +111,7 @@ async function applyNewScoring(fundData) {
  * @returns {Object} Shaped data ready for template consumption
  */
 export async function shapeReportData(payload) {
-  const { asOf, selection, options } = payload;
+  const { asOf, selection } = payload;
   try { console.log('[PDF] shapeReportData received selection:', selection); } catch {}
   
   console.log(`📊 Shaping data for scope: ${selection.scope}, asOf: ${asOf || 'latest'}`);
@@ -104,20 +161,18 @@ async function resolveAsOfDate(asOf) {
     return toEomDate(asOf);
   }
   
-  // Get latest available month from fund data
+  // Determine latest available month from performance data
   try {
-    const { data } = await supabase
-      .from(TABLES.FUNDS)
-      .select('as_of_month')
-      .not('as_of_month', 'is', null)
-      .order('as_of_month', { ascending: false })
+    const { data: latestPerf } = await supabase
+      .from(TABLES.FUND_PERFORMANCE)
+      .select('date')
+      .order('date', { ascending: false })
       .limit(1);
-      
-    if (data && data[0]) {
-      return toEomDate(data[0].as_of_month);
+    if (latestPerf && latestPerf[0]?.date) {
+      return toEomDate(latestPerf[0].date);
     }
-  } catch (error) {
-    console.warn('Could not resolve latest as-of date:', error);
+  } catch (e) {
+    console.warn('Fallback to FUND_PERFORMANCE latest date failed:', e?.message || e);
   }
   
   // Fallback to current month end
@@ -132,16 +187,16 @@ async function fetchFunds(selection, asOf) {
   // Prefer server-side scored dataset to ensure scores are present in PDF
   let funds = [];
   try {
-    console.log('dY"< [PDF] Fetching funds with server-side scoring for asOf:', asOf);
-    funds = await fundService.getAllFundsWithServerScoring(asOf);
+    console.log('dY"< [PDF] Fetching funds with app-aligned scoring for asOf:', asOf);
+    funds = await fundService.getAllFundsWithScoring(asOf);
   } catch (e) {
     console.warn('[PDF] Server-side scoring path failed:', e?.message || e);
     funds = [];
   }
 
   // If no scores present, fall back to base funds + runtime scoring
-  const hasServerScores = Array.isArray(funds) && funds.some(f => Number.isFinite(f?.scores?.final));
-  if (!hasServerScores) {
+  const hasScores = Array.isArray(funds) && funds.some(f => Number.isFinite(f?.scores?.final) || Number.isFinite(f?.score_final) || Number.isFinite(f?.score));
+  if (!hasScores) {
     try {
       console.log('dY"< [PDF] Falling back to base funds + runtime scoring for asOf:', asOf);
       // Load base funds using new fundDataService
@@ -159,7 +214,7 @@ async function fetchFunds(selection, asOf) {
 
   console.log('dY"^ [PDF] Funds loaded:', {
     count: funds.length,
-    withScores: funds.filter(f => Number.isFinite(f?.scores?.final)).length
+    withScores: funds.filter(f => Number.isFinite(f?.scores?.final) || Number.isFinite(f?.score_final) || Number.isFinite(f?.score)).length
   });
   try {
     const recCount = (funds || []).filter(f => f.is_recommended).length;
@@ -267,10 +322,14 @@ async function buildAssetClassSections(funds, asOf, allFundsForAsOf = null) {
   const assetClassNames = Object.keys(assetClassGroups);
   const benchmarkMap = await bulkResolveBenchmarks(assetClassNames, asOf);
 
-  // Build sections with benchmarks
+  // Build sections with benchmarks (in custom order)
   const sections = [];
 
-  for (const [assetClass, classFunds] of Object.entries(assetClassGroups)) {
+  const orderedEntries = Object.entries(assetClassGroups).sort((a, b) =>
+    compareAssetClassNames(a[0], b[0])
+  );
+
+  for (const [assetClass, classFunds] of orderedEntries) {
     if (classFunds.length === 0) continue;
 
     // Use pre-resolved benchmark for this asset class (may be null)
@@ -278,13 +337,15 @@ async function buildAssetClassSections(funds, asOf, allFundsForAsOf = null) {
     
     // Sort funds by score (highest first), then by name
     const sortedFunds = classFunds.sort((a, b) => {
-      const scoreA = a.scores?.final || a.score || 0;
-      const scoreB = b.scores?.final || b.score || 0;
-      
-      if (scoreA !== scoreB) {
+      const sA = (a?.scores?.final ?? a?.score ?? a?.score_final ?? 0);
+      const sB = (b?.scores?.final ?? b?.score ?? b?.score_final ?? 0);
+      const scoreA = Number.isFinite(sA) ? Number(sA) : parseFloat(sA);
+      const scoreB = Number.isFinite(sB) ? Number(sB) : parseFloat(sB);
+
+      if (!Number.isNaN(scoreA) && !Number.isNaN(scoreB) && scoreA !== scoreB) {
         return scoreB - scoreA; // Highest first
       }
-      
+
       return (a.name || '').localeCompare(b.name || '');
     });
     
@@ -475,71 +536,7 @@ function groupByAssetClass(funds) {
 /**
  * Resolve benchmark for an asset class
  */
-async function resolveBenchmark(assetClass, asOf) {
-  try {
-    // Try Supabase benchmark mapping first
-    const { data: assetClassData } = await supabase
-      .from(TABLES.ASSET_CLASSES)
-      .select('id,name')
-      .eq('name', assetClass)
-      .maybeSingle();
-      
-    if (assetClassData?.id) {
-      // Get benchmark mapping
-      const { data: mappings } = await supabase
-        .from(TABLES.ASSET_CLASS_BENCHMARKS)
-        .select('benchmark_id,kind,rank')
-        .eq('asset_class_id', assetClassData.id)
-        .order('rank', { ascending: true });
-        
-      const primaryMapping = mappings?.find(m => m.kind === 'primary') || mappings?.[0];
-      
-      if (primaryMapping?.benchmark_id) {
-        // Get benchmark details
-        const { data: benchmarkData } = await supabase
-          .from(TABLES.BENCHMARKS)
-          .select('ticker,name')
-          .eq('id', primaryMapping.benchmark_id)
-          .maybeSingle();
-          
-        if (benchmarkData?.ticker) {
-          // Get performance data
-          const performance = await getBenchmarkPerformance(benchmarkData.ticker, asOf);
-          
-          if (performance) {
-            return {
-              ticker: benchmarkData.ticker,
-              name: benchmarkData.name,
-              ...performance
-            };
-          }
-        }
-      }
-    }
-    
-    // Fallback to config-based mapping
-    const { getPrimaryBenchmarkSyncByLabel } = await import('../../../services/resolvers/benchmarkResolverClient.js');
-    const fallbackBenchmark = getPrimaryBenchmarkSyncByLabel(assetClass);
-    
-    if (fallbackBenchmark?.ticker) {
-      const performance = await getBenchmarkPerformance(fallbackBenchmark.ticker, asOf);
-      
-      if (performance) {
-        return {
-          ticker: fallbackBenchmark.ticker,
-          name: fallbackBenchmark.name || fallbackBenchmark.ticker,
-          ...performance
-        };
-      }
-    }
-    
-    return null;
-    
-  } catch (error) {
-    console.warn(`Failed to resolve benchmark for ${assetClass}:`, error);
-    return null;
-  }
-}
+// Note: legacy resolveBenchmark kept for reference was unused after bulk resolution was added
 
 /**
  * Get benchmark performance data
@@ -588,11 +585,11 @@ function prepareFundRow(fund, rank, totalInClass) {
     threeYearReturn: formatPercentDisplay(fund.three_year_return),
     fiveYearReturn: formatPercentDisplay(fund.five_year_return),
     sharpeRatio: formatNumberDisplay(fund.sharpe_ratio, 2),
-    standardDeviation3y: formatPercentDisplay(fund.standard_deviation_3y),
-    standardDeviation5y: formatPercentDisplay(fund.standard_deviation_5y),
+    standardDeviation3y: formatPercentDisplay(fund.standard_deviation_3y, 1),
+    standardDeviation5y: formatPercentDisplay(fund.standard_deviation_5y, 1),
     expenseRatio: formatPercentDisplay(fund.expense_ratio),
     managerTenure: formatTenure(fund.manager_tenure),
-    score: formatNumberDisplay(fund.scores?.final || fund.score, 1),
+    score: formatNumberDisplay((fund.scores?.final ?? fund.score ?? fund.score_final), 1),
     isRecommended: fund.is_recommended,
     raw: fund // Keep raw data for any custom formatting needs
   };

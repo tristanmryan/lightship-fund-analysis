@@ -119,9 +119,11 @@ export async function generateTradeFlowsPDF({ month, assetClass = null, ticker =
   return await response.blob();
 }
 
-export default {
+const pdfService = {
   generateMonthlyPDF,
   downloadPDF,
   generateAdvisorPortfolioPDF,
   generateTradeFlowsPDF,
 };
+
+export default pdfService;

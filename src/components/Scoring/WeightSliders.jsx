@@ -7,71 +7,30 @@
 
 import React, { useCallback, useMemo } from 'react';
 import { AlertTriangle, Info, TrendingUp, TrendingDown } from 'lucide-react';
-
-// Metric configuration with labels and descriptions
-const METRICS_CONFIG = {
-  ytd_return: {
-    label: 'YTD Return',
-    description: 'Year-to-date performance',
-    isHigherBetter: true,
-    category: 'Returns'
-  },
-  one_year_return: {
-    label: '1-Year Return', 
-    description: 'Trailing one year performance',
-    isHigherBetter: true,
-    category: 'Returns'
-  },
-  three_year_return: {
-    label: '3-Year Return',
-    description: 'Trailing three year annualized performance', 
-    isHigherBetter: true,
-    category: 'Returns'
-  },
-  sharpe_ratio: {
-    label: 'Sharpe Ratio',
-    description: 'Risk-adjusted return efficiency',
-    isHigherBetter: true,
-    category: 'Risk Metrics'
-  },
-  expense_ratio: {
-    label: 'Expense Ratio',
-    description: 'Annual fund expenses as % of assets',
-    isHigherBetter: false,
-    category: 'Cost'
-  },
-  alpha: {
-    label: 'Alpha',
-    description: 'Excess return vs benchmark',
-    isHigherBetter: true,
-    category: 'Risk Metrics'
-  },
-  beta: {
-    label: 'Beta', 
-    description: 'Market sensitivity (1.0 = market-like)',
-    isHigherBetter: false,
-    category: 'Risk Metrics'
-  }
-};
+import { METRICS as METRICS_REGISTRY } from '../../services/metricsRegistry.js';
 
 // Category styling
 const CATEGORY_COLORS = {
   'Returns': '#10B981',
-  'Risk Metrics': '#3B82F6', 
-  'Cost': '#F59E0B'
+  'Risk': '#3B82F6',
+  'Risk Metrics': '#3B82F6',
+  'Cost': '#F59E0B',
+  'Management': '#8B5CF6',
+  'Other': '#6B7280'
 };
 
-const WeightSliders = ({ weights, onWeightChange, validation, diffSummary }) => {
+const WeightSliders = ({ weights, onWeightChange, validation, diffSummary, coverageMap }) => {
   
   // Group metrics by category
   const metricsByCategory = useMemo(() => {
     const grouped = {};
-    Object.entries(METRICS_CONFIG).forEach(([key, config]) => {
-      if (!grouped[config.category]) {
-        grouped[config.category] = [];
-      }
-      grouped[config.category].push({ key, ...config });
+    Object.entries(METRICS_REGISTRY).forEach(([key, config]) => {
+      const cat = config.category || 'Other';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push({ key, ...config });
     });
+    // Stable sort by label within category
+    Object.values(grouped).forEach(list => list.sort((a, b) => a.label.localeCompare(b.label)));
     return grouped;
   }, []);
   
@@ -83,10 +42,9 @@ const WeightSliders = ({ weights, onWeightChange, validation, diffSummary }) => 
   
   // Get slider color based on weight value and metric type
   const getSliderColor = useCallback((metric, weight) => {
-    const config = METRICS_CONFIG[metric];
+    const config = METRICS_REGISTRY[metric];
     if (!config) return '#9CA3AF';
     
-    const intensity = Math.abs(weight) * 100; // 0-100 based on weight
     const categoryColor = CATEGORY_COLORS[config.category] || '#6B7280';
     
     // Return appropriate color with intensity
@@ -186,141 +144,173 @@ const WeightSliders = ({ weights, onWeightChange, validation, diffSummary }) => 
       </div>
       
       {/* Metric Sliders by Category */}
-      {Object.entries(metricsByCategory).map(([category, metrics]) => (
-        <div key={category} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Category Header */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            paddingBottom: '8px',
-            borderBottom: `2px solid ${CATEGORY_COLORS[category] || '#E5E7EB'}`
-          }}>
+      {Object.entries(metricsByCategory).map(([category, metrics]) => {
+        const visible = metrics.filter(({ key }) => (weights?.[key] ?? 0) > 0);
+        if (visible.length === 0) return null;
+        return (
+          <div key={category} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Category Header */}
             <div style={{
-              width: '12px',
-              height: '12px',
-              borderRadius: '2px',
-              backgroundColor: CATEGORY_COLORS[category] || '#E5E7EB'
-            }} />
-            <h3 style={{
-              margin: 0,
-              fontSize: '16px',
-              fontWeight: '600',
-              color: '#111827'
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              paddingBottom: '8px',
+              borderBottom: `2px solid ${CATEGORY_COLORS[category] || '#E5E7EB'}`
             }}>
-              {category}
-            </h3>
-          </div>
-          
-          {/* Metrics in Category */}
-          {metrics.map(({ key, label, description, isHigherBetter }) => {
-            const weight = weights[key] || 0;
-            const customWeight = hasCustomWeight(key);
-            const difference = getWeightDifference(key);
-            
-            return (
-              <div key={key} style={{
-                padding: '16px',
-                backgroundColor: customWeight ? '#FEF7FF' : '#FEFEFE',
-                border: `1px solid ${customWeight ? '#E879F9' : '#E5E7EB'}`,
-                borderRadius: '8px'
+              <div style={{
+                width: '12px',
+                height: '12px',
+                borderRadius: '2px',
+                backgroundColor: CATEGORY_COLORS[category] || '#E5E7EB'
+              }} />
+              <h3 style={{
+                margin: 0,
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#111827'
               }}>
-                {/* Metric Header */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  marginBottom: '12px'
+                {category}
+              </h3>
+            </div>
+            
+            {/* Metrics in Category */}
+            {visible.map(({ key, label, description, isHigherBetter }) => {
+              const weight = weights[key] || 0;
+              const customWeight = hasCustomWeight(key);
+              const difference = getWeightDifference(key);
+              const coverage = coverageMap?.[key] ?? null;
+              
+              return (
+                <div key={key} style={{
+                  padding: '16px',
+                  backgroundColor: customWeight ? '#FEF7FF' : '#FEFEFE',
+                  border: `1px solid ${customWeight ? '#E879F9' : '#E5E7EB'}`,
+                  borderRadius: '8px'
                 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '8px',
-                      marginBottom: '4px'
-                    }}>
-                      <label style={{
-                        fontSize: '15px',
-                        fontWeight: '500',
-                        color: '#111827'
+                  {/* Metric Header */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    marginBottom: '12px'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '8px',
+                        marginBottom: '4px'
                       }}>
-                        {label}
-                      </label>
+                        <label style={{
+                          fontSize: '15px',
+                          fontWeight: '500',
+                          color: '#111827'
+                        }}>
+                          {label}
+                        </label>
+                        
+                        {isHigherBetter ? (
+                          <TrendingUp size={14} style={{ color: '#059669' }} />
+                        ) : (
+                          <TrendingDown size={14} style={{ color: '#DC2626' }} />
+                        )}
+                        
+                        {customWeight && (
+                          <div style={{
+                            padding: '2px 6px',
+                            backgroundColor: '#E879F9',
+                            color: 'white',
+                            fontSize: '10px',
+                            borderRadius: '10px',
+                            fontWeight: '500'
+                          }}>
+                            CUSTOM
+                          </div>
+                        )}
+                        {typeof coverage === 'number' && (
+                          <div style={{
+                            padding: '2px 6px',
+                            backgroundColor: '#EFF6FF',
+                            color: '#1D4ED8',
+                            fontSize: '10px',
+                            borderRadius: '10px',
+                            fontWeight: 500
+                          }}>
+                            {Math.round(coverage * 100)}% coverage
+                          </div>
+                        )}
+                      </div>
                       
-                      {isHigherBetter ? (
-                        <TrendingUp size={14} style={{ color: '#059669' }} />
-                      ) : (
-                        <TrendingDown size={14} style={{ color: '#DC2626' }} />
-                      )}
+                      <div style={{
+                        fontSize: '12px',
+                        color: '#6B7280',
+                        marginBottom: '4px'
+                      }}>
+                        {description}
+                      </div>
                       
-                      {customWeight && (
+                      {difference && (
                         <div style={{
-                          padding: '2px 6px',
-                          backgroundColor: '#E879F9',
-                          color: 'white',
-                          fontSize: '10px',
-                          borderRadius: '10px',
+                          fontSize: '12px',
+                          color: difference > 0 ? '#059669' : '#DC2626',
                           fontWeight: '500'
                         }}>
-                          CUSTOM
+                          {difference > 0 ? '+' : ''}{formatWeight(difference)} vs default
                         </div>
                       )}
                     </div>
                     
                     <div style={{
-                      fontSize: '12px',
-                      color: '#6B7280',
-                      marginBottom: '4px'
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      color: '#111827',
+                      minWidth: '60px',
+                      textAlign: 'right'
                     }}>
-                      {description}
+                      {formatWeight(weight)}
                     </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                    <button
+                      onClick={() => onWeightChange(key, 0)}
+                      style={{
+                        padding: '4px 8px',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: 6,
+                        backgroundColor: 'white',
+                        color: '#6B7280',
+                        fontSize: 12,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Disable metric
+                    </button>
+                  </div>
+                  
+                  {/* Slider */}
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={weight}
+                      onChange={(e) => handleSliderChange(key, e)}
+                      style={{
+                        width: '100%',
+                        height: '8px',
+                        borderRadius: '4px',
+                        background: `linear-gradient(to right, ${getSliderColor(key, weight)} 0%, ${getSliderColor(key, weight)} ${weight * 100}%, #E5E7EB ${weight * 100}%, #E5E7EB 100%)`,
+                        outline: 'none',
+                        cursor: 'pointer',
+                        WebkitAppearance: 'none',
+                        MozAppearance: 'none'
+                      }}
+                    />
                     
-                    {difference && (
-                      <div style={{
-                        fontSize: '12px',
-                        color: difference > 0 ? '#059669' : '#DC2626',
-                        fontWeight: '500'
-                      }}>
-                        {difference > 0 ? '+' : ''}{formatWeight(difference)} vs default
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: '#111827',
-                    minWidth: '60px',
-                    textAlign: 'right'
-                  }}>
-                    {formatWeight(weight)}
-                  </div>
-                </div>
-                
-                {/* Slider */}
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={weight}
-                    onChange={(e) => handleSliderChange(key, e)}
-                    style={{
-                      width: '100%',
-                      height: '8px',
-                      borderRadius: '4px',
-                      background: `linear-gradient(to right, ${getSliderColor(key, weight)} 0%, ${getSliderColor(key, weight)} ${weight * 100}%, #E5E7EB ${weight * 100}%, #E5E7EB 100%)`,
-                      outline: 'none',
-                      cursor: 'pointer',
-                      WebkitAppearance: 'none',
-                      MozAppearance: 'none'
-                    }}
-                  />
-                  
-                  {/* Slider styling for different browsers */}
-                  <style>
-                    {`
+                    {/* Slider styling for different browsers */}
+                    <style>
+                      {`
                       input[type="range"]::-webkit-slider-thumb {
                         appearance: none;
                         width: 20px;
@@ -341,28 +331,29 @@ const WeightSliders = ({ weights, onWeightChange, validation, diffSummary }) => 
                         border: 2px solid white;
                         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
                       }
-                    `}
-                  </style>
-                  
-                  {/* Slider marks */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginTop: '8px',
-                    paddingX: '2px'
-                  }}>
-                    <span style={{ fontSize: '11px', color: '#9CA3AF' }}>0%</span>
-                    <span style={{ fontSize: '11px', color: '#9CA3AF' }}>25%</span>
-                    <span style={{ fontSize: '11px', color: '#9CA3AF' }}>50%</span>
-                    <span style={{ fontSize: '11px', color: '#9CA3AF' }}>75%</span>
-                    <span style={{ fontSize: '11px', color: '#9CA3AF' }}>100%</span>
+                      `}
+                    </style>
+                    
+                    {/* Slider marks */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginTop: '8px',
+                      paddingX: '2px'
+                    }}>
+                      <span style={{ fontSize: '11px', color: '#9CA3AF' }}>0%</span>
+                      <span style={{ fontSize: '11px', color: '#9CA3AF' }}>25%</span>
+                      <span style={{ fontSize: '11px', color: '#9CA3AF' }}>50%</span>
+                      <span style={{ fontSize: '11px', color: '#9CA3AF' }}>75%</span>
+                      <span style={{ fontSize: '11px', color: '#9CA3AF' }}>100%</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      ))}
+              );
+            })}
+          </div>
+        );
+      })}
       
       {/* Performance Note */}
       <div style={{

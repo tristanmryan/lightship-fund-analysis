@@ -1,5 +1,5 @@
-﻿// src/services/fundService.js
-import { supabase, TABLES, dbUtils, handleSupabaseError, toNumberStrict } from './supabase.js';
+// src/services/fundService.js
+import { supabase, TABLES, dbUtils, handleSupabaseError } from './supabase.js';
 import ychartsAPI from './ychartsAPI.js';
 
 class FundService {
@@ -10,10 +10,7 @@ class FundService {
   get supabase() { return supabase; }
   get TABLES() { return TABLES; }
 
-  // Feature flag for server-side scoring
-  get useServerScoring() {
-    return (process.env.REACT_APP_DB_SCORES || 'false') === 'true';
-  }
+  // Unified scoring: server-side scoring flag removed; always compute client-side
 
   // Get all funds from database with performance at a given date (or latest if null)
   async getAllFunds(asOfDate = null) {
@@ -74,117 +71,42 @@ class FundService {
 
   // Get funds with server-side scoring when enabled
   async getAllFundsWithScoring(asOfDate = null) {
-    if (this.useServerScoring) {
-      return this.getAllFundsWithServerScoring(asOfDate);
-    } else {
-      return this.getAllFunds(asOfDate);
+    // Unified path: always compute client-side scores using scoringService
+    const baseFunds = await this.getAllFunds(asOfDate);
+    try {
+      const { calculateScores } = await import('./scoringService.js');
+      // Build weightsByAssetClassName (use defaults if no overrides available)
+      const assetClassNames = [...new Set((baseFunds || []).map(f => f.asset_class_name || f.asset_class || 'Unknown'))];
+      const { getBulkWeightsForAssetClasses } = await import('./weightService.js');
+      // Map ids to names if we can; otherwise apply defaults for all
+      const ids = [...new Set((baseFunds || []).map(f => f.asset_class_id).filter(Boolean))];
+      const weightsById = await getBulkWeightsForAssetClasses(ids);
+      const weightsByName = {};
+      (baseFunds || []).forEach(f => {
+        const name = f.asset_class_name || f.asset_class || 'Unknown';
+        if (!weightsByName[name]) {
+          const byId = f.asset_class_id ? weightsById[f.asset_class_id] : null;
+          weightsByName[name] = byId || (weightsByName[name] || undefined);
+        }
+      });
+      // Fallback to global defaults for any names not set
+      const { getGlobalDefaultWeights } = await import('./weightService.js');
+      assetClassNames.forEach(n => {
+        if (!weightsByName[n]) weightsByName[n] = getGlobalDefaultWeights();
+      });
+
+      const scored = calculateScores(baseFunds, weightsByName);
+      return scored;
+    } catch (e) {
+      console.warn('[Scoring] Failed to compute client-side scores:', e?.message || e);
+      return baseFunds;
     }
   }
 
   // Get funds with server-side scoring via RPC (merge scores from asset class table)
   async getAllFundsWithServerScoring(asOfDate = null) {
-    try {
-      const asOf = asOfDate ? new Date(asOfDate + 'T00:00:00Z') : null;
-      const dateOnly = asOf ? asOf.toISOString().slice(0, 10) : null;
-
-      // Use new fundDataService instead of deleted calculate_scores_as_of RPC
-      const { getFundsWithPerformance } = await import('./fundDataService.js');
-      const baseFunds = await getFundsWithPerformance(asOfDate);
-      
-      // No server-side scoring available - return base funds for client-side scoring
-      const scoredFunds = baseFunds;
-
-      // Enrich with asset class metadata for compatibility
-      const classMap = new Map();
-      try {
-        const { data: classes } = await supabase
-          .from(TABLES.ASSET_CLASSES)
-          .select('id, code, name, group_name, sort_group, sort_order');
-        (classes || []).forEach(ac => classMap.set(ac.id, ac));
-      } catch {}
-
-      // Optionally fetch performance metrics if missing on scored rows
-      let perfMap = new Map();
-      const needsPerf = Array.isArray(scoredFunds) && scoredFunds.length > 0
-        ? !('ytd_return' in (scoredFunds[0] || {}))
-        : false;
-      if (needsPerf) {
-        // Use new fundDataService instead of deleted RPC
-        const { getFundsWithPerformance } = await import('./fundDataService.js');
-        const perfData = await getFundsWithPerformance(dateOnly);
-        perfMap = new Map((perfData || []).map(f => [f.ticker, f]));
-      }
-
-      // Ownership summary
-      const ownMap = await this.getOwnershipSummary(asOfDate);
-
-      return (scoredFunds || []).map(fund => {
-        const perf = perfMap.get(fund.ticker) || {};
-        const metricsUsed = Number(fund.metrics_used || 0);
-        const totalPossible = Number(fund.total_possible_metrics || 0);
-        const confidence = (metricsUsed && totalPossible)
-          ? Math.round((metricsUsed / totalPossible) * 100)
-          : 0;
-        const own = ownMap.get(fund.ticker) || {};
-
-        const ac = (fund.asset_class_id && classMap.has(fund.asset_class_id)) ? classMap.get(fund.asset_class_id) : null;
-        return {
-          ticker: fund.ticker,
-          name: fund.name,
-          asset_class_id: fund.asset_class_id || perf.asset_class_id || null,
-          asset_class_name: ac?.name || null,
-          asset_class_code: ac?.code || null,
-          asset_group_name: ac?.group_name || null,
-          asset_group_sort: ac?.sort_group || null,
-          asset_class_sort: ac?.sort_order || null,
-          is_benchmark: !!fund.is_benchmark,
-          is_recommended: !!fund.is_recommended,
-
-          // Performance fields
-          ytd_return: fund.ytd_return ?? perf.ytd_return,
-          one_year_return: fund.one_year_return ?? perf.one_year_return,
-          three_year_return: fund.three_year_return ?? perf.three_year_return,
-          five_year_return: fund.five_year_return ?? perf.five_year_return,
-          ten_year_return: fund.ten_year_return ?? perf.ten_year_return,
-          sharpe_ratio: fund.sharpe_ratio ?? perf.sharpe_ratio,
-          standard_deviation: fund.standard_deviation ?? perf.standard_deviation,
-          standard_deviation_3y: fund.standard_deviation_3y ?? perf.standard_deviation_3y,
-          standard_deviation_5y: fund.standard_deviation_5y ?? perf.standard_deviation_5y,
-          expense_ratio: fund.expense_ratio ?? perf.expense_ratio,
-          alpha: fund.alpha ?? perf.alpha,
-          beta: fund.beta ?? perf.beta,
-          manager_tenure: fund.manager_tenure ?? perf.manager_tenure,
-          up_capture_ratio: fund.up_capture_ratio ?? perf.up_capture_ratio,
-          down_capture_ratio: fund.down_capture_ratio ?? perf.down_capture_ratio,
-          category_rank: fund.category_rank ?? perf.category_rank,
-          sec_yield: fund.sec_yield ?? perf.sec_yield,
-          fund_family: fund.fund_family ?? perf.fund_family,
-          date: fund.perf_date ?? perf.perf_date,
-
-          // Scores
-          score: Number(fund.score_final || 0),
-          score_final: Number(fund.score_final || 0),
-          score_raw: Number(fund.score_raw || 0),
-          percentile: Number(fund.percentile || 0),
-
-          scores: {
-            final: Number(fund.score_final || 0),
-            raw: Number(fund.score_raw || 0),
-            percentile: Number(fund.percentile || 0),
-            breakdown: fund.score_breakdown || {},
-            metricsUsed,
-            totalPossibleMetrics: totalPossible,
-            confidence
-          },
-
-          firmAUM: Number(own.firm_aum || 0),
-          advisorCount: Number(own.advisor_count || 0)
-        };
-      });
-    } catch (err) {
-      console.error('Error fetching scored funds:', err);
-      return [];
-    }
+    // Deprecated: server-side scoring path removed in favor of unified client-side scoring
+    return this.getAllFundsWithScoring(asOfDate);
   }
 
   async upsertMinimalFunds(tickers = []) {
@@ -523,8 +445,10 @@ class FundService {
       if (error) throw error;
       (data || []).forEach(r => {
         if (!r?.ticker) return;
-        map.set(r.ticker, {
-          ticker: r.ticker,
+        // Normalize ticker keys to uppercase to ensure consistent joins
+        const key = String(r.ticker).toUpperCase();
+        map.set(key, {
+          ticker: key,
           firm_aum: Number(r.total_aum || 0),
           advisor_count: Number(r.advisors_using || 0),
           avg_position_size: Number(r.avg_position_usd || 0)
@@ -549,7 +473,8 @@ class FundService {
       this.getOwnershipSummary(asOfDate)
     ]);
     const merged = (funds || []).map(f => {
-      const o = ownMap.get(f.ticker) || {};
+      const key = String(f.ticker || '').toUpperCase();
+      const o = ownMap.get(key) || {};
       return {
         ...f,
         firmAUM: Number(o.firm_aum || 0),

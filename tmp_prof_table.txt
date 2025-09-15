@@ -1,0 +1,115 @@
+0,5// src/components/tables/ProfessionalTable.jsx
+0,5import React, { useMemo, useRef, useState } from 'react';
+0,5import './ProfessionalTable.css';
+0,5
+0,5// Simple, professional table that JUST WORKS
+0,5export function ProfessionalTable({
+0,5  data,
+0,5  columns,
+0,5  onRowClick,
+0,5  sortable = true,
+0,5  maxHeight = '600px' // Fixed, scrollable height
+0,5}) {
+0,5  const [sortConfig, setSortConfig] = useState({ key: 'score', direction: 'desc' });
+0,5  const containerRef = useRef(null);
+0,5
+0,5  const handleSort = (key) => {
+0,5    if (!sortable) return;
+0,5    setSortConfig((prev) => {
+0,5      if (!prev || prev.key !== key) return { key, direction: 'asc' };
+0,5      return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+0,5    });
+0,5  };
+0,5
+0,5  const sortedData = useMemo(() => {
+0,5    if (!sortable || !Array.isArray(data)) return data || [];
+0,5    const col = columns.find((c) => c.key === sortConfig.key);
+0,5    if (!col || typeof col.accessor !== 'function') return [...(data || [])];
+0,5    return [...data].sort((a, b) => {
+0,5      const aVal = col.accessor(a);
+0,5      const bVal = col.accessor(b);
+0,5      // Handle null/undefined
+0,5      if (aVal == null && bVal == null) return 0;
+0,5      if (aVal == null) return 1;
+0,5      if (bVal == null) return -1;
+0,5      // Numeric-aware compare
+0,5      if (typeof aVal === 'number' && typeof bVal === 'number') {
+0,5        return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+0,5      }
+0,5      const aStr = String(aVal).toLowerCase();
+0,5      const bStr = String(bVal).toLowerCase();
+0,5      const cmp = aStr.localeCompare(bStr);
+0,5      return sortConfig.direction === 'asc' ? cmp : -cmp;
+0,5    });
+0,5  }, [data, sortConfig, columns, sortable]);
+0,5
+0,5  return (
+0,5    <div ref={containerRef} className="professional-table-container">
+0,5      <div className="professional-table-scroll" style={{ maxHeight }}>
+0,5        <table className="professional-table" role="table">
+0,5          <thead>
+0,5            <tr>
+0,5              {columns.map((col) => {
+0,5                const isSorted = sortable && sortConfig.key === col.key;
+0,5                const ariaSort = isSorted ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none';
+0,5                return (
+0,5                  <th
+0,5                    key={col.key}
+0,5                    onClick={() => sortable && handleSort(col.key)}
+0,5                    aria-sort={ariaSort}
+0,5                    data-col-key={col.key}
+0,5                    className={`col-${col.key}`}
+0,5                    style={{
+0,5                      textAlign: col.align || (col.numeric ? 'right' : 'left'),
+0,5                      cursor: sortable ? 'pointer' : 'default'
+0,5                    }}
+0,5                  >
+0,5                    {col.label}
+0,5                  </th>
+0,5                );
+0,5              })}
+0,5            </tr>
+0,5          </thead>
+0,5          <tbody>
+0,5            {sortedData.map((row, i) => (
+0,5              <tr
+0,5                key={row.ticker || i}
+0,5                onClick={() => onRowClick?.(row)}
+0,5                className={row.is_benchmark ? 'benchmark-row' : ''}
+0,5                tabIndex={0}
+0,5                role="row"
+0,5                onKeyDown={(e) => {
+0,5                  if (e.key === 'Enter' || e.key === ' ') {
+0,5                    e.preventDefault();
+0,5                    onRowClick?.(row);
+0,5                  }
+0,5                }}
+0,5              >
+0,5                {columns.map((col) => (
+0,5                  <td
+0,5                    key={col.key}
+0,5                    data-col-key={col.key}
+0,5                    className={`col-${col.key} ${col.numeric ? 'number' : ''}`}
+0,5                    style={{
+0,5                      textAlign: col.align || (col.numeric ? 'right' : 'left')
+0,5                    }}
+0,5                  >
+0,5                    {(() => {
+0,5                      const value = typeof col.accessor === 'function' ? col.accessor(row) : undefined;
+0,5                      const rendered = col.render ? col.render(value, row) : value;
+0,5                      return rendered ?? 'N/A';
+0,5                    })()}
+0,5                  </td>
+0,5                ))}
+0,5              </tr>
+0,5            ))}
+0,5          </tbody>
+0,5        </table>
+0,5      </div>
+0,5    </div>
+0,5  );
+0,5}
+0,5
+0,5export default ProfessionalTable;
+0,5
+0,5

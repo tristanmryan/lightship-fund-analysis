@@ -1,0 +1,60 @@
+﻿*** Begin Patch
+*** Update File: src/reports/monthly/data/shapeData.js
+@@
+-  console.log(dY\"S Shaping data for scope: , asOf: );
++  console.log([PDF] Shaping data for scope: , asOf: );
+@@
+-  console.log(dY\". Using effective as-of date: );
++  console.log([PDF] Using effective as-of date: );
+@@
+-  console.log(dY'� Retrieved  funds);
++  console.log([PDF] Retrieved  funds);
+@@
+-  console.log(dY\"^ Built  asset class sections);
++  console.log([PDF] Built  asset class sections);
+@@
+-  console.log('dY\"< [PDF] Fetching funds with app-aligned scoring for asOf:', asOf);
++  console.log('[PDF] Fetching funds with app-aligned scoring for asOf:', asOf);
+@@
+-      console.log('dY\"< [PDF] Falling back to base funds + runtime scoring for asOf:', asOf);
++      console.log('[PDF] Falling back to base funds + runtime scoring for asOf:', asOf);
+@@
+-  console.log('dY\"^ [PDF] Funds loaded:', {
++  console.log('[PDF] Funds loaded:', {
+@@
+-  // Sort by asset class and ticker
++  // Sort by asset class and ticker (preliminary; in-section sort happens later)
+   funds.sort((a, b) => {
+     const assetCompare = (a.asset_class || '').localeCompare(b.asset_class || '');
+     if (assetCompare !== 0) return assetCompare;
+     return (a.ticker || '').localeCompare(b.ticker || '');
+   });
+@@
+-  for (const [assetClass, classFunds] of Object.entries(assetClassGroups)) {
++  for (const [assetClass, classFunds] of Object.entries(assetClassGroups)) {
+@@
+-    // Sort funds by score (highest first), then by name
+-    const sortedFunds = classFunds.sort((a, b) => {
+-      const scoreA = (a.scores?.final ?? a.score ?? 0);
+-      const scoreB = (b.scores?.final ?? b.score ?? 0);
+-      
+-      if (scoreA !== scoreB) {
+-        return scoreB - scoreA; // Highest first
+-      }
+-      
+-      return (a.name || '').localeCompare(b.name || '');
+-    });
++    // Sort funds by score (highest first), then by name
++    const sortedFunds = classFunds.sort((a, b) => {
++      const sA = (a?.scores?.final ?? a?.score ?? a?.score_final ?? 0);
++      const sB = (b?.scores?.final ?? b?.score ?? b?.score_final ?? 0);
++      const scoreA = Number.isFinite(sA) ? Number(sA) : parseFloat(sA);
++      const scoreB = Number.isFinite(sB) ? Number(sB) : parseFloat(sB);
++
++      if (!Number.isNaN(scoreA) && !Number.isNaN(scoreB) && scoreA !== scoreB) {
++        return scoreB - scoreA; // Highest first
++      }
++
++      return (a.name || '').localeCompare(b.name || '');
++    });
+*** End Patch

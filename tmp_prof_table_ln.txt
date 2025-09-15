@@ -1,0 +1,115 @@
+﻿1:// src/components/tables/ProfessionalTable.jsx
+2:import React, { useMemo, useRef, useState } from 'react';
+3:import './ProfessionalTable.css';
+4:
+5:// Simple, professional table that JUST WORKS
+6:export function ProfessionalTable({
+7:  data,
+8:  columns,
+9:  onRowClick,
+10:  sortable = true,
+11:  maxHeight = '600px' // Fixed, scrollable height
+12:}) {
+13:  const [sortConfig, setSortConfig] = useState({ key: 'score', direction: 'desc' });
+14:  const containerRef = useRef(null);
+15:
+16:  const handleSort = (key) => {
+17:    if (!sortable) return;
+18:    setSortConfig((prev) => {
+19:      if (!prev || prev.key !== key) return { key, direction: 'asc' };
+20:      return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+21:    });
+22:  };
+23:
+24:  const sortedData = useMemo(() => {
+25:    if (!sortable || !Array.isArray(data)) return data || [];
+26:    const col = columns.find((c) => c.key === sortConfig.key);
+27:    if (!col || typeof col.accessor !== 'function') return [...(data || [])];
+28:    return [...data].sort((a, b) => {
+29:      const aVal = col.accessor(a);
+30:      const bVal = col.accessor(b);
+31:      // Handle null/undefined
+32:      if (aVal == null && bVal == null) return 0;
+33:      if (aVal == null) return 1;
+34:      if (bVal == null) return -1;
+35:      // Numeric-aware compare
+36:      if (typeof aVal === 'number' && typeof bVal === 'number') {
+37:        return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+38:      }
+39:      const aStr = String(aVal).toLowerCase();
+40:      const bStr = String(bVal).toLowerCase();
+41:      const cmp = aStr.localeCompare(bStr);
+42:      return sortConfig.direction === 'asc' ? cmp : -cmp;
+43:    });
+44:  }, [data, sortConfig, columns, sortable]);
+45:
+46:  return (
+47:    <div ref={containerRef} className="professional-table-container">
+48:      <div className="professional-table-scroll" style={{ maxHeight }}>
+49:        <table className="professional-table" role="table">
+50:          <thead>
+51:            <tr>
+52:              {columns.map((col) => {
+53:                const isSorted = sortable && sortConfig.key === col.key;
+54:                const ariaSort = isSorted ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none';
+55:                return (
+56:                  <th
+57:                    key={col.key}
+58:                    onClick={() => sortable && handleSort(col.key)}
+59:                    aria-sort={ariaSort}
+60:                    data-col-key={col.key}
+61:                    className={`col-${col.key}`}
+62:                    style={{
+63:                      textAlign: col.align || (col.numeric ? 'right' : 'left'),
+64:                      cursor: sortable ? 'pointer' : 'default'
+65:                    }}
+66:                  >
+67:                    {col.label}
+68:                  </th>
+69:                );
+70:              })}
+71:            </tr>
+72:          </thead>
+73:          <tbody>
+74:            {sortedData.map((row, i) => (
+75:              <tr
+76:                key={row.ticker || i}
+77:                onClick={() => onRowClick?.(row)}
+78:                className={row.is_benchmark ? 'benchmark-row' : ''}
+79:                tabIndex={0}
+80:                role="row"
+81:                onKeyDown={(e) => {
+82:                  if (e.key === 'Enter' || e.key === ' ') {
+83:                    e.preventDefault();
+84:                    onRowClick?.(row);
+85:                  }
+86:                }}
+87:              >
+88:                {columns.map((col) => (
+89:                  <td
+90:                    key={col.key}
+91:                    data-col-key={col.key}
+92:                    className={`col-${col.key} ${col.numeric ? 'number' : ''}`}
+93:                    style={{
+94:                      textAlign: col.align || (col.numeric ? 'right' : 'left')
+95:                    }}
+96:                  >
+97:                    {(() => {
+98:                      const value = typeof col.accessor === 'function' ? col.accessor(row) : undefined;
+99:                      const rendered = col.render ? col.render(value, row) : value;
+100:                      return rendered ?? 'N/A';
+101:                    })()}
+102:                  </td>
+103:                ))}
+104:              </tr>
+105:            ))}
+106:          </tbody>
+107:        </table>
+108:      </div>
+109:    </div>
+110:  );
+111:}
+112:
+113:export default ProfessionalTable;
+114:
+115:

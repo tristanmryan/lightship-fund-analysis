@@ -3,8 +3,9 @@
 export function formatPercentDisplay(value, decimals = 2) {
   if (value == null || isNaN(Number(value))) return 'N/A';
   const n = Number(value);
-  const sign = n > 0 ? '+' : '';
-  return `${sign}${n.toFixed(decimals)}%`;
+  const sign = n < 0 ? '-' : '';
+  const abs = Math.abs(n).toFixed(decimals);
+  return `${sign}${abs}%`;
 }
 
 export function formatNumberDisplay(value, decimals = 2) {
@@ -33,4 +34,3 @@ function formatDateOnly(date) {
   const d = String(date.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
-
