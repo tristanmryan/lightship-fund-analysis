@@ -286,11 +286,13 @@ const RECOMMENDED_COLUMNS = [
               display: 'inline-block',
               padding: '2px 8px',
               borderRadius: 999,
-              backgroundColor: color + '20',
+              backgroundColor: '#ffffff',
               color,
               fontWeight: 600,
               minWidth: 54,
-              textAlign: 'right'
+              textAlign: 'right',
+              border: `1px solid ${color}40`,
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
             }}
             title={label}
           >
@@ -305,5 +307,5 @@ const RECOMMENDED_COLUMNS = [
   { key: 'threeYear', label: '3Y', width: '80px', numeric: true, align: 'right', accessor: (r) => r.three_year_return ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : '—' },
   { key: 'expense', label: 'Expense', width: '80px', numeric: true, align: 'right', accessor: (r) => r.expense_ratio ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : '—' },
   { key: 'firmAUM', label: 'Firm AUM', width: '120px', numeric: true, align: 'right', accessor: (r) => r.firmAUM ?? null, render: (v) => v != null ? new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits: 0 }).format(Number(v)) : '—' },
-  { key: 'advisors', label: '# Advisors', width: '100px', numeric: true, align: 'right', accessor: (r) => r.advisorCount ?? null }
+  { key: 'advisors', label: '# Advisors', width: '100px', numeric: true, align: 'right', accessor: (r) => r.advisorCount ?? null, render: (v) => v != null ? v : '—' }
 ];
