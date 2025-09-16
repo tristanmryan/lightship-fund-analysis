@@ -1,5 +1,7 @@
 // src/services/flowsService.js
 import { supabase } from './supabase.js';
+import fundService from './fundService.js';
+import { getAllAdvisorIdsForName } from '../config/advisorNames.js';
 
 function toMonthStart(dateLike) {
   try {
@@ -32,20 +34,75 @@ async function getFundFlows(month, ticker = null, limit = 200) {
   return data || [];
 }
 
-async function getTopMovers({ month, direction = 'inflow', assetClass = null, ticker = null, limit = 10 }) {
-  const m = month ? toMonthStart(month) : null;
-  // Prefer server RPC if available
+function toMonthEnd(dateLike) {
   try {
-    if (!ticker) {
-      const { data, error } = await supabase.rpc('get_top_movers', {
+    const d = dateLike instanceof Date ? dateLike : new Date(String(dateLike));
+    const eom = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
+    const y = eom.getUTCFullYear();
+    const m = String(eom.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(eom.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  } catch { return null; }
+}
+
+function resolveAdvisorIds(advisorNameOrTeam) {
+  const name = (advisorNameOrTeam || '').trim();
+  if (!name) return null; // null => all advisors
+  const ids = getAllAdvisorIdsForName(name);
+  return Array.isArray(ids) && ids.length > 0 ? ids : [name];
+}
+
+async function enrichWithFundMeta(rows, asOfEom) {
+  try {
+    const metaRows = await fundService.getFundsWithOwnership(asOfEom);
+    const meta = new Map((metaRows || []).map(f => [String(f.ticker).toUpperCase(), f]));
+    return (rows || []).map(r => {
+      const key = String(r.ticker || '').toUpperCase();
+      const m = meta.get(key) || {};
+      return {
+        ...r,
+        name: m.name || r.name || r.ticker,
+        asset_class: m.asset_class || m.asset_class_name || null,
+        is_recommended: !!m.is_recommended,
+        firmAUM: Number(m.firmAUM || 0),
+        advisorCount: Number(m.advisorCount || 0)
+      };
+    });
+  } catch {
+    return rows || [];
+  }
+}
+
+async function getTopMovers({ month, advisorNameOrTeam = '', direction = 'inflow', assetClass = null, ticker = null, limit = 10 }) {
+  const m = month ? toMonthStart(month) : null;
+  const eom = month ? toMonthEnd(month) : null;
+  const advisorIds = resolveAdvisorIds(advisorNameOrTeam);
+  // Advisor-specific path
+  if (advisorIds && !ticker) {
+    try {
+      const { data, error } = await supabase.rpc('get_advisor_flows', {
         p_month: m,
-        p_direction: direction,
-        p_asset_class: assetClass,
-        p_limit: limit
+        p_advisor_ids: advisorIds,
+        p_limit: Math.max(1, Math.min(limit || 10, 1000))
       });
-      if (!error && Array.isArray(data)) return data;
-    }
-  } catch {}
+      if (!error && Array.isArray(data)) {
+        let rows = data.map(r => ({
+          month: m,
+          ticker: r.ticker,
+          inflows: Number(r.inflows || 0),
+          outflows: Number(r.outflows || 0),
+          net_flow: Number(r.net_flow || 0),
+          advisors_trading: Number(r.advisors_trading || 0)
+        }));
+        // Sort by direction
+        rows.sort((a, b) => direction === 'outflow' ? (a.net_flow - b.net_flow) : (b.net_flow - a.net_flow));
+        // Optional assetClass filter via enrichment
+        rows = await enrichWithFundMeta(rows, eom);
+        if (assetClass) rows = rows.filter(r => (r.asset_class || 'Unclassified') === assetClass);
+        return rows.slice(0, Math.max(1, Math.min(limit || 10, 100)));
+      }
+    } catch {}
+  }
 
   // Fallback: client-side from get_fund_flows + join to funds
   if (ticker) {
@@ -79,6 +136,8 @@ async function getTopMovers({ month, direction = 'inflow', assetClass = null, ti
     } catch {}
   }
   rows.sort((a, b) => direction === 'outflow' ? (a.net_flow - b.net_flow) : (b.net_flow - a.net_flow));
+  // Enrich for consistency
+  rows = await enrichWithFundMeta(rows, eom);
   return rows.slice(0, Math.max(1, Math.min(limit || 10, 100)));
 }
 
@@ -165,7 +224,34 @@ async function getFlowByAssetClass({ month }) {
   return Array.from(agg.values());
 }
 
-async function getNetFlowTrend(limitMonths = 6) {
+async function getNetFlowTrend(arg1 = 6, arg2) {
+  // Support both signatures: getNetFlowTrend(limitMonths) and getNetFlowTrend(advisorNameOrTeam, limitMonths)
+  let advisorNameOrTeam = '';
+  let limitMonths = 6;
+  if (typeof arg1 === 'string' || arg1 === null || arg1 === undefined) {
+    advisorNameOrTeam = arg1 || '';
+    limitMonths = typeof arg2 === 'number' ? arg2 : 6;
+  } else {
+    limitMonths = typeof arg1 === 'number' ? arg1 : 6;
+  }
+
+  const advisorIds = resolveAdvisorIds(advisorNameOrTeam);
+  if (advisorIds) {
+    try {
+      const { data, error } = await supabase.rpc('get_advisor_flow_trend', {
+        p_advisor_ids: advisorIds,
+        p_limit_months: Math.max(1, Math.min(limitMonths || 6, 60))
+      });
+      if (error) throw error;
+      return (data || []).map(r => ({
+        month: r.month,
+        inflows: Number(r.inflows || 0),
+        outflows: Number(r.outflows || 0),
+        net_flow: Number(r.net_flow || 0)
+      }));
+    } catch {}
+  }
+
   // Aggregate net flows across all tickers by month for the last N months
   const { data, error } = await supabase
     .from('fund_flows_mv')
@@ -193,6 +279,74 @@ const flowsService = {
   getAdvisorParticipation,
   getFlowByAssetClass,
   getNetFlowTrend,
+  async getMonthKPIs({ month, advisorNameOrTeam = '' }) {
+    const m = month ? toMonthStart(month) : null;
+    const advisorIds = resolveAdvisorIds(advisorNameOrTeam);
+    if (advisorIds) {
+      try {
+        const { data, error } = await supabase.rpc('get_advisor_month_kpis', {
+          p_month: m,
+          p_advisor_ids: advisorIds
+        });
+        if (error) throw error;
+        const r = (Array.isArray(data) ? data[0] : data) || {};
+        return {
+          total_inflows: Number(r.total_inflows || 0),
+          total_outflows: Number(r.total_outflows || 0),
+          net_flow: Number(r.net_flow || 0),
+          distinct_tickers: Number(r.distinct_tickers || 0),
+          advisors_trading: Number(r.advisors_trading || 0)
+        };
+      } catch {}
+    }
+    // Firm-wide fallback
+    const rows = await getFundFlows(m, null, 5000);
+    const totals = rows.reduce((acc, r) => {
+      acc.in += Number(r.inflows || 0);
+      acc.out += Number(r.outflows || 0);
+      return acc;
+    }, { in: 0, out: 0 });
+    return {
+      total_inflows: totals.in,
+      total_outflows: totals.out,
+      net_flow: totals.in - totals.out,
+      distinct_tickers: (rows || []).length,
+      advisors_trading: rows.reduce((s, r) => s + Number(r.advisors_trading || 0), 0)
+    };
+  },
+  async getTickerDrilldown({ month, advisorNameOrTeam = '', ticker }) {
+    const m = month ? toMonthStart(month) : null;
+    const t = (ticker || '').trim().toUpperCase();
+    if (!m || !t) return { rows: [], summary: null };
+    const advisorIds = resolveAdvisorIds(advisorNameOrTeam);
+    try {
+      const { data, error } = await supabase.rpc('get_advisor_ticker_breakdown', {
+        p_month: m,
+        p_advisor_ids: advisorIds || null,
+        p_ticker: t
+      });
+      if (error) throw error;
+      const rows = (data || []).filter(r => !r.is_summary).map(r => ({
+        advisor_id: r.advisor_id,
+        buy_trades: Number(r.buy_trades || 0),
+        sell_trades: Number(r.sell_trades || 0),
+        buy_amount: Number(r.buy_amount || 0),
+        sell_amount: Number(r.sell_amount || 0),
+        net_flow: Number(r.net_flow || 0)
+      }));
+      const summaryRow = (data || []).find(r => r.is_summary) || null;
+      const summary = summaryRow ? {
+        buy_trades: Number(summaryRow.buy_trades || 0),
+        sell_trades: Number(summaryRow.sell_trades || 0),
+        buy_amount: Number(summaryRow.buy_amount || 0),
+        sell_amount: Number(summaryRow.sell_amount || 0),
+        net_flow: Number(summaryRow.net_flow || 0)
+      } : null;
+      return { rows, summary };
+    } catch {
+      return { rows: [], summary: null };
+    }
+  },
   async getAdvisorBreakdown({ month, ticker, limit = 200 }) {
     const m = month ? toMonthStart(month) : null;
     const t = (ticker || '').trim().toUpperCase();

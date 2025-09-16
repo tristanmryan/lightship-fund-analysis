@@ -10,6 +10,15 @@ import { supabase } from '../../services/supabase.js';
 
 export default function Portfolios() {
   const [view, setView] = useState('advisor'); // 'advisor' | 'fund' | 'gaps'
+  const location = useLocation();
+
+  // Auto-open By Fund when deep linked with ?ticker=
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(location.search);
+      if (params.get('ticker')) setView('fund');
+    } catch {}
+  }, [location.search]);
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
