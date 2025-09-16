@@ -8,6 +8,7 @@ import ScoreTooltip from './ScoreTooltip';
 import ScoreBadge from '../ScoreBadge';
 import flowsService from '../../services/flowsService';
 import { runDiagnostics } from '../../utils/diagnostics';
+import { supabase } from '../../services/supabase';
 
 function KPICard({ label, value, subtext, format }) {
   const formatValue = (v) => {
@@ -65,21 +66,53 @@ export default function Dashboard() {
     // compute summary
     const totalFunds = fs.length;
     const recommendedCount = fs.filter((f) => f.is_recommended || f.recommended).length;
-    const aumValues = fs.map((f) => Number(f.firmAUM || 0));
-    const totalAUM = aumValues.reduce((s, v) => s + v, 0);
-    const ownershipAvailable = aumValues.some((v) => v > 0);
+    const ownershipAvailable = fs.some((f) => Number(f.firmAUM || 0) > 0);
     const scores = fs.map((f) => (typeof f?.scores?.final === 'number' ? f.scores.final : (typeof f.score_final === 'number' ? f.score_final : (typeof f.score === 'number' ? f.score : null)))).filter((n) => n != null);
     const avgScore = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
     
     setSummary(prevSummary => ({ 
       ...prevSummary, 
-      totalAUM, 
       totalFunds, 
       recommendedCount, 
       avgScore, 
       ownershipAvailable 
     }));
   }, [funds]);
+
+  // Get firm-wide AUM from advisor metrics (all holdings, not just tracked funds)
+  React.useEffect(() => {
+    let cancel = false;
+    (async () => {
+      try {
+        // Get latest holdings date and total firm AUM
+        const { data: dates } = await supabase
+          .from('advisor_metrics_mv')
+          .select('snapshot_date')
+          .order('snapshot_date', { ascending: false })
+          .limit(1);
+        
+        const latestDate = dates?.[0]?.snapshot_date;
+        if (!latestDate) return;
+
+        const { data: metrics } = await supabase.rpc('get_advisor_metrics', { 
+          p_date: latestDate, 
+          p_advisor_id: null 
+        });
+        
+        if (cancel) return;
+        
+        const totalFirmAUM = (metrics || []).reduce((sum, advisor) => sum + (advisor.aum || 0), 0);
+        
+        setSummary(prev => ({ 
+          ...prev, 
+          totalAUM: totalFirmAUM
+        }));
+      } catch (e) {
+        console.warn('Could not fetch firm AUM:', e);
+      }
+    })();
+    return () => { cancel = true; };
+  }, []);
 
   // Load latest net flows KPI
   React.useEffect(() => {

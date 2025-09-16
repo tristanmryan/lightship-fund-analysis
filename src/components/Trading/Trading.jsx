@@ -3,6 +3,7 @@ import React from 'react';
 import ProfessionalTable from '../tables/ProfessionalTable';
 import flowsService from '../../services/flowsService';
 import fundService from '../../services/fundService';
+import { getAdvisorOptions } from '../../config/advisorNames';
 
 function SimpleLineChart({ data = [], xKey = 'month', yKey = 'net_flow', height = 200 }) {
   if (!Array.isArray(data) || data.length === 0) return <div style={{ height, background: '#f3f4f6', borderRadius: 8 }} />;
@@ -26,6 +27,7 @@ function SimpleLineChart({ data = [], xKey = 'month', yKey = 'net_flow', height 
 export default function Trading() {
   const [month, setMonth] = React.useState('');
   const [months, setMonths] = React.useState([]);
+  const [advisorName, setAdvisorName] = React.useState(''); // Advisor filter
   const [topBuys, setTopBuys] = React.useState([]);
   const [topSells, setTopSells] = React.useState([]);
   const [flowTrend, setFlowTrend] = React.useState([]);
@@ -49,6 +51,8 @@ export default function Trading() {
     let cancel = false;
     (async () => {
       try {
+        // Note: Current flow service doesn't support advisor filtering 
+        // For now, showing firm-wide data with advisor context in alerts
         const [buys, sells, trend] = await Promise.all([
           flowsService.getTopMovers({ month, direction: 'inflow', limit: 10 }),
           flowsService.getTopMovers({ month, direction: 'outflow', limit: 10 }),
@@ -63,13 +67,13 @@ export default function Trading() {
         const base = await fundService.getAllFundsWithScoring(null);
         const meta = new Map((base || []).map(f => [String(f.ticker).toUpperCase(), !!f.is_recommended]));
         const alertsList = [];
-        (sells || []).slice(0,5).forEach(r => { if (meta.get(String(r.ticker).toUpperCase())) alertsList.push({ id: `sell-${r.ticker}`, type: 'warning', message: `Selling recommended ${r.ticker}` }); });
-        (buys || []).slice(0,5).forEach(r => { if (!meta.get(String(r.ticker).toUpperCase())) alertsList.push({ id: `buy-${r.ticker}`, type: 'info', message: `Buying non-recommended ${r.ticker}` }); });
+        (sells || []).slice(0,5).forEach(r => { if (meta.get(String(r.ticker).toUpperCase())) alertsList.push({ id: `sell-${r.ticker}`, type: 'warning', message: `${advisorName ? `${advisorName} context: ` : ''}Firm selling recommended ${r.ticker}` }); });
+        (buys || []).slice(0,5).forEach(r => { if (!meta.get(String(r.ticker).toUpperCase())) alertsList.push({ id: `buy-${r.ticker}`, type: 'info', message: `${advisorName ? `${advisorName} context: ` : ''}Firm buying non-recommended ${r.ticker}` }); });
         setAlerts(alertsList);
       } catch {}
     })();
     return () => { cancel = true; };
-  }, [month]);
+  }, [month, advisorName]);
 
   const FLOWS_COLUMNS = [
     { key: 'ticker', label: 'Ticker', width: '90px', accessor: (r) => r.ticker, render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
@@ -82,11 +86,24 @@ export default function Trading() {
     <div className="trading-page" style={{ display: 'grid', gap: '1rem' }}>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ margin: 0 }}>Trading Activity</h1>
-        <div className="filters" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <label style={{ fontSize: 12, color: '#6b7280' }}>Month</label>
-          <select value={month} onChange={(e) => setMonth(e.target.value)}>
-            {(months || []).map((m) => (<option key={m} value={m}>{m}</option>))}
-          </select>
+        <div className="filters" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div>
+            <label style={{ fontSize: 12, color: '#6b7280' }}>Month</label><br />
+            <select value={month} onChange={(e) => setMonth(e.target.value)}>
+              {(months || []).map((m) => (<option key={m} value={m}>{m}</option>))}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: '#6b7280' }}>Advisor</label><br />
+            <select value={advisorName} onChange={(e) => setAdvisorName(e.target.value)}>
+              <option value="">All Advisors</option>
+              {getAdvisorOptions().map(option => (
+                <option key={option.value} value={option.value} disabled={option.disabled}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

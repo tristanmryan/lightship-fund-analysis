@@ -83,7 +83,7 @@ export async function getFundsWithPerformance(asOfDate = null, assetClassId = nu
 
     // Step 2: Get performance data for the funds at the target date
     const fundTickers = funds.map(f => f.ticker);
-    const { data: performanceData, error: perfError } = await supabase
+    let { data: performanceData, error: perfError } = await supabase
       .from(TABLES.FUND_PERFORMANCE)
       .select(`
         fund_ticker,
@@ -113,6 +113,52 @@ export async function getFundsWithPerformance(asOfDate = null, assetClassId = nu
 
     if (perfError) {
       throw new Error(`Error fetching performance data: ${perfError.message}`);
+    }
+
+    // Fallback: if no performance rows for the requested date, use the latest date <= targetDate
+    if ((!performanceData || performanceData.length === 0) && targetDate) {
+      const { data: fallbackDateRows, error: fallbackErr } = await supabase
+        .from(TABLES.FUND_PERFORMANCE)
+        .select('date')
+        .lte('date', targetDate)
+        .order('date', { ascending: false })
+        .limit(1);
+      if (!fallbackErr && Array.isArray(fallbackDateRows) && fallbackDateRows.length > 0) {
+        const fallbackDate = fallbackDateRows[0].date;
+        const resp = await supabase
+          .from(TABLES.FUND_PERFORMANCE)
+          .select(`
+            fund_ticker,
+            date,
+            ytd_return,
+            one_year_return,
+            three_year_return,
+            five_year_return,
+            ten_year_return,
+            sharpe_ratio,
+            standard_deviation,
+            standard_deviation_3y,
+            standard_deviation_5y,
+            expense_ratio,
+            alpha,
+            beta,
+            manager_tenure,
+            up_capture_ratio,
+            down_capture_ratio,
+            category_rank,
+            sec_yield,
+            fund_family,
+            created_at
+          `)
+          .in('fund_ticker', fundTickers)
+          .eq('date', fallbackDate);
+        if (!resp.error) {
+          performanceData = resp.data || [];
+          targetDate = fallbackDate;
+          // eslint-disable-next-line no-console
+          console.log('[FundsPerfFallback] Using nearest performance date <= requested', { requested: asOfDate, targetDate });
+        }
+      }
     }
 
     // Step 3: Get asset class data if any funds have asset_class_id
