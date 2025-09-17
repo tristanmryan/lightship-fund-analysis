@@ -90,9 +90,9 @@ class FundService {
         }
       });
       // Fallback to global defaults for any names not set
-      const { getGlobalDefaultWeights } = await import('./weightService.js');
+      const { getGlobalDefaultWeightsSync } = await import('./weightService.js');
       assetClassNames.forEach(n => {
-        if (!weightsByName[n]) weightsByName[n] = getGlobalDefaultWeights();
+        if (!weightsByName[n]) weightsByName[n] = getGlobalDefaultWeightsSync();
       });
 
       const scored = calculateScores(baseFunds, weightsByName);

@@ -14,8 +14,11 @@ import {
   saveAssetClassWeights, 
   resetAssetClassWeights,
   getGlobalDefaultWeights,
+  getGlobalDefaultWeightsSync,
   validateWeights,
-  getWeightsDifferenceSummary
+  getWeightsDifferenceSummary,
+  getWeightsDifferenceSummarySync,
+  saveGlobalDefaultWeights
 } from '../../services/weightService.js';
 import { calculateAssetClassScores } from '../../services/scoringService.js';
 import { METRICS as METRICS_REGISTRY } from '../../services/metricsRegistry.js';
@@ -30,10 +33,11 @@ const ScoringTab = () => {
   const [previewFunds, setPreviewFunds] = useState([]);
   
   // Weight management
-  const [currentWeights, setCurrentWeights] = useState(getGlobalDefaultWeights());
+  const [currentWeights, setCurrentWeights] = useState(getGlobalDefaultWeightsSync());
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [diffSummary, setDiffSummary] = useState({ totalDifferences: 0, differences: {}, hasCustomWeights: false });
   
   // UI state
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -58,8 +62,8 @@ const ScoringTab = () => {
       setCurrentWeights(weights);
       setHasUnsavedChanges(false);
       
-      // Show customization status
-      const diffSummary = getWeightsDifferenceSummary(weights);
+      // Show customization status using async version
+      const diffSummary = await getWeightsDifferenceSummary(weights);
       if (diffSummary.hasCustomWeights) {
         showMessage('info', `${diffSummary.totalDifferences} custom weights loaded`);
       } else {
@@ -68,7 +72,7 @@ const ScoringTab = () => {
     } catch (error) {
       console.error('Error loading weights:', error);
       showMessage('error', 'Failed to load weights, using defaults');
-      setCurrentWeights(getGlobalDefaultWeights());
+      setCurrentWeights(getGlobalDefaultWeightsSync());
     }
   }, [showMessage]);
 
@@ -195,6 +199,150 @@ const ScoringTab = () => {
     setPreviewFunds(classFunds);
   }, [selectedAssetClassName, funds]);
   
+  // Update diffSummary when currentWeights change
+  useEffect(() => {
+    async function updateDiffSummary() {
+      try {
+        const summary = await getWeightsDifferenceSummary(currentWeights);
+        setDiffSummary(summary);
+      } catch (error) {
+        console.error('Error updating diff summary:', error);
+        // Fallback to sync version if async fails
+        const syncSummary = getWeightsDifferenceSummarySync(currentWeights);
+        setDiffSummary(syncSummary);
+      }
+    }
+    updateDiffSummary();
+  }, [currentWeights]);
+  
+  // Show save dialog to choose between asset class or global defaults
+  const showSaveDialog = useCallback(() => {
+    return new Promise((resolve) => {
+      const dialog = document.createElement('div');
+      dialog.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      `;
+      
+      dialog.innerHTML = `
+        <div style="
+          background: white;
+          border-radius: 8px;
+          padding: 24px;
+          max-width: 500px;
+          width: 90%;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        ">
+          <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #111827;">
+            Save Scoring Weights
+          </h3>
+          <p style="margin: 0 0 20px 0; color: #6B7280; font-size: 14px;">
+            How would you like to save these weights?
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <button id="save-asset-class" style="
+              padding: 12px 16px;
+              border: 1px solid #D1D5DB;
+              border-radius: 6px;
+              background: white;
+              color: #374151;
+              font-size: 14px;
+              cursor: pointer;
+              text-align: left;
+            ">
+              <div style="font-weight: 500; margin-bottom: 4px;">Save to ${selectedAssetClassName}</div>
+              <div style="font-size: 12px; color: #6B7280;">Apply these weights only to the ${selectedAssetClassName} asset class</div>
+            </button>
+            <button id="save-global" style="
+              padding: 12px 16px;
+              border: 1px solid #3B82F6;
+              border-radius: 6px;
+              background: #EFF6FF;
+              color: #1D4ED8;
+              font-size: 14px;
+              cursor: pointer;
+              text-align: left;
+            ">
+              <div style="font-weight: 500; margin-bottom: 4px;">Set as Global Defaults</div>
+              <div style="font-size: 12px; color: #1E40AF;">Apply these weights to all asset classes that don't have custom weights</div>
+            </button>
+            <button id="cancel-save" style="
+              padding: 12px 16px;
+              border: none;
+              border-radius: 6px;
+              background: #F9FAFB;
+              color: #6B7280;
+              font-size: 14px;
+              cursor: pointer;
+            ">
+              Cancel
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(dialog);
+      
+      // Add hover effects
+      const assetClassBtn = dialog.querySelector('#save-asset-class');
+      const globalBtn = dialog.querySelector('#save-global');
+      const cancelBtn = dialog.querySelector('#cancel-save');
+      
+      assetClassBtn.addEventListener('mouseenter', () => {
+        assetClassBtn.style.backgroundColor = '#F9FAFB';
+      });
+      assetClassBtn.addEventListener('mouseleave', () => {
+        assetClassBtn.style.backgroundColor = 'white';
+      });
+      
+      globalBtn.addEventListener('mouseenter', () => {
+        globalBtn.style.backgroundColor = '#DBEAFE';
+      });
+      globalBtn.addEventListener('mouseleave', () => {
+        globalBtn.style.backgroundColor = '#EFF6FF';
+      });
+      
+      cancelBtn.addEventListener('mouseenter', () => {
+        cancelBtn.style.backgroundColor = '#F3F4F6';
+      });
+      cancelBtn.addEventListener('mouseleave', () => {
+        cancelBtn.style.backgroundColor = '#F9FAFB';
+      });
+      
+      // Add click handlers
+      assetClassBtn.addEventListener('click', () => {
+        document.body.removeChild(dialog);
+        resolve('asset_class');
+      });
+      
+      globalBtn.addEventListener('click', () => {
+        document.body.removeChild(dialog);
+        resolve('global');
+      });
+      
+      cancelBtn.addEventListener('click', () => {
+        document.body.removeChild(dialog);
+        resolve(null);
+      });
+      
+      // Close on backdrop click
+      dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+          document.body.removeChild(dialog);
+          resolve(null);
+        }
+      });
+    });
+  }, [selectedAssetClassName]);
+  
   // Save weights to database
   const handleSave = useCallback(async () => {
     if (!selectedAssetClassId) return;
@@ -214,12 +362,25 @@ const ScoringTab = () => {
         showMessage('warning', validation.warnings.join('; '));
       }
       
-      // Save to database
-      await saveAssetClassWeights(selectedAssetClassId, currentWeights);
-      setHasUnsavedChanges(false);
+      // Show save dialog to choose between asset class or global defaults
+      const saveChoice = await showSaveDialog();
+      if (!saveChoice) {
+        setSaving(false);
+        return; // User cancelled
+      }
       
-      const diffSummary = getWeightsDifferenceSummary(currentWeights);
-      showMessage('success', `Saved ${diffSummary.totalDifferences} custom weights for ${selectedAssetClassName}`);
+      if (saveChoice === 'global') {
+        // Save as new global defaults
+        await saveGlobalDefaultWeights(currentWeights);
+        showMessage('success', `Saved as new global default weights`);
+      } else {
+        // Save to current asset class
+        await saveAssetClassWeights(selectedAssetClassId, currentWeights);
+        const diffSummary = await getWeightsDifferenceSummary(currentWeights);
+        showMessage('success', `Saved ${diffSummary.totalDifferences} custom weights for ${selectedAssetClassName}`);
+      }
+      
+      setHasUnsavedChanges(false);
       // Reveal CTA banner to apply changes globally across the app
       setShowApplyBanner(true);
       
@@ -242,7 +403,7 @@ const ScoringTab = () => {
         await resetAssetClassWeights(selectedAssetClassId);
       }
       
-      const defaultWeights = getGlobalDefaultWeights();
+      const defaultWeights = getGlobalDefaultWeightsSync();
       setCurrentWeights(defaultWeights);
       setHasUnsavedChanges(false);
       
@@ -260,7 +421,6 @@ const ScoringTab = () => {
   
   // Weight validation for UI feedback
   const validation = useMemo(() => validateWeights(currentWeights), [currentWeights]);
-  const diffSummary = useMemo(() => getWeightsDifferenceSummary(currentWeights), [currentWeights]);
   
   if (loading && assetClasses.length === 0) {
     return (

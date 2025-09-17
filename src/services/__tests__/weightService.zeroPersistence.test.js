@@ -37,13 +37,13 @@ jest.mock('../supabase.js', () => {
   return { supabase };
 });
 
-import { getWeightsForAssetClass, saveAssetClassWeights, getGlobalDefaultWeights } from '../weightService.js';
+import { getWeightsForAssetClass, saveAssetClassWeights, getGlobalDefaultWeightsSync } from '../weightService.js';
 
 describe('weightService zero-weight persistence', () => {
   const ASSET_CLASS_ID = 'ac_equity_large_growth';
 
   test('persists zero weights and returns them on load', async () => {
-    const defaults = getGlobalDefaultWeights();
+    const defaults = getGlobalDefaultWeightsSync();
     // Sanity checks from registry
     expect(defaults.one_year_return).toBeGreaterThan(0);
     expect(defaults.alpha).toBeGreaterThan(0);

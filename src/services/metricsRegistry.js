@@ -90,22 +90,22 @@ export const METRICS = {
 };
 
 // Default weights for clean scoring engine.
-// Keep prior behavior; new metrics default to 0 to avoid changing current scores.
+// Updated to match new global defaults set by user
 export const DEFAULT_WEIGHTS = {
-  ytd_return: 0.15,
-  one_year_return: 0.25,
-  three_year_return: 0.20,
-  five_year_return: 0.00,
-  ten_year_return: 0.00,
-  sharpe_ratio: 0.15,
-  standard_deviation_3y: 0.00,
-  standard_deviation_5y: 0.00,
-  up_capture_ratio: 0.00,
-  down_capture_ratio: 0.00,
-  alpha: 0.10,
-  beta: 0.05,
-  expense_ratio: 0.10,
-  manager_tenure: 0.00
+  ytd_return: 0.02,           // 2% - Year-to-date return
+  one_year_return: 0.05,       // 5% - One-year return
+  three_year_return: 0.10,     // 10% - Three-year return
+  five_year_return: 0.15,      // 15% - Five-year return
+  ten_year_return: 0.10,       // 10% - Ten-year return
+  sharpe_ratio: 0.10,          // 10% - Sharpe ratio (3Y)
+  standard_deviation_3y: 0.08, // 8% - Standard deviation (3Y)
+  standard_deviation_5y: 0.12, // 12% - Standard deviation (5Y)
+  up_capture_ratio: 0.07,      // 7% - Up capture (3Y)
+  down_capture_ratio: 0.10,    // 10% - Down capture (3Y)
+  alpha: 0.05,                 // 5% - Alpha (5Y)
+  beta: 0.00,                  // 0% - Beta (not used in new defaults)
+  expense_ratio: 0.04,         // 4% - Expense ratio
+  manager_tenure: 0.02         // 2% - Manager tenure
 };
 
 export function listMetricsByCategory() {
