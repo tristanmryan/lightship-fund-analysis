@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import ProfessionalTable from '../tables/ProfessionalTable';
-import { getAdvisorName } from '../../config/advisorNames';
+import { getAdvisorName, getAdvisorOptions } from '../../config/advisorNames';
 import ScoreTooltip from '../Dashboard/ScoreTooltip';
 import fundService from '../../services/fundService.js';
 import advisorService from '../../services/advisorService.js';
@@ -10,6 +10,15 @@ import { supabase } from '../../services/supabase.js';
 
 export default function Portfolios() {
   const [view, setView] = useState('advisor'); // 'advisor' | 'fund' | 'gaps'
+  const location = useLocation();
+
+  // Auto-open By Fund when deep linked with ?ticker=
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(location.search);
+      if (params.get('ticker')) setView('fund');
+    } catch {}
+  }, [location.search]);
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
@@ -35,7 +44,7 @@ function ByAdvisorView() {
   const [dates, setDates] = useState([]);
   const [date, setDate] = useState('');
   const [advisors, setAdvisors] = useState([]);
-  const [advisorId, setAdvisorId] = useState('');
+  const [advisorName, setAdvisorName] = useState(''); // Always work with advisor names
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -61,10 +70,11 @@ function ByAdvisorView() {
     (async () => {
       try {
         setError(null);
-        const rows = await advisorService.listAdvisorsForDate(date);
+        // Always get consolidated advisor list (consolidateByName = true)
+        const rows = await advisorService.listAdvisorsForDate(date, true);
         if (cancel) return;
         setAdvisors(rows);
-        if (rows && rows.length > 0) setAdvisorId(prev => prev || rows[0].advisor_id);
+        if (rows && rows.length > 0) setAdvisorName(prev => prev || rows[0].advisor_name);
       } catch (e) { if (!cancel) setError(e.message || String(e)); }
     })();
     return () => { cancel = true; };
@@ -82,18 +92,19 @@ function ByAdvisorView() {
   }, [date]);
 
   useEffect(() => {
-    if (!date || !advisorId) return;
+    if (!date || !advisorName) return;
     let cancel = false;
     (async () => {
       try {
         setLoading(true); setError(null);
-        const breakdown = await advisorService.computePortfolioBreakdown(date, advisorId);
+        // The service now handles both advisor names and IDs transparently
+        const breakdown = await advisorService.computePortfolioBreakdown(date, advisorName);
         if (!cancel) setPortfolio(breakdown || null);
       } catch (e) { if (!cancel) setError(e.message || String(e)); }
       finally { if (!cancel) setLoading(false); }
     })();
     return () => { cancel = true; };
-  }, [date, advisorId]);
+  }, [date, advisorName]);
 
   const fundsMap = useMemo(() => {
     const m = new Map();
@@ -101,13 +112,45 @@ function ByAdvisorView() {
     return m;
   }, [fundsWithOwnership]);
 
+  // Get ownership data for all tickers in portfolio
+  const [ownershipData, setOwnershipData] = useState(new Map());
+
+  useEffect(() => {
+    if (!date) return;
+    let cancel = false;
+    (async () => {
+      try {
+        const ownership = await fundService.getOwnershipSummary(date);
+        if (!cancel) setOwnershipData(ownership);
+      } catch { if (!cancel) setOwnershipData(new Map()); }
+    })();
+    return () => { cancel = true; };
+  }, [date]);
+
   const tableRows = useMemo(() => {
     const positions = portfolio?.positions || [];
     return positions.map(p => {
-      const meta = fundsMap.get(String(p.ticker || '').toUpperCase());
-      return meta ? meta : { ticker: p.ticker, symbol: p.ticker, name: p.ticker, asset_class: 'Unclassified', firmAUM: 0, advisorCount: 0 };
+      const ticker = String(p.ticker || '').toUpperCase();
+      const meta = fundsMap.get(ticker) || {};
+      const ownership = ownershipData.get(ticker) || {};
+      
+      return {
+        ticker: p.ticker,
+        symbol: p.ticker,
+        name: meta.name || p.ticker,
+        // Prefer normalized asset_class_name, then legacy string, then Unclassified
+        asset_class_name: meta.asset_class_name || meta.asset_class || 'Unclassified',
+        asset_class: meta.asset_class || meta.asset_class_name || 'Unclassified',
+        advisorAUM: Number(p.amount || 0), // Scott's personal position
+        firmAUM: Number(ownership.firm_aum || 0), // Total firm-wide AUM
+        advisorCount: Number(ownership.advisor_count || 0),
+        is_recommended: !!meta.is_recommended,
+        is_benchmark: !!meta.is_benchmark,
+        score_final: (meta?.scores?.final ?? meta?.score_final ?? meta?.score ?? null),
+        scores: meta.scores
+      };
     });
-  }, [portfolio, fundsMap]);
+  }, [portfolio, fundsMap, ownershipData]);
 
   const alignmentPct = useMemo(() => {
     if (!portfolio || !portfolio.totalAum) return 0;
@@ -116,19 +159,26 @@ function ByAdvisorView() {
 
   const concentrationCount = useMemo(() => (portfolio?.concentrationAlerts || []).length, [portfolio]);
 
+  const advisorOptions = getAdvisorOptions();
+
   return (
     <div className="card" style={{ padding: 12 }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <div>
           <label style={{ fontSize: 12, color: '#6b7280' }}>Snapshot</label><br />
-          <select value={date} onChange={e => { setDate(e.target.value); setAdvisorId(''); }}>
+          <select value={date} onChange={e => { setDate(e.target.value); setAdvisorName(''); }}>
             {(dates || []).map(d => <option key={d} value={d}>{d}</option>)}
           </select>
         </div>
         <div>
           <label style={{ fontSize: 12, color: '#6b7280' }}>Advisor</label><br />
-          <select value={advisorId} onChange={e => setAdvisorId(e.target.value)}>
-            {(advisors || []).map(a => <option key={a.advisor_id} value={a.advisor_id}>{getAdvisorName(a.advisor_id)}</option>)}
+          <select value={advisorName} onChange={e => setAdvisorName(e.target.value)}>
+            <option value="">Select Advisor</option>
+            {advisorOptions.map(option => (
+              <option key={option.value} value={option.value} disabled={option.disabled}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
         <div className="card" style={{ padding: 8, display: 'inline-flex', gap: 12, alignItems: 'center' }}>
@@ -136,6 +186,21 @@ function ByAdvisorView() {
           <div style={{ fontWeight: 700 }}>{alignmentPct.toFixed(1)}%</div>
           <div style={{ fontSize: 12, color: '#6b7280' }}>Concentration Flags</div>
           <div style={{ fontWeight: 700 }}>{concentrationCount}</div>
+          {portfolio?.totalAum && (
+            <>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>Total AUM</div>
+              <div style={{ fontWeight: 700 }}>{fmtUSD(portfolio.totalAum)}</div>
+            </>
+          )}
+          {portfolio?.usedSnapshotDate && (
+            <>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>Snapshot Used</div>
+              <div style={{ fontWeight: 700 }}>
+                {portfolio.usedSnapshotDate}
+                {date && portfolio.usedSnapshotDate !== date ? ' (fallback)' : ''}
+              </div>
+            </>
+          )}
         </div>
         {loading && <div style={{ color: '#6b7280' }}>Loading...</div>}
         {error && <div className="alert alert-error">{error}</div>}
@@ -194,7 +259,7 @@ function ByFundView() {
       const map = new Map((rows || []).map(r => [String(r.ticker).toUpperCase(), r]));
       const fr = map.get(String(t).toUpperCase()) || null;
       setFundRow(fr);
-      // holders by advisor
+      // holders by advisor - consolidated by advisor name
       try {
         const { data, error } = await supabase
           .from('client_holdings')
@@ -202,12 +267,16 @@ function ByFundView() {
           .eq('snapshot_date', m)
           .eq('ticker', t);
         if (error) throw error;
-        const agg = new Map();
+        
+        // Group by advisor name instead of advisor ID
+        const consolidatedByName = new Map();
         for (const r of data || []) {
-          const id = r.advisor_id; const amt = Number(r.market_value || 0);
-          agg.set(id, (agg.get(id) || 0) + amt);
+          const advisorName = getAdvisorName(r.advisor_id);
+          const amt = Number(r.market_value || 0);
+          consolidatedByName.set(advisorName, (consolidatedByName.get(advisorName) || 0) + amt);
         }
-        const rows2 = Array.from(agg.entries()).map(([advisor_id, amount]) => ({ advisor_id, amount }))
+        
+        const rows2 = Array.from(consolidatedByName.entries()).map(([advisor_name, amount]) => ({ advisor_name, amount }))
           .sort((a,b) => b.amount - a.amount)
           .slice(0, 200);
         setHolders(rows2);
@@ -278,20 +347,16 @@ function ByFundView() {
             <thead>
               <tr>
                 <th style={{ textAlign: 'left', padding: 6, borderBottom: '1px solid #e5e7eb' }}>Advisor</th>
-                <th style={{ textAlign: 'right', padding: 6, borderBottom: '1px solid #e5e7eb' }}>Amount</th>
+                <th style={{ textAlign: 'right', padding: 6, borderBottom: '1px solid #e5e7eb' }}>Total Amount</th>
               </tr>
             </thead>
             <tbody>
-                {(holders || []).map((r, i) => {
-                  const id = r.advisor_id;
-                  const name = getAdvisorName(id);
-                  return (
-                    <tr key={i}>
-                      <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6' }}>{name}</td>
-                      <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6', textAlign: 'right' }}>{fmtUSD(r.amount)}</td>
-                    </tr>
-                  );
-                })}
+                {(holders || []).map((r, i) => (
+                  <tr key={i}>
+                    <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6' }}>{r.advisor_name}</td>
+                    <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6', textAlign: 'right' }}>{fmtUSD(r.amount)}</td>
+                  </tr>
+                ))}
             </tbody>
           </table>
           {(!holders || holders.length === 0) && (
@@ -307,7 +372,7 @@ function GapAnalysisView() {
   const [dates, setDates] = useState([]);
   const [date, setDate] = useState('');
   const [advisors, setAdvisors] = useState([]);
-  const [advisorId, setAdvisorId] = useState('');
+  const [advisorName, setAdvisorName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -333,23 +398,23 @@ function GapAnalysisView() {
     (async () => {
       try {
         setError(null);
-        const rows = await advisorService.listAdvisorsForDate(date);
+        const rows = await advisorService.listAdvisorsForDate(date, true);
         if (cancel) return;
         setAdvisors(rows);
-        if (rows && rows.length > 0) setAdvisorId(prev => prev || rows[0].advisor_id);
+        if (rows && rows.length > 0) setAdvisorName(prev => prev || rows[0].advisor_name);
       } catch (e) { if (!cancel) setError(e.message || String(e)); }
     })();
     return () => { cancel = true; };
   }, [date]);
 
   useEffect(() => {
-    if (!date || !advisorId) return;
+    if (!date || !advisorName) return;
     let cancel = false;
     (async () => {
       try {
         setLoading(true); setError(null);
         const [breakdown, rec] = await Promise.all([
-          advisorService.computePortfolioBreakdown(date, advisorId),
+          advisorService.computePortfolioBreakdown(date, advisorName),
           fundService.getRecommendedFundsWithOwnership(date)
         ]);
         if (cancel) return;
@@ -359,7 +424,7 @@ function GapAnalysisView() {
       finally { if (!cancel) setLoading(false); }
     })();
     return () => { cancel = true; };
-  }, [date, advisorId]);
+  }, [date, advisorName]);
 
   const heldSet = useMemo(() => new Set((portfolio?.positions || []).map(p => String(p.ticker || '').toUpperCase())), [portfolio]);
   const recSet = useMemo(() => new Set((recommended || []).map(f => String(f.ticker || '').toUpperCase())), [recommended]);
@@ -372,19 +437,24 @@ function GapAnalysisView() {
   }, [portfolio]);
   const nonRecommendedPositions = useMemo(() => (portfolio?.positions || []).filter(p => !p.is_recommended).slice(0, 20), [portfolio]);
 
+  const advisorOptions = getAdvisorOptions();
+
   return (
     <div className="card" style={{ padding: 12 }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <div>
           <label style={{ fontSize: 12, color: '#6b7280' }}>Snapshot</label><br />
-          <select value={date} onChange={e => { setDate(e.target.value); setAdvisorId(''); }}>
+          <select value={date} onChange={e => { setDate(e.target.value); setAdvisorName(''); }}>
             {(dates || []).map(d => <option key={d} value={d}>{d}</option>)}
           </select>
         </div>
         <div>
           <label style={{ fontSize: 12, color: '#6b7280' }}>Advisor</label><br />
-          <select value={advisorId} onChange={e => setAdvisorId(e.target.value)}>
-            {(advisors || []).map(a => <option key={a.advisor_id} value={a.advisor_id}>{getAdvisorName(a.advisor_id)}</option>)}
+          <select value={advisorName} onChange={e => setAdvisorName(e.target.value)}>
+            <option value="">Select Advisor</option>
+            {advisorOptions.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
           </select>
         </div>
         {loading && <div style={{ color: '#6b7280' }}>Loading...</div>}
@@ -458,6 +528,7 @@ const ADVISOR_FUNDS_COLUMNS = [
   { key: 'ticker', label: 'Ticker', width: '90px', accessor: (r) => r.ticker, render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
   { key: 'name', label: 'Fund Name', width: '240px', accessor: (r) => r.name || '' },
   { key: 'assetClass', label: 'Asset Class', width: '160px', accessor: (r) => r.asset_class_name || r.asset_class || '' },
+  { key: 'advisorAUM', label: 'Position', width: '120px', numeric: true, align: 'right', accessor: (r) => r.advisorAUM ?? null, render: (v) => v != null ? new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits: 0 }).format(Number(v)) : '—' },
   { key: 'score', label: 'Score', width: '80px', numeric: true, align: 'right', accessor: (r) => (r?.scores?.final ?? r?.score_final ?? r?.score) ?? null, render: (v, row) => v != null ? (
     <ScoreTooltip fund={row} score={Number(v)}>
       <span className="number">{Number(v).toFixed(1)}</span>

@@ -4,13 +4,15 @@ import fundService from '../services/fundService.js';
 import { getFundsWithPerformance } from '../services/fundDataService.js';
 import asOfStore from '../services/asOfStore.js';
 import ychartsAPI from '../services/ychartsAPI.js';
-import { computeRuntimeScores, loadEffectiveWeightsResolver } from '../services/scoring.js';
 import { calculateScores } from '../services/scoringService.js';
 import { getBulkWeightsForAssetClasses } from '../services/weightService.js';
 
 // Helper function to apply clean scoring system
 async function applyCleanScoring(fundData) {
   try {
+    if (!Array.isArray(fundData) || fundData.length === 0) {
+      return [];
+    }
     // Get unique asset class IDs
     const assetClassIds = [...new Set(
       fundData
@@ -60,12 +62,11 @@ export function useFundData() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [asOfMonth, setAsOfMonth] = useState(null); // YYYY-MM-DD or null for latest
-  const [activeMonthCounts, setActiveMonthCounts] = useState({ fund: null, bench: null });
+  // Removed unused activeMonthCounts to reduce noise
   // Feature flag: runtime scoring for live as-of month data (default ON unless explicitly disabled)
   const ENABLE_RUNTIME_SCORING = (process.env.REACT_APP_ENABLE_RUNTIME_SCORING ?? 'true') === 'true';
   const ENABLE_REFRESH = (process.env.REACT_APP_ENABLE_REFRESH || 'false') === 'true';
-  // Feature flag: server-side scoring (default OFF for gradual rollout)
-  const USE_SERVER_SCORING = (process.env.REACT_APP_DB_SCORES || 'false') === 'true';
+  // Unified scoring path: server-side scoring flag removed
   
 
   // Load funds from database
@@ -86,29 +87,35 @@ export function useFundData() {
 
       // Use the new fundDataService instead of old RPC-based methods
       fundData = await getFundsWithPerformance(asOf);
+      if (!Array.isArray(fundData)) {
+        fundData = [];
+      }
       const hasServerScores = false; // fundDataService provides clean base data only
       scoringSource = 'client-side';
-
-      // Load effective weights once per refresh (resolver caches in module)
-      if (ENABLE_RUNTIME_SCORING && !hasServerScores) {
-        await loadEffectiveWeightsResolver();
-      }
 
       // Apply client-side scoring using new clean scoring system
       let enriched = fundData;
       if (!hasServerScores && ENABLE_RUNTIME_SCORING) {
-        try {
-          // Use new clean scoring system
-          enriched = await applyCleanScoring(fundData);
-        } catch (error) {
-          console.warn('New scoring system failed, falling back to legacy:', error);
-          // Fallback to old system if new one fails
-          enriched = computeRuntimeScores(fundData, {
-            useAdvancedWeighting: true,
-            enableAdvancedFeatures: true,
-            focusArea: 'balanced'
+        // Use new clean scoring system
+        enriched = await applyCleanScoring(fundData);
+      }
+
+      // Merge ownership metrics (firmAUM, advisorCount) for the active month
+      try {
+        const ownMap = await fundService.getOwnershipSummary(asOf);
+        if (ownMap && typeof ownMap.get === 'function') {
+          enriched = (enriched || []).map((f) => {
+            const o = ownMap.get(String(f.ticker || '').toUpperCase()) || {};
+            return {
+              ...f,
+              firmAUM: Number(o.firm_aum || 0),
+              advisorCount: Number(o.advisor_count || 0)
+            };
           });
         }
+      } catch (e) {
+        // Keep UI resilient if ownership cannot be loaded
+        console.warn('Ownership summary unavailable; proceeding without firmAUM/advisorCount:', e?.message || e);
       }
 
       // Normalize fields so all dashboards have a single logical shape
@@ -127,16 +134,15 @@ export function useFundData() {
       setFunds(normalized);
       setLastUpdated(new Date());
       
-      console.log(`Loaded ${fundData.length} funds from database${asOf ? ` as of ${asOf}` : ''} (${scoringSource} scoring)`);
+      console.log(`Loaded ${(fundData || []).length} funds from database${asOf ? ` as of ${asOf}` : ''} (${scoringSource} scoring)`);
       // Count rows for guardrails
       try {
         const d = asOf || asOfStore.getActiveMonth();
         if (d) {
-          const [{ data: fRows }, { data: bRows }] = await Promise.all([
+          await Promise.all([
             fundService.supabase?.from?.(fundService.TABLES?.FUND_PERFORMANCE || 'fund_performance')?.select?.('fund_ticker')?.eq?.('date', d) ?? Promise.resolve({ data: [] }),
             fundService.supabase?.from?.(fundService.TABLES?.BENCHMARK_PERFORMANCE || 'benchmark_performance')?.select?.('benchmark_ticker')?.eq?.('date', d) ?? Promise.resolve({ data: [] })
           ]);
-          setActiveMonthCounts({ fund: (fRows || []).length, bench: (bRows || []).length });
         }
       } catch {}
     } catch (error) {
@@ -145,11 +151,11 @@ export function useFundData() {
     } finally {
       setLoading(false);
     }
-  }, [asOfMonth, ENABLE_RUNTIME_SCORING, USE_SERVER_SCORING]);
+  }, [asOfMonth, ENABLE_RUNTIME_SCORING]);
 
   // Recompute runtime scores when asOfMonth or fetched funds change if flag is ON and using client-side scoring
   useEffect(() => {
-    if (!ENABLE_RUNTIME_SCORING || USE_SERVER_SCORING) return;
+    if (!ENABLE_RUNTIME_SCORING) return;
     if (!Array.isArray(funds) || funds.length === 0) return;
     
     // Use new clean scoring system for runtime rescoring
@@ -159,21 +165,26 @@ export function useFundData() {
         setFunds(rescored);
       } catch (e) {
         console.warn('Runtime rescoring with new system failed:', e);
-        try {
-          // Fallback to old system
-          const rescored = computeRuntimeScores(funds, {
-            useAdvancedWeighting: true,
-            enableAdvancedFeatures: true,
-            focusArea: 'balanced'
-          });
-          setFunds(rescored);
-        } catch (fallbackError) {
-          // no-op: don't break UI on scoring issues
-        }
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [asOfMonth, funds.length, ENABLE_RUNTIME_SCORING, USE_SERVER_SCORING]);
+  }, [asOfMonth, funds.length, ENABLE_RUNTIME_SCORING]);
+
+  // Apply freshly saved scoring weights across the app on CTA
+  useEffect(() => {
+    if (!ENABLE_RUNTIME_SCORING) return;
+    const handler = async () => {
+      try {
+        if (!Array.isArray(funds) || funds.length === 0) return;
+        const rescored = await applyCleanScoring(funds);
+        setFunds(rescored);
+      } catch (e) {
+        console.warn('Failed to apply new scoring globally:', e);
+      }
+    };
+    window.addEventListener('APPLY_NEW_SCORING', handler);
+    return () => window.removeEventListener('APPLY_NEW_SCORING', handler);
+  }, [funds, ENABLE_RUNTIME_SCORING]);
 
   // Refresh data from Ycharts API
   const refreshData = useCallback(async (tickers = null) => {

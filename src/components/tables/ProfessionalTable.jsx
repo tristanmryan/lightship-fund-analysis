@@ -50,7 +50,7 @@ export function ProfessionalTable({
           <thead>
             <tr>
               {columns.map((col) => {
-                const isSorted = sortConfig.key === col.key;
+                const isSorted = sortable && sortConfig.key === col.key;
                 const ariaSort = isSorted ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none';
                 return (
                   <th
@@ -65,11 +65,6 @@ export function ProfessionalTable({
                     }}
                   >
                     {col.label}
-                    {isSorted && (
-                      <span style={{ marginLeft: 6 }} aria-hidden>
-                        {sortConfig.direction === 'asc' ? '▲' : '▼'}
-                      </span>
-                    )}
                   </th>
                 );
               })}
@@ -116,3 +111,5 @@ export function ProfessionalTable({
 }
 
 export default ProfessionalTable;
+
+

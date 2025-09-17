@@ -274,7 +274,7 @@ function createColumnMapping(headers) {
     
     // If not mapped to performance metrics, try other metrics
     if (!mapped) {
-      for (const [metric, possibleMatches] of Object.entries(COLUMN_MAPPING)) {
+      for (const metric of Object.keys(COLUMN_MAPPING)) {
         // Skip performance metrics as they were already checked
         if (performanceMetrics.includes(metric)) continue;
         
@@ -521,12 +521,12 @@ export function validateDataRow(row, rowIndex, uploadType, knownTickers = new Se
   // Find the ticker column using the mapping
   const tickerHeaders = COLUMN_MAPPING.ticker;
   let ticker = null;
-  let tickerColumn = null;
+  // Removed unused variable tickerColumn
   
   for (const header of tickerHeaders) {
     if (row.hasOwnProperty(header)) {
       ticker = normalizeTicker(row[header]);
-      tickerColumn = header;
+      
       break;
     }
   }
@@ -536,7 +536,7 @@ export function validateDataRow(row, rowIndex, uploadType, knownTickers = new Se
     for (const [header, value] of Object.entries(row)) {
       if (value && typeof value === 'string' && value.length <= 10 && /^[A-Z0-9]+$/.test(value.toUpperCase())) {
         ticker = normalizeTicker(value);
-        tickerColumn = header;
+        
         break;
       }
     }
@@ -808,7 +808,7 @@ export function generateErrorReport(validationResult) {
   return lines.join('\n');
 }
 
-export default {
+const uploadValidator = {
   validateCSVUpload,
   parseCSVFile,
   determineUploadType,
@@ -825,3 +825,5 @@ export default {
   validateNumericValue,
   ValidationErrorTypes
 };
+
+export default uploadValidator;

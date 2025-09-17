@@ -1,0 +1,123 @@
+﻿1:.professional-table-container {
+2:  border: 1px solid #e5e7eb;
+3:  border-radius: 8px;
+4:  background: white;
+5:}
+6:
+7:/* New: scroll wrapper so thead/tbody remain a true table for alignment */
+8:.professional-table-scroll {
+9:  max-height: 600px;
+10:  overflow-y: auto;
+11:  overflow-x: hidden; /* avoid sideways scroll in dashboard */
+12:}
+13:
+14:.professional-table {
+15:  width: 100%;
+16:  border-collapse: collapse;
+17:  table-layout: fixed; /* keep columns within container width */
+18:}
+19:
+20:.professional-table thead {
+21:  background: #f9fafb;
+22:  border-bottom: 2px solid #e5e7eb;
+23:  position: sticky;
+24:  top: 0;
+25:  z-index: 10;
+26:}
+27:
+28:.professional-table th {
+29:  padding: 12px;
+30:  font-weight: 600;
+31:  color: #111827;
+32:  text-transform: uppercase;
+33:  font-size: 11px;
+34:  letter-spacing: 0.05em;
+35:}
+36:
+37:.professional-table th, .professional-table td {
+38:  white-space: nowrap;
+39:  overflow: hidden;
+40:  text-overflow: ellipsis;
+41:}
+42:
+43:/* Accessible sort indicators via aria-sort attribute */
+44:.professional-table th[aria-sort="ascending"]::after {
+45:  content: " â–²";
+46:  font-size: 11px;
+47:}
+48:.professional-table th[aria-sort="descending"]::after {
+49:  content: " â–¼";
+50:  font-size: 11px;
+51:}
+52:
+53:/* tbody remains a normal table section for column alignment */
+54:/* tbody remains a normal table section for column alignment (no overrides needed) */
+55:
+56:.professional-table td {
+57:  padding: 10px 12px;
+58:  border-bottom: 1px solid #f3f4f6;
+59:  font-size: 14px;
+60:}
+61:
+62:.professional-table tbody tr:hover {
+63:  background: #f9fafb;
+64:  cursor: pointer;
+65:}
+66:
+67:/* Keep benchmark row highlighted even on hover */
+68:.professional-table tbody tr.benchmark-row:hover {
+69:  background: #FFFBEB;
+70:}
+71:
+72:.professional-table tbody tr:focus {
+73:  outline: 2px solid #c7d2fe; /* indigo-200 */
+74:  background: #f1f5f9; /* slate-100 */
+75:}
+76:
+77:.professional-table .benchmark-row {
+78:  background: #FFFBEB; /* soft amber-50 */
+79:  border-left: 3px solid #F59E0B; /* amber accent */
+80:}
+81:
+82:/* Hide ticker cell for benchmark rows only (keep header visible) */
+83:.professional-table .benchmark-row td.col-ticker {
+84:  visibility: hidden; /* keep cell for alignment but hide content */
+85:}
+86:
+87:/* Responsive column priorities */
+88:@media (max-width: 1280px) {
+89:  th[data-col-key='firmAUM'], td[data-col-key='firmAUM'],
+90:  th[data-col-key='advisors'], td[data-col-key='advisors'] { display: none; }
+91:}
+92:@media (max-width: 1024px) {
+93:  th[data-col-key='expense'], td[data-col-key='expense'] { display: none; }
+94:}
+95:@media (max-width: 1150px) {
+96:  th[data-col-key='status'], td[data-col-key='status'] { display: none; }
+97:}
+98:
+99:/* Add these rules to ProfessionalTable.css */
+100:.professional-table th.col-symbol,
+101:.professional-table td.col-symbol {
+102:  width: 80px;
+103:}
+104:
+105:.professional-table th.col-name,
+106:.professional-table td.col-name {
+107:  width: 300px;
+108:}
+109:
+110:.professional-table th.col-assetClass,
+111:.professional-table td.col-assetClass {
+112:  width: 200px;
+113:}
+114:
+115:.professional-table th.col-status,
+116:.professional-table td.col-status {
+117:  width: 80px;
+118:}
+119:
+120:.professional-table th.col-score,
+121:.professional-table td.col-score {
+122:  width: 90px;
+123:}

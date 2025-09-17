@@ -278,7 +278,8 @@ body {
   gap: var(--spacing-sm);
 }
 
-.sidebar-nav button {
+.sidebar-nav button,
+.sidebar-nav a {
   background: transparent;
   border: none;
   color: white;
@@ -293,7 +294,8 @@ body {
   overflow: hidden;
 }
 
-.sidebar-nav button::before {
+.sidebar-nav button::before,
+.sidebar-nav a::before {
   content: '';
   position: absolute;
   top: 0;
@@ -306,16 +308,19 @@ body {
   z-index: 0;
 }
 
-.sidebar-nav button:hover::before {
+.sidebar-nav button:hover::before,
+.sidebar-nav a:hover::before {
   opacity: 1;
 }
 
-.sidebar-nav button:hover {
+.sidebar-nav button:hover,
+.sidebar-nav a:hover {
   background: rgba(255, 255, 255, 0.08);
   transform: translateX(2px);
 }
 
-.sidebar-nav button.active {
+.sidebar-nav button.active,
+.sidebar-nav a.active {
   background: rgba(255, 255, 255, 0.15);
   font-weight: var(--font-heading-weight);
   color: var(--color-gold-light);
@@ -383,6 +388,19 @@ body {
   color: var(--color-primary);
   font-size: 1.75rem;
   font-weight: var(--font-heading-weight);
+}
+
+/* Page title + subtitle helpers */
+.page-title {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: 2rem;
+  font-weight: var(--font-heading-weight);
+}
+
+.page-subtitle {
+  margin: 0;
+  color: var(--color-primary-light);
 }
 
 .content-card {
@@ -798,10 +816,20 @@ tbody td {
   justify-content: center;
   border-radius: 50%;
   transition: background-color 0.2s;
+  /* Hide any inner text glyph and render a consistent icon */
+  font-size: 0;
 }
 
 .btn-close:hover {
   background-color: var(--color-accent);
+}
+
+/* Consistent close icon */
+.btn-close::after {
+  content: '×';
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--color-text);
 }
 
 .modal-body {
@@ -848,6 +876,31 @@ tbody td {
   justify-content: flex-end;
   padding-top: var(--spacing-lg);
   border-top: 1px solid var(--color-border);
+}
+
+/* Help modal helpers (used in Layout) */
+.help-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.help-modal-content {
+  background: var(--color-white);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-xl);
+  max-width: 800px;
+  max-height: 80vh;
+  overflow: auto;
+  width: 90%;
+  box-shadow: var(--shadow);
 }
 
 /* Login Modal Styles */
@@ -2100,3 +2153,12 @@ tbody td {
   color: var(--text-default); 
   font-weight: 600; 
 }
+
+/* Header helpers */
+.header-actions { display: flex; align-items: center; gap: 0.75rem; }
+.asof-control { display: flex; align-items: center; gap: 6px; }
+.label-muted { font-size: 0.875rem; color: #6b7280; }
+
+/* Help modal title variant */
+.help-title { font-size: 1.5rem; margin-bottom: 1rem; }
+

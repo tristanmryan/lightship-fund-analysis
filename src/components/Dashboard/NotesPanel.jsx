@@ -142,7 +142,7 @@ export default function NotesPanel({ fundId = null, fundTicker = null }) {
         selectedPriority,
         metadata: {
           exportType: 'Research Notes',
-          totalNotes: notes.length,
+          totalNotes: (Array.isArray(notes) ? notes.length : 0),
           filteredCount: filteredNotes.length
         }
       });
@@ -161,7 +161,7 @@ export default function NotesPanel({ fundId = null, fundTicker = null }) {
       console.error('Failed to export notes:', error);
       alert('Failed to export notes. Please try again.');
     }
-  }, [filteredNotes, cleanTicker, searchTerm, selectedPriority, notes.length]);
+  }, [filteredNotes, cleanTicker, searchTerm, selectedPriority, notes]);
 
   useEffect(() => {
     (async () => {

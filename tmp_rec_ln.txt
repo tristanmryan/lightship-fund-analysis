@@ -1,0 +1,618 @@
+﻿0:D
++:+// src/components/Recommended/RecommendedList.jsx
+0:D
++:+import React, { useEffect, useMemo, useState } from 'react';
+0:D
++:+import ProfessionalTable from '../tables/ProfessionalTable';
+0:D
++:+import ScoreTooltip from '../Dashboard/ScoreTooltip';
+0:D
++:+import { getScoreColor, getScoreLabel, getScoreBreakdown } from '../../services/scoringService.js';
+0:D
++:+import { useFundData } from '../../hooks/useFundData';
+0:D
++:+import { exportAssetClassTableCSV } from '../../services/exportService.js';
+0:D
++:+import { supabase, TABLES } from '../../services/supabase.js';
+0:D
++:+import { prefetchBenchmarkMappings, getPrimaryBenchmark } from '../../services/resolvers/benchmarkResolverClient.js';
+0:D
++:+
+0:D
++:+// Display order to match the Monthly PDF report
+0:D
++:+const MONTHLY_PDF_GROUP_ORDER = [
+0:D
++:+  'Large Cap Growth',
+0:D
++:+  'Large Cap Blend',
+0:D
++:+  'Large Cap Value',
+0:D
++:+  'Mid-Cap Growth',
+0:D
++:+  'Mid-Cap Blend',
+0:D
++:+  'Mid-Cap Value',
+0:D
++:+  'Small Cap Growth',
+0:D
++:+  'Small Cap Core',
+0:D
++:+  'Small Cap Value',
+0:D
++:+  'International Stock (Large Cap)',
+0:D
++:+  'International Stock (Small/Mid Cap)',
+0:D
++:+  'Emerging Markets',
+0:D
++:+  'Money Market',
+0:D
++:+  'Short Term Muni',
+0:D
++:+  'Intermediate Muni',
+0:D
++:+  'High Yield Muni',
+0:D
++:+  'Mass Muni Bonds',
+0:D
++:+  'Short Term Bonds',
+0:D
++:+  'Intermediate Term Bonds',
+0:D
++:+  'High Yield Bonds',
+0:D
++:+  'Foreign Bonds',
+0:D
++:+  'Multi Sector Bonds',
+0:D
++:+  'Non-Traditional Bonds',
+0:D
++:+  'Convertible Bonds',
+0:D
++:+  'Multi-Asset Income',
+0:D
++:+  'Preferred Stock',
+0:D
++:+  'Long/Short',
+0:D
++:+  'Real Estate',
+0:D
++:+  'Hedged/Enhanced',
+0:D
++:+  'Tactical',
+0:D
++:+  'Asset Allocation',
+0:D
++:+  'Sector Funds'
+0:D
++:+];
+0:D
++:+
+0:D
++:+const normalizeGroupName = (name) =>
+0:D
++:+  String(name || '')
+0:D
++:+    .toLowerCase()
+0:D
++:+    .replace(/[()]/g, '')
+0:D
++:+    .replace(/[\s\-_/]+/g, '')
+0:D
++:+    .trim();
+0:D
++:+
+0:D
++:+const GROUP_ORDER_INDEX = new Map(
+0:D
++:+  MONTHLY_PDF_GROUP_ORDER.map((label, i) => [normalizeGroupName(label), i])
+0:D
++:+);
+0:D
++:+
+0:D
++:+const compareGroupsByMonthlyOrder = (aName, bName) => {
+0:D
++:+  const aKey = normalizeGroupName(aName);
+0:D
++:+  const bKey = normalizeGroupName(bName);
+0:D
++:+  const aIdx = GROUP_ORDER_INDEX.has(aKey) ? GROUP_ORDER_INDEX.get(aKey) : Number.MAX_SAFE_INTEGER;
+0:D
++:+  const bIdx = GROUP_ORDER_INDEX.has(bKey) ? GROUP_ORDER_INDEX.get(bKey) : Number.MAX_SAFE_INTEGER;
+0:D
++:+  if (aIdx !== bIdx) return aIdx - bIdx;
+0:D
++:+  return String(aName).localeCompare(String(bName));
+0:D
++:+};
+0:D
++:+
+0:D
++:+export default function RecommendedList({ asOfMonth = null }) {
+0:D
++:+  // Use useFundData hook to get funds with scoring
+0:D
++:+  const { funds, loading, error: fundsError } = useFundData();
+0:D
++:+  
+0:D
++:+  const [benchmarks, setBenchmarks] = useState(new Map()); // asset_class_id -> benchmark row
+0:D
++:+  // const [error, setError] = useState(null);
+0:D
++:+  const [selectedGroup, setSelectedGroup] = useState('All');
+0:D
++:+
+0:D
++:+  // Filter for recommended funds from useFundData
+0:D
++:+  const recommendedFunds = useMemo(() => {
+0:D
++:+    if (!funds || funds.length === 0) return [];
+0:D
++:+    return funds.filter(fund => fund.is_recommended || fund.recommended);
+0:D
++:+  }, [funds]);
+0:D
++:+
+0:D
++:+  // Set error from useFundData
+0:D
++:+  useEffect(() => {
+0:D
++:+    if (fundsError) {
+0:D
++:+      console.warn('RecommendedList: data error', fundsError);
+0:D
++:+    }
+0:D
++:+  }, [fundsError]);
+0:D
++:+
+0:D
++:+  // After recommendedFunds load, fetch benchmark rows per asset class
+0:D
++:+  useEffect(() => {
+0:D
++:+    if (recommendedFunds.length === 0) return;
+0:D
++:+    let cancel = false;
+0:D
++:+    (async () => {
+0:D
++:+      try {
+0:D
++:+        // Warm benchmark mappings
+0:D
++:+        await prefetchBenchmarkMappings();
+0:D
++:+
+0:D
++:+        // Determine target date (prefer perf_date on any fund)
+0:D
++:+        const targetDate = (() => {
+0:D
++:+          const d = recommendedFunds.find(f => f?.perf_date)?.perf_date;
+0:D
++:+          if (d) return d;
+0:D
++:+          if (asOfMonth) {
+0:D
++:+            try { return new Date(asOfMonth + '-01T00:00:00Z').toISOString().slice(0,10); } catch {}
+0:D
++:+          }
+0:D
++:+          return null;
+0:D
++:+        })();
+0:D
++:+
+0:D
++:+        // Create map: asset_class_id -> sample fund
+0:D
++:+        const byAcId = new Map();
+0:D
++:+        (recommendedFunds || []).forEach(r => { if (r.asset_class_id) byAcId.set(r.asset_class_id, r); });
+0:D
++:+        const entries = Array.from(byAcId.entries());
+0:D
++:+
+0:D
++:+        const results = await Promise.all(entries.map(async ([acId, sampleFund]) => {
+0:D
++:+          try {
+0:D
++:+            const benchInfo = getPrimaryBenchmark(sampleFund); // { ticker, name }
+0:D
++:+            const benchTicker = benchInfo?.ticker || null;
+0:D
++:+            const benchName = benchInfo?.name || 'Benchmark';
+0:D
++:+            if (!benchTicker) return [acId, null];
+0:D
++:+
+0:D
++:+            // Fetch benchmark performance for the date
+0:D
++:+            let { data } = await supabase
+0:D
++:+              .from(TABLES.BENCHMARK_PERFORMANCE)
+0:D
++:+              .select('*')
+0:D
++:+              .eq('benchmark_ticker', benchTicker)
+0:D
++:+              .eq('date', targetDate)
+0:D
++:+              .maybeSingle();
+0:D
++:+
+0:D
++:+            if (!data) {
+0:D
++:+              const res = await supabase
+0:D
++:+                .from(TABLES.BENCHMARK_PERFORMANCE)
+0:D
++:+                .select('*')
+0:D
++:+                .eq('benchmark_ticker', benchTicker)
+0:D
++:+                .order('date', { ascending: false })
+0:D
++:+                .limit(1);
+0:D
++:+              data = res?.data?.[0] || null;
+0:D
++:+            }
+0:D
++:+
+0:D
++:+            const row = data ? {
+0:D
++:+              is_benchmark: true,
+0:D
++:+              ticker: benchTicker,
+0:D
++:+              name: benchName,
+0:D
++:+              asset_class_id: acId,
+0:D
++:+              asset_class_name: sampleFund.asset_class_name || sampleFund.asset_class || '',
+0:D
++:+              ytd_return: data.ytd_return ?? null,
+0:D
++:+              one_year_return: data.one_year_return ?? null,
+0:D
++:+              three_year_return: data.three_year_return ?? null,
+0:D
++:+              five_year_return: data.five_year_return ?? null,
+0:D
++:+              expense_ratio: data.expense_ratio ?? null,
+0:D
++:+              sharpe_ratio: data.sharpe_ratio ?? null,
+0:D
++:+              standard_deviation_3y: data.standard_deviation_3y ?? null,
+0:D
++:+              standard_deviation_5y: data.standard_deviation_5y ?? null,
+0:D
++:+              perf_date: data.date ?? targetDate
+0:D
++:+            } : null;
+0:D
++:+
+0:D
++:+            return [acId, row];
+0:D
++:+          } catch { return [acId, null]; }
+0:D
++:+        }));
+0:D
++:+
+0:D
++:+        if (!cancel) setBenchmarks(new Map(results));
+0:D
++:+      } catch {
+0:D
++:+        if (!cancel) setBenchmarks(new Map());
+0:D
++:+      }
+0:D
++:+    })();
+0:D
++:+    return () => { cancel = true; };
+0:D
++:+  }, [recommendedFunds, asOfMonth]);
+0:D
++:+
+0:D
++:+  const groups = useMemo(() => {
+0:D
++:+    // Build present group list from data, then order by Monthly PDF sequence
+0:D
++:+    const present = new Set();
+0:D
++:+    (recommendedFunds || []).forEach(r => {
+0:D
++:+      const key = r.asset_class_name || r.asset_class || 'Unclassified';
+0:D
++:+      if (key) present.add(key);
+0:D
++:+    });
+0:D
++:+    const ordered = Array.from(present).sort(compareGroupsByMonthlyOrder);
+0:D
++:+    return ['All', ...ordered];
+0:D
++:+  }, [recommendedFunds]);
+0:D
++:+
+0:D
++:+  const grouped = useMemo(() => {
+0:D
++:+    const map = new Map();
+0:D
++:+    (recommendedFunds || []).forEach(r => {
+0:D
++:+      const key = r.asset_class_name || r.asset_class || 'Unclassified';
+0:D
++:+      if (!map.has(key)) map.set(key, []);
+0:D
++:+      map.get(key).push(r);
+0:D
++:+    });
+0:D
++:+    return map;
+0:D
++:+  }, [recommendedFunds]);
+0:D
++:+
+0:D
++:+  const onExport = (assetClassName, data) => {
+0:D
++:+    try {
+0:D
++:+      const blob = exportAssetClassTableCSV(data, assetClassName, asOfMonth);
+0:D
++:+      const fname = `${assetClassName.replace(/\s+/g, '_').toLowerCase()}_recommended_${(asOfMonth||'latest')}.csv`;
+0:D
++:+      const url = URL.createObjectURL(blob);
+0:D
++:+      const a = document.createElement('a');
+0:D
++:+      a.href = url; a.download = fname; a.click();
+0:D
++:+      URL.revokeObjectURL(url);
+0:D
++:+    } catch (e) {
+0:D
++:+      console.error('Export failed', e);
+0:D
++:+    }
+0:D
++:+  };
+0:D
++:+
+0:D
++:+  return (
+0:D
++:+    <div style={{ display: 'grid', gap: 12 }}>
+0:D
++:+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+0:D
++:+        <div style={{ fontWeight: 600, fontSize: 18 }}>Recommended Funds</div>
+0:D
++:+        <div>
+0:D
++:+          <label htmlFor="acFilter" style={{ fontSize: 12, color: '#6b7280', marginRight: 6 }}>Asset Class</label>
+0:D
++:+          <select id="acFilter" value={selectedGroup} onChange={(e)=> setSelectedGroup(e.target.value)}>
+0:D
++:+            {groups.map(g => <option key={g} value={g}>{g}</option>)}
+0:D
++:+          </select>
+0:D
++:+        </div>
+0:D
++:+      </div>
+0:D
++:+
+0:D
++:+      {Array.from(grouped.entries())
+0:D
++:+        .sort(([aName], [bName]) => compareGroupsByMonthlyOrder(aName, bName))
+0:D
++:+        .filter(([name]) => selectedGroup === 'All' || name === selectedGroup)
+0:D
++:+        .map(([name, funds]) => {
+0:D
++:+          const acId = (funds[0] && funds[0].asset_class_id) || null;
+0:D
++:+          let bench = acId ? benchmarks.get(acId) : null;
+0:D
++:+
+0:D
++:+          // If we have a benchmark row, compute its score relative to the funds in class
+0:D
++:+          if (bench) {
+0:D
++:+            try {
+0:D
++:+              const breakdown = getScoreBreakdown(bench, funds);
+0:D
++:+              const benchScore = Number(breakdown?.finalScore ?? null);
+0:D
++:+              if (Number.isFinite(benchScore)) {
+0:D
++:+                bench = {
+0:D
++:+                  ...bench,
+0:D
++:+                  score: benchScore,
+0:D
++:+                  score_final: benchScore,
+0:D
++:+                  scores: { final: benchScore }
+0:D
++:+                };
+0:D
++:+              }
+0:D
++:+            } catch (e) {
+0:D
++:+              // Non-fatal; keep benchmark without score
+0:D
++:+            }
+0:D
++:+          }
+0:D
++:+
+0:D
++:+          // Sort funds by score desc (ignoring benchmark) and push benchmark last
+0:D
++:+          const fundRows = [...funds].sort((a, b) => {
+0:D
++:+            const sa = (a?.scores?.final ?? a?.score_final ?? a?.score);
+0:D
++:+            const sb = (b?.scores?.final ?? b?.score_final ?? b?.score);
+0:D
++:+            const aNum = Number.isFinite(Number(sa)) ? Number(sa) : -Infinity;
+0:D
++:+            const bNum = Number.isFinite(Number(sb)) ? Number(sb) : -Infinity;
+0:D
++:+            return bNum - aNum; // descending
+0:D
++:+          });
+0:D
++:+
+0:D
++:+          const data = bench ? [...fundRows, bench] : fundRows;
+0:D
++:+          return (
+0:D
++:+        <div key={name} className="card" style={{ padding: 12 }}>
+0:D
++:+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+0:D
++:+            <h3 className="card-title" style={{ margin: 0 }}>{name}</h3>
+0:D
++:+            <div style={{ display: 'flex', gap: 8 }}>
+0:D
++:+              <button className="btn" onClick={() => onExport(name, funds)}>Export CSV</button>
+0:D
++:+            </div>
+0:D
++:+          </div>
+0:D
++:+          <ProfessionalTable
+0:D
++:+            data={data}
+0:D
++:+            columns={RECOMMENDED_COLUMNS}
+0:D
++:+            sortable={false}
+0:D
++:+            onRowClick={(f) => console.log('select', f?.ticker)}
+0:D
++:+          />
+0:D
++:+        </div>
+0:D
++:+      ); })}
+0:D
++:+
+0:D
++:+      {!recommendedFunds.length && !loading && (
+0:D
++:+        <div className="card" style={{ padding: 12, color: '#6b7280' }}>No recommended funds found.</div>
+0:D
++:+      )}
+0:D
++:+    </div>
+0:D
++:+  );
+0:D
++:+}
+0:D
++:+
+0:D
++:+// Simple column set for recommended view
+0:D
++:+const RECOMMENDED_COLUMNS = [
+0:D
++:+  { key: 'ticker', label: 'Ticker', width: '80px', accessor: (r) => r.ticker, render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
+0:D
++:+  { key: 'name', label: 'Fund Name', width: '250px', accessor: (r) => r.name || '' },
+0:D
++:+  { key: 'assetClass', label: 'Asset Class', width: '160px', accessor: (r) => r.asset_class_name || r.asset_class || '' },
+0:D
++:+  { key: 'score', label: 'Score', width: '90px', numeric: true, align: 'right', accessor: (r) => (r?.scores?.final ?? r?.score_final ?? r?.score) ?? null, render: (v, row) => v != null ? (
+0:D
++:+    <ScoreTooltip fund={row} score={Number(v)}>
+0:D
++:+      {(() => {
+0:D
++:+        const s = Number(v);
+0:D
++:+        const color = getScoreColor(s);
+0:D
++:+        const label = getScoreLabel(s);
+0:D
++:+        return (
+0:D
++:+          <span
+0:D
++:+            className="number"
+0:D
++:+            style={{
+0:D
++:+              display: 'inline-block',
+0:D
++:+              padding: '2px 8px',
+0:D
++:+              borderRadius: 999,
+0:D
++:+              backgroundColor: color + '20',
+0:D
++:+              color,
+0:D
++:+              fontWeight: 600,
+0:D
++:+              minWidth: 54,
+0:D
++:+              textAlign: 'right'
+0:D
++:+            }}
+0:D
++:+            title={label}
+0:D
++:+          >
+0:D
++:+            {s.toFixed(1)}
+0:D
++:+          </span>
+0:D
++:+        );
+0:D
++:+      })()}
+0:D
++:+    </ScoreTooltip>
+0:D
++:+  ) : 'â€”' },
+0:D
++:+  { key: 'ytdReturn', label: 'YTD', width: '80px', numeric: true, align: 'right', accessor: (r) => r.ytd_return ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : 'â€”' },
+0:D
++:+  { key: 'oneYear', label: '1Y', width: '80px', numeric: true, align: 'right', accessor: (r) => r.one_year_return ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : 'â€”' },
+0:D
++:+  { key: 'threeYear', label: '3Y', width: '80px', numeric: true, align: 'right', accessor: (r) => r.three_year_return ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : 'â€”' },
+0:D
++:+  { key: 'expense', label: 'Expense', width: '80px', numeric: true, align: 'right', accessor: (r) => r.expense_ratio ?? null, render: (v) => v != null ? `${Number(v).toFixed(2)}%` : 'â€”' },
+0:D
++:+  { key: 'firmAUM', label: 'Firm AUM', width: '120px', numeric: true, align: 'right', accessor: (r) => r.firmAUM ?? null, render: (v) => v != null ? new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits: 0 }).format(Number(v)) : 'â€”' },
+0:D
++:+  { key: 'advisors', label: '# Advisors', width: '100px', numeric: true, align: 'right', accessor: (r) => r.advisorCount ?? null }
+0:D
++:+];

@@ -92,6 +92,8 @@ export default function HoldingsTradesImport() {
   const [holdingsErrors, setHoldingsErrors] = useState([]);
   const [tradesErrors, setTradesErrors] = useState([]);
 
+  const API_BASE = process.env.REACT_APP_API_BASE || '';
+
   const analyzeHoldings = async () => {
     setHoldingsErrors([]);
     if (!holdingsFile) return;
@@ -170,7 +172,7 @@ export default function HoldingsTradesImport() {
       if (dryRun) {
         // Small sample dry-run using server CSV parsing if file is small; otherwise send first 200 rows
         const sampleRows = allRows.slice(0, 200);
-        const resp = await fetch('/api/import/holdings', {
+        const resp = await fetch(`${API_BASE}/api/import/holdings`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ snapshotDate: holdingsDate, rows: sampleRows, dryRun: true })
         });
@@ -183,7 +185,7 @@ export default function HoldingsTradesImport() {
         for (let i = 0; i < allRows.length; i += chunkSize) {
           const chunk = allRows.slice(i, i + chunkSize);
           const isLast = i + chunkSize >= allRows.length;
-          const resp = await fetch('/api/import/holdings', {
+          const resp = await fetch(`${API_BASE}/api/import/holdings`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ snapshotDate: holdingsDate, rows: chunk, refresh: isLast })
           });
@@ -210,7 +212,7 @@ export default function HoldingsTradesImport() {
       const allRows = Array.isArray(parsed.data) ? parsed.data : [];
       if (dryRun) {
         const sampleRows = allRows.slice(0, 200);
-        const resp = await fetch('/api/import/trades', {
+        const resp = await fetch(`${API_BASE}/api/import/trades`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ rows: sampleRows, dryRun: true })
         });
@@ -223,7 +225,7 @@ export default function HoldingsTradesImport() {
         for (let i = 0; i < allRows.length; i += chunkSize) {
           const chunk = allRows.slice(i, i + chunkSize);
           const isLast = i + chunkSize >= allRows.length;
-          const resp = await fetch('/api/import/trades', {
+          const resp = await fetch(`${API_BASE}/api/import/trades`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ rows: chunk, refresh: isLast })
           });

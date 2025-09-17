@@ -12,18 +12,160 @@
  * - Database persistence with simple schema
  */
 
-import { supabase, TABLES, handleSupabaseError } from './supabase.js';
-import { DEFAULT_WEIGHTS } from './scoringService.js';
+import { supabase } from './supabase.js';
+import { DEFAULT_WEIGHTS } from './metricsRegistry.js';
 
 // Table name for weight storage
 const WEIGHTS_TABLE = 'scoring_weights_simple';
 
 /**
- * Get global default weights from scoringService
+ * Get global default weights from database or fallback to hardcoded defaults
+ * @returns {Promise<Object>} Global default weights object
+ */
+export async function getGlobalDefaultWeights() {
+  try {
+    // Try to find the Global Defaults asset class
+    const { data: globalAssetClass, error: selectError } = await supabase
+      .from('asset_classes')
+      .select('id')
+      .eq('name', 'Global Defaults')
+      .single();
+
+    if (selectError || !globalAssetClass) {
+      // No Global Defaults asset class exists, use hardcoded defaults
+      return { ...DEFAULT_WEIGHTS };
+    }
+
+    // Get global default weights from database
+    const { data: globalWeights, error } = await supabase
+      .from(WEIGHTS_TABLE)
+      .select('metric_key, weight')
+      .eq('asset_class_id', globalAssetClass.id);
+
+    if (error) {
+      console.warn('Error loading global default weights from database:', error);
+      return { ...DEFAULT_WEIGHTS }; // Fallback to hardcoded defaults
+    }
+
+    // If we have global defaults in database, use them
+    if (globalWeights && globalWeights.length > 0) {
+      const weights = { ...DEFAULT_WEIGHTS }; // Start with hardcoded defaults
+      globalWeights.forEach(({ metric_key, weight }) => {
+        weights[metric_key] = parseFloat(weight);
+      });
+      return weights;
+    }
+
+    // No global defaults in database, use hardcoded defaults
+    return { ...DEFAULT_WEIGHTS };
+
+  } catch (error) {
+    console.error('Failed to load global default weights:', error);
+    return { ...DEFAULT_WEIGHTS }; // Fallback to hardcoded defaults
+  }
+}
+
+/**
+ * Get global default weights synchronously (for backward compatibility)
+ * This version doesn't check the database and always returns hardcoded defaults
  * @returns {Object} Global default weights object
  */
-export function getGlobalDefaultWeights() {
+export function getGlobalDefaultWeightsSync() {
   return { ...DEFAULT_WEIGHTS }; // Return copy to prevent mutations
+}
+
+/**
+ * Save new global default weights to database
+ * Uses a special "Global Defaults" asset class to store global defaults
+ * @param {Object} weights - Weights object to save as global defaults
+ * @returns {Promise<boolean>} Success status
+ */
+export async function saveGlobalDefaultWeights(weights) {
+  if (!weights || typeof weights !== 'object') {
+    throw new Error('Invalid weights object');
+  }
+
+  try {
+    // First, ensure we have a "Global Defaults" asset class
+    const globalAssetClassId = await ensureGlobalDefaultsAssetClass();
+    
+    // Delete existing global default weights
+    const { error: deleteError } = await supabase
+      .from(WEIGHTS_TABLE)
+      .delete()
+      .eq('asset_class_id', globalAssetClassId);
+
+    if (deleteError) {
+      throw new Error(`Failed to clear existing global defaults: ${deleteError.message}`);
+    }
+
+    // Prepare weight records for insertion
+    const weightRecords = Object.entries(weights)
+      .map(([metric_key, weight]) => ({
+        asset_class_id: globalAssetClassId,
+        metric_key,
+        weight: parseFloat(weight)
+      }));
+
+    // Insert new global default weight records
+    const { error: insertError } = await supabase
+      .from(WEIGHTS_TABLE)
+      .insert(weightRecords);
+
+    if (insertError) {
+      throw new Error(`Failed to save global defaults: ${insertError.message}`);
+    }
+
+    console.log(`Saved ${weightRecords.length} global default weights`);
+    return true;
+
+  } catch (error) {
+    console.error('Failed to save global default weights:', error);
+    throw error;
+  }
+}
+
+/**
+ * Ensure a "Global Defaults" asset class exists and return its ID
+ * @returns {Promise<string>} UUID of the Global Defaults asset class
+ */
+async function ensureGlobalDefaultsAssetClass() {
+  try {
+    // First, try to find existing Global Defaults asset class
+    const { data: existing, error: selectError } = await supabase
+      .from('asset_classes')
+      .select('id')
+      .eq('name', 'Global Defaults')
+      .single();
+
+    if (existing && !selectError) {
+      return existing.id;
+    }
+
+    // If not found, create it
+    const { data: newAssetClass, error: insertError } = await supabase
+      .from('asset_classes')
+      .insert({
+        name: 'Global Defaults',
+        code: 'GLOBAL_DEFAULTS',
+        description: 'Special asset class for storing global default scoring weights',
+        group_name: 'System',
+        sort_group: 999,
+        sort_order: 999
+      })
+      .select('id')
+      .single();
+
+    if (insertError) {
+      throw new Error(`Failed to create Global Defaults asset class: ${insertError.message}`);
+    }
+
+    return newAssetClass.id;
+
+  } catch (error) {
+    console.error('Failed to ensure Global Defaults asset class:', error);
+    throw error;
+  }
 }
 
 /**
@@ -33,7 +175,7 @@ export function getGlobalDefaultWeights() {
  */
 export async function getWeightsForAssetClass(assetClassId) {
   if (!assetClassId) {
-    return getGlobalDefaultWeights();
+    return await getGlobalDefaultWeights();
   }
 
   try {
@@ -44,25 +186,25 @@ export async function getWeightsForAssetClass(assetClassId) {
 
     if (error) {
       console.warn(`Error loading weights for asset class ${assetClassId}:`, error);
-      return getGlobalDefaultWeights();
+      return await getGlobalDefaultWeights();
     }
 
-    // If no custom weights found, return defaults
+    // If no custom weights found, return global defaults
     if (!customWeights || customWeights.length === 0) {
-      return getGlobalDefaultWeights();
+      return await getGlobalDefaultWeights();
     }
 
-    // Merge custom weights with defaults
-    const weights = getGlobalDefaultWeights();
+    // Merge custom weights with global defaults
+    const globalDefaults = await getGlobalDefaultWeights();
     customWeights.forEach(({ metric_key, weight }) => {
-      weights[metric_key] = parseFloat(weight);
+      globalDefaults[metric_key] = parseFloat(weight);
     });
 
-    return weights;
+    return globalDefaults;
 
   } catch (error) {
     console.error(`Failed to load weights for asset class ${assetClassId}:`, error);
-    return getGlobalDefaultWeights();
+    return await getGlobalDefaultWeights();
   }
 }
 
@@ -90,18 +232,13 @@ export async function saveAssetClassWeights(assetClassId, weights) {
 
     // Prepare weight records for insertion
     const weightRecords = Object.entries(weights)
-      .filter(([_, weight]) => weight !== 0) // Only store non-zero weights
       .map(([metric_key, weight]) => ({
         asset_class_id: assetClassId,
         metric_key,
         weight: parseFloat(weight)
       }));
 
-    // If no weights to save (all are zero/default), we're done
-    if (weightRecords.length === 0) {
-      console.log(`No custom weights to save for asset class ${assetClassId}`);
-      return true;
-    }
+    // Note: We persist zero weights to explicitly disable metrics
 
     // Insert new weight records
     const { error: insertError } = await supabase
@@ -213,18 +350,22 @@ export async function getBulkWeightsForAssetClasses(assetClassIds) {
 
     if (error) {
       console.warn('Error loading bulk weights:', error);
-      // Return defaults for all asset classes
+      // Return global defaults for all asset classes
+      const globalDefaults = await getGlobalDefaultWeights();
       const defaultWeights = {};
       assetClassIds.forEach(id => {
-        defaultWeights[id] = getGlobalDefaultWeights();
+        defaultWeights[id] = { ...globalDefaults };
       });
       return defaultWeights;
     }
 
+    // Get global defaults once
+    const globalDefaults = await getGlobalDefaultWeights();
+    
     // Group weights by asset class
     const weightsByAssetClass = {};
     assetClassIds.forEach(id => {
-      weightsByAssetClass[id] = getGlobalDefaultWeights();
+      weightsByAssetClass[id] = { ...globalDefaults };
     });
 
     if (customWeights && customWeights.length > 0) {
@@ -239,10 +380,11 @@ export async function getBulkWeightsForAssetClasses(assetClassIds) {
 
   } catch (error) {
     console.error('Failed to load bulk weights:', error);
-    // Return defaults for all asset classes
+    // Return global defaults for all asset classes
+    const globalDefaults = await getGlobalDefaultWeights();
     const defaultWeights = {};
     assetClassIds.forEach(id => {
-      defaultWeights[id] = getGlobalDefaultWeights();
+      defaultWeights[id] = { ...globalDefaults };
     });
     return defaultWeights;
   }
@@ -301,12 +443,47 @@ export function validateWeights(weights) {
 }
 
 /**
- * Utility function to get a formatted summary of weight differences from defaults
+ * Utility function to get a formatted summary of weight differences from defaults (sync version)
+ * This version uses hardcoded defaults for backward compatibility
  * @param {Object} weights - Current weights
  * @returns {Object} Summary of differences
  */
-export function getWeightsDifferenceSummary(weights) {
-  const defaults = getGlobalDefaultWeights();
+export function getWeightsDifferenceSummarySync(weights) {
+  const defaults = getGlobalDefaultWeightsSync(); // Use sync version for fallback
+  const differences = {};
+  let totalDifferences = 0;
+
+  Object.keys(defaults).forEach(metric => {
+    const defaultWeight = defaults[metric];
+    const currentWeight = weights[metric] || 0;
+    const diff = currentWeight - defaultWeight;
+    
+    if (Math.abs(diff) > 0.001) { // Only count significant differences
+      differences[metric] = {
+        default: defaultWeight,
+        current: currentWeight,
+        difference: diff,
+        percentChange: defaultWeight !== 0 ? (diff / defaultWeight) * 100 : 0
+      };
+      totalDifferences++;
+    }
+  });
+
+  return {
+    totalDifferences,
+    differences,
+    hasCustomWeights: totalDifferences > 0
+  };
+}
+
+/**
+ * Utility function to get a formatted summary of weight differences from defaults (async version)
+ * This version uses actual global defaults from database
+ * @param {Object} weights - Current weights
+ * @returns {Promise<Object>} Summary of differences
+ */
+export async function getWeightsDifferenceSummary(weights) {
+  const defaults = await getGlobalDefaultWeights(); // Use async version to get actual defaults
   const differences = {};
   let totalDifferences = 0;
 

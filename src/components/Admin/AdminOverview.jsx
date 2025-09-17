@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import asOfStore from '../../services/asOfStore';
 import { supabase, TABLES } from '../../services/supabase';
 import fundService from '../../services/fundService';
-import { exportRecommendedFundsCSV, exportPrimaryBenchmarkMappingCSV, exportTableCSV } from '../../services/exportService.js';
-import { generatePDFReport, downloadPDF } from '../../services/exportService.js';
+import { exportRecommendedFundsCSV, exportPrimaryBenchmarkMappingCSV } from '../../services/exportService.js';
+import { generateMonthlyPDF, downloadPDF } from '../../services/pdfService.js';
 
 export default function AdminOverview({ onNavigate = () => {} }) {
   const [loading, setLoading] = useState(true);
@@ -110,7 +110,7 @@ export default function AdminOverview({ onNavigate = () => {} }) {
       value: `${enhanced.holdingsDate ? enhanced.holdingsDate : 'n/a'} | ${enhanced.flowsMonth ? enhanced.flowsMonth : 'n/a'}`,
       linkText: 'Go to Data Uploads',
       onClick: () => onNavigate('data'),
-      note: enhanced.holdingsDate ? `${enhanced.advisors} advisors • AUM ${new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(enhanced.aum || 0)} • ${enhanced.flowsCount} flow tickers` : ''
+      note: enhanced.holdingsDate ? `${enhanced.advisors} advisors | AUM ${new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(enhanced.aum || 0)} | ${enhanced.flowsCount} flow tickers` : ''
     },
     {
       label: 'Benchmark Mapping',
@@ -129,11 +129,11 @@ export default function AdminOverview({ onNavigate = () => {} }) {
     {
       label: 'Snapshots',
       value: state.latestSnapshot ? `${state.latestSnapshot} (${state.latestSnapshotRows} rows)` : 'none',
-      linkText: 'Go to Data Uploads',
+      linkText: 'Go to Snapshots',
       onClick: () => onNavigate('data'),
       note: ''
     }
-  ]), [state, onNavigate]);
+  ]), [state, onNavigate, enhanced]);
 
   return (
     <div className="card" style={{ padding: 16, marginTop: 16 }}>
@@ -145,10 +145,10 @@ export default function AdminOverview({ onNavigate = () => {} }) {
             Supabase: {(() => { try { return new URL(process.env.REACT_APP_SUPABASE_URL || '').hostname.slice(-12); } catch { return 'n/a'; } })()}
           </span>
           <span style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 12, padding: '2px 8px' }}>
-            Active: {asOfStore.getActiveMonth() || '—'}
+            Active: {asOfStore.getActiveMonth() || 'n/a'}
           </span>
           <span style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 12, padding: '2px 8px' }}>
-            Latest: {asOfStore.getLatestMonth() || '—'}
+            Latest: {asOfStore.getLatestMonth() || 'n/a'}
           </span>
           <button className="btn btn-link" onClick={() => asOfStore.setActiveMonth(asOfStore.getLatestMonth())} disabled={!asOfStore.getLatestMonth()}>
             Use Latest
@@ -156,7 +156,7 @@ export default function AdminOverview({ onNavigate = () => {} }) {
         </div>
       </div>
       {loading ? (
-        <div>Loading…</div>
+        <div>Loading...</div>
       ) : error ? (
         <div className="alert alert-error">{error}</div>
       ) : (
@@ -195,7 +195,7 @@ export default function AdminOverview({ onNavigate = () => {} }) {
                       })(),
                       asOf: asOfStore.getActiveMonth() || null
                     };
-                    const pdf = await generatePDFReport({ funds: funds || [], metadata });
+                    const pdf = await generateMonthlyPDF({ funds: funds || [], metadata }, { scope: 'all' });
                     const { formatExportFilename } = await import('../../services/exportService.js');
                     const name = formatExportFilename({ scope: 'admin_pdf_all', ext: 'pdf' });
                     downloadPDF(pdf, name);

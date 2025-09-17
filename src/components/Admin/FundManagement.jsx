@@ -13,7 +13,7 @@ import SeedRecommendedFunds from './SeedRecommendedFunds';
 import SeedBenchmarks from './SeedBenchmarks';
 import DataDiagnostics from './DataDiagnostics';
 import ResetAndSeedUtilities from './ResetAndSeedUtilities';
-import ScoringWeights from './ScoringWeights';
+// Legacy ScoringWeights removed. Provide link-out to Scoring tab instead.
 import { useAssetClassOptions } from '../../hooks/useAssetClassOptions';
 import DataMaintenance from './DataMaintenance.jsx';
 
@@ -361,7 +361,18 @@ const FundManagement = () => {
         )}
 
         {activeTab === 'scoring' && (
-          <ScoringWeights funds={funds} />
+          <div className="card" style={{ padding: 16, marginTop: 16 }}>
+            <h3 style={{ marginTop: 0 }}>Scoring Configuration</h3>
+            <p style={{ color: '#6b7280', marginBottom: 12 }}>
+              Scoring has moved. Use the Scoring tab in the main navigation to configure metric weights with real-time preview.
+            </p>
+            <button
+              className="btn"
+              onClick={() => { try { window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'scoring' } })); } catch {} }}
+            >
+              Go to Scoring
+            </button>
+          </div>
         )}
 
         {activeTab === 'utilities' && (

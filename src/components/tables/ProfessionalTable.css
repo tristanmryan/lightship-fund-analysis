@@ -17,18 +17,30 @@
   table-layout: fixed; /* keep columns within container width */
 }
 
-.professional-table thead {
-  background: #f9fafb;
+/* Override global thead styles specifically for professional tables */
+.professional-table-container .professional-table thead {
+  background: #1F4E79 !important;
   border-bottom: 2px solid #e5e7eb;
   position: sticky;
   top: 0;
   z-index: 10;
 }
 
-.professional-table th {
+/* Additional specificity to override any global table styles */
+.professional-table-container table.professional-table thead {
+  background: #1F4E79 !important;
+}
+
+/* Maximum specificity override for stubborn global styles */
+div.professional-table-container div.professional-table-scroll table.professional-table thead {
+  background: #1F4E79 !important;
+}
+
+.professional-table-container .professional-table th {
   padding: 12px;
   font-weight: 600;
-  color: #111827;
+  color: #ffffff !important;
+  background: #1F4E79 !important;
   text-transform: uppercase;
   font-size: 11px;
   letter-spacing: 0.05em;
@@ -40,13 +52,18 @@
   text-overflow: ellipsis;
 }
 
-/* tbody remains a normal table section for column alignment */
-.professional-table tbody {
+/* Accessible sort indicators via aria-sort attribute */
+.professional-table th[aria-sort="ascending"]::after {
+  content: " ▲";
+  font-size: 11px;
+}
+.professional-table th[aria-sort="descending"]::after {
+  content: " ▼";
+  font-size: 11px;
 }
 
-.professional-table tbody tr {
-  /* default display keeps header/body column widths aligned */
-}
+/* tbody remains a normal table section for column alignment */
+/* tbody remains a normal table section for column alignment (no overrides needed) */
 
 .professional-table td {
   padding: 10px 12px;
@@ -59,14 +76,62 @@
   cursor: pointer;
 }
 
+/* Keep benchmark row highlighted even on hover */
+.professional-table-container .professional-table tbody tr.benchmark-row:hover {
+  background: #FFD699 !important; /* maintain benchmark color on hover */
+}
+
 .professional-table tbody tr:focus {
   outline: 2px solid #c7d2fe; /* indigo-200 */
   background: #f1f5f9; /* slate-100 */
 }
 
-.professional-table .benchmark-row {
-  background: #f3f4f6;
-  font-style: italic;
+/* High specificity benchmark row styling */
+.professional-table-container .professional-table .benchmark-row {
+  background: #FFD699 !important; /* new benchmark color */
+  border-left: 3px solid #F59E0B; /* amber accent */
+  border-top: 1px solid #E5E7EB; /* subtle line above benchmark row */
+  font-weight: bold; /* bold text for benchmark rows */
+}
+
+/* Additional specificity for benchmark rows */
+.professional-table-container table.professional-table .benchmark-row {
+  background: #FFD699 !important;
+}
+
+/* Maximum specificity for benchmark rows */
+div.professional-table-container div.professional-table-scroll table.professional-table .benchmark-row {
+  background: #FFD699 !important;
+}
+
+/* Hide ticker cell for benchmark rows only (keep header visible) but ensure background color */
+.professional-table-container .professional-table .benchmark-row td.col-ticker {
+  color: transparent !important; /* hide text content but keep background */
+  background: #FFD699 !important; /* ensure ticker cell has benchmark background */
+}
+
+/* Additional specificity for ticker cell background */
+.professional-table-container table.professional-table .benchmark-row td.col-ticker {
+  color: transparent !important;
+  background: #FFD699 !important;
+}
+
+/* Maximum specificity for ticker cell background */
+div.professional-table-container div.professional-table-scroll table.professional-table .benchmark-row td.col-ticker {
+  color: transparent !important;
+  background: #FFD699 !important;
+}
+
+/* Even more specific targeting for ticker cell */
+.professional-table-container .professional-table tbody tr.benchmark-row td.col-ticker {
+  color: transparent !important;
+  background: #FFD699 !important;
+}
+
+/* Target by data attribute for maximum specificity */
+.professional-table-container .professional-table tbody tr.benchmark-row td[data-col-key="ticker"] {
+  color: transparent !important;
+  background: #FFD699 !important;
 }
 
 /* Responsive column priorities */
@@ -79,4 +144,30 @@
 }
 @media (max-width: 1150px) {
   th[data-col-key='status'], td[data-col-key='status'] { display: none; }
+}
+
+/* Add these rules to ProfessionalTable.css */
+.professional-table th.col-symbol,
+.professional-table td.col-symbol {
+  width: 80px;
+}
+
+.professional-table th.col-name,
+.professional-table td.col-name {
+  width: 300px;
+}
+
+.professional-table th.col-assetClass,
+.professional-table td.col-assetClass {
+  width: 200px;
+}
+
+.professional-table th.col-status,
+.professional-table td.col-status {
+  width: 80px;
+}
+
+.professional-table th.col-score,
+.professional-table td.col-score {
+  width: 90px;
 }

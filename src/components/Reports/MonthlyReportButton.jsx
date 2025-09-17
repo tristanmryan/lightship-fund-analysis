@@ -1,7 +1,8 @@
 // src/components/Reports/MonthlyReportButton.jsx
 import React, { useState } from 'react';
 import { FileText, Download, FileSpreadsheet, Info } from 'lucide-react';
-import { generatePDFReport, exportToExcel, exportToCSV, downloadFile, downloadPDF } from '../../services/exportService.js';
+import { exportToExcel, exportToCSV, downloadFile } from '../../services/exportService.js';
+import { generateMonthlyPDF, downloadPDF } from '../../services/pdfService.js';
 import { useFundData } from '../../hooks/useFundData';
 
 const MonthlyReportButton = () => {
@@ -48,7 +49,7 @@ const MonthlyReportButton = () => {
             recommended: funds.filter(f => f.is_recommended).length,
             asOf: metadata.asOf || null
           });
-          const pdf = await generatePDFReport(reportData, {
+          const pdf = await generateMonthlyPDF(reportData, {
             scope: selectionScope,
             highlightRecommended,
             landscape: true,

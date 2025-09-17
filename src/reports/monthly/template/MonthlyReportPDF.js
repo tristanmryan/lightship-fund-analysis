@@ -10,9 +10,14 @@ import {
   Page, 
   View, 
   Text, 
-  StyleSheet,
-  Font
+  StyleSheet
 } from '@react-pdf/renderer';
+import theme from './theme.js';
+import { getScoreColor } from '../../../services/scoringPolicy.js';
+
+// Use built-in Helvetica for Node/serverless compatibility.
+// Avoid bundling TTF assets in server functions to prevent import errors.
+let BASE_FONT = 'Helvetica';
 
 // Raymond James Professional Color Scheme and Typography
 const styles = StyleSheet.create({
@@ -20,14 +25,14 @@ const styles = StyleSheet.create({
   page: {
     size: 'LETTER',
     orientation: 'landscape',
-    paddingTop: 40,
-    paddingRight: 40,
-    paddingBottom: 40,
-    paddingLeft: 40,
-    fontFamily: 'Helvetica',
-    fontSize: 8,
+    paddingTop: theme.layout.pagePadding,
+    paddingRight: theme.layout.pagePadding,
+    paddingBottom: theme.layout.pagePadding,
+    paddingLeft: theme.layout.pagePadding,
+    fontFamily: BASE_FONT,
+    fontSize: theme.fontSizes.base,
     lineHeight: 1.2,
-    color: '#1A1A1A'
+    color: theme.colors.text
   },
 
   // Raymond James Branding
@@ -44,23 +49,23 @@ const styles = StyleSheet.create({
   brandBar: {
     width: 120, // Smaller, more elegant
     height: 2, // Thinner, more refined
-    backgroundColor: '#1E40AF', // Match title color
+    backgroundColor: theme.colors.brand, // Match title color
     marginBottom: 24,
     borderRadius: 1 // Subtle rounded corners
   },
 
   // INVESTMENT COMMITTEE: Clean, sharp cover page title design
   mainTitle: {
-    fontSize: 32,
+    fontSize: theme.fontSizes.coverMain,
     fontWeight: '600', // Cleaner weight
-    color: '#1E40AF', // Modern blue
+    color: theme.colors.brand, // Modern blue
     marginBottom: 12,
     letterSpacing: -0.3,
     textAlign: 'center'
   },
 
   subtitle: {
-    fontSize: 18,
+    fontSize: theme.fontSizes.coverSubtitle,
     fontWeight: '500',
     color: '#374151', // Clean gray
     marginBottom: 8,
@@ -69,7 +74,7 @@ const styles = StyleSheet.create({
   },
 
   reportType: {
-    fontSize: 14,
+    fontSize: theme.fontSizes.coverReportType,
     fontWeight: '400',
     color: '#6B7280',
     textAlign: 'center',
@@ -133,7 +138,7 @@ const styles = StyleSheet.create({
     display: 'block',
     fontSize: 22, // Slightly smaller
     fontWeight: '600', // Cleaner weight
-    color: '#1E40AF', // Match title color
+    color: theme.colors.brand, // Match title color
     lineHeight: 1.1
   },
 
@@ -181,9 +186,9 @@ const styles = StyleSheet.create({
 
   // INVESTMENT COMMITTEE: Clean asset class title with sharp typography
   assetClassTitle: {
-    fontSize: 18, // Slightly smaller for cleaner hierarchy
+    fontSize: theme.fontSizes.title, // Slightly smaller for cleaner hierarchy
     fontWeight: '600', // Balanced weight for clean appearance
-    color: '#111827', // Clean, readable color
+    color: theme.colors.title, // Clean, readable color
     letterSpacing: -0.2
   },
 
@@ -220,20 +225,20 @@ const styles = StyleSheet.create({
   tableHeader: {
     display: 'flex',
     flexDirection: 'row',
-    backgroundColor: '#4B5563', // Even lighter, cleaner gray
-    borderBottomWidth: 0.25, // Ultra-thin border
-    borderBottomColor: '#9CA3AF', // Very light border
+    backgroundColor: theme.table.headerBg,
+    borderBottomWidth: 0.25,
+    borderBottomColor: theme.table.headerBorder,
     borderRadius: 2 // Minimal radius for sharp look
   },
 
   tableHeaderCell: {
     color: '#FFFFFF',
     padding: 6, // Minimal padding for clean density
-    fontWeight: '500',
-    fontSize: 6, // Smaller font for cleaner look
+    fontWeight: '700',
+    fontSize: theme.fontSizes.tableHeader,
     textAlign: 'center',
-    borderRightWidth: 0.125, // Ultra-thin borders
-    borderRightColor: '#9CA3AF', // Very light borders
+    borderRightWidth: 0.125,
+    borderRightColor: theme.table.headerBorder,
     letterSpacing: 0.05, // Minimal letter spacing
     textTransform: 'uppercase'
   },
@@ -242,44 +247,44 @@ const styles = StyleSheet.create({
   tableRow: {
     display: 'flex',
     flexDirection: 'row',
-    borderBottomWidth: 0.125, // Ultra-thin borders
-    borderBottomColor: '#F9FAFB', // Barely visible borders
-    minHeight: 20 // Reduced height for cleaner density
+    borderBottomWidth: 0.125,
+    borderBottomColor: theme.table.rowBorder,
+    minHeight: theme.layout.rowMinHeight
   },
 
   // INVESTMENT COMMITTEE: Ultra-subtle alternating row colors
   tableRowAlternate: {
-    backgroundColor: '#FCFCFC' // Barely visible, ultra-clean
+    backgroundColor: theme.table.rowAltBg
   },
 
   // INVESTMENT COMMITTEE: Ultra-subtle recommended row styling
   tableRowRecommended: {
-    borderLeftWidth: 1, // Ultra-thin accent
-    borderLeftColor: '#34D399', // Very light green
-    backgroundColor: '#F0FDF4' // Minimal background
+    borderLeftWidth: 1,
+    borderLeftColor: theme.table.recommendedAccent,
+    backgroundColor: theme.table.recommendedBg
   },
 
   // INVESTMENT COMMITTEE: Ultra-subtle benchmark highlighting
   benchmarkRow: {
-    backgroundColor: '#FEF3C7', // Light cream background
-    borderTopWidth: 0.25, // Ultra-thin borders
-    borderTopColor: '#F59E0B',
+    backgroundColor: theme.table.benchmarkBg,
+    borderTopWidth: 0.25,
+    borderTopColor: theme.table.benchmarkAccent,
     borderBottomWidth: 0.25,
-    borderBottomColor: '#F59E0B',
-    borderLeftWidth: 1, // Ultra-thin accent
-    borderLeftColor: '#F59E0B' // Clean gold
+    borderBottomColor: theme.table.benchmarkAccent,
+    borderLeftWidth: 1,
+    borderLeftColor: theme.table.benchmarkAccent
   },
 
   // INVESTMENT COMMITTEE: Ultra-minimal cell styling for clean tables
   tableCell: {
-    padding: 4, // Minimal padding for clean density
-    fontSize: 6, // Smaller font for cleaner look
-    borderRightWidth: 0.125, // Ultra-thin borders
-    borderRightColor: '#F3F4F6', // Very light borders
+    padding: theme.table.cellPadding,
+    fontSize: theme.fontSizes.tableCell,
+    borderRightWidth: 0.125,
+    borderRightColor: theme.table.cellBorder,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 20 // Reduced height for cleaner density
+    minHeight: theme.layout.rowMinHeight
   },
 
   // APPLE KEYNOTE: Sophisticated benchmark cell styling with modern design
@@ -290,32 +295,32 @@ const styles = StyleSheet.create({
   },
 
   // INVESTMENT COMMITTEE: Perfectly balanced column proportions with centered performance data
-  colTicker: { width: 50, textAlign: 'center' },
-  colName: { width: 140, textAlign: 'left' }, // Reduced from 180 to ~25% of table width
-  colYtd: { width: 60, textAlign: 'center' }, // Centered for better visual balance
-  col1y: { width: 60, textAlign: 'center' },
-  col3y: { width: 60, textAlign: 'center' },
-  col5y: { width: 60, textAlign: 'center' },
-  colSharpe: { width: 60, textAlign: 'center' },
-  colStdDev3y: { width: 60, textAlign: 'center' },
-  colStdDev5y: { width: 60, textAlign: 'center' },
-  colExpense: { width: 60, textAlign: 'center' },
-  colTenure: { width: 60, textAlign: 'center' },
-  colScore: { width: 50, textAlign: 'center' },
+  colTicker: { width: theme.table.columnWidths.ticker, textAlign: 'center' },
+  colName: { width: theme.table.columnWidths.name, textAlign: 'left' },
+  colYtd: { width: theme.table.columnWidths.ytd, textAlign: 'center' },
+  col1y: { width: theme.table.columnWidths.oneY, textAlign: 'center' },
+  col3y: { width: theme.table.columnWidths.threeY, textAlign: 'center' },
+  col5y: { width: theme.table.columnWidths.fiveY, textAlign: 'center' },
+  colSharpe: { width: theme.table.columnWidths.sharpe, textAlign: 'center' },
+  colStdDev3y: { width: theme.table.columnWidths.std3y, textAlign: 'center' },
+  colStdDev5y: { width: theme.table.columnWidths.std5y, textAlign: 'center' },
+  colExpense: { width: theme.table.columnWidths.expense, textAlign: 'center' },
+  colTenure: { width: theme.table.columnWidths.tenure, textAlign: 'center' },
+  colScore: { width: theme.table.columnWidths.score, textAlign: 'center' },
 
   // APPLE KEYNOTE: Sophisticated performance color coding with modern palette
-  rankExcellent: { backgroundColor: '#E8F5E8' },
-  rankGood: { backgroundColor: '#FFF8E1' },
-  rankAverage: { backgroundColor: '#FFF3E0' },
-  rankBelowAverage: { backgroundColor: '#FFEBEE' },
-  rankPoor: { backgroundColor: '#FFEBEE' },
+  rankExcellent: { backgroundColor: theme.table.score.excellent },
+  rankGood: { backgroundColor: theme.table.score.good },
+  rankAverage: { backgroundColor: theme.table.score.average },
+  rankBelowAverage: { backgroundColor: theme.table.score.belowAverage },
+  rankPoor: { backgroundColor: theme.table.score.poor },
 
   // INVESTMENT COMMITTEE: Clean numeric text styling optimized for centered alignment
   numericText: {
-    fontFamily: 'Helvetica',
+    fontFamily: BASE_FONT,
     fontVariant: 'tabular-nums',
     fontWeight: '500', // Balanced weight for clean appearance
-    color: '#0F172A',
+    color: theme.colors.number,
     textAlign: 'center'
   },
 
@@ -333,11 +338,12 @@ const styles = StyleSheet.create({
   
   // INVESTMENT COMMITTEE: Clean fund name styling with professional typography
   fundNameText: {
-    fontSize: 7, // Match other text sizes for consistency
-    fontWeight: '500', // Balanced weight for clean appearance
-    color: '#0F172A',
+    fontFamily: BASE_FONT,
+    fontSize: theme.fontSizes.fundName,
+    fontWeight: '500',
+    color: theme.colors.number,
     lineHeight: 1.2,
-    textAlign: 'left' // Keep fund names left-aligned for readability
+    textAlign: 'left'
   },
 
   // APPLE KEYNOTE: Sophisticated page footer with modern design
@@ -346,10 +352,10 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 40,
     right: 40,
-    fontSize: 8,
+    fontSize: theme.fontSizes.footer,
     color: '#8A8A8A',
     borderTopWidth: 1,
-    borderTopColor: '#E8E8E8',
+    borderTopColor: theme.colors.footerDivider,
     paddingTop: 8,
     display: 'flex',
     flexDirection: 'row',
@@ -380,10 +386,10 @@ const styles = StyleSheet.create({
     top: 15,
     left: 40,
     right: 40,
-    fontSize: 9,
+    fontSize: theme.fontSizes.header,
     color: '#5A5A5A',
     borderBottomWidth: 1,
-    borderBottomColor: '#E8E8E8',
+    borderBottomColor: theme.colors.headerDivider,
     paddingBottom: 8,
     marginBottom: 8,
     display: 'flex',
@@ -394,7 +400,7 @@ const styles = StyleSheet.create({
 
   headerTitle: {
     fontWeight: 500,
-    color: '#002F6C'
+    color: theme.colors.headerText
   },
 
   headerDate: {
@@ -445,12 +451,12 @@ function renderAssetClassPages(sections, asOf, options = {}) {
   
   // INVESTMENT COMMITTEE: Ultra-clean layout constants for minimal tables
   const PAGE_HEIGHT = 612; // Letter landscape height in points
-  const HEADER_HEIGHT = 70; // Header height for breathing room
-  const FOOTER_HEIGHT = 50; // Footer height for breathing room
-  const SECTION_HEADER_HEIGHT = 30; // Reduced section header height
-  const TABLE_HEADER_HEIGHT = 20; // Reduced table header height for minimal design
-  const ROW_HEIGHT = 20; // Ultra-minimal fund row height
-  const SECTION_SPACING = 20; // Reduced spacing for cleaner density
+  const HEADER_HEIGHT = options.headerHeight ?? theme.layout.headerHeight ?? 70;
+  const FOOTER_HEIGHT = options.footerHeight ?? theme.layout.footerHeight ?? 50;
+  const SECTION_HEADER_HEIGHT = options.sectionHeaderHeight ?? theme.layout.sectionHeaderHeight ?? 30;
+  const TABLE_HEADER_HEIGHT = options.tableHeaderHeight ?? theme.layout.tableHeaderHeight ?? 20;
+  const ROW_HEIGHT = options.rowMinHeight ?? theme.layout.rowMinHeight ?? 20;
+  const SECTION_SPACING = options.sectionSpacing ?? theme.layout.sectionSpacing ?? 20;
   const SAFETY_MARGIN = 40; // Safety margin to prevent cutoff
   const AVAILABLE_HEIGHT = PAGE_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - SAFETY_MARGIN;
   
@@ -712,9 +718,10 @@ function PageFooter() {
     ),
     
     React.createElement(View, { style: styles.footerCenter },
-      React.createElement(Text, { style: { fontWeight: 500, color: '#374151' } },
-        "Page " + "1" // Note: React-PDF page numbers need special handling
-      )
+      React.createElement(Text, {
+        style: { fontWeight: 500, color: '#374151' },
+        render: ({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`
+      })
     ),
     
     React.createElement(View, { style: styles.footerRight },
@@ -761,7 +768,7 @@ function AssetClassSection({ section, sectionNumber, isLastSection, isCompact = 
       React.createElement(View, { style: styles.sectionMeta },
         React.createElement(Text, { style: styles.sectionMetaText }, null,
           (fundCount || rows.length) + " fund" + ((fundCount || rows.length) !== 1 ? 's' : '') +
-          ((recommendedCount || 0) > 0 ? " • " + (recommendedCount || 0) + " recommended" : '')
+          ((recommendedCount || 0) > 0 ? " â€¢ " + (recommendedCount || 0) + " recommended" : '')
         )
       )
     ),
@@ -791,32 +798,34 @@ function FundTable({ rows, benchmark, assetClass, isCompact = false, options = {
   }
   
   // TRANSFORMED: Updated to match new Excel-density 13-column layout
+  const colWidths = options.colWidths || {};
   const columns = [
-    { header: 'Ticker', dataKey: 'ticker', style: styles.colTicker },
-    { header: 'Fund Name', dataKey: 'name', style: styles.colName },
-    { header: 'YTD', dataKey: 'ytdReturn', style: styles.colYtd },
-    { header: '1Y', dataKey: 'oneYearReturn', style: styles.col1y },
-    { header: '3Y', dataKey: 'threeYearReturn', style: styles.col3y },
-    { header: '5Y', dataKey: 'fiveYearReturn', style: styles.col5y },
-    { header: 'Sharpe', dataKey: 'sharpeRatio', style: styles.colSharpe },
-    { header: '3Y Std', dataKey: 'standardDeviation3y', style: styles.colStdDev3y },
-    { header: '5Y Std', dataKey: 'standardDeviation5y', style: styles.colStdDev5y },
-    { header: 'Expense', dataKey: 'expenseRatio', style: styles.colExpense },
-    { header: 'Tenure', dataKey: 'managerTenure', style: styles.colTenure },
-    { header: 'Score', dataKey: 'score', style: styles.colScore }
+    { header: 'Ticker', dataKey: 'ticker', style: [styles.colTicker, colWidths.ticker && { width: colWidths.ticker }] },
+    { header: 'Fund Name', dataKey: 'name', style: [styles.colName, colWidths.name && { width: colWidths.name }] },
+    { header: 'YTD', dataKey: 'ytdReturn', style: [styles.colYtd, colWidths.ytd && { width: colWidths.ytd }] },
+    { header: '1Y', dataKey: 'oneYearReturn', style: [styles.col1y, colWidths.oneY && { width: colWidths.oneY }] },
+    { header: '3Y', dataKey: 'threeYearReturn', style: [styles.col3y, colWidths.threeY && { width: colWidths.threeY }] },
+    { header: '5Y', dataKey: 'fiveYearReturn', style: [styles.col5y, colWidths.fiveY && { width: colWidths.fiveY }] },
+    { header: 'Sharpe', dataKey: 'sharpeRatio', style: [styles.colSharpe, colWidths.sharpe && { width: colWidths.sharpe }] },
+    { header: '3Y Std', dataKey: 'standardDeviation3y', style: [styles.colStdDev3y, colWidths.std3y && { width: colWidths.std3y }] },
+    { header: '5Y Std', dataKey: 'standardDeviation5y', style: [styles.colStdDev5y, colWidths.std5y && { width: colWidths.std5y }] },
+    { header: 'Expense', dataKey: 'expenseRatio', style: [styles.colExpense, colWidths.expense && { width: colWidths.expense }] },
+    { header: 'Tenure', dataKey: 'managerTenure', style: [styles.colTenure, colWidths.tenure && { width: colWidths.tenure }] },
+    { header: 'Score', dataKey: 'score', style: [styles.colScore, colWidths.score && { width: colWidths.score }] }
   ];
 
   return React.createElement(View, { style: styles.fundTable },
     // Table Header
-    React.createElement(View, { style: styles.tableHeader },
+    React.createElement(View, { style: [styles.tableHeader, options.headerBg && { backgroundColor: options.headerBg }].filter(Boolean) },
       ...columns.map((col, index) => 
         React.createElement(View, {
           key: col.dataKey,
           style: [
-            styles.tableHeaderCell, 
-            col.style,
+            styles.tableHeaderCell,
+            ...(Array.isArray(col.style) ? col.style : [col.style]),
+            options.headerFontSize && { fontSize: options.headerFontSize },
             index === columns.length - 1 && { borderRightWidth: 0 }
-          ]
+          ].filter(Boolean)
         },
           React.createElement(Text, null, col.header)
         )
@@ -837,7 +846,8 @@ function FundTable({ rows, benchmark, assetClass, isCompact = false, options = {
     // Benchmark Row
     benchmark && React.createElement(BenchmarkRow, {
       benchmark: benchmark,
-      columns: columns
+      columns: columns,
+      options: options
     })
   );
 }
@@ -859,7 +869,12 @@ function FundRow({ row, index, columns, options = {} }) {
   const rowStyles = [
     styles.tableRow,
     isAlternate && styles.tableRowAlternate,
-    isRecommended && styles.tableRowRecommended
+    isRecommended && styles.tableRowRecommended,
+    options.rowMinHeight && { minHeight: options.rowMinHeight },
+    (isRecommended && (options.recBg || options.recAccent)) && {
+      backgroundColor: options.recBg || undefined,
+      borderLeftColor: options.recAccent || undefined,
+    }
   ].filter(Boolean);
 
   return React.createElement(View, { style: rowStyles },
@@ -870,15 +885,15 @@ function FundRow({ row, index, columns, options = {} }) {
       // No explicit recommended column; rows are highlighted when recommended
       
       // Special handling for score column with color coding
-      let cellStyles = [styles.tableCell, col.style];
+      let cellStyles = [styles.tableCell, ...(Array.isArray(col.style) ? col.style : [col.style])];
+      if (options.cellFontSize) cellStyles.push({ fontSize: options.cellFontSize });
+      cellStyles = cellStyles.filter(Boolean);
       if (col.dataKey === 'score' && row.score) {
         const score = parseFloat(row.score);
         if (!isNaN(score)) {
-          if (score >= 70) cellStyles.push(styles.rankExcellent);
-          else if (score >= 60) cellStyles.push(styles.rankGood);
-          else if (score >= 50) cellStyles.push(styles.rankAverage);
-          else if (score >= 40) cellStyles.push(styles.rankBelowAverage);
-          else cellStyles.push(styles.rankPoor);
+          // Centralized scoring color (matches Scoring tab)
+          const bg = getScoreColor(score);
+          cellStyles.push({ backgroundColor: bg });
         }
       }
       
@@ -905,14 +920,20 @@ function FundRow({ row, index, columns, options = {} }) {
 /**
  * Benchmark Row Component
  */
-function BenchmarkRow({ benchmark, columns }) {
+function BenchmarkRow({ benchmark, columns, options = {} }) {
   // APPLE KEYNOTE: Defensive programming with benchmark validation
   if (!benchmark || !columns || !Array.isArray(columns)) {
     console.warn('BenchmarkRow: Invalid benchmark or columns data:', { benchmark, columns });
     return null;
   }
   
-  return React.createElement(View, { style: [styles.tableRow, styles.benchmarkRow] },
+  const benchStyleOverride = {
+    backgroundColor: options.bmkBg || undefined,
+    borderTopColor: options.bmkAccent || undefined,
+    borderBottomColor: options.bmkAccent || undefined,
+    borderLeftColor: options.bmkAccent || undefined,
+  };
+  return React.createElement(View, { style: [styles.tableRow, styles.benchmarkRow, benchStyleOverride] },
     ...columns.map((col, colIndex) => {
       let cellValue = '';
       
@@ -945,16 +966,30 @@ function BenchmarkRow({ benchmark, columns }) {
         case 'score':
         case 'rank':
         case 'managerTenure':
-          cellValue = '—';
+          cellValue = 'â€”';
           break;
         default:
           cellValue = '';
       }
 
+      // Provide default placeholders for certain benchmark-only columns
+      if ((col.dataKey === 'rank' || col.dataKey === 'managerTenure') && (cellValue === '' || cellValue == null)) {
+        cellValue = 'N/A';
+      }
+
+      // Ensure Std Dev columns render from benchmark if not handled above
+      if (col.dataKey === 'standardDeviation3y' && (cellValue === '' || cellValue == null)) {
+        cellValue = benchmark.standard_deviation_3y ? formatPercent(benchmark.standard_deviation_3y, 1) : 'N/A';
+      }
+      if (col.dataKey === 'standardDeviation5y' && (cellValue === '' || cellValue == null)) {
+        cellValue = benchmark.standard_deviation_5y ? formatPercent(benchmark.standard_deviation_5y, 1) : 'N/A';
+      }
+      // Normalize placeholders\n      if (cellValue && typeof cellValue === 'string' && /[^\x20-\x7E]/.test(cellValue)) {\n        cellValue = 'N/A';\n      }\n      if (col.dataKey === 'managerTenure' && (cellValue === '' || cellValue == null)) {\n        cellValue = 'N/A';\n      }\n
       const cellStyles = [
         styles.tableCell, 
         styles.tableCellBenchmark, 
-        col.style,
+        ...(Array.isArray(col.style) ? col.style : [col.style]),
+        options && options.cellFontSize && { fontSize: options.cellFontSize },
         colIndex === columns.length - 1 && { borderRightWidth: 0 }
       ].filter(Boolean);
 
@@ -1034,8 +1069,9 @@ function formatDate(dateStr) {
 function formatPercent(value, decimals = 2) {
   if (value == null || isNaN(value)) return 'N/A';
   const num = Number(value);
-  const sign = num > 0 ? '+' : '';
-  return `${sign}${num.toFixed(decimals)}%`;
+  const sign = num < 0 ? '-' : '';
+  const abs = Math.abs(num).toFixed(decimals);
+  return `${sign}${abs}%`;
 }
 
 function formatNumber(value, decimals = 2) {
@@ -1043,22 +1079,7 @@ function formatNumber(value, decimals = 2) {
   return Number(value).toFixed(decimals);
 }
 
-function formatTenure(value) {
-  if (value === null || value === undefined || isNaN(value)) {
-    return 'N/A';
-  }
-  
-  const years = Math.floor(value);
-  const months = Math.round((value - years) * 12);
-  
-  if (years === 0) {
-    return `${months}m`;
-  } else if (months === 0) {
-    return `${years}y`;
-  } else {
-    return `${years}y ${months}m`;
-  }
-}
+// Note: tenure formatting is handled upstream; removing unused formatter
 
 function truncateText(text, maxLength) {
   if (!text || text.length <= maxLength) return text;

@@ -1,4 +1,4 @@
-﻿# Lightship Fund Analytics v3 - Streamlined Architecture Plan
+# Lightship Fund Analytics v3 - Streamlined Architecture Plan
 
 ## Executive Summary
 

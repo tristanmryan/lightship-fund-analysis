@@ -1,10 +1,19 @@
 // src/services/supabase.js
 import { createClient } from '@supabase/supabase-js';
 
-// Environment variables for Supabase configuration
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-// Harden: Support legacy alias REACT_APP_SUPABASE_ANON
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || process.env.REACT_APP_SUPABASE_ANON;
+// Detect server vs browser to safely choose keys
+const isServer = typeof window === 'undefined';
+
+// Environment variables for Supabase configuration (prefer client vars in browser, server vars on server)
+const supabaseUrl =
+  process.env.REACT_APP_SUPABASE_URL ||
+  process.env.SUPABASE_URL ||
+  '';
+
+// On the server, prefer SERVICE_ROLE (or server anon if provided). In browser, only use REACT_APP anon key.
+const supabaseKey = isServer
+  ? (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.REACT_APP_SUPABASE_ANON_KEY || process.env.REACT_APP_SUPABASE_ANON)
+  : (process.env.REACT_APP_SUPABASE_ANON_KEY || process.env.REACT_APP_SUPABASE_ANON);
 
 // Dev-only init log (sanitized)
 (() => {
@@ -13,23 +22,23 @@ const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || process.env.R
       const host = (() => {
         try { return new URL(supabaseUrl || '').hostname || (supabaseUrl || ''); } catch { return supabaseUrl || ''; }
       })();
-      const hasKey = Boolean(supabaseAnonKey && String(supabaseAnonKey).length > 0);
+      const hasKey = Boolean(supabaseKey && String(supabaseKey).length > 0);
       // Log once on module init
       // eslint-disable-next-line no-console
-      console.log(`[Init] Supabase host: ${host || 'n/a'} (anon key present: ${hasKey ? 'yes' : 'no'})`);
+      console.log(`[Init] Supabase host: ${host || 'n/a'} (${isServer ? 'server' : 'client'} key present: ${hasKey ? 'yes' : 'no'})`);
     }
   } catch {}
 })();
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!supabaseUrl || !supabaseKey) {
   if (process.env.NODE_ENV !== 'test') {
     // eslint-disable-next-line no-console
-    console.error('Missing Supabase environment variables. Please set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY (or REACT_APP_SUPABASE_ANON)');
+    console.error('Missing Supabase environment variables. For browser set REACT_APP_SUPABASE_URL/REACT_APP_SUPABASE_ANON_KEY; for server set SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY');
   }
 }
 
 // In tests or when env is missing, provide a no-op stub to avoid crashes
-const shouldStub = process.env.NODE_ENV === 'test' || !supabaseUrl || !supabaseAnonKey;
+const shouldStub = process.env.NODE_ENV === 'test' || !supabaseUrl || !supabaseKey;
 export const isSupabaseStubbed = shouldStub;
 
 function createStubClient() {
@@ -76,7 +85,7 @@ function createStubClient() {
 }
 
 // Create Supabase client or stub
-export const supabase = shouldStub ? createStubClient() : createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = shouldStub ? createStubClient() : createClient(supabaseUrl, supabaseKey);
 
 // Strict numeric parser for importer paths
 export function toNumberStrict(v) {

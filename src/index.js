@@ -4,6 +4,18 @@ import './index.css';
 import App from './App.jsx';
 import { BrowserRouter } from 'react-router-dom';
 
+// Sanitize console output to strip unknown replacement chars in dev
+(() => {
+  try {
+    const orig = { ...console };
+    const sanitize = (v) => (typeof v === 'string' ? v.replace(/\uFFFD/g, '') : v);
+    ['log', 'info', 'warn', 'error'].forEach((k) => {
+      const fn = orig[k] || (() => {});
+      console[k] = (...args) => fn(...args.map(sanitize));
+    });
+  } catch {}
+})();
+
 // Visual refresh feature flag
 const envOn = process.env.REACT_APP_ENABLE_VISUAL_REFRESH === 'true';
 const storedOn = localStorage.getItem('visualRefresh') === 'on';
@@ -34,6 +46,30 @@ const toggleVisualRefresh = (on) => {
 
 // Initialize visual refresh state
 toggleVisualRefresh(envOn || storedOn);
+
+// Ensure modal close buttons have accessible labels when they appear
+(() => {
+  try {
+    const setLabel = (btn) => {
+      if (btn && !btn.getAttribute('aria-label')) {
+        btn.setAttribute('aria-label', 'Close dialog');
+      }
+    };
+    // Initial sweep
+    document.querySelectorAll('.btn-close').forEach(setLabel);
+    // Observe for dynamically added modals
+    const obs = new MutationObserver((muts) => {
+      for (const m of muts) {
+        m.addedNodes.forEach((n) => {
+          if (!(n instanceof Element)) return;
+          if (n.matches && n.matches('.btn-close')) setLabel(n);
+          n.querySelectorAll && n.querySelectorAll('.btn-close').forEach(setLabel);
+        });
+      }
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+  } catch {}
+})();
 
 // Global keyboard shortcut for runtime toggle
 window.addEventListener('keydown', (e) => {

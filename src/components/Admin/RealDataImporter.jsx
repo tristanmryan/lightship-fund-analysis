@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import { supabase, TABLES } from '../../services/supabase';
-import { Download, Upload, RefreshCw, AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { Upload, RefreshCw, AlertCircle, CheckCircle, Info } from 'lucide-react';
 
 const RealDataImporter = () => {
   const [importing, setImporting] = useState(false);

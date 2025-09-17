@@ -1,4 +1,4 @@
-﻿# Lightship Fund Analytics Enhancement Plan
+# Lightship Fund Analytics Enhancement Plan
 ## From Research Tool to Advisor Intelligence Platform
 
 ### Project Vision
@@ -131,7 +131,7 @@ Transform the existing fund analytics application into a comprehensive advisor i
 - [ ] Confirm RJ CSV headers -> DB columns mapping (holdings, trades)
 - [ ] Define hashing method for `client_id` (salted HMAC; server-side secret)
 - [ ] Document validation/normalization rules (dates, currency, negatives, cash rows)
-- [ ] Finalize Phase 1 schema (tables + indexes) � ready for migration
+- [ ] Finalize Phase 1 schema (tables + indexes)  ready for migration
 - [ ] Define Phase 1 RPC surfaces and materialized views to refresh
 - [ ] Security checklist (RLS, roles, secrets handling, audit entries)
 

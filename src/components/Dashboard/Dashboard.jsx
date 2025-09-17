@@ -8,6 +8,7 @@ import ScoreTooltip from './ScoreTooltip';
 import ScoreBadge from '../ScoreBadge';
 import flowsService from '../../services/flowsService';
 import { runDiagnostics } from '../../utils/diagnostics';
+import { supabase } from '../../services/supabase';
 
 function KPICard({ label, value, subtext, format }) {
   const formatValue = (v) => {
@@ -37,10 +38,14 @@ function InsightCard({ title, children }) {
 
 export default function Dashboard() {
   // Use the useFundData hook for funds with scoring
-  const { funds, loading: fundsLoading } = useFundData();
+  const { funds, loading: fundsLoading, assetClasses } = useFundData();
   
   const [summary, setSummary] = React.useState({ totalAUM: 0, totalFunds: 0, recommendedCount: 0, avgScore: 0, monthlyFlows: null, ownershipAvailable: false });
   const [newRecommendations, setNewRecommendations] = React.useState([]);
+  // Table search and filters
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [assetClassFilter, setAssetClassFilter] = React.useState('all');
+  const [recommendedOnly, setRecommendedOnly] = React.useState(false);
 
   // Run database diagnostics on mount (dev only)
   React.useEffect(() => {
@@ -61,21 +66,53 @@ export default function Dashboard() {
     // compute summary
     const totalFunds = fs.length;
     const recommendedCount = fs.filter((f) => f.is_recommended || f.recommended).length;
-    const aumValues = fs.map((f) => Number(f.firmAUM || 0));
-    const totalAUM = aumValues.reduce((s, v) => s + v, 0);
-    const ownershipAvailable = aumValues.some((v) => v > 0);
+    const ownershipAvailable = fs.some((f) => Number(f.firmAUM || 0) > 0);
     const scores = fs.map((f) => (typeof f?.scores?.final === 'number' ? f.scores.final : (typeof f.score_final === 'number' ? f.score_final : (typeof f.score === 'number' ? f.score : null)))).filter((n) => n != null);
     const avgScore = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
     
     setSummary(prevSummary => ({ 
       ...prevSummary, 
-      totalAUM, 
       totalFunds, 
       recommendedCount, 
       avgScore, 
       ownershipAvailable 
     }));
   }, [funds]);
+
+  // Get firm-wide AUM from advisor metrics (all holdings, not just tracked funds)
+  React.useEffect(() => {
+    let cancel = false;
+    (async () => {
+      try {
+        // Get latest holdings date and total firm AUM
+        const { data: dates } = await supabase
+          .from('advisor_metrics_mv')
+          .select('snapshot_date')
+          .order('snapshot_date', { ascending: false })
+          .limit(1);
+        
+        const latestDate = dates?.[0]?.snapshot_date;
+        if (!latestDate) return;
+
+        const { data: metrics } = await supabase.rpc('get_advisor_metrics', { 
+          p_date: latestDate, 
+          p_advisor_id: null 
+        });
+        
+        if (cancel) return;
+        
+        const totalFirmAUM = (metrics || []).reduce((sum, advisor) => sum + (advisor.aum || 0), 0);
+        
+        setSummary(prev => ({ 
+          ...prev, 
+          totalAUM: totalFirmAUM
+        }));
+      } catch (e) {
+        console.warn('Could not fetch firm AUM:', e);
+      }
+    })();
+    return () => { cancel = true; };
+  }, []);
 
   // Load latest net flows KPI
   React.useEffect(() => {
@@ -144,6 +181,27 @@ export default function Dashboard() {
     { key: 'firmAUM', label: 'Firm AUM', numeric: true, align: 'right', accessor: (row) => row.firmAUM ?? null, render: (v) => v != null ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(v)) : 'N/A' },
     { key: 'advisors', label: '# Advisors', numeric: true, align: 'right', accessor: (row) => row.advisorCount ?? null }
   ]), []);
+
+  // Apply search and filters to funds for the table view
+  const filteredFunds = React.useMemo(() => {
+    const q = String(searchQuery || '').trim().toLowerCase();
+    const ac = String(assetClassFilter || 'all').toLowerCase();
+    const out = (funds || []).filter((f) => {
+      if (recommendedOnly && !f.is_recommended) return false;
+      if (ac !== 'all') {
+        const fac = String(f.asset_class_name || f.asset_class || '').toLowerCase();
+        if (fac !== ac) return false;
+      }
+      if (q) {
+        const t = String(f.ticker || f.symbol || '').toLowerCase();
+        const n = String(f.name || '').toLowerCase();
+        const fac = String(f.asset_class_name || f.asset_class || '').toLowerCase();
+        if (!t.includes(q) && !n.includes(q) && !fac.includes(q)) return false;
+      }
+      return true;
+    });
+    return out;
+  }, [funds, searchQuery, assetClassFilter, recommendedOnly]);
 
   const topPerformers = React.useMemo(() => {
     const arr = [...(funds || [])];
@@ -218,9 +276,34 @@ export default function Dashboard() {
       <div className="main-table-section card" style={{ padding: 12 }}>
         <div className="table-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <h2 style={{ margin: 0 }}>Fund Universe</h2>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search ticker, name, asset class"
+              aria-label="Search funds"
+              style={{ padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 6, minWidth: 220 }}
+            />
+            <select
+              aria-label="Filter by asset class"
+              value={assetClassFilter}
+              onChange={(e) => setAssetClassFilter(e.target.value)}
+              style={{ padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 6 }}
+            >
+              <option value="all">All Classes</option>
+              {(assetClasses || []).map((ac) => (
+                <option key={ac} value={ac}>{ac}</option>
+              ))}
+            </select>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#374151' }}>
+              <input type="checkbox" checked={recommendedOnly} onChange={(e) => setRecommendedOnly(e.target.checked)} />
+              Recommended only
+            </label>
+          </div>
         </div>
         <ProfessionalTable
-          data={funds}
+          data={filteredFunds}
           columns={DASHBOARD_COLUMNS}
           onRowClick={(row) => { try { window.dispatchEvent(new CustomEvent('NAVIGATE_APP', { detail: { tab: 'portfolios' } })); window.history.pushState({}, '', `/portfolios?ticker=${row.ticker}`); } catch {} }}
         />
