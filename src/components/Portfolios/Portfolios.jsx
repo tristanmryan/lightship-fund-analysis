@@ -47,6 +47,7 @@ function ByAdvisorView() {
   const [advisorName, setAdvisorName] = useState(''); // Always work with advisor names
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [portfolio, setPortfolio] = useState(null);
   const [fundsWithOwnership, setFundsWithOwnership] = useState([]);
@@ -152,6 +153,19 @@ function ByAdvisorView() {
     });
   }, [portfolio, fundsMap, ownershipData]);
 
+  // Apply search filter to table rows
+  const filteredTableRows = useMemo(() => {
+    const q = String(searchQuery || '').trim().toLowerCase();
+    if (!q) return tableRows;
+    
+    return tableRows.filter((row) => {
+      const t = String(row.ticker || '').toLowerCase();
+      const n = String(row.name || '').toLowerCase();
+      const ac = String(row.asset_class_name || row.asset_class || '').toLowerCase();
+      return t.includes(q) || n.includes(q) || ac.includes(q);
+    });
+  }, [tableRows, searchQuery]);
+
   const alignmentPct = useMemo(() => {
     if (!portfolio || !portfolio.totalAum) return 0;
     return (Number(portfolio.recommendedAum || 0) / Number(portfolio.totalAum || 1)) * 100;
@@ -207,8 +221,21 @@ function ByAdvisorView() {
       </div>
 
       <div style={{ marginTop: 12 }}>
+        <div className="table-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <h3 style={{ margin: 0 }}>Portfolio Holdings</h3>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search ticker, name, asset class"
+              aria-label="Search portfolio holdings"
+              style={{ padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 6, minWidth: 220 }}
+            />
+          </div>
+        </div>
         <ProfessionalTable
-          data={tableRows}
+          data={filteredTableRows}
           columns={ADVISOR_FUNDS_COLUMNS}
           onRowClick={(f) => console.log('select', f?.ticker)}
         />
