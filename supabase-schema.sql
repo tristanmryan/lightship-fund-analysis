@@ -230,6 +230,7 @@ $$ LANGUAGE plpgsql;
 
 -- RPC execution grants
 grant execute on function public.list_snapshot_counts() to anon, authenticated;
+grant execute on function public.list_snapshot_counts_detailed() to anon, authenticated;
 
 -- List snapshot months with row counts (RPC)
 create or replace function public.list_snapshot_counts()
@@ -241,6 +242,37 @@ as $$
   from public.fund_performance fp
   group by fp.date
   order by fp.date desc;
+$$;
+
+-- List snapshot months with both fund and benchmark counts (RPC)
+create or replace function public.list_snapshot_counts_detailed()
+returns table("date" date, fund_rows bigint, benchmark_rows bigint)
+language sql
+stable
+as $$
+  with fund_counts as (
+    select fp.date, count(*)::bigint as fund_rows
+    from public.fund_performance fp
+    group by fp.date
+  ),
+  benchmark_counts as (
+    select bp.date, count(*)::bigint as benchmark_rows
+    from public.benchmark_performance bp
+    group by bp.date
+  ),
+  all_dates as (
+    select distinct date from fund_counts
+    union
+    select distinct date from benchmark_counts
+  )
+  select 
+    ad.date as "date",
+    coalesce(fc.fund_rows, 0) as fund_rows,
+    coalesce(bc.benchmark_rows, 0) as benchmark_rows
+  from all_dates ad
+  left join fund_counts fc on ad.date = fc.date
+  left join benchmark_counts bc on ad.date = bc.date
+  order by ad.date desc;
 $$;
 
 -- Create trigger to automatically update last_updated

@@ -9,7 +9,10 @@
   - **NEW**: Replaced manual date input with user-friendly year/month dropdowns
   - Automatically calculates end-of-month date from selected year/month
   - Shows calculated EOM date in real-time as user selects month/year
-  - Handles leap years correctly (e.g., February 2024 = 29 days, February 2025 = 28 days)
+  - **NEW**: Enhanced Snapshot Manager to display both fund and benchmark data counts
+  - Shows separate row counts for fund_performance and benchmark_performance tables
+  - Visual indicators highlight months with missing benchmark data
+  - Updated RPC function `list_snapshot_counts_detailed()` for comprehensive snapshot overview
 
 ## 2025-08-10
 
