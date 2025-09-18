@@ -13,13 +13,44 @@ function toMonthStart(dateLike) {
 }
 
 async function listMonths(limit = 24) {
-  // Distinct months available in fund_flows_mv (descending)
-  const { data, error } = await supabase
-    .from('fund_flows_mv')
-    .select('month')
-    .order('month', { ascending: false });
-  if (error) throw error;
-  const months = Array.from(new Set((data || []).map(r => r.month))).filter(Boolean);
+  const monthsSet = new Set();
+
+  try {
+    const { data, error } = await supabase
+      .from('fund_flows_mv')
+      .select('month')
+      .order('month', { ascending: false })
+      .limit(limit * 4);
+    if (error) throw error;
+    (data || []).forEach((row) => {
+      if (row?.month) monthsSet.add(row.month);
+    });
+  } catch (error) {
+    console.warn('flowsService.listMonths base query failed', error);
+  }
+
+  if (monthsSet.size < limit) {
+    try {
+      const { data: tradeRows, error: tradeError } = await supabase
+        .from('trade_activity')
+        .select('trade_date')
+        .order('trade_date', { ascending: false })
+        .limit(limit * 500);
+      if (tradeError) throw tradeError;
+      (tradeRows || []).forEach((row) => {
+        if (!row?.trade_date) return;
+        const monthKey = toMonthStart(row.trade_date);
+        if (monthKey) monthsSet.add(monthKey);
+      });
+    } catch (error) {
+      console.warn('flowsService.listMonths trade fallback failed', error);
+    }
+  }
+
+  const months = Array.from(monthsSet.values())
+    .filter(Boolean)
+    .sort((a, b) => new Date(b) - new Date(a));
+
   return months.slice(0, limit);
 }
 
@@ -224,6 +255,76 @@ async function getFlowByAssetClass({ month }) {
   return Array.from(agg.values());
 }
 
+async function getTopAdvisorActivity({ month, advisorNameOrTeam = '', limit = 4 }) {
+  const start = month ? toMonthStart(month) : null;
+  const end = month ? toMonthEnd(month) : null;
+  if (!start || !end) return [];
+
+  const advisorIds = resolveAdvisorIds(advisorNameOrTeam);
+
+  try {
+    let query = supabase
+      .from('trade_activity')
+      .select('advisor_id, trade_type, principal_amount, ticker')
+      .is('cancelled', false)
+      .gte('trade_date', start)
+      .lte('trade_date', end);
+
+    if (advisorIds && advisorIds.length > 0) {
+      query = query.in('advisor_id', advisorIds);
+    }
+
+    const rowLimit = Math.max(1000, Math.min((limit || 4) * 2500, 15000));
+    const { data, error } = await query.limit(rowLimit);
+    if (error) throw error;
+
+    const aggregated = new Map();
+    for (const row of data || []) {
+      const advisorId = row.advisor_id;
+      if (!advisorId) continue;
+      const principal = Number(row.principal_amount || 0);
+      const signed = row.trade_type === 'SELL' ? -principal : principal;
+
+      const current = aggregated.get(advisorId) || {
+        advisor_id: advisorId,
+        net_flow: 0,
+        buy_volume: 0,
+        sell_volume: 0,
+        total_volume: 0,
+        trades: 0,
+        tickers: new Set()
+      };
+
+      current.net_flow += signed;
+      current.total_volume += Math.abs(principal);
+      if (row.trade_type === 'BUY') current.buy_volume += Math.abs(principal);
+      if (row.trade_type === 'SELL') current.sell_volume += Math.abs(principal);
+      current.trades += 1;
+      if (row.ticker) current.tickers.add(String(row.ticker).toUpperCase());
+      aggregated.set(advisorId, current);
+    }
+
+    return Array.from(aggregated.values())
+      .map((entry) => ({
+        advisor_id: entry.advisor_id,
+        net_flow: entry.net_flow,
+        buy_volume: entry.buy_volume,
+        sell_volume: entry.sell_volume,
+        total_volume: entry.total_volume,
+        trades: entry.trades,
+        distinct_tickers: entry.tickers.size,
+        tickers: Array.from(entry.tickers),
+        direction: entry.net_flow >= 0 ? 'inflow' : 'outflow',
+        avg_trade: entry.trades > 0 ? entry.total_volume / entry.trades : 0
+      }))
+      .sort((a, b) => b.total_volume - a.total_volume)
+      .slice(0, Math.max(1, Math.min(limit || 4, 20)));
+  } catch (error) {
+    console.warn('flowsService.getTopAdvisorActivity failed', error);
+    return [];
+  }
+}
+
 async function getNetFlowTrend(arg1 = 6, arg2) {
   // Support both signatures: getNetFlowTrend(limitMonths) and getNetFlowTrend(advisorNameOrTeam, limitMonths)
   let advisorNameOrTeam = '';
@@ -278,6 +379,7 @@ const flowsService = {
   getTopMovers,
   getAdvisorParticipation,
   getFlowByAssetClass,
+  getTopAdvisorActivity,
   getNetFlowTrend,
   async getMonthKPIs({ month, advisorNameOrTeam = '' }) {
     const m = month ? toMonthStart(month) : null;

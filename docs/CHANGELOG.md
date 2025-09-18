@@ -1,3 +1,12 @@
+## 2025-01-15
+
+- Enhanced CSV Upload Experience
+  - Added downloadable CSV templates directly in Monthly Snapshot Upload interface
+  - Fund Performance Template: includes all expected columns with sample data
+  - Benchmark Performance Template: includes benchmark-specific columns (no manager_tenure)
+  - Templates use proper UTF-8 encoding with BOM for Excel compatibility
+  - Templates exclude date column (provided via UI date picker)
+
 ## 2025-08-10
 
 - Phase 3 kickoff: Saved View Defaults v1
