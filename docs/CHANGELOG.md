@@ -12,7 +12,11 @@
   - **NEW**: Enhanced Snapshot Manager to display both fund and benchmark data counts
   - Shows separate row counts for fund_performance and benchmark_performance tables
   - Visual indicators highlight months with missing benchmark data
-  - Updated RPC function `list_snapshot_counts_detailed()` for comprehensive snapshot overview
+  - **NEW**: Trade Data Manager console for monitoring trade data uploads
+  - Shows monthly trade data counts from trade_activity table
+  - Displays formatted month names with row counts
+  - Includes delete functionality for individual months
+  - Added RPC function `list_trade_data_counts()` for efficient data aggregation
 
 ## 2025-08-10
 

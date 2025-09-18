@@ -9,6 +9,7 @@ import MonthlySnapshotUpload from './MonthlySnapshotUpload';
 import MVRefreshControl from './MVRefreshControl.jsx';
 import HoldingsTradesImport from './HoldingsTradesImport.jsx';
 import SnapshotManager from './SnapshotManager';
+import TradeDataManager from './TradeDataManager';
 import SeedRecommendedFunds from './SeedRecommendedFunds';
 import SeedBenchmarks from './SeedBenchmarks';
 import DataDiagnostics from './DataDiagnostics';
@@ -225,6 +226,7 @@ const FundManagement = () => {
             <HoldingsTradesImport />
             <DataMaintenance />
             <SnapshotManager />
+            <TradeDataManager />
             <SeedRecommendedFunds />
             <SeedBenchmarks />
           </>
