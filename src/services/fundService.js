@@ -752,51 +752,36 @@ class FundService {
     }
   }
 
-  // List snapshot dates with both fund and benchmark counts
-  async listSnapshotsWithDetailedCounts() {
+  // List trade data months with row counts
+  async listTradeDataCounts() {
     try {
       // Prefer RPC for robust grouping across drivers
-      const { data: rpcData, error: rpcError } = await supabase.rpc('list_snapshot_counts_detailed');
+      const { data: rpcData, error: rpcError } = await supabase.rpc('list_trade_data_counts');
       if (!rpcError && Array.isArray(rpcData)) {
         return (rpcData || []).map((r) => ({ 
-          date: dbUtils.formatDateOnly(r.date), 
-          fundRows: Number(r.fund_rows) || 0,
-          benchmarkRows: Number(r.benchmark_rows) || 0
+          month: dbUtils.formatDateOnly(r.month), 
+          tradeRows: Number(r.trade_rows) || 0
         }));
       }
 
       // Fallback: client-side reduction over minimal selection
-      const [fundData, benchmarkData] = await Promise.all([
-        supabase.from(TABLES.FUND_PERFORMANCE).select('date'),
-        supabase.from(TABLES.BENCHMARK_PERFORMANCE).select('date')
-      ]);
+      const { data: rowsData, error: selError } = await supabase
+        .from('trade_activity')
+        .select('trade_date');
+      if (selError) throw selError;
 
-      if (fundData.error) throw fundData.error;
-      if (benchmarkData.error) throw benchmarkData.error;
-
-      const fundCounts = new Map();
-      const benchmarkCounts = new Map();
-
-      for (const r of fundData.data || []) {
-        const d = dbUtils.formatDateOnly(r.date);
-        fundCounts.set(d, (fundCounts.get(d) || 0) + 1);
+      const counts = new Map();
+      for (const r of rowsData || []) {
+        const month = new Date(r.trade_date);
+        const monthKey = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-01`;
+        counts.set(monthKey, (counts.get(monthKey) || 0) + 1);
       }
 
-      for (const r of benchmarkData.data || []) {
-        const d = dbUtils.formatDateOnly(r.date);
-        benchmarkCounts.set(d, (benchmarkCounts.get(d) || 0) + 1);
-      }
-
-      const allDates = new Set([...fundCounts.keys(), ...benchmarkCounts.keys()]);
-      return Array.from(allDates)
-        .map(date => ({ 
-          date, 
-          fundRows: fundCounts.get(date) || 0,
-          benchmarkRows: benchmarkCounts.get(date) || 0
-        }))
-        .sort((a, b) => b.date.localeCompare(a.date));
+      return Array.from(counts.entries())
+        .map(([month, tradeRows]) => ({ month, tradeRows }))
+        .sort((a, b) => b.month.localeCompare(a.month));
     } catch (error) {
-      handleSupabaseError(error, 'listSnapshotsWithDetailedCounts');
+      handleSupabaseError(error, 'listTradeDataCounts');
       return [];
     }
   }

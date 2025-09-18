@@ -231,6 +231,7 @@ $$ LANGUAGE plpgsql;
 -- RPC execution grants
 grant execute on function public.list_snapshot_counts() to anon, authenticated;
 grant execute on function public.list_snapshot_counts_detailed() to anon, authenticated;
+grant execute on function public.list_trade_data_counts() to anon, authenticated;
 
 -- List snapshot months with row counts (RPC)
 create or replace function public.list_snapshot_counts()
@@ -273,6 +274,20 @@ as $$
   left join fund_counts fc on ad.date = fc.date
   left join benchmark_counts bc on ad.date = bc.date
   order by ad.date desc;
+$$;
+
+-- List trade data months with row counts (RPC)
+create or replace function public.list_trade_data_counts()
+returns table("month" date, trade_rows bigint)
+language sql
+stable
+as $$
+  select 
+    date_trunc('month', trade_date)::date as "month",
+    count(*)::bigint as trade_rows
+  from public.trade_activity
+  group by date_trunc('month', trade_date)
+  order by date_trunc('month', trade_date) desc;
 $$;
 
 -- Create trigger to automatically update last_updated
