@@ -13,7 +13,7 @@ export default function SnapshotManager() {
     try {
       setLoading(true);
       setError(null);
-      const rows = await fundService.listSnapshotsWithDetailedCounts();
+      const rows = await fundService.listSnapshotsWithCounts();
       setSnapshots(rows);
     } catch (e) {
       setError(e.message);
@@ -87,7 +87,7 @@ export default function SnapshotManager() {
     <div className="card" style={{ padding: 16, marginTop: 16 }}>
       <div className="card-header">
         <h3 className="card-title">Snapshot Manager</h3>
-        <p className="card-subtitle">Manage monthly snapshots present in fund_performance and benchmark_performance</p>
+        <p className="card-subtitle">Manage monthly snapshots present in fund_performance</p>
       </div>
       {loading ? (
         <div>Loading snapshots…</div>
@@ -99,8 +99,7 @@ export default function SnapshotManager() {
             <thead>
               <tr>
                 <th style={{ textAlign: 'left' }}>Date</th>
-                <th style={{ textAlign: 'left' }}>Fund Rows</th>
-                <th style={{ textAlign: 'left' }}>Benchmark Rows</th>
+                <th style={{ textAlign: 'left' }}>Rows</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -116,22 +115,7 @@ export default function SnapshotManager() {
                       {isEom(s.date) ? 'EOM' : 'Non-EOM'}
                     </span>
                   </td>
-                  <td>
-                    <span style={{ 
-                      color: s.fundRows > 0 ? '#166534' : '#6b7280',
-                      fontWeight: s.fundRows > 0 ? '500' : 'normal'
-                    }}>
-                      {s.fundRows}
-                    </span>
-                  </td>
-                  <td>
-                    <span style={{ 
-                      color: s.benchmarkRows > 0 ? '#166534' : '#6b7280',
-                      fontWeight: s.benchmarkRows > 0 ? '500' : 'normal'
-                    }}>
-                      {s.benchmarkRows}
-                    </span>
-                  </td>
+                  <td>{s.rows}</td>
                   <td style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button className="btn btn-secondary" onClick={() => handleDownloadTemplate(s.date)}>Download Template</button>
                     <button className="btn btn-secondary" onClick={() => handleSetActive(s.date)}>Set Active Month</button>
@@ -145,7 +129,7 @@ export default function SnapshotManager() {
                 </tr>
               ))}
               {snapshots.length === 0 && (
-                <tr><td colSpan={4} style={{ color: '#6b7280' }}>No snapshots found</td></tr>
+                <tr><td colSpan={3} style={{ color: '#6b7280' }}>No snapshots found</td></tr>
               )}
             </tbody>
           </table>
