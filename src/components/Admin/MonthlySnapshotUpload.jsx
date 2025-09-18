@@ -2,6 +2,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import Papa from 'papaparse';
 import { supabase, TABLES, dbUtils } from '../../services/supabase';
+import { createFundPerformanceTemplateCSV, createBenchmarkPerformanceTemplateCSV } from '../../services/csvTemplate';
 
 function Field({ label, children }) {
   return (
@@ -126,6 +127,34 @@ export default function MonthlySnapshotUpload() {
     beta: dbUtils.parseMetricNumber(r.beta)
   });
 
+  const handleDownloadFundTemplate = useCallback(() => {
+    try {
+      const blob = createFundPerformanceTemplateCSV();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'fund-performance-template.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Failed to download fund template:', e);
+    }
+  }, []);
+
+  const handleDownloadBenchmarkTemplate = useCallback(() => {
+    try {
+      const blob = createBenchmarkPerformanceTemplateCSV();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'benchmark-performance-template.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Failed to download benchmark template:', e);
+    }
+  }, []);
+
   const handleImport = useCallback(async () => {
     const errs = [];
     if (!asOfDate) errs.push('Please enter a valid As-of date (YYYY-MM-DD).');
@@ -182,7 +211,12 @@ export default function MonthlySnapshotUpload() {
 
         <div style={{ display: 'grid', gap: 8 }}>
           <Field label="Fund Performance CSV">
-            <input type="file" accept=".csv,text/csv" onChange={(e) => setFundFile(e.target.files?.[0] || null)} />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="file" accept=".csv,text/csv" onChange={(e) => setFundFile(e.target.files?.[0] || null)} />
+              <button className="btn btn-secondary" onClick={handleDownloadFundTemplate} style={{ fontSize: 12 }}>
+                Download Template
+              </button>
+            </div>
           </Field>
           {fundRows.length > 0 && (
             <Preview rows={fundRows} kind="fund" />
@@ -191,7 +225,12 @@ export default function MonthlySnapshotUpload() {
 
         <div style={{ display: 'grid', gap: 8 }}>
           <Field label="Benchmark Performance CSV (optional)">
-            <input type="file" accept=".csv,text/csv" onChange={(e) => setBenchFile(e.target.files?.[0] || null)} />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="file" accept=".csv,text/csv" onChange={(e) => setBenchFile(e.target.files?.[0] || null)} />
+              <button className="btn btn-secondary" onClick={handleDownloadBenchmarkTemplate} style={{ fontSize: 12 }}>
+                Download Template
+              </button>
+            </div>
           </Field>
           {benchRows.length > 0 && (
             <Preview rows={benchRows} kind="bench" />

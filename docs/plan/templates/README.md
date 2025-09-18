@@ -7,6 +7,21 @@ This directory contains CSV templates for uploading fund and benchmark performan
 - `fund_performance.csv` - Template for fund performance data
 - `benchmark_performance.csv` - Template for benchmark performance data
 
+## Template Downloads
+
+**NEW**: You can now download CSV templates directly from the Monthly Snapshot Upload interface:
+
+1. Navigate to **Admin > Monthly Snapshot Upload**
+2. Click **"Download Template"** next to either:
+   - Fund Performance CSV field (downloads `fund-performance-template.csv`)
+   - Benchmark Performance CSV field (downloads `benchmark-performance-template.csv`)
+
+The downloaded templates include:
+- ✅ Correct column headers matching the expected format
+- ✅ Sample data rows showing the proper data format
+- ✅ UTF-8 encoding with BOM for Excel compatibility
+- ✅ No date column (date is provided via the UI date picker)
+
 ## Upload Instructions
 
 ### 1. Fund Performance Upload
@@ -80,7 +95,9 @@ Use the `benchmark_performance.csv` template for uploading benchmark performance
 
 ## Upload Process
 
-1. **Download Template**: Use the template files as starting points
+1. **Download Template**: 
+   - Use the "Download Template" buttons in the Monthly Snapshot Upload interface, OR
+   - Use the template files in this directory as starting points
 2. **Fill Data**: Replace sample data with your actual performance data
 3. **Validate**: Ensure all dates are end-of-month and tickers exist
 4. **Upload**: Use the Monthly Snapshot Upload interface in the Admin section
