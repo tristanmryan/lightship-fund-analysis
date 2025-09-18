@@ -6,6 +6,10 @@
   - Benchmark Performance Template: includes benchmark-specific columns (no manager_tenure)
   - Templates use proper UTF-8 encoding with BOM for Excel compatibility
   - Templates exclude date column (provided via UI date picker)
+  - **NEW**: Replaced manual date input with user-friendly year/month dropdowns
+  - Automatically calculates end-of-month date from selected year/month
+  - Shows calculated EOM date in real-time as user selects month/year
+  - Handles leap years correctly (e.g., February 2024 = 29 days, February 2025 = 28 days)
 
 ## 2025-08-10
 

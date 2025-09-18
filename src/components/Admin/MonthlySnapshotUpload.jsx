@@ -45,7 +45,8 @@ function Preview({ rows = [], kind = 'fund' }) {
 }
 
 export default function MonthlySnapshotUpload() {
-  const [asOf, setAsOf] = useState(''); // YYYY-MM-DD
+  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('');
   const [fundFile, setFundFile] = useState(null);
   const [benchFile, setBenchFile] = useState(null);
   const [fundRows, setFundRows] = useState([]);
@@ -53,6 +54,23 @@ export default function MonthlySnapshotUpload() {
   const [valid, setValid] = useState({ fund: 0, bench: 0 });
   const [errors, setErrors] = useState([]);
   const [busy, setBusy] = useState(false);
+
+  // Utility function to get the last day of a month
+  const getLastDayOfMonth = useCallback((year, month) => {
+    if (!year || !month) return null;
+    const date = new Date(parseInt(year), parseInt(month), 0); // month is 0-indexed, so using month gives us the last day of previous month
+    return date.getDate();
+  }, []);
+
+  // Calculate the EOM date from year/month selection
+  const asOfDate = useMemo(() => {
+    if (!selectedYear || !selectedMonth) return null;
+    const lastDay = getLastDayOfMonth(selectedYear, selectedMonth);
+    if (!lastDay) return null;
+    const monthStr = selectedMonth.padStart(2, '0');
+    const dayStr = lastDay.toString().padStart(2, '0');
+    return `${selectedYear}-${monthStr}-${dayStr}`;
+  }, [selectedYear, selectedMonth, getLastDayOfMonth]);
 
   const parseCsv = useCallback(async (file) => {
     if (!file) return [];
@@ -83,16 +101,11 @@ export default function MonthlySnapshotUpload() {
       setValid({ fund: fundOk, bench: benchOk });
 
       if (!fundOk && !benchOk) setErrors((e) => [...e, 'No recognizable ticker columns found (fund_ticker/ticker, benchmark_ticker/ticker).']);
-      if (asOf && !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) setErrors((e) => [...e, 'As-of date must be YYYY-MM-DD.']);
+      if (!selectedYear || !selectedMonth) setErrors((e) => [...e, 'Please select both year and month.']);
     } catch (e) {
       setErrors([e?.message || String(e)]);
     }
-  }, [parseCsv, fundFile, benchFile, asOf]);
-
-  const asOfDate = useMemo(() => {
-    if (!asOf) return null;
-    try { return dbUtils.formatDateOnly(asOf); } catch { return null; }
-  }, [asOf]);
+  }, [parseCsv, fundFile, benchFile, selectedYear, selectedMonth]);
 
   const normalizeFundRow = (r) => ({
     fund_ticker: String(r.fund_ticker || r.ticker || '').toUpperCase(),
@@ -157,7 +170,7 @@ export default function MonthlySnapshotUpload() {
 
   const handleImport = useCallback(async () => {
     const errs = [];
-    if (!asOfDate) errs.push('Please enter a valid As-of date (YYYY-MM-DD).');
+    if (!asOfDate) errs.push('Please select both year and month.');
     if (errs.length) { setErrors(errs); return; }
 
     try {
@@ -205,8 +218,44 @@ export default function MonthlySnapshotUpload() {
       </div>
 
       <div style={{ display: 'grid', gap: 12, marginTop: 8 }}>
-        <Field label="As-of Date (YYYY-MM-DD)">
-          <input type="text" value={asOf} onChange={(e) => setAsOf(e.target.value)} placeholder="2025-01-31" style={{ width: 200 }} />
+        <Field label="Select Month and Year">
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <select 
+              value={selectedMonth} 
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+            >
+              <option value="">Select Month</option>
+              <option value="1">January</option>
+              <option value="2">February</option>
+              <option value="3">March</option>
+              <option value="4">April</option>
+              <option value="5">May</option>
+              <option value="6">June</option>
+              <option value="7">July</option>
+              <option value="8">August</option>
+              <option value="9">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+            <select 
+              value={selectedYear} 
+              onChange={(e) => setSelectedYear(e.target.value)}
+              style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+            >
+              <option value="">Select Year</option>
+              {Array.from({ length: 10 }, (_, i) => {
+                const year = new Date().getFullYear() - 5 + i;
+                return <option key={year} value={year}>{year}</option>;
+              })}
+            </select>
+            {asOfDate && (
+              <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 8 }}>
+                EOM Date: {asOfDate}
+              </span>
+            )}
+          </div>
         </Field>
 
         <div style={{ display: 'grid', gap: 8 }}>
