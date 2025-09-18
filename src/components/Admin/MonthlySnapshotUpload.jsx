@@ -97,10 +97,10 @@ export default function MonthlySnapshotUpload() {
 
       // Minimal validation: require ticker column
       const fundOk = fRows.filter(r => r.fund_ticker || r.ticker).length;
-      const benchOk = bRows.filter(r => r.benchmark_ticker || r.ticker).length;
+      const benchOk = bRows.filter(r => r.benchmark_ticker || r.fund_ticker || r.ticker).length;
       setValid({ fund: fundOk, bench: benchOk });
 
-      if (!fundOk && !benchOk) setErrors((e) => [...e, 'No recognizable ticker columns found (fund_ticker/ticker, benchmark_ticker/ticker).']);
+      if (!fundOk && !benchOk) setErrors((e) => [...e, 'No recognizable ticker columns found. For funds: fund_ticker/ticker. For benchmarks: benchmark_ticker/fund_ticker/ticker.']);
       if (!selectedYear || !selectedMonth) setErrors((e) => [...e, 'Please select both year and month.']);
     } catch (e) {
       setErrors([e?.message || String(e)]);
@@ -125,7 +125,7 @@ export default function MonthlySnapshotUpload() {
   });
 
   const normalizeBenchRow = (r) => ({
-    benchmark_ticker: String(r.benchmark_ticker || r.ticker || '').toUpperCase(),
+    benchmark_ticker: String(r.benchmark_ticker || r.fund_ticker || r.ticker || '').toUpperCase(),
     date: asOfDate,
     ytd_return: dbUtils.parseMetricNumber(r.ytd_return ?? r.ytd),
     one_year_return: dbUtils.parseMetricNumber(r.one_year_return ?? r.one_year ?? r['1y'] ?? r['1 Year']),
@@ -192,7 +192,7 @@ export default function MonthlySnapshotUpload() {
 
       if (benchRows.length > 0) {
         const rows = benchRows
-          .filter(r => r.benchmark_ticker || r.ticker)
+          .filter(r => r.benchmark_ticker || r.fund_ticker || r.ticker)
           .map(normalizeBenchRow)
           .filter(r => r.benchmark_ticker && r.date);
         if (rows.length > 0) {
