@@ -48,11 +48,12 @@ export default function AdminOverview({ onNavigate = () => {} }) {
         const mappedPrimaryCount = Array.from(primarySet).filter(id => (assetClasses || []).some(ac => ac.id === id)).length;
         const unmappedCount = Math.max(0, assetClassCount - mappedPrimaryCount);
 
-        const snapshots = await fundService.listSnapshotsWithCounts();
+        const snapshots = await fundService.listSnapshotsWithDetailedCounts();
         const latest = Array.isArray(snapshots) && snapshots.length > 0 ? snapshots[0] : null;
 
         // Enhanced: latest holdings snapshot and flows month from new MVs
         let holdingsDate = null; let advisors = 0; let aum = 0; let flowsMonth = null; let flowsCount = 0;
+        let tradeMonth = null; let tradeCount = 0;
         try {
           const { data: hdates } = await supabase
             .from('advisor_metrics_mv')
@@ -77,6 +78,13 @@ export default function AdminOverview({ onNavigate = () => {} }) {
           const { data: frows } = await supabase.rpc('get_fund_flows', { p_month: flowsMonth, p_ticker: null, p_limit: 1000 });
           flowsCount = (frows || []).length;
         } catch {}
+        try {
+          const tradeData = await fundService.listTradeDataCounts();
+          if (tradeData && tradeData.length > 0) {
+            tradeMonth = tradeData[0].month;
+            tradeCount = tradeData[0].tradeRows;
+          }
+        } catch {}
 
         setState({
           fundsTotal: fundsTotalRes?.count ?? 0,
@@ -86,9 +94,9 @@ export default function AdminOverview({ onNavigate = () => {} }) {
           mappedPrimaryCount,
           unmappedCount,
           latestSnapshot: latest?.date || null,
-          latestSnapshotRows: latest?.rows || 0
+          latestSnapshotRows: (latest?.fundRows || 0) + (latest?.benchmarkRows || 0)
         });
-        setEnhanced({ holdingsDate, advisors, aum, flowsMonth, flowsCount });
+        setEnhanced({ holdingsDate, advisors, aum, flowsMonth, flowsCount, tradeMonth, tradeCount });
       } catch (e) {
         setError(e.message);
       } finally {
@@ -130,6 +138,13 @@ export default function AdminOverview({ onNavigate = () => {} }) {
       label: 'Snapshots',
       value: state.latestSnapshot ? `${state.latestSnapshot} (${state.latestSnapshotRows} rows)` : 'none',
       linkText: 'Go to Snapshots',
+      onClick: () => onNavigate('data'),
+      note: ''
+    },
+    {
+      label: 'Trade Data',
+      value: enhanced.tradeMonth ? `${enhanced.tradeMonth} (${enhanced.tradeCount} rows)` : 'none',
+      linkText: 'Go to Data Uploads',
       onClick: () => onNavigate('data'),
       note: ''
     }

@@ -7,16 +7,16 @@ import fundService from '../../services/fundService';
 jest.mock('../../services/fundService', () => ({
   __esModule: true,
   default: {
-    listSnapshotsWithCounts: jest.fn(),
+    listSnapshotsWithDetailedCounts: jest.fn(),
     deleteSnapshotMonth: jest.fn()
   }
 }));
 
 describe('SnapshotManager', () => {
   it('lists snapshots and supports delete', async () => {
-    fundService.listSnapshotsWithCounts.mockResolvedValueOnce([
-      { date: '2025-04-30', rows: 1200 },
-      { date: '2025-03-31', rows: 1180 }
+    fundService.listSnapshotsWithDetailedCounts.mockResolvedValueOnce([
+      { date: '2025-04-30', fundRows: 1200, benchmarkRows: 0 },
+      { date: '2025-03-31', fundRows: 1180, benchmarkRows: 0 }
     ]);
     fundService.deleteSnapshotMonth.mockResolvedValue(true);
 
@@ -35,9 +35,9 @@ describe('SnapshotManager', () => {
   });
 
   it('renders RPC data when available', async () => {
-    fundService.listSnapshotsWithCounts.mockResolvedValueOnce([
-      { date: '2025-07-31', rows: 118 },
-      { date: '2025-06-30', rows: 200 }
+    fundService.listSnapshotsWithDetailedCounts.mockResolvedValueOnce([
+      { date: '2025-07-31', fundRows: 118, benchmarkRows: 0 },
+      { date: '2025-06-30', fundRows: 200, benchmarkRows: 0 }
     ]);
     render(<SnapshotManager />);
     expect(await screen.findByText('2025-07-31')).toBeInTheDocument();
@@ -46,10 +46,10 @@ describe('SnapshotManager', () => {
 
   it('falls back and sorts descending', async () => {
     // Simulate fallback by providing unsorted data from service layer
-    fundService.listSnapshotsWithCounts.mockResolvedValueOnce([
-      { date: '2025-05-31', rows: 2 },
-      { date: '2025-07-31', rows: 5 },
-      { date: '2025-06-30', rows: 3 }
+    fundService.listSnapshotsWithDetailedCounts.mockResolvedValueOnce([
+      { date: '2025-05-31', fundRows: 2, benchmarkRows: 0 },
+      { date: '2025-07-31', fundRows: 5, benchmarkRows: 0 },
+      { date: '2025-06-30', fundRows: 3, benchmarkRows: 0 }
     ]);
     render(<SnapshotManager />);
     const firstRow = await screen.findByText('2025-05-31');

@@ -52,6 +52,13 @@ const FLOW_CHART_MODES = [
   { value: 'outflows', label: 'Outflows' }
 ];
 
+const FLOW_TREND_WINDOWS = [
+  { value: 6, label: '6 mo' },
+  { value: 12, label: '12 mo' },
+  { value: 18, label: '18 mo' },
+  { value: 24, label: '24 mo' }
+];
+
 function FlowStoryChart({ data = [], mode = 'net', height = 320 }) {
   if (!Array.isArray(data) || data.length === 0) {
     return <div style={{ height, background: '#f3f4f6', borderRadius: 12 }} />;
@@ -676,6 +683,7 @@ export default function Trading() {
   const [advisorLeaders, setAdvisorLeaders] = React.useState([]);
   const [assetClassModal, setAssetClassModal] = React.useState(null);
   const [flowChartMode, setFlowChartMode] = React.useState('net');
+  const [flowTrendMonths, setFlowTrendMonths] = React.useState(18);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -711,7 +719,7 @@ export default function Trading() {
         ] = await Promise.all([
           flowsService.getTopMovers({ month, advisorNameOrTeam: advisorName, direction: 'inflow', limit: limitMovers }),
           flowsService.getTopMovers({ month, advisorNameOrTeam: advisorName, direction: 'outflow', limit: limitMovers }),
-          flowsService.getNetFlowTrend(advisorName, 18),
+          flowsService.getNetFlowTrend(advisorName, flowTrendMonths),
           flowsService.getMonthKPIs({ month, advisorNameOrTeam: advisorName }),
           flowsService.getTopAdvisorActivity({ month, advisorNameOrTeam: advisorName, limit: 6 }),
           advisorName ? Promise.resolve(null) : flowsService.getFlowByAssetClass({ month })
@@ -770,7 +778,7 @@ export default function Trading() {
       }
     })();
     return () => { cancelled = true; };
-  }, [month, advisorName]);
+  }, [month, advisorName, flowTrendMonths]);
 
   React.useEffect(() => {
     if (!drillFor || !month) return;
@@ -874,7 +882,7 @@ export default function Trading() {
     return assetClassFlows;
   }, [advisorName, combinedMoves, assetClassFlows]);
 
-  const chartTrend = React.useMemo(() => (flowTrend || []).slice(-12), [flowTrend]);
+  const chartTrend = React.useMemo(() => (flowTrend || []).slice(-flowTrendMonths), [flowTrend, flowTrendMonths]);
 
   const flowComparisons = React.useMemo(() => {
     if (!flowTrend || flowTrend.length === 0) return null;
@@ -939,53 +947,27 @@ export default function Trading() {
     if (value) setMonth(value);
   }, [setMonth]);
 
-  const advisorCards = React.useMemo(() => {
-    const grouped = new Map();
-    (advisorLeaders || []).forEach((row) => {
-      const displayName = getAdvisorName(row.advisor_id);
-      const key = displayName || row.advisor_id || 'Unknown';
-      const existing = grouped.get(key) || {
-        displayName: key,
-        advisor_ids: new Set(),
-        net_flow: 0,
-        total_volume: 0,
-        buy_volume: 0,
-        sell_volume: 0,
-        trades: 0,
-        tickers: new Set()
-      };
-      existing.advisor_ids.add(row.advisor_id);
-      existing.net_flow += Number(row.net_flow || 0);
-      existing.total_volume += Number(row.total_volume || 0);
-      existing.buy_volume += Number(row.buy_volume || 0);
-      existing.sell_volume += Number(row.sell_volume || 0);
-      existing.trades += Number(row.trades || 0);
-      if (Array.isArray(row.tickers)) {
-        row.tickers.forEach((ticker) => existing.tickers.add(String(ticker).toUpperCase()));
-      } else if (row.distinct_tickers) {
-        // Preserve at least the count if we lack the specific symbols
-        existing.distinct_tickers = (existing.distinct_tickers || 0) + Number(row.distinct_tickers || 0);
-      }
-      grouped.set(key, existing);
-    });
-
-    return Array.from(grouped.values()).map((entry) => {
-      const initials = entry.displayName ? entry.displayName.slice(0, 2).toUpperCase() : '??';
-      const distinctTickers = entry.tickers.size > 0 ? entry.tickers.size : (entry.distinct_tickers || 0);
+  const advisorCards = React.useMemo(() => (
+    (advisorLeaders || []).map((row) => {
+      const displayName = row.displayName || getAdvisorName(row.advisor_id) || 'Unknown';
+      const initials = displayName ? displayName.slice(0, 2).toUpperCase() : '??';
+      const totalVolume = Number(row.total_volume || 0);
+      const trades = Number(row.trades || 0);
+      const distinctTickers = Number(row.distinct_tickers ?? (Array.isArray(row.tickers) ? row.tickers.length : 0));
       return {
-        advisor_id: Array.from(entry.advisor_ids || []).join(','),
-        displayName: entry.displayName,
+        advisor_id: row.advisor_id,
+        displayName,
         initials,
-        net_flow: entry.net_flow,
-        total_volume: entry.total_volume,
-        buy_volume: entry.buy_volume,
-        sell_volume: entry.sell_volume,
-        trades: entry.trades,
+        net_flow: Number(row.net_flow || 0),
+        total_volume: totalVolume,
+        buy_volume: Number(row.buy_volume || 0),
+        sell_volume: Number(row.sell_volume || 0),
+        trades,
         distinct_tickers: distinctTickers,
-        avg_trade: entry.trades > 0 ? entry.total_volume / entry.trades : 0
+        avg_trade: trades > 0 ? totalVolume / trades : 0
       };
-    }).sort((a, b) => b.total_volume - a.total_volume);
-  }, [advisorLeaders]);
+    }).sort((a, b) => b.total_volume - a.total_volume)
+  ), [advisorLeaders]);
 
   const advisorCoverage = React.useMemo(() => {
     const totalVolume = advisorCards.reduce((sum, row) => sum + Math.abs(Number(row.total_volume || 0)), 0);
@@ -994,30 +976,6 @@ export default function Trading() {
     return { totalVolume, firmVolume, pct };
   }, [advisorCards, kpis.total_inflows, kpis.total_outflows]);
 
-  const sortedTrendRows = React.useMemo(() => (
-    (flowTrend || []).map((row) => ({
-      month: row.month,
-      displayMonth: safeMonthLabel(row.month),
-      net: Number(row.net_flow || 0),
-      inflows: Number(row.inflows || 0),
-      outflows: Number(row.outflows || 0)
-    })).sort((a, b) => new Date(b.month) - new Date(a.month))
-  ), [flowTrend]);
-
-  const sortedMonths = React.useMemo(() => (
-    (months || []).slice().sort((a, b) => new Date(b) - new Date(a))
-  ), [months]);
-
-  const totalMonthsAvailable = sortedMonths.length;
-  const latestMonthAvailable = totalMonthsAvailable ? sortedMonths[0] : null;
-  const oldestMonthAvailable = totalMonthsAvailable ? sortedMonths[sortedMonths.length - 1] : null;
-
-  const coverageColumns = React.useMemo(() => ([
-    { key: 'displayMonth', label: 'Month', width: '140px', accessor: (row) => row.displayMonth },
-    { key: 'net', label: 'Net Flow', width: '130px', numeric: true, align: 'right', accessor: (row) => row.net, render: (value) => formatCurrency(value) },
-    { key: 'inflows', label: 'Inflows', width: '130px', numeric: true, align: 'right', accessor: (row) => row.inflows, render: (value) => formatCurrency(value) },
-    { key: 'outflows', label: 'Outflows', width: '130px', numeric: true, align: 'right', accessor: (row) => row.outflows, render: (value) => formatCurrency(value) }
-  ]), []);
 
   const flowSignalsIntro = React.useMemo(() => {
     if (!alerts || alerts.length === 0) {
@@ -1085,29 +1043,56 @@ export default function Trading() {
             <h2 style={{ margin: 0, fontSize: 20 }}>Monthly Flow Story</h2>
             <div style={{ fontWeight: 600, fontSize: 16, color: '#111827', marginTop: 4 }}>{flowHeadline.headline}</div>
             {flowHeadline.subhead && <div style={{ fontSize: 12, color: '#4b5563', marginTop: 4 }}>{flowHeadline.subhead}</div>}
-            <div style={{ display: 'inline-flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-              {FLOW_CHART_MODES.map((option) => {
-                const active = option.value === flowChartMode;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setFlowChartMode(option.value)}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: 999,
-                      border: active ? '1px solid rgba(17,24,39,0.6)' : '1px solid rgba(17,24,39,0.15)',
-                      background: active ? '#1f2937' : '#ffffff',
-                      color: active ? '#ffffff' : '#1f2937',
-                      fontSize: 12,
-                      fontWeight: active ? 700 : 500,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
+            <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+              <div style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
+                {FLOW_CHART_MODES.map((option) => {
+                  const active = option.value === flowChartMode;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setFlowChartMode(option.value)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 999,
+                        border: active ? '1px solid rgba(17,24,39,0.6)' : '1px solid rgba(17,24,39,0.15)',
+                        background: active ? '#1f2937' : '#ffffff',
+                        color: active ? '#ffffff' : '#1f2937',
+                        fontSize: 12,
+                        fontWeight: active ? 700 : 500,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: '#6b7280' }}>Period</span>
+                {FLOW_TREND_WINDOWS.map((option) => {
+                  const active = option.value === flowTrendMonths;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setFlowTrendMonths(option.value)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 999,
+                        border: active ? '1px solid rgba(17,24,39,0.6)' : '1px solid rgba(17,24,39,0.15)',
+                        background: active ? '#1f2937' : '#ffffff',
+                        color: active ? '#ffffff' : '#1f2937',
+                        fontSize: 12,
+                        fontWeight: active ? 700 : 500,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, minWidth: 280 }}>
@@ -1120,57 +1105,8 @@ export default function Trading() {
         </div>
         <FlowStoryChart data={chartTrend} mode={flowChartMode} />
       </div>
-      <div className="card" style={{ padding: 16, display: 'grid', gap: 12 }}>
-        <h3 style={{ margin: 0 }}>Trading Data Diagnostics</h3>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-          <KPI label="Months Captured" value={totalMonthsAvailable} />
-          <KPI label="Funds Tracked (month)" value={combinedMoves.length} />
-          {totalMonthsAvailable > 0 && (
-            <div style={{
-              padding: '12px 14px',
-              border: '1px solid #e5e7eb',
-              borderRadius: 12,
-              background: '#f9fafb',
-              fontSize: 12,
-              color: '#374151'
-            }}>
-              Coverage: {safeMonthLabel(oldestMonthAvailable)} → {safeMonthLabel(latestMonthAvailable)}
-            </div>
-          )}
-        </div>
-        <ProfessionalTable
-          data={sortedTrendRows}
-          columns={coverageColumns}
-          onRowClick={(row) => setMonth(row.month)}
-        />
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', flexWrap: 'wrap' }}>
-        <div className="card" style={{ padding: 16, display: 'grid', gap: 12 }}>
-          <h3 style={{ margin: 0 }}>Flow Intensity by Asset Class</h3>
-          <FlowIntensityGrid
-            rows={intensityRows}
-            advisorFilter={advisorName}
-            onSelectAssetClass={handleAssetClassSelect}
-            interactiveAssetClasses={assetClassesWithDetails}
-          />
-        </div>
-        <div className="card" style={{ padding: 16, display: 'grid', gap: 12 }}>
-          <h3 style={{ margin: 0 }}>Advisor Activity Spotlights</h3>
-          <AdvisorSpotlights cards={advisorCards} month={month} />
-          {advisorCoverage.pct != null && (
-            <div style={{ fontSize: 11, color: '#6b7280' }}>
-              Spotlight volume covers {Math.round(Math.min(advisorCoverage.pct, 1) * 100)}% of firm trading this month
-            </div>
-          )}
-        </div>
-      </div>
 
-      <div className="card" style={{ padding: 16, display: 'grid', gap: 12 }}>
-        <h3 style={{ margin: 0 }}>Momentum Highlights</h3>
-        <FlowMomentumPanel momentum={flowMomentum} onSelectMonth={handleMomentumSelect} />
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
         <div className="card" style={{ padding: 16, display: 'grid', gap: 12 }}>
           <h3 style={{ margin: 0 }}>Trading Volume Pulse</h3>
           <FlowBubbleField data={bubbleData} />
@@ -1186,39 +1122,70 @@ export default function Trading() {
         </div>
       </div>
 
-      <div className="card" style={{ padding: 16, display: 'grid', gap: 12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <h3 style={{ margin: 0 }}>Flow Signals</h3>
-            <div style={{ fontSize: 12, color: '#4b5563' }}>{flowSignalsIntro}</div>
+      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))' }}>
+        <div className="card" style={{ padding: 16, display: 'grid', gap: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <h3 style={{ margin: 0 }}>Advisor Activity Spotlights</h3>
+            <div style={{ fontSize: 11, color: '#6b7280' }}>{safeMonthLabel(month)}</div>
           </div>
-          <div style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn btn-secondary" onClick={() => exportTop('buys')}>Download Top Buys CSV</button>
-            <button className="btn btn-secondary" onClick={() => exportTop('sells')}>Download Top Sells CSV</button>
-          </div>
+          <AdvisorSpotlights cards={advisorCards.slice(0, 6)} month={month} />
+          {advisorCoverage.pct != null && (
+            <div style={{ fontSize: 11, color: '#6b7280' }}>
+              Spotlight volume covers {Math.round(Math.min(advisorCoverage.pct, 1) * 100)}% of firm trading this month
+            </div>
+          )}
         </div>
-        {(alerts || []).length === 0 ? (
-          <div style={{ color: '#6b7280' }}>No actionable alerts.</div>
-        ) : (
-          <ul style={{ margin: 0, paddingLeft: 18, color: '#111827' }}>
-            {alerts.map((alert) => (<li key={alert.id}>{alert.message}</li>))}
-          </ul>
-        )}
+        <div className="card" style={{ padding: 16, display: 'grid', gap: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0 }}>Flow Signals</h3>
+              <div style={{ fontSize: 12, color: '#4b5563' }}>{flowSignalsIntro}</div>
+            </div>
+            <div style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn btn-secondary" onClick={() => exportTop('buys')}>Download Top Buys CSV</button>
+              <button className="btn btn-secondary" onClick={() => exportTop('sells')}>Download Top Sells CSV</button>
+            </div>
+          </div>
+          {(alerts || []).length === 0 ? (
+            <div style={{ color: '#6b7280' }}>No actionable alerts.</div>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 18, color: '#111827' }}>
+              {alerts.map((alert) => (<li key={alert.id}>{alert.message}</li>))}
+            </ul>
+          )}
+        </div>
       </div>
-      <div className="trading-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', flexWrap: 'wrap' }}>
-        <div className="trading-card card" style={{ padding: 16 }}>
+
+      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))' }}>
+        <div className="card" style={{ padding: 16, display: 'grid', gap: 12 }}>
+          <h3 style={{ margin: 0 }}>Flow Intensity by Asset Class</h3>
+          <FlowIntensityGrid
+            rows={intensityRows}
+            advisorFilter={advisorName}
+            onSelectAssetClass={handleAssetClassSelect}
+            interactiveAssetClasses={assetClassesWithDetails}
+          />
+        </div>
+        <div className="card" style={{ padding: 16, display: 'grid', gap: 12 }}>
+          <h3 style={{ margin: 0 }}>Momentum Highlights</h3>
+          <FlowMomentumPanel momentum={flowMomentum} onSelectMonth={handleMomentumSelect} />
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))' }}>
+        <div className="card" style={{ padding: 16 }}>
           <h3 style={{ marginTop: 0 }}>Top Buys</h3>
           <ProfessionalTable data={topBuys.slice(0, 12)} columns={FLOWS_COLUMNS} onRowClick={(row) => setDrillFor(String(row?.ticker || '').toUpperCase())} />
         </div>
-        <div className="trading-card card" style={{ padding: 16 }}>
+        <div className="card" style={{ padding: 16 }}>
           <h3 style={{ marginTop: 0 }}>Top Sells</h3>
           <ProfessionalTable data={topSells.slice(0, 12)} columns={FLOWS_COLUMNS} onRowClick={(row) => setDrillFor(String(row?.ticker || '').toUpperCase())} />
         </div>
       </div>
 
-      <div className="chart-section card" style={{ padding: 16 }}>
+      <div className="card" style={{ padding: 16 }}>
         <h3 style={{ marginTop: 0 }}>Top Inflows and Outflows</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
           <div>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>Top Inflows</div>
             <MiniBarChart

@@ -1,7 +1,7 @@
 // src/services/flowsService.js
 import { supabase } from './supabase.js';
 import fundService from './fundService.js';
-import { getAllAdvisorIdsForName } from '../config/advisorNames.js';
+import { getAllAdvisorIdsForName, getAdvisorName } from '../config/advisorNames.js';
 
 function toMonthStart(dateLike) {
   try {
@@ -304,9 +304,33 @@ async function getTopAdvisorActivity({ month, advisorNameOrTeam = '', limit = 4 
       aggregated.set(advisorId, current);
     }
 
-    return Array.from(aggregated.values())
+    const byDisplay = new Map();
+    for (const entry of aggregated.values()) {
+      const displayName = getAdvisorName(entry.advisor_id) || entry.advisor_id;
+      const current = byDisplay.get(displayName) || {
+        displayName,
+        advisor_ids: new Set(),
+        net_flow: 0,
+        buy_volume: 0,
+        sell_volume: 0,
+        total_volume: 0,
+        trades: 0,
+        tickers: new Set()
+      };
+      current.advisor_ids.add(entry.advisor_id);
+      current.net_flow += entry.net_flow;
+      current.buy_volume += entry.buy_volume;
+      current.sell_volume += entry.sell_volume;
+      current.total_volume += entry.total_volume;
+      current.trades += entry.trades;
+      for (const ticker of entry.tickers) current.tickers.add(ticker);
+      byDisplay.set(displayName, current);
+    }
+
+    return Array.from(byDisplay.values())
       .map((entry) => ({
-        advisor_id: entry.advisor_id,
+        advisor_id: Array.from(entry.advisor_ids).join(','),
+        displayName: entry.displayName,
         net_flow: entry.net_flow,
         buy_volume: entry.buy_volume,
         sell_volume: entry.sell_volume,
@@ -317,8 +341,7 @@ async function getTopAdvisorActivity({ month, advisorNameOrTeam = '', limit = 4 
         direction: entry.net_flow >= 0 ? 'inflow' : 'outflow',
         avg_trade: entry.trades > 0 ? entry.total_volume / entry.trades : 0
       }))
-      .sort((a, b) => b.total_volume - a.total_volume)
-      .slice(0, Math.max(1, Math.min(limit || 4, 20)));
+      .sort((a, b) => b.total_volume - a.total_volume);
   } catch (error) {
     console.warn('flowsService.getTopAdvisorActivity failed', error);
     return [];
@@ -353,11 +376,34 @@ async function getNetFlowTrend(arg1 = 6, arg2) {
     } catch {}
   }
 
-  // Aggregate net flows across all tickers by month for the last N months
+  const cappedLimit = Math.max(1, Math.min(limitMonths || 6, 60));
+
+  // Prefer server aggregation to avoid REST row limits when grouping by month
+  try {
+    const { data: firmTrend, error: firmTrendError } = await supabase.rpc('get_firm_flow_trend', {
+      p_limit_months: cappedLimit
+    });
+    if (firmTrendError) throw firmTrendError;
+    if (Array.isArray(firmTrend) && firmTrend.length > 0) {
+      return firmTrend
+        .map((r) => ({
+          month: r.month,
+          inflows: Number(r.inflows || 0),
+          outflows: Number(r.outflows || 0),
+          net_flow: Number(r.net_flow || 0)
+        }))
+        .sort((a, b) => new Date(a.month) - new Date(b.month));
+    }
+  } catch (rpcError) {
+    console.warn('flowsService.getNetFlowTrend firm RPC failed', rpcError);
+  }
+
+  // Fallback: aggregate client-side if RPC unavailable
   const { data, error } = await supabase
     .from('fund_flows_mv')
     .select('month, inflows, outflows')
-    .order('month', { ascending: false });
+    .order('month', { ascending: false })
+    .limit(cappedLimit * 600);
   if (error) throw error;
   const byMonth = new Map();
   for (const r of data || []) {
@@ -370,7 +416,7 @@ async function getNetFlowTrend(arg1 = 6, arg2) {
   }
   return Array.from(byMonth.values())
     .sort((a, b) => new Date(a.month) - new Date(b.month))
-    .slice(-Math.max(1, Math.min(limitMonths || 6, 36)));
+    .slice(-cappedLimit);
 }
 
 const flowsService = {

@@ -40,7 +40,7 @@ export default function DataDiagnostics() {
         .filter(ac => ac.group_name === 'U.S. Equity' && !primarySet.has(ac.id))
         .sort((a,b) => (a.sort_group - b.sort_group) || (a.sort_order - b.sort_order) || a.name.localeCompare(b.name));
 
-      const snaps = await fundService.listSnapshotsWithCounts();
+      const snaps = await fundService.listSnapshotsWithDetailedCounts();
 
       setCounts({
         totalFunds: total?.count ?? 0,
@@ -132,7 +132,7 @@ export default function DataDiagnostics() {
   };
 
   const snapshotsText = useMemo(() => {
-    return (counts.snapshots || []).map(s => `${s.date}: ${s.rows}`).join(', ');
+    return (counts.snapshots || []).map(s => `${s.date}: ${(s.fundRows || 0) + (s.benchmarkRows || 0)}`).join(', ');
   }, [counts.snapshots]);
 
   return (

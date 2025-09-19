@@ -5,7 +5,7 @@ import DataDiagnostics from '../../components/Admin/DataDiagnostics';
 
 jest.mock('../../services/fundService', () => ({
   __esModule: true,
-  default: { listSnapshotsWithCounts: jest.fn(async () => ([{ date: '2025-04-30', rows: 1200 }, { date: '2025-03-31', rows: 1180 }])) }
+  default: { listSnapshotsWithDetailedCounts: jest.fn(async () => ([{ date: '2025-04-30', fundRows: 1200, benchmarkRows: 0 }, { date: '2025-03-31', fundRows: 1180, benchmarkRows: 0 }])) }
 }));
 
 jest.mock('../../services/supabase', () => {

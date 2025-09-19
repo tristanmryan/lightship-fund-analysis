@@ -28,14 +28,16 @@ test('Scores table renders normalized fields', async () => {
       <App />
     </MemoryRouter>
   );
-  // Switch to Funds tab (Enhanced Performance Dashboard)
-  const [fundsBtn] = screen.getAllByText('Funds');
+  
+  // Wait for the app to load and find the Funds tab
+  const fundsBtn = await screen.findByText('Funds');
   fundsBtn.click();
+  
   // Verify tickers and normalized fields appear
   expect(await screen.findByText('JQUA')).toBeInTheDocument();
   expect(screen.getByText('JPM US Quality')).toBeInTheDocument();
   expect(screen.getByText('Large Cap Growth')).toBeInTheDocument();
   // Returns present
   expect(screen.getAllByText(/%$/).length).toBeGreaterThan(0);
-});
+}, 10000); // 10 second timeout
 

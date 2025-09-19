@@ -5,7 +5,10 @@ import AdminOverview from '../../components/Admin/AdminOverview';
 
 jest.mock('../../services/fundService', () => ({
   __esModule: true,
-  default: { listSnapshotsWithCounts: jest.fn(async () => ([{ date: '2025-04-30', rows: 1200 }])) }
+  default: { 
+    listSnapshotsWithDetailedCounts: jest.fn(async () => ([{ date: '2025-04-30', fundRows: 1200, benchmarkRows: 0 }])),
+    listTradeDataCounts: jest.fn(async () => ([{ month: '2025-04-01', tradeRows: 500 }]))
+  }
 }));
 
 jest.mock('../../services/supabase', () => {
@@ -57,7 +60,7 @@ describe('AdminOverview', () => {
     // Buttons present
     expect(screen.getAllByText('Go to Catalogs').length).toBeGreaterThan(0);
     expect(screen.getByText('Go to Mappings')).toBeInTheDocument();
-    expect(screen.getByText('Go to Data Uploads')).toBeInTheDocument();
+    expect(screen.getAllByText('Go to Data Uploads').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getAllByText('Go to Catalogs')[0]);
     expect(onNavigate).toHaveBeenCalled();
